@@ -18,6 +18,7 @@
          (dv (seq-to-buffer [1 2 3])) => x
          (dv nil) => (throws IllegalArgumentException)
          (dv []) => (dv (seq-to-buffer []))
+         (dv 3) => (zero x)
 ;;         (dv (long-array [1 3]))
          ;;=> (throws IllegalArgumentException)
          ;;(dv (object-array [1 3])) 

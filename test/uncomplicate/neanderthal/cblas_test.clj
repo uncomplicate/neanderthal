@@ -10,6 +10,8 @@
   (:import [uncomplicate.neanderthal.protocols
             DoubleVector DoubleMatrix]))
 
+(set! *warn-on-reflection* false)
+
 (facts "Equality and hash code."
        (let [x1 (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)
              y1 (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)
@@ -24,8 +26,16 @@
 
 (facts "Carrier methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)]
-         (pure x) => (->DoubleBlockVector (seq-to-buffer [0 0 0 0]) 4 1)
-         (identical? x (pure x)) => false))
+         (zero x) => (->DoubleBlockVector (seq-to-buffer [0 0 0 0]) 4 1)
+         (identical? x (zero x)) => false))
+
+(facts "IFn implementation"
+       (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)]
+         (x 2) => 3.0
+         (x 5) => (throws IndexOutOfBoundsException)
+         (x -1) => (throws IndexOutOfBoundsException)
+         (instance? clojure.lang.IFn x) => true
+         (.invokePrim x 0) => 1.0))
 
 (facts "Vector methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 5 3]) 3 1)]
@@ -36,8 +46,7 @@
        (seq (->DoubleBlockVector (seq-to-buffer [1 2 3]) 3 1))
        => '(1.0 2.0 3.0)
        (seq (->DoubleBlockVector (seq-to-buffer [1 0 2 0 3 0]) 3 2))
-       => '(1.0 2.0 3.0)
-       )
+       => '(1.0 2.0 3.0))
 
 (facts "DoubleVector methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3]) 3 1)
@@ -97,3 +106,5 @@
          ;;=> (->DoubleGeneralMatrix (seq-to-buffer [5 8 11 16 17 24]) 2 3 3 COLUMN_MAJOR)
 
          ))
+
+(set! *warn-on-reflection* true)
