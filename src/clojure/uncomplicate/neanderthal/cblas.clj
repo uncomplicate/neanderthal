@@ -38,8 +38,14 @@
   (seq [_]
     (wrap-byte-seq float64 (* 8 stride) 0 (byte-seq arr)))
   Carrier
-  (pure [_]
+  (zero [_]
     (DoubleBlockVector. (direct-buffer (* 8 n)) n 1))
+  clojure.lang.IFn$LD
+  (invokePrim [x i]
+    (.entry x i))
+  clojure.lang.IFn
+  (invoke [x i]
+    (.entry x i))
   Block
   (buf [_]
     arr)
@@ -131,7 +137,7 @@
                 true))))
      :default false))
   Carrier
-  (pure [_]
+  (zero [_]
     (DoubleGeneralMatrix. (direct-buffer (* 8 m n)) m n m order))
   clojure.lang.Seqable
   (seq [_]

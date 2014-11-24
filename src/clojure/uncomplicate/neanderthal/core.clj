@@ -7,7 +7,13 @@
 (set! *warn-on-reflection* true)
 (primitive-math/use-primitive-operators)
 
+(defn zero [x]
+  (p/zero x))
+
 ;; ================= Vector =======================
+(defn vect? [x]
+  (instance? Vector x))
+
 (defn dim ^long [^Vector x]
   (.dim x))
 
@@ -19,9 +25,20 @@
   (.ncols m))
 
 (defn row [^Matrix m ^long i]
-  (if (< i (.ncols m))
-    (.row m)
-    (throw (Ille))))
+  (if (< i (.mrows m))
+    (.row m i)
+    (throw (IllegalArgumentException.
+            (format "Required row %d is higher than the row count %d."
+                    i (.mrows m))))))
+
+(defn col [^Matrix m ^long j]
+  (if (< j (.ncols m))
+    (.row m j)
+    (throw (IllegalArgumentException.
+            (format "Required column %d is higher than the column count %d."
+                    j (.ncols m))))))
+
+
 ;;================== BLAS 1 =======================
 (defn iamax ^long [^Vector x]
   (.iamax x))
@@ -39,6 +56,6 @@
             "Arguments should have the same number of elements."))))
 
 (defn copy [^Carrier x]
-  (copy! x (p/pure x)))
+  (copy! x (p/zero x)))
 
 (primitive-math/unuse-primitive-operators)

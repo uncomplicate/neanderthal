@@ -6,5 +6,5 @@
 (def ^:const TRANS 112)
 
 (defprotocol Carrier
-  (pure [_]))
+  (zero [_]))
 

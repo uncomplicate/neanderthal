@@ -26,7 +26,7 @@
                      (direct-buffer (* 8 (count s))) s)
              0))
 
-(defn dv 
+(defn dv
   ([source]
      (cond
       (and (instance? ByteBuffer source) 
@@ -103,7 +103,7 @@
        (throw (IllegalArgumentException.
                "Arguments should have the same number of elements."))))
   ([^DoubleVector y ^DoubleVector x]
-     (axpy! y 1.0 x)))
+   (axpy! y 1.0 x)))
 
 ;;================= BLAS 2 ========================
 (defn mv!
