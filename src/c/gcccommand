@@ -1,0 +1,1 @@
+gcc -o libneanderthalcblas.so -shared neanderthalcblas.c -lc -fPIC -std=c99 -lcblas -latlas
