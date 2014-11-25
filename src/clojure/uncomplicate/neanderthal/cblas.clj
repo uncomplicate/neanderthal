@@ -58,6 +58,10 @@
     n)
   (entry [_ i]
     (.getDouble arr (* 8 stride i)))
+  (segment [_ k l]
+    (DoubleBlockVector.
+     (slice-buffer arr (* 8 k stride) (* 8 l stride))
+     l stride))
   (dot [_ y]
     (let [by ^Block y]
       (CBLAS/ddot n

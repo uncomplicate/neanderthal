@@ -77,10 +77,11 @@
          (.mrows a) => 2
          (.ncols a) => 3
 
-         (.row a 1) => (->DoubleBlockVector (seq-to-buffer [2 0 4 0 6 0]) 3 2)
-
-         (.col a 1) => (->DoubleBlockVector (seq-to-buffer [3 4]) 2 1))
-         )
+         (.row a 1) => (->DoubleBlockVector
+                        (seq-to-buffer [2 0 4 0 6 0]) 3 2)
+         
+         (.col a 1) => (->DoubleBlockVector
+                        (seq-to-buffer [3 4]) 2 1)))
 
 (facts "RealMatrix methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3]) 3 1)

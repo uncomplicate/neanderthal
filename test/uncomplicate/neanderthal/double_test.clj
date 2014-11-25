@@ -25,12 +25,15 @@
          ;;=> (throws IllegalArgumentException)
 ))
 
-(facts "General vector entryents."
+(facts "General vector functions."
        (dim (dv [1 2 3])) => 3
        (dim (dv [])) => 0
        
        (entry (dv [1 2 3]) 1) => 2.0
-       (entry (dv []) 0) => (throws IndexOutOfBoundsException))
+       (entry (dv []) 0) => (throws IndexOutOfBoundsException)
+
+       (segment (dv 1 2 3 4 5 6) 1 3) => (dv 2 3 4)
+       (segment (dv 1 2 3) 2 3) => (throws IllegalArgumentException))
 
 (facts "BLAS 1 dot."
        (dot (dv [1 2 3]) (dv [10 30 -10])) => 40.0
@@ -128,7 +131,18 @@
        (mrows (dge 0 0)) => 0
 
        (entry (dge 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
-       (entry (dge 0 0) 0 0) => (throws IndexOutOfBoundsException))
+       (entry (dge 0 0) 0 0) => (throws IndexOutOfBoundsException)
+
+       (row (dge 2 3 [1 2 3 4 5 6]) 1) => (dv 2 4 6)
+       (row (dge 2 3 [1 2 3 4 5 6]) 4)
+       => (throws IllegalArgumentException)
+
+       (col (dge 2 3 [1 2 3 4 5 6]) 1) => (dv 3 4)
+       (col (dge 2 3 [1 2 3 4 5 6]) 4)
+       => (throws IllegalArgumentException)
+
+
+       )
 
 (facts "BLAS 2 mv!"
        (mv! (dv [1 2 3 4]) 2.0 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2 3) 3)

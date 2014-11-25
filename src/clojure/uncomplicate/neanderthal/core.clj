@@ -7,6 +7,15 @@
 (set! *warn-on-reflection* true)
 (primitive-math/use-primitive-operators)
 
+(def ^:private SEGMENT_MSG
+  "Required segment %d-%d does not fit in a %d-dim vector.")
+
+(def ^:private ROW_COL_MSG
+  "Required %s %d is higher than the row count %d.")
+
+(def ^:private DIMENSION_MSG
+  "Different dimensions - %s:%d, %s:%d.")
+
 (defn zero [x]
   (p/zero x))
 
@@ -16,6 +25,9 @@
 
 (defn dim ^long [^Vector x]
   (.dim x))
+
+(defn segment [^Vector x ^long k ^long l]
+  (.segment x k l))
 
 ;; ================= Matrix =======================
 (defn mrows ^long [^Matrix m]
@@ -28,15 +40,13 @@
   (if (< i (.mrows m))
     (.row m i)
     (throw (IllegalArgumentException.
-            (format "Required row %d is higher than the row count %d."
-                    i (.mrows m))))))
+            (format ROW_COL_MSG "row" i (.mrows m))))))
 
 (defn col [^Matrix m ^long j]
   (if (< j (.ncols m))
-    (.row m j)
+    (.col m j)
     (throw (IllegalArgumentException.
-            (format "Required column %d is higher than the column count %d."
-                    j (.ncols m))))))
+            (format ROW_COL_MSG "col" j (.ncols m))))))
 
 
 ;;================== BLAS 1 =======================
@@ -47,13 +57,13 @@
   (if (= (.dim x) (.dim y))
     (.swap x y)
     (throw (IllegalArgumentException.
-            "Arguments should have the same number of elements."))))
+            (format DIMENSION_MSG \x (.dim x) \y (.dim y))))))
 
 (defn copy! [^Vector x ^Vector y]
   (if (= (.dim x) (.dim y))
     (.copy x y)
     (throw (IllegalArgumentException.
-            "Arguments should have the same number of elements."))))
+            (format DIMENSION_MSG \x (.dim x) \y (.dim y))))))
 
 (defn copy [^Carrier x]
   (copy! x (p/zero x)))

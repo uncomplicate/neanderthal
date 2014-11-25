@@ -86,3 +86,18 @@
        f (fn [v] (xpy v w))
        g (fn [v] (axpy! (copy v) -1 w))]
    ((comp f g) (dv 2 3)) => (dv 2 3)))
+
+(facts
+ "2.9 Dot-product"
+ (dot (dv 1 1 1 1 1) (dv 10 20 0 40 -100)) => -30.0
+
+ (let [cost (dv 2.5 1.5 0.006 0.45)
+       quantity (dv 6 14 7 11)
+       value (dv 0 960 0 3.25)]
+   (dot cost quantity) => 40.992
+   (dot value quantity) => 13475.75
+   )
+ 
+
+
+ )
