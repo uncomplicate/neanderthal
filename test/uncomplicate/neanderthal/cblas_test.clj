@@ -6,9 +6,9 @@
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [cblas :refer :all]
-             [double :refer [seq-to-buffer]]])
+             [real :refer [seq-to-buffer]]])
   (:import [uncomplicate.neanderthal.protocols
-            DoubleVector DoubleMatrix]))
+            RealVector RealMatrix]))
 
 (set! *warn-on-reflection* false)
 
@@ -48,7 +48,7 @@
        (seq (->DoubleBlockVector (seq-to-buffer [1 0 2 0 3 0]) 3 2))
        => '(1.0 2.0 3.0))
 
-(facts "DoubleVector methods."
+(facts "RealVector methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3]) 3 1)
              y (->DoubleBlockVector (seq-to-buffer [2 3 4]) 3 1)
              xc (->DoubleBlockVector (seq-to-buffer [0 0 0]) 3 1)
@@ -82,7 +82,7 @@
          (.col a 1) => (->DoubleBlockVector (seq-to-buffer [3 4]) 2 1))
          )
 
-(facts "DoubleMatrix methods."
+(facts "RealMatrix methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3]) 3 1)
              y (->DoubleBlockVector (seq-to-buffer [2 3]) 2 1)
              xc (->DoubleBlockVector (seq-to-buffer [0 0 0]) 3 1)

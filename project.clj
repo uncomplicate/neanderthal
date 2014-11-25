@@ -12,7 +12,8 @@
 
   :global-vars {*warn-on-reflection* true
                 *assert* false}
-  :profiles {:dev {:plugins [[cider/cider-nrepl "0.8.1"]]
+  :profiles {:dev {:plugins [[cider/cider-nrepl "0.8.1"]
+                             [lein-midje "3.1.3"]]
                    :dependencies [[midje "1.6.3"]
                                   [criterium "0.4.3"]]}}
   

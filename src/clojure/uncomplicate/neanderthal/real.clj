@@ -1,4 +1,4 @@
-(ns uncomplicate.neanderthal.double
+(ns uncomplicate.neanderthal.real
   (:require [primitive-math]
             [vertigo
              [bytes :refer [direct-buffer]]
@@ -6,18 +6,15 @@
              [structs :refer [float64]]]
             [uncomplicate.neanderthal
              [protocols :as p]
+             [core :refer [copy]]
              [cblas]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]
            [uncomplicate.neanderthal.protocols
-            DoubleVector DoubleMatrix Carrier]
+            RealVector RealMatrix Carrier]
            [java.nio ByteBuffer]))
 
-;; ============ Creating double array ==============
-(defn double-array? [a]
-  (let [c (class a)]
-    (and (.isArray c)
-         (= Double/TYPE (.getComponentType c)))))
+;; ============ Creating double constructs  ==============
 
 (defn seq-to-buffer [s]
   (.position ^ByteBuffer
@@ -35,6 +32,7 @@
                           (/ (.capacity ^ByteBuffer source) 8)
                           1)
       (and (integer? source) (pos? source)) (dv (direct-buffer (* 8 source)))
+      (float? source) (dv [source])
       (sequential? source) (dv (seq-to-buffer source))
       :default (throw (IllegalArgumentException. 
                        (format "I do not know how to create a double vector from %s ."
@@ -51,7 +49,7 @@
         (DoubleGeneralMatrix.
          source m n (max m 1) p/COLUMN_MAJOR)
         (throw (IllegalArgumentException.
-                (format "Matrix dimensions (%d x %d) are not compatible with the buffer capacity."
+                (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
                         m n))))
       (sequential? source) (dge m n (seq-to-buffer source))
       :default (throw (IllegalArgumentException.
@@ -61,24 +59,25 @@
      (dge m n (direct-buffer (* 8 m n)))))
 
 ;; ============ Vector and Matrix access methods ===
-(defn entry ^double 
-  ([^DoubleVector x ^long i]
+(defn entry ^double
+  ([^RealVector x ^long i]
      (.entry x i))
-  ([^DoubleMatrix m ^long i ^long j]
+  ([^RealMatrix m ^long i ^long j]
      (.entry m i j)))
 
 ;; ================== BLAS 1 =======================
 
-(defn dot ^double [^DoubleVector x ^DoubleVector y]
+(defn dot ^double [^RealVector x ^RealVector y]
   (if (= (.dim x) (.dim y))
     (.dot x y)
     (throw (IllegalArgumentException.
-            "Arguments should have the same number of elements."))))
+            (format "Incompatible dimensions - x:%d and y:%d."
+                    (.dim x) (.dim y))))))
 
-(defn nrm2 ^double [^DoubleVector x]
+(defn nrm2 ^double [^RealVector x]
   (.nrm2 x))
 
-(defn asum ^double [^DoubleVector x]
+(defn asum ^double [^RealVector x]
   (.asum x))
 
 #_(defn rot! [x y c s]
@@ -93,51 +92,89 @@
 #_(defn rotm! [x y p]
     (.rotm x y p))
 
-(defn scal! [^double alpha ^DoubleVector x]
+(defn scal! [^double alpha ^RealVector x]
   (.scal x alpha))
 
 (defn axpy!
-  ([^DoubleVector y ^double alpha ^DoubleVector x]
+  ([^RealVector y ^double alpha ^RealVector x]
      (if (= (.dim x) (.dim y))
        (.axpy x alpha y)
        (throw (IllegalArgumentException.
-               "Arguments should have the same number of elements."))))
-  ([^DoubleVector y ^DoubleVector x]
-   (axpy! y 1.0 x)))
+               (format "Incompatible dimensions - x:%d and y:%d."
+                       (.dim x) (.dim y))))))
+  ([y x]
+   (axpy! y 1.0 x))
+  ([y x z & zs]
+   (if (number? x)
+     (loop [res (axpy! y x z) s zs]
+       (if-let [f (first s)]
+         (let [r (rest s)]
+           (if (number? f)
+             (recur (axpy! res f (first r)) (rest r))
+             (recur (axpy! res 1.0 f) r)))
+         res))
+     (apply axpy! y 1.0 x z zs))))
+
+(defn axpy
+  ([x y]
+   (if (number? x)
+     (axpy! (p/zero y) x y)
+     (axpy! (copy y) 1.0 x)))
+  ([x y & zs]
+   (apply axpy! (if (number? x)
+                  (p/zero y)
+                  (p/zero x))
+          x y zs)))
+
+(defn ax [^double alpha x]
+  (axpy! (p/zero x) alpha x))
+
+(defn xpy
+  ([x y]
+   (axpy! (copy y) 1.0 x))
+  ([x y & zs]
+   (loop [res (axpy! (p/zero y) 1.0 x) s zs]
+     (if s
+       (recur (axpy! res 1.0 (first s)) (next s))
+       res))))
 
 ;;================= BLAS 2 ========================
 (defn mv!
-  ([^DoubleVector y alpha ^DoubleMatrix a ^DoubleVector x beta]
+  ([^RealVector y alpha ^RealMatrix a ^RealVector x beta]
      (if (and (= (.ncols a) (.dim x))
               (= (.mrows a) (.dim y)))
        (.mv a alpha x beta y p/NO_TRANS)
        (throw (IllegalArgumentException.
-               "Matrix columns must be equals to vector dimensions."))))
+               (format "Incompatible dimensions - a:%dx%d and x:%d."
+                       (.mrows a) (.ncols a) (.dim x))))))
   ([y alpha a x]
      (mv! y alpha a x 0.0))
   ([y a x]
      (mv! y 1.0 a x 0.0)))
 
 (defn mv
-  ([^double alpha ^DoubleMatrix a ^Carrier x]
+  ([^double alpha ^RealMatrix a ^Carrier x]
      (mv! (dv (.mrows a)) alpha a x 0.0))
   ([a x]
      (mv 1.0 a x)))
 
 ;; ================ BLAS 3 ========================
 (defn mm!
-  ([^DoubleMatrix c alpha ^DoubleMatrix a ^DoubleMatrix b beta]
+  ([^RealMatrix c alpha ^RealMatrix a ^RealMatrix b beta]
      (if (and (= (.ncols a) (.mrows b))
               (= (.mrows a) (.mrows c))
               (= (.ncols b) (.ncols c)))
        (.mm a alpha b beta c p/NO_TRANS p/NO_TRANS)
        (throw (IllegalArgumentException.
-               "Matrix dimensions have to be compatible."))))
+               (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
+                       (.mrows c) (.ncols c)
+                       (.mrows a) (.ncols a)
+                       (.mrows b) (.ncols b))))))
   ([c a b]
      (mm! c 1.0 a b 1.0)))
 
 (defn mm
-  ([alpha ^DoubleMatrix a ^DoubleMatrix b]
+  ([alpha ^RealMatrix a ^RealMatrix b]
        (mm! (dge (.mrows a) (.ncols b)) a alpha b))
     ([a b]
        (mm a 1.0 b)))

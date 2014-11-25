@@ -8,7 +8,7 @@
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
            [uncomplicate.neanderthal.protocols 
-            Block DoubleVector DoubleMatrix]))
+            Block RealVector RealMatrix]))
 
 (set! *warn-on-reflection* true)
 (primitive-math/use-primitive-operators)
@@ -53,7 +53,7 @@
     stride)
   (length [_]
     n)
-  DoubleVector
+  RealVector
   (dim [_]
     n)
   (entry [_ i]
@@ -150,7 +150,7 @@
     ld)
   (length [_]
     (/ (.capacity ^ByteBuffer arr) 8))
-  DoubleMatrix
+  RealMatrix
   (mrows [_]
     m)
   (ncols [_]

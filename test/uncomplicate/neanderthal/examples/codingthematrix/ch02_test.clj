@@ -2,7 +2,9 @@
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [double :refer :all]]))
+             [real :refer :all]]))
+
+(set! *warn-on-reflection* true)
 
 (facts
  "2.1 What is a Vector?"
@@ -24,9 +26,8 @@
 ;; interest for numeric computations.
 ;; Such discussions have been skipped here.
 
-  
 (facts
- "2.4 Vector addition"
+ "2.4 Vector addition; 2.4.1. Translation and vector addition."
 
  (let [trans-vector (dv [1 2])
        translate (fn [x] (axpy! x trans-vector))]
@@ -37,8 +38,51 @@
    (dv 2) => (dv 0 0)
 
    (axpy! (dv 4 4) (dv 2)) => (dv 4 4)
-   (axpy! (dv 4 4) (zero (dv 4 4))) => (dv 4 4)
+   (axpy! (dv 4 4) (zero (dv 4 4))) => (dv 4 4)))
 
-   
-   ))
-        
+(facts
+ "2.4.2 Vector addition is associative and commutative"
+
+ (let [u (dv 1 2 3)
+       v (dv 10 20 30)
+       w (dv 100 200 300)]
+   (xpy (xpy u v) w) => (xpy u (xpy v w))
+   (xpy u v) => (xpy v u)))
+
+(facts
+ "2.5. Scalar-vector multiplication"
+ (ax 2 (dv 5 4 10)) => (dv 10 8 20)
+ (ax 2 (ax 3 (dv 1 2 3))) => (ax (* 2 3) (dv 1 2 3))
+
+ (take 3 (map #(ax (/ % 10) (dv 3 2)) (range 11)))
+ => [(dv 0 0) (dv 0.30000000000000004 0.2) (dv 0.6000000000000001 0.4)] )
+
+(facts
+ "2.6 Combining vector addition and scalar multiplication"
+
+ (ax 2 (xpy (dv 1 2 3) (dv 3 4 4)))
+ => (xpy (ax 2 (dv 1 2 3)) (ax 2 (dv 3 4 4)))
+
+ (ax (+ 2 3) (dv 1 2 3)) => (xpy (ax 2 (dv 1 2 3)) (ax 3 (dv 1 2 3))))
+
+(facts
+ "2.6.3 First look at convex combinations"
+ (let [u1 (dv 2.0)
+       v1 (dv 12.0)
+       u2 (dv 5 2)
+       v2 (dv 10 -6)
+       ab [[1 0] [0.75 0.25] [0.5 0.5] [0.25 0.75] [0 1]]]
+
+   (map (fn [[alpha beta]] (axpy alpha u1 beta v1)) ab)
+   => [(dv 2.0) (dv 4.5) (dv 7.0) (dv 9.5) (dv 12.0)]
+
+   (map (fn [[alpha beta]] (axpy alpha u2 beta v2)) ab)
+   => [(dv 5 2) (dv 6.25 0) (dv 7.5 -2) (dv 8.75 -4) (dv 10 -6)]))
+
+(facts
+ "2.7.4 Vector negative, invertibility of vector addition,"
+ "and vector subtraction"
+ (let [w (dv 3 4)
+       f (fn [v] (xpy v w))
+       g (fn [v] (axpy! (copy v) -1 w))]
+   ((comp f g) (dv 2 3)) => (dv 2 3)))
