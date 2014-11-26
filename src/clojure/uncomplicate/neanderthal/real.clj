@@ -14,6 +14,8 @@
             RealVector RealMatrix Carrier]
            [java.nio ByteBuffer]))
 
+(primitive-math/use-primitive-operators)
+
 ;; ============ Creating double constructs  ==============
 
 (defn seq-to-buffer [s]
@@ -27,11 +29,11 @@
   ([source]
      (cond
       (and (instance? ByteBuffer source) 
-           (zero? (mod (.capacity ^ByteBuffer source) 8))) 
+           (zero? (long (mod (.capacity ^ByteBuffer source) 8)))) 
       (DoubleBlockVector. source
                           (/ (.capacity ^ByteBuffer source) 8)
                           1)
-      (and (integer? source) (pos? source)) (dv (direct-buffer (* 8 source)))
+      (and (integer? source) (pos? source)) (dv (direct-buffer (* 8 (long source))))
       (float? source) (dv [source])
       (sequential? source) (dv (seq-to-buffer source))
       :default (throw (IllegalArgumentException. 
@@ -44,7 +46,7 @@
   ([^long m ^long n source]
      (cond
       (and (instance? ByteBuffer source)
-           (zero? (mod (.capacity ^ByteBuffer source) 8)))
+           (zero? (long (mod (.capacity ^ByteBuffer source) 8))))
       (if (= (* 8 m n) (.capacity ^ByteBuffer source))
         (DoubleGeneralMatrix.
          source m n (max m 1) p/COLUMN_MAJOR)
@@ -61,9 +63,9 @@
 ;; ============ Vector and Matrix access methods ===
 (defn entry ^double
   ([^RealVector x ^long i]
-     (.entry x i))
+   (.entry x i))
   ([^RealMatrix m ^long i ^long j]
-     (.entry m i j)))
+   (.entry m i j)))
 
 ;; ================== BLAS 1 =======================
 
@@ -178,3 +180,5 @@
        (mm! (dge (.mrows a) (.ncols b)) a alpha b))
     ([a b]
        (mm a 1.0 b)))
+
+(primitive-math/unuse-primitive-operators)

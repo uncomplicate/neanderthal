@@ -29,7 +29,7 @@
          (zero x) => (->DoubleBlockVector (seq-to-buffer [0 0 0 0]) 4 1)
          (identical? x (zero x)) => false))
 
-(facts "IFn implementation"
+(facts "IFn implementation for double vector"
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)]
          (x 2) => 3.0
          (x 5) => (throws IndexOutOfBoundsException)
@@ -82,6 +82,15 @@
          
          (.col a 1) => (->DoubleBlockVector
                         (seq-to-buffer [3 4]) 2 1)))
+
+(facts "IFn implementation for double general matrix"
+       (let [x (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
+                                      2 3 2 COLUMN_MAJOR)]
+         (x 1 2) => 6.0
+         (x 2 1) => (throws IndexOutOfBoundsException)
+         (x -1 3) => (throws IndexOutOfBoundsException)
+         (instance? clojure.lang.IFn x) => true
+         (.invokePrim x 0 0) => 1.0))
 
 (facts "RealMatrix methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3]) 3 1)

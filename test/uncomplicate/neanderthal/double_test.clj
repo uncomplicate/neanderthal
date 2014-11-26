@@ -132,6 +132,11 @@
 
        (entry (dge 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
        (entry (dge 0 0) 0 0) => (throws IndexOutOfBoundsException)
+       (entry (dge 2 3 [1 2 3 4 5 6]) -1 2)
+       => (throws IndexOutOfBoundsException)
+       (entry (dge 2 3 [1 2 3 4 5 6]) 2 1)
+       => (throws IndexOutOfBoundsException)
+       
 
        (row (dge 2 3 [1 2 3 4 5 6]) 1) => (dv 2 4 6)
        (row (dge 2 3 [1 2 3 4 5 6]) 4)

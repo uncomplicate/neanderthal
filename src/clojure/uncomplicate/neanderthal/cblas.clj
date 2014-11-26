@@ -13,6 +13,9 @@
 (set! *warn-on-reflection* true)
 (primitive-math/use-primitive-operators)
 
+(def ^:private MAT_BOUNDS_MSG
+  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
+
 ;-------------- Double Vector -----------------------------
 (deftype DoubleBlockVector [^ByteBuffer arr ^long n ^long stride]
   Object
@@ -147,6 +150,12 @@
   (seq [_]
     (map (partial wrap-byte-seq float64)
          (cross-section (byte-seq arr) 0 (* 8 m) (* 8 m))))
+  clojure.lang.IFn$LLD
+  (invokePrim [x i j]
+    (.entry x i j))
+  clojure.lang.IFn
+  (invoke [x i j]
+    (.entry x i j))
   Block
   (buf [_]
     arr)
@@ -160,7 +169,10 @@
   (ncols [_]
     n)
   (entry [_ i j]
-    (.getDouble arr (+ (* 8 m j) (* 8 i))))
+    (if (and (< -1 i m) (< -1 j n))
+      (.getDouble arr (+ (* 8 m j) (* 8 i)))
+      (throw (IndexOutOfBoundsException.
+              (format MAT_BOUNDS_MSG i j m n)))))
   (row [a i]
     (DoubleBlockVector.
      (slice-buffer arr (* 8 i) (* 8 (- (.length a) i)))
@@ -205,7 +217,7 @@
 
 (defmethod print-method DoubleGeneralMatrix
   [^DoubleGeneralMatrix m ^java.io.Writer w] 
-  (.write w (format "#<DoubleGeneralMatrix| m:%d, n:%d ld:%d %s>"
+  (.write w (format "#<DoubleGeneralMatrix| m x n:%d x %d, ld:%d %s>"
                     (.mrows m) (.ncols m) (.stride m) (pr-str (seq m)))))
 
 (primitive-math/unuse-primitive-operators)

@@ -55,7 +55,8 @@
  (ax 2 (ax 3 (dv 1 2 3))) => (ax (* 2 3) (dv 1 2 3))
 
  (take 3 (map #(ax (/ % 10) (dv 3 2)) (range 11)))
- => [(dv 0 0) (dv 0.30000000000000004 0.2) (dv 0.6000000000000001 0.4)] )
+ => [(dv 0 0) (dv 0.30000000000000004 0.2)
+     (dv 0.6000000000000001 0.4)] )
 
 (facts
  "2.6 Combining vector addition and scalar multiplication"
@@ -63,7 +64,8 @@
  (ax 2 (xpy (dv 1 2 3) (dv 3 4 4)))
  => (xpy (ax 2 (dv 1 2 3)) (ax 2 (dv 3 4 4)))
 
- (ax (+ 2 3) (dv 1 2 3)) => (xpy (ax 2 (dv 1 2 3)) (ax 3 (dv 1 2 3))))
+ (ax (+ 2 3) (dv 1 2 3))
+ => (xpy (ax 2 (dv 1 2 3)) (ax 3 (dv 1 2 3))))
 
 (facts
  "2.6.3 First look at convex combinations"
@@ -77,7 +79,8 @@
    => [(dv 2.0) (dv 4.5) (dv 7.0) (dv 9.5) (dv 12.0)]
 
    (map (fn [[alpha beta]] (axpy alpha u2 beta v2)) ab)
-   => [(dv 5 2) (dv 6.25 0) (dv 7.5 -2) (dv 8.75 -4) (dv 10 -6)]))
+   => [(dv 5 2) (dv 6.25 0) (dv 7.5 -2)
+       (dv 8.75 -4) (dv 10 -6)]))
 
 (facts
  "2.7.4 Vector negative, invertibility of vector addition,"
@@ -95,9 +98,24 @@
        quantity (dv 6 14 7 11)
        value (dv 0 960 0 3.25)]
    (dot cost quantity) => 40.992
-   (dot value quantity) => 13475.75
-   )
- 
+   (dot value quantity) => 13475.75)
 
+ (let [haystack (dv 1 -1 1 1 1 -1 1 1 1)
+       needle (dv 1 -1 1 1 -1 1)]
+   (map #(dot (segment haystack % (dim needle)) needle)
+        (range (inc (- (dim haystack) (dim needle)))))
+   => [2.0 2.0 0.0 0.0]))
 
- )
+(facts
+ "2.9.8 Algebraic properties of the dot product"
+ (let [u (dv 1 2 3)
+       v (dv 4 5 6)
+       w (dv 7 8 9)]
+   (dot u v) => (dot v u)
+   (dot (ax 7 u) v) = (* 7 (dot u v))
+   (dot (xpy u v) w) => (+ (dot u w) (dot v w))))
+
+(facts "2.10.4 Printing vectors"
+       (pr-str (dv 2 3 4))
+       => "#<DoubleBlockVector| n:3, stride:1 (2.0 3.0 4.0)>")
+
