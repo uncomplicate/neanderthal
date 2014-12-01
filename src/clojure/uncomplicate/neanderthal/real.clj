@@ -160,6 +160,8 @@
   ([a x]
      (mv 1.0 a x)))
 
+;; ================ Matrix ========================
+
 ;; ================ BLAS 3 ========================
 (defn mm!
   ([^RealMatrix c alpha ^RealMatrix a ^RealMatrix b beta]

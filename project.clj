@@ -12,11 +12,11 @@
 
   :global-vars {*warn-on-reflection* true
                 *assert* false}
-  :profiles {:dev {:plugins [[cider/cider-nrepl "0.8.1"]
+  :profiles {:dev {:plugins [[cider/cider-nrepl "0.8.2-SNAPSHOT"]
                              [lein-midje "3.1.3"]]
                    :dependencies [[midje "1.6.3"]
                                   [criterium "0.4.3"]]}}
-  
+
   :javac-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]
   :jvm-opts["-Dplatform.dependencies=true"
             ~(str "-Djava.library.path=native/:"
@@ -25,4 +25,3 @@
   :java-source-paths ["src/java"]
   :test-paths ["test" "test/clojure"]
 )
-

@@ -7,7 +7,7 @@
              [core :refer :all]
              [real :refer :all]
              [protocols :as p]])
-  (:import [uncomplicate.neanderthal.cblas 
+  (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]))
 
 (facts "Create a double vector."
@@ -21,26 +21,29 @@
          (dv 3) => (zero x)
 ;;         (dv (long-array [1 3]))
          ;;=> (throws IllegalArgumentException)
-         ;;(dv (object-array [1 3])) 
+         ;;(dv (object-array [1 3]))
          ;;=> (throws IllegalArgumentException)
 ))
 
 (facts "General vector functions."
        (dim (dv [1 2 3])) => 3
        (dim (dv [])) => 0
-       
+
        (entry (dv [1 2 3]) 1) => 2.0
        (entry (dv []) 0) => (throws IndexOutOfBoundsException)
 
        (segment (dv 1 2 3 4 5 6) 1 3) => (dv 2 3 4)
-       (segment (dv 1 2 3) 2 3) => (throws IllegalArgumentException))
+       (segment (dv 1 2 3) 2 3)
+       => (throws IllegalArgumentException))
 
+;;================ BLAS functions =========================================
 (facts "BLAS 1 dot."
        (dot (dv [1 2 3]) (dv [10 30 -10])) => 40.0
        (dot (dv [1 2 3]) nil) => (throws NullPointerException)
        (dot (dv []) (dv [])) => 0.0
        (dot (dv [1]) (dge 3 3)) => (throws ClassCastException)
-       (dot (dv [1 2]) (dv [1 2 3])) => (throws IllegalArgumentException))
+       (dot (dv [1 2]) (dv [1 2 3]))
+       => (throws IllegalArgumentException))
 
 (facts "BLAS 1 nrm2."
        (nrm2 (dv [1 2 3]))  => (Math/sqrt 14)
@@ -60,12 +63,12 @@
          (swapv! x (dv [10 20 30])) => (dv [10 20 30])
          (swapv! x nil) => (throws NullPointerException)
          (identical? (swapv! x (dv [10 20 30])) x) => true
-         (swapv! x (dv [10 20])) 
+         (swapv! x (dv [10 20]))
          => (throws IllegalArgumentException))
-       
+
        (let [y (dv [0 0 0])]
            (swapv! (dv [1 2 3]) y)
-           y) 
+           y)
        => (dv [1 2 3]))
 
 (facts "BLAS 1 scal!"
@@ -77,7 +80,7 @@
 (facts "BLAS 1 copy!"
        (copy! (dv [10 20 30]) (dv [1 2 3])) => (dv [10 20 30])
        (copy! (dv [1 2 3]) nil) => (throws NullPointerException)
-       (copy! (dv [10 20 30]) (dv [1])) 
+       (copy! (dv [10 20 30]) (dv [1]))
        => (throws IllegalArgumentException))
 
 (facts "BLAS 1 copy"
@@ -111,7 +114,7 @@
          (axpy 2 (dv 1 2 3) (dv 2 3 4)) => (dv 4 7 10)))
 
 (facts "Create a double matrix."
-       (let [a (DoubleGeneralMatrix. 
+       (let [a (DoubleGeneralMatrix.
                 (seq-to-buffer [1 2 3 4 5 6]) 2 3 2 p/COLUMN_MAJOR)]
          (dge 2 3 [1 2 3 4 5 6]) => a
          (dge 2 3 (seq-to-buffer [1 2 3 4 5 6])) => a
@@ -136,27 +139,27 @@
        => (throws IndexOutOfBoundsException)
        (entry (dge 2 3 [1 2 3 4 5 6]) 2 1)
        => (throws IndexOutOfBoundsException)
-       
 
        (row (dge 2 3 [1 2 3 4 5 6]) 1) => (dv 2 4 6)
        (row (dge 2 3 [1 2 3 4 5 6]) 4)
-       => (throws IllegalArgumentException)
+       => (throws IndexOutOfBoundsException)
 
        (col (dge 2 3 [1 2 3 4 5 6]) 1) => (dv 3 4)
        (col (dge 2 3 [1 2 3 4 5 6]) 4)
-       => (throws IllegalArgumentException)
+       => (throws IndexOutOfBoundsException))
 
-
-       )
+(facts "Matrix transpose"
+       (let [c (dge 2 2 [1 2 3 4])]
+         ))
 
 (facts "BLAS 2 mv!"
        (mv! (dv [1 2 3 4]) 2.0 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2 3) 3)
        => (throws IllegalArgumentException)
-       
+
        (let [y (dv [1 2 3])]
          (mv! y 2 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2) 3)
          => y)
-       
+
        (mv! (dv 0 0) (dge 2 3 [1 10 2 20 3 30]) (dv 7 0 4))
        => (dv 19 190)
 
@@ -167,7 +170,7 @@
        (mv 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3)))
 
 (facts "BLAS 3 mm!"
-       (mm! (dge 3 2 [1 2 3 4 5 6]) 
+       (mm! (dge 3 2 [1 2 3 4 5 6])
             2.0 (dge 3 2 [1 2 3 4 5 6]) (dge 3 2 [1 2 3 4 5 6]) 3.0)
        => (throws IllegalArgumentException)
 
@@ -175,10 +178,10 @@
             2.0 (dge 3 2 [1 2 3 4 5 6]) (dge 2 3 [1 2 3 4 5 6]) 3.0)
        => (throws IllegalArgumentException)
 
-      (let [y (dge 2 2 [1 2 3 4])]
-         (mm! y 2.0 (dge 2 3 [1 2 3 4 5 6]) 
+      (let [c (dge 2 2 [1 2 3 4])]
+         (mm! c 2.0 (dge 2 3 [1 2 3 4 5 6])
               (dge 3 2 [1 2 3 4 5 6]) 3.0)
-         => y)
+         => c)
 
        (mm! (dge 2 2 [1 2 3 4])
             2.0 (dge 2 3 [1 2 3 4 5 6])

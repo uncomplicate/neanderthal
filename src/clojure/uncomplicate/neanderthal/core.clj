@@ -39,15 +39,17 @@
 (defn row [^Matrix m ^long i]
   (if (< i (.mrows m))
     (.row m i)
-    (throw (IllegalArgumentException.
+    (throw (IndexOutOfBoundsException.
             (format ROW_COL_MSG "row" i (.mrows m))))))
 
 (defn col [^Matrix m ^long j]
   (if (< j (.ncols m))
     (.col m j)
-    (throw (IllegalArgumentException.
+    (throw (IndexOutOfBoundsException.
             (format ROW_COL_MSG "col" j (.ncols m))))))
 
+(defn cols [^Matrix m] ;;TODO
+  (map #(.col m %) (range (.ncols m))))
 
 ;;================== BLAS 1 =======================
 (defn iamax ^long [^Vector x]
