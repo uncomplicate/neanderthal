@@ -72,9 +72,19 @@
          (fmap! (fx) + (fy) (fy) (fy) [(fy)])
          => (throws UnsupportedOperationException)))
 
-(let [fx (fn [] (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1))
-      fy (fn [] (->DoubleBlockVector (seq-to-buffer [2 3 4 5 6]) 5 1))
-      x (fx)
+(let [x (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)
+      *' (fn ^double [^double x ^double y]
+           (double (* x y)))
+      +' (fn ^double [^double x ^double y]
+           (double (+ x y)))]
+  (facts "Fold implementation for double vector"
+
+         (fold x) => 10.0
+         (fold x *' 1.0) => 24.0
+         (fold x +' 0.0) => (fold x)))
+
+(let [y (->DoubleBlockVector (seq-to-buffer [2 3 4 5 6]) 5 1)
+      x (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)
       pf1 (fn ^double [^double res ^double x]
             (+ x res))
       pf1o (fn [res ^double x]
@@ -92,15 +102,15 @@
          (freduce x 1.0 pf1) => 11.0
          (freduce x [] pf1o) => [1.0 2.0 3.0 4.0]
 
-         (freduce x 1.0 pf2 (fy)) => 25.0
-         (freduce x [] pf2o (fy))
+         (freduce x 1.0 pf2 y) => 25.0
+         (freduce x [] pf2o y)
          => [[1.0 2.0] [2.0 3.0] [3.0 4.0] [4.0 5.0]]
 
-         (freduce x 1.0 pf3 (fy) (fy)) => 39.0
-         (freduce x [] pf3o (fy) (fy))
+         (freduce x 1.0 pf3 y y) => 39.0
+         (freduce x [] pf3o y y)
          => [[1.0 2.0 2.0] [2.0 3.0 3.0] [3.0 4.0 4.0] [4.0 5.0 5.0]]
 
-         (freduce x 1.0 + (fy) (fy) [(fy)])
+         (freduce x 1.0 + y y [y])
          => (throws UnsupportedOperationException)))
 
 (facts "Vector methods."
@@ -158,14 +168,6 @@
          (instance? clojure.lang.IFn x) => true
          (.invokePrim x 0 0) => 1.0))
 
-#_(facts "Functor implementation for double general matrix"
-         (let [x (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                                        2 3 2 COLUMN_MAJOR)]
-         (fmap! x inc) => (->DoubleGeneralMatrix
-                           (seq-to-buffer [2 3 4 5 6 7])
-                           2 3 2 COLUMN_MAJOR)
-         (fmap! x inc) => x))
-
 (let [fx (fn [] (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
                                        2 3 2 COLUMN_MAJOR))
       fy (fn [] (->DoubleGeneralMatrix (seq-to-buffer [2 3 4 5 6 7])
@@ -203,6 +205,51 @@
          => x
 
          (fmap! (fx) + (fy) (fy) (fy) [(fy)])
+         => (throws UnsupportedOperationException)))
+
+(let [x (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
+                               2 3 2 COLUMN_MAJOR)
+      *' (fn ^double [^double x ^double y]
+           (double (* x y)))
+      +' (fn ^double [^double x ^double y]
+           (double (+ x y)))]
+  (facts "Fold implementation for real matrix"
+
+         (fold x) => 21.0
+         (fold x *' 1.0) => 720.0
+         (fold x +' 0.0) => (fold x)))
+
+(let [x (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
+                               2 3 2 COLUMN_MAJOR)
+      y (->DoubleGeneralMatrix (seq-to-buffer [2 3 4 5 6 7])
+                               2 3 2 COLUMN_MAJOR)
+      pf1 (fn ^double [^double res ^double x]
+            (+ x res))
+      pf1o (fn [res ^double x]
+            (conj res x))
+      pf2 (fn ^double [^double res ^double x ^double y]
+            (+ res x y))
+      pf2o (fn [res ^double x ^double y]
+             (conj res [x y]))
+      pf3 (fn ^double [^double res ^double x ^double y ^double z]
+            (+ res x y z))
+      pf3o (fn [res ^double x ^double y ^double z]
+             (conj res [x y z]))]
+  (facts "Reducible implementation for real matrix"
+
+         (freduce x 1.0 pf1) => 22.0
+         (freduce x [] pf1o) => [1.0 2.0 3.0 4.0 5.0 6.0]
+
+         (freduce x 1.0 pf2 y) => 49.0
+         (freduce x [] pf2o y)
+         => [[1.0 2.0] [2.0 3.0] [3.0 4.0] [4.0 5.0] [5.0 6.0] [6.0 7.0]]
+
+         (freduce x 1.0 pf3 y y) => 76.0
+         (freduce x [] pf3o y y)
+         => [[1.0 2.0 2.0] [2.0 3.0 3.0] [3.0 4.0 4.0] [4.0 5.0 5.0]
+             [5.0 6.0 6.0] [6.0 7.0 7.0]]
+
+         (freduce x 1.0 + y y [y])
          => (throws UnsupportedOperationException)))
 
 (facts "RealMatrix methods."

@@ -7,11 +7,12 @@
             [uncomplicate.neanderthal
              [protocols :as p]
              [core :refer [copy]]
-             [cblas]])
+             [cblas :refer [MAT_BOUNDS_MSG]]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]
            [uncomplicate.neanderthal.protocols
-            RealVector RealMatrix Carrier]
+            RealVector RealMatrix Carrier
+            RealVectorEditor RealMatrixEditor]
            [java.nio ByteBuffer]))
 
 (primitive-math/use-primitive-operators)
@@ -21,22 +22,22 @@
 (defn seq-to-buffer [s]
   (.position ^ByteBuffer
              (reduce (fn [^ByteBuffer bb ^double e]
-                       (.putDouble bb e)) 
+                       (.putDouble bb e))
                      (direct-buffer (* 8 (count s))) s)
              0))
 
 (defn dv
   ([source]
      (cond
-      (and (instance? ByteBuffer source) 
-           (zero? (long (mod (.capacity ^ByteBuffer source) 8)))) 
+      (and (instance? ByteBuffer source)
+           (zero? (long (mod (.capacity ^ByteBuffer source) 8))))
       (DoubleBlockVector. source
                           (/ (.capacity ^ByteBuffer source) 8)
                           1)
       (and (integer? source) (pos? source)) (dv (direct-buffer (* 8 (long source))))
       (float? source) (dv [source])
       (sequential? source) (dv (seq-to-buffer source))
-      :default (throw (IllegalArgumentException. 
+      :default (throw (IllegalArgumentException.
                        (format "I do not know how to create a double vector from %s ."
                                (type source))))))
   ([x & xs]
@@ -65,7 +66,52 @@
   ([^RealVector x ^long i]
    (.entry x i))
   ([^RealMatrix m ^long i ^long j]
-   (.entry m i j)))
+   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
+     (.entry m i j)
+     (throw (IndexOutOfBoundsException.
+             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+
+(defn set-entry!
+  ([^RealVectorEditor v ^long i ^double val]
+   (.setEntry v i val))
+  ([^RealMatrixEditor m ^long i ^long j ^double val]
+   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
+     (.setEntry m i j val)
+     (throw (IndexOutOfBoundsException.
+             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+
+;; ================== Category functions  ==============
+(defn fmap!
+  ([f x]
+   (p/fmap! x f))
+  ([f x y]
+   (p/fmap! x f y))
+  ([f x y z]
+   (p/fmap! x f y z))
+  ([f x y z w]
+   (p/fmap! x f y z w))
+  ([f x y z w & ws]
+   (apply p/fmap! x f y z w ws)))
+
+(defn fold
+  ([x]
+   (p/fold x))
+  ([f x]
+   (p/fold x f))
+  ([f id x]
+   (p/fold x f id)))
+
+(defn freduce
+  ([f x]
+   (p/freduce x f))
+  ([f acc x]
+   (p/freduce x acc f))
+  ([f acc x y]
+   (p/freduce x acc f y))
+  ([f acc x y z]
+   (p/freduce x acc f y z))
+  ([f acc x y z & ws]
+   (apply p/freduce x acc f y z ws)))
 
 ;; ================== BLAS 1 =======================
 
@@ -85,7 +131,7 @@
 #_(defn rot! [x y c s]
     (.rot x y c s))
 
-#_(defn rotg! [a b c s] 
+#_(defn rotg! [a b c s]
     (.rotg a b c s))
 
 #_(defn rotmg! [d1 d2 b1 b2 p]
@@ -159,8 +205,6 @@
      (mv! (dv (.mrows a)) alpha a x 0.0))
   ([a x]
      (mv 1.0 a x)))
-
-;; ================ Matrix ========================
 
 ;; ================ BLAS 3 ========================
 (defn mm!

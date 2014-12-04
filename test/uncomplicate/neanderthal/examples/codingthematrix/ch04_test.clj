@@ -14,6 +14,20 @@
    (col m 2) => (dv 3 30)
    (mrows m) => 2
    (ncols m) => 3
-   (entry m 1 2) => 30.0
+   (entry m 1 2) => 30.0))
 
-   ))
+(facts
+ "4.4 Transpose"
+ (let [m (dge 2 3 [1 2 3 4 5 6])
+       mt (trans m)]
+   (row m 0) => (col mt 0)
+   (trans m) => (dge 3 2 [1 3 5 2 4 6])
+   (trans (trans m)) => m))
+
+(facts
+ "4.6.5 Algebraic properties of matrix-vector multiplication"
+ (let [m (dge 2 3 [1 2 3 4 5 6])
+       v (dv 2 3 4)
+       u (dv 1 3 5)]
+   (mv m (ax 5 v)) => (ax 5 (mv m v))
+   (mv m (xpy u v)) => (xpy (mv m u) (mv m v))))

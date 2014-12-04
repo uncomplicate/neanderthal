@@ -23,6 +23,9 @@
 (defn vect? [x]
   (instance? Vector x))
 
+(defn matrix? [x]
+  (instance? Matrix x))
+
 (defn dim ^long [^Vector x]
   (.dim x))
 
@@ -37,19 +40,22 @@
   (.ncols m))
 
 (defn row [^Matrix m ^long i]
-  (if (< i (.mrows m))
+  (if (< -1 i (.mrows m))
     (.row m i)
     (throw (IndexOutOfBoundsException.
             (format ROW_COL_MSG "row" i (.mrows m))))))
 
 (defn col [^Matrix m ^long j]
-  (if (< j (.ncols m))
+  (if (< -1 j (.ncols m))
     (.col m j)
     (throw (IndexOutOfBoundsException.
             (format ROW_COL_MSG "col" j (.ncols m))))))
 
 (defn cols [^Matrix m] ;;TODO
   (map #(.col m %) (range (.ncols m))))
+
+(defn trans [^Matrix m]
+  (.transpose m))
 
 ;;================== BLAS 1 =======================
 (defn iamax ^long [^Vector x]

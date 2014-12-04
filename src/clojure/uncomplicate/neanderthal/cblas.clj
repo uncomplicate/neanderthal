@@ -17,11 +17,11 @@
 (set! *warn-on-reflection* true)
 (primitive-math/use-primitive-operators)
 
-(def ^:private MAT_BOUNDS_MSG
-  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
-
 (def ^:private DIFF_DIM_MSG
   "Vector dimensions should be %d.")
+
+(def  MAT_BOUNDS_MSG
+  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
 
 (defmacro ^:private vector-fmap
   [x put f & zs]
@@ -40,7 +40,7 @@
                                       ))))
          ~x))))
 
-(defn  entry-eq [res ^double x ^double y]
+(defn entry-eq [res ^double x ^double y]
   (= x y))
 ;;-------------- Double Vector -----------------------------
 
@@ -280,21 +280,11 @@
      (nil? y) false
      (identical? x y) true
      (instance? DoubleGeneralMatrix y)
-     (let [dgy ^DoubleGeneralMatrix y
-           arry (.buf dgy)
-           lx (.length x)
-           ly (.length dgy)
-           ldy (.stride dgy)]
-       (and (= (.mrows x) (.mrows dgy))
-            (= (.ncols x) (.ncols dgy))
-            (loop [i 0]
-              (if (< i lx)
-                (if (= (.getDouble arr (* 8 i))
-                       (.getDouble ^ByteBuffer arry (* 8 i)))
-                  (recur (inc i))
-                  false)
-                true))))
-     "default" false))
+     (and (= (.mrows x) (.mrows ^Matrix y))
+          (= (.ncols x) (.ncols ^Matrix y))
+          (freduce x true entry-eq y))
+
+     :default false))
   Carrier
   (zero [_]
     (DoubleGeneralMatrix. (direct-buffer (* 8 m n)) m n m order))
@@ -304,10 +294,16 @@
          (cross-section (byte-seq arr) 0 (* 8 m) (* 8 m))))
   clojure.lang.IFn$LLD
   (invokePrim [x i j]
-    (.entry x i j))
+    (if (and (< -1 i m) (< -1 j n))
+      (.entry x i j)
+      (throw (IndexOutOfBoundsException.
+              (format MAT_BOUNDS_MSG i j m n)))))
   clojure.lang.IFn
   (invoke [x i j]
-    (.entry x i j))
+    (if (and (< -1 (long i) m) (< -1 (long j) n))
+      (.entry x i j)
+      (throw (IndexOutOfBoundsException.
+              (format MAT_BOUNDS_MSG i j m n)))))
   Functor
   (fmap! [x f]
     (let [lnt (* m n)]
@@ -390,17 +386,17 @@
                    (.invokePrim ^IFn$ODO f res
                                 (.getDouble arr (* 8 i))))
             res)))))
-  (freduce [x acc f y]
+  (freduce [x acc f y];;TODO benchmark this against fmap! approach
     (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y)))
       (if (number? acc)
         (loop [j 0 res (double acc)]
-          (if (and (< j n) (Double/isFinite res))
+          (if (< j n)
             (recur (inc j)
                    (double (loop [i 0 res res]
-                             (if (and (< i m) (Double/isFinite res))
+                             (if (< i m)
                                (recur (inc i)
                                       (.invokePrim ^IFn$DDDD f res
-                                                   (.getDouble arr (* 8 j i))
+                                                   (.entry x i j)
                                                    (.entry ^RealMatrix y i j)))
                                res))))
             res))
@@ -411,7 +407,7 @@
                      (if (and (< i m) res)
                        (recur (inc i)
                               (.invokePrim ^IFn$ODDO f res
-                                           (.getDouble arr (* 8 j i))
+                                           (.entry x i j)
                                            (.entry ^RealMatrix y i j)))
                        res)))
             res)))
@@ -421,13 +417,13 @@
              (<= m (.mrows ^Matrix z)) (<= n (.ncols ^Matrix z)))
       (if (number? acc)
         (loop [j 0 res (double acc)]
-          (if (and (< j n) (Double/isFinite res))
+          (if (< j n)
             (recur (inc j)
                    (double (loop [i 0 res res]
-                             (if (and (< i m) (Double/isFinite res))
+                             (if (< i m)
                                (recur (inc i)
                                       (.invokePrim ^IFn$DDDDD f res
-                                                   (.getDouble arr (* 8 j i))
+                                                   (.entry x i j)
                                                    (.entry ^RealMatrix y i j)
                                                    (.entry ^RealMatrix z i j)))
                                res))))
@@ -439,7 +435,7 @@
                      (if (and (< i m) res)
                        (recur (inc i)
                               (.invokePrim ^IFn$ODDDO f res
-                                           (.getDouble arr (* 8 j i))
+                                           (.entry x i j)
                                            (.entry ^RealMatrix y i j)
                                            (.entry ^RealMatrix z i j)))
                        res)))
@@ -461,21 +457,15 @@
   (ncols [_]
     n)
   (entry [_ i j]
-    (if (and (< -1 i m) (< -1 j n))
-      (if (= COLUMN_MAJOR order)
-        (.getDouble arr (+ (* 8 m j) (* 8 i)))
-        (.getDouble arr (+ (* 8 n i) (* 8 j))))
-      (throw (IndexOutOfBoundsException.
-              (format MAT_BOUNDS_MSG i j m n)))))
+    (if (= COLUMN_MAJOR order)
+      (.getDouble arr (+ (* 8 m j) (* 8 i)))
+      (.getDouble arr (+ (* 8 n i) (* 8 j)))))
   (setEntry [a i j val]
-    (if (and (< -1 i m) (< -1 j n))
-      (do
-        (if (= COLUMN_MAJOR order)
-          (.putDouble arr (+ (* 8 m j) (* 8 i)) val)
-          (.putDouble arr (+ (* 8 n i) (* 8 j)) val))
-        a)
-      (throw (IndexOutOfBoundsException.
-              (format MAT_BOUNDS_MSG i j m n)))))
+    (do
+      (if (= COLUMN_MAJOR order)
+        (.putDouble arr (+ (* 8 m j) (* 8 i)) val)
+        (.putDouble arr (+ (* 8 n i) (* 8 j)) val))
+      a))
   (row [a i]
     (if (= COLUMN_MAJOR order)
       (DoubleBlockVector.
@@ -492,6 +482,10 @@
       (DoubleBlockVector.
        (slice-buffer arr (* 8 j) (* 8 (- (.length a) j)))
        m n)))
+  (transpose [_]
+    (DoubleGeneralMatrix. arr n m ld (if (= order COLUMN_MAJOR)
+                                      ROW_MAJOR
+                                      COLUMN_MAJOR)))
   (mv [_ alpha x beta y transa]
     (let [bx ^Block x
           by ^Block y]
@@ -528,118 +522,7 @@
 
 (defmethod print-method DoubleGeneralMatrix
   [^DoubleGeneralMatrix m ^java.io.Writer w]
-  (.write w (format "#<DoubleGeneralMatrix| m x n:%d x %d, ld:%d %s>"
+  (.write w (format "#<DoubleGeneralMatrix| mxn: %dx%d, ld:%d %s>"
                     (.mrows m) (.ncols m) (.stride m) (pr-str (seq m)))))
-
-#_(deftype DoubleGeneralRowMatrix [^ByteBuffer arr ^long m
-                                 ^long n ^long ld]
-  Object
-  (hashCode [this]
-    (let [dim (* m n)]
-      (loop [i 0 res (hash-combine
-                      (hash :DoubleGeneralRowMatrix) dim)]
-        (if (< i dim)
-          (recur (inc i)
-                 (hash-combine res (.entry this (rem i m) (rem i n))))
-          res))))
-  (equals [x y]
-    (cond
-     (nil? y) false
-     (identical? x y) true
-     (instance? DoubleGeneralRowMatrix y)
-     (let [dgy ^DoubleGeneralRowMatrix y
-           arry (.buf dgy)
-           lx (.length x)
-           ly (.length dgy)
-           ldy (.stride dgy)]
-       (and (= (.mrows x) (.mrows dgy))
-            (= (.ncols x) (.ncols dgy))
-            (loop [i 0]
-              (if (< i lx)
-                (if (= (.getDouble arr (* 8 i));;TODO ROW
-                       (.getDouble ^ByteBuffer arry (* 8 i)))
-                  (recur (inc i))
-                  false)
-                true))))
-     :default false))
-  Carrier
-  (zero [_]
-    (DoubleGeneralRowMatrix. (direct-buffer (* 8 m n)) m n m order))
-  clojure.lang.Seqable
-  (seq [_];;TODO ROW
-    (map (partial wrap-byte-seq float64)
-         (cross-section (byte-seq arr) 0 (* 8 m) (* 8 m))))
-  clojure.lang.IFn$LLD
-  (invokePrim [x i j]
-    (.entry x i j))
-  clojure.lang.IFn
-  (invoke [x i j]
-    (.entry x i j))
-  Block
-  (buf [_]
-    arr)
-  (stride [_]
-    ld)
-  (length [_]
-    (/ (.capacity ^ByteBuffer arr) 8))
-  RealMatrix
-  (mrows [_]
-    m)
-  (ncols [_]
-    n)
-  (entry [_ i j]
-    (if (and (< -1 i m) (< -1 j n))
-      (if (= COLUMN_MAJOR order)
-        (.getDouble arr (+ (* 8 m j) (* 8 i)))
-        (.getDouble arr (+ (* 8 n i) (* 8 j))))
-      (throw (IndexOutOfBoundsException.
-              (format MAT_BOUNDS_MSG i j m n)))))
-  (row [a i]
-    (if (= COLUMN_MAJOR order)
-      (DoubleBlockVector.
-       (slice-buffer arr (* 8 i) (* 8 (- (.length a) i)))
-       n m)
-      (DoubleBlockVector.
-       (slice-buffer arr (* 8 n i) (* 8 n))
-       m 1)))
-  (col [_ i]
-    (if (= COLUMN_MAJOR order)
-      (DoubleBlockVector.
-       (slice-buffer arr (* 8 m i) (* 8 m))
-       m 1)))
-  (mv [_ alpha x beta y transa]
-    (let [bx ^Block x
-          by ^Block y]
-      (do (CBLAS/dgemv order transa
-                       m n
-                       alpha
-                       arr ld
-                       (.buf bx) (.stride bx)
-                       beta
-                       (.buf by) (.stride by))
-          y)))
-  #_(rank [a alpha x y] ;;TODO
-    (let [bx ^Block x
-          by ^Block y]
-      (do (CBLAS/dger order
-                      m n
-                      alpha
-                      (.buf bx) (.stride bx)
-                      (.buf by) (.stride by)
-                      arr ld)
-          a)))
-  (mm [_ alpha b beta c transa transb]
-    (let [bb ^Block b
-          bc ^Block c]
-      (do (CBLAS/dgemm order
-                       transa transb
-                       m (.ncols b) n
-                       alpha
-                       arr ld
-                       (.buf bb) (.stride bb)
-                       beta
-                       (.buf bc) (.stride bc))
-          c))))
-
 
 (primitive-math/unuse-primitive-operators)

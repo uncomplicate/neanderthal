@@ -23,7 +23,7 @@
          ;;=> (throws IllegalArgumentException)
          ;;(dv (object-array [1 3]))
          ;;=> (throws IllegalArgumentException)
-))
+         ))
 
 (facts "General vector functions."
        (dim (dv [1 2 3])) => 3
@@ -113,6 +113,7 @@
          (axpy (dv 1 2 3) (dv 2 3 4) (dv 3 4 5)) => (dv 6 9 12)
          (axpy 2 (dv 1 2 3) (dv 2 3 4)) => (dv 4 7 10)))
 
+;; ================= Real Matrix functions ===========================
 (facts "Create a double matrix."
        (let [a (DoubleGeneralMatrix.
                 (seq-to-buffer [1 2 3 4 5 6]) 2 3 2 p/COLUMN_MAJOR)]
@@ -124,7 +125,9 @@
          ;;=> (throws IllegalArgumentException)
          ;;(dge 2 1 (object-array [1 3]))
          ;;=> (throws IllegalArgumentException)
-))
+         ))
+
+;; =========== Category functions =====================================
 
 (facts "General Matrix methods."
        (ncols (dge 2 3 [1 2 3 4 5 6])) => 3
@@ -152,6 +155,7 @@
        (let [c (dge 2 2 [1 2 3 4])]
          ))
 
+;; ====================== BLAS 2 ===============================
 (facts "BLAS 2 mv!"
        (mv! (dv [1 2 3 4]) 2.0 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2 3) 3)
        => (throws IllegalArgumentException)
@@ -167,8 +171,12 @@
        => (dv 47 62)
 
        (mv! (dv 0 0) 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3) 0.0)
-       (mv 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3)))
+       => (mv 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3))
 
+       (mv! (dv 0 0) (trans (dge 3 2 [1 3 5 2 4 6])) (dv 1 2 3))
+       => (mv! (dv 0 0) (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3)))
+
+;; ====================== BLAS 3 ================================
 (facts "BLAS 3 mm!"
        (mm! (dge 3 2 [1 2 3 4 5 6])
             2.0 (dge 3 2 [1 2 3 4 5 6]) (dge 3 2 [1 2 3 4 5 6]) 3.0)
