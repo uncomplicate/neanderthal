@@ -17,6 +17,8 @@
 (set! *warn-on-reflection* true)
 (primitive-math/use-primitive-operators)
 
+(def ^:const DEFAULT_ORDER CBLAS/ORDER_COLUMN_MAJOR)
+
 (def ^:private DIFF_DIM_MSG
   "Vector dimensions should be %d.")
 (def ^:private STRIDE_MSG
@@ -462,17 +464,17 @@
   (ncols [_]
     n)
   (entry [_ i j]
-    (if (= COLUMN_MAJOR order)
+    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
       (.getDouble buf (+ (* 8 m j) (* 8 i)))
       (.getDouble buf (+ (* 8 n i) (* 8 j)))))
   (setEntry [a i j val]
     (do
-      (if (= COLUMN_MAJOR order)
+      (if (= CBLAS/ORDER_COLUMN_MAJOR order)
         (.putDouble buf (+ (* 8 m j) (* 8 i)) val)
         (.putDouble buf (+ (* 8 n i) (* 8 j)) val))
       a))
   (row [a i]
-    (if (= COLUMN_MAJOR order)
+    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
       (DoubleBlockVector.
        (slice-buffer buf (* 8 i) (- (.capacity buf) (* 8 i)))
        n m)
@@ -480,7 +482,7 @@
        (slice-buffer buf (* 8 n i) (* 8 n))
        n 1)))
   (col [a j]
-    (if (= COLUMN_MAJOR order)
+    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
       (DoubleBlockVector.
        (slice-buffer buf (* 8 m j) (* 8 m))
        m 1)
@@ -488,12 +490,13 @@
        (slice-buffer buf (* 8 j) (- (.capacity buf) (* 8 j)))
        m n)))
   (transpose [_]
-    (DoubleGeneralMatrix. buf n m ld (if (= order COLUMN_MAJOR)
-                                      ROW_MAJOR
-                                      COLUMN_MAJOR)))
+    (DoubleGeneralMatrix. buf n m ld
+                          (if (= order CBLAS/ORDER_COLUMN_MAJOR)
+                            CBLAS/ORDER_ROW_MAJOR
+                            CBLAS/ORDER_COLUMN_MAJOR)))
   (mv [_ alpha x beta y]
     (do (CBLAS/dgemv order
-                     NO_TRANS
+                     CBLAS/TRANSPOSE_NO_TRANS
                      m n
                      alpha
                      buf ld
@@ -517,11 +520,11 @@
     (let [co (.order ^DoubleGeneralMatrix c)]
       (do (CBLAS/dgemm co
                        (if (= co order)
-                         NO_TRANS
-                         TRANS)
+                         CBLAS/TRANSPOSE_NO_TRANS
+                         CBLAS/TRANSPOSE_TRANS)
                        (if (= co (.order ^DoubleGeneralMatrix b))
-                         NO_TRANS
-                         TRANS)
+                         CBLAS/TRANSPOSE_NO_TRANS
+                         CBLAS/TRANSPOSE_TRANS)
                        m (.ncols b) n
                        alpha
                        buf ld

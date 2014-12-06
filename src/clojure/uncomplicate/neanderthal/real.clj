@@ -8,7 +8,7 @@
              [protocols :as p]
              [core :refer [copy]]
              [math :refer [f= pow sqrt]]
-             [cblas :refer [MAT_BOUNDS_MSG]]])
+             [cblas :refer [MAT_BOUNDS_MSG DEFAULT_ORDER]]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]
            [uncomplicate.neanderthal.protocols
@@ -51,7 +51,7 @@
            (zero? (long (mod (.capacity ^ByteBuffer source) 8))))
       (if (= (* 8 m n) (.capacity ^ByteBuffer source))
         (DoubleGeneralMatrix.
-         source m n (max m 1) p/COLUMN_MAJOR)
+         source m n (max m 1) DEFAULT_ORDER)
         (throw (IllegalArgumentException.
                 (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
                         m n))))

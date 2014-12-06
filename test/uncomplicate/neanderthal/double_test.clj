@@ -7,7 +7,7 @@
              [core :refer :all]
              [real :refer :all]
              [math :refer :all]
-             [protocols :as p]])
+             [cblas :as cblas]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]))
 
@@ -143,7 +143,7 @@
 ;; ================= Real Matrix functions ===========================
 (facts "Create a double matrix."
        (let [a (DoubleGeneralMatrix.
-                (seq-to-buffer [1 2 3 4 5 6]) 2 3 2 p/COLUMN_MAJOR)]
+                (seq-to-buffer [1 2 3 4 5 6]) 2 3 2 cblas/DEFAULT_ORDER)]
          (dge 2 3 [1 2 3 4 5 6]) => a
          (dge 2 3 (seq-to-buffer [1 2 3 4 5 6])) => a
          (dge 2 3 nil) => (throws IllegalArgumentException)
