@@ -278,7 +278,7 @@
                     (.dim dv) (.stride dv) (pr-str (seq dv)))))
 
 ;; ================= GE General Matrix =====================
-;; TODO all algorithms are for order=COLUMN_MAJOR and ld=m
+;; TODO  and ld=m
 (deftype DoubleGeneralMatrix [^ByteBuffer buf ^long m
                               ^long n ^long ld ^long order]
   Object
@@ -456,13 +456,6 @@
   (freduce [x acc f y z ws]
     (throw (UnsupportedOperationException.
             "Primitive functions support max 4 args.")))
-  Block
-  (buf [_]
-    buf)
-  (stride [_]
-    ld)
-  (length [_]
-    (/ (.capacity ^ByteBuffer buf) 8))
   RealMatrixEditor
   (mrows [_]
     m)
@@ -481,7 +474,7 @@
   (row [a i]
     (if (= COLUMN_MAJOR order)
       (DoubleBlockVector.
-       (slice-buffer buf (* 8 i) (* 8 (- (.length a) i)))
+       (slice-buffer buf (* 8 i) (- (.capacity buf) (* 8 i)))
        n m)
       (DoubleBlockVector.
        (slice-buffer buf (* 8 n i) (* 8 n))
@@ -492,14 +485,15 @@
        (slice-buffer buf (* 8 m j) (* 8 m))
        m 1)
       (DoubleBlockVector.
-       (slice-buffer buf (* 8 j) (* 8 (- (.length a) j)))
+       (slice-buffer buf (* 8 j) (- (.capacity buf) (* 8 j)))
        m n)))
   (transpose [_]
     (DoubleGeneralMatrix. buf n m ld (if (= order COLUMN_MAJOR)
                                       ROW_MAJOR
                                       COLUMN_MAJOR)))
-  (mv [_ alpha x beta y transa]
-    (do (CBLAS/dgemv order transa
+  (mv [_ alpha x beta y]
+    (do (CBLAS/dgemv order
+                     NO_TRANS
                      m n
                      alpha
                      buf ld
@@ -519,23 +513,29 @@
                       (.stride ^DoubleBlockVector y)
                       buf ld)
           a))
-  (mm [_ alpha b beta c transa transb]
-    (do (CBLAS/dgemm order
-                     transa transb
-                     m (.ncols b) n
-                     alpha
-                     buf ld
-                     (.buf ^DoubleGeneralMatrix b)
-                     (.stride ^DoubleGeneralMatrix b)
-                     beta
-                     (.buf ^DoubleGeneralMatrix c)
-                     (.stride ^DoubleGeneralMatrix c))
-        c)))
+  (mm [_ alpha b beta c]
+    (let [co (.order ^DoubleGeneralMatrix c)]
+      (do (CBLAS/dgemm co
+                       (if (= co order)
+                         NO_TRANS
+                         TRANS)
+                       (if (= co (.order ^DoubleGeneralMatrix b))
+                         NO_TRANS
+                         TRANS)
+                       m (.ncols b) n
+                       alpha
+                       buf ld
+                       (.buf ^DoubleGeneralMatrix b)
+                       (.ld ^DoubleGeneralMatrix b)
+                       beta
+                       (.buf ^DoubleGeneralMatrix c)
+                       (.ld ^DoubleGeneralMatrix c))
+          c))))
 
 (defmethod print-method DoubleGeneralMatrix
   [^DoubleGeneralMatrix m ^java.io.Writer w]
   (.write w (format "#<DoubleGeneralMatrix| mxn: %dx%d, ld:%d %s>"
-                    (.mrows m) (.ncols m) (.stride m) (pr-str (seq m)))))
+                    (.mrows m) (.ncols m) (.ld m) (pr-str (seq m)))))
 
 ;; ================= Band Matrix ==================================
 #_(deftype DoubleBandMatrix [^ByteBuffer buf ^long m

@@ -7,12 +7,10 @@ public interface RealMatrix extends Matrix {
     RealVector mv (double alpha,
                      RealVector x,
                      double beta,
-                     RealVector y,
-                     long transa);
+                     RealVector y);
 
     RealMatrix mm (double alpha,
                      RealMatrix b,
                      double beta,
-                     RealMatrix c,
-                     long transa, long transb);
+                     RealMatrix c);
 }

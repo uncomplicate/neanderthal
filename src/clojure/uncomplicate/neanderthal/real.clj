@@ -198,7 +198,7 @@
   ([^RealVector y alpha ^RealMatrix a ^RealVector x beta]
      (if (and (= (.ncols a) (.dim x))
               (= (.mrows a) (.dim y)))
-       (.mv a alpha x beta y p/NO_TRANS)
+       (.mv a alpha x beta y)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d and x:%d."
                        (.mrows a) (.ncols a) (.dim x))))))
@@ -219,7 +219,7 @@
      (if (and (= (.ncols a) (.mrows b))
               (= (.mrows a) (.mrows c))
               (= (.ncols b) (.ncols c)))
-       (.mm a alpha b beta c p/NO_TRANS p/NO_TRANS)
+       (.mm a alpha b beta c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
                        (.mrows c) (.ncols c)
