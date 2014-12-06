@@ -14,7 +14,7 @@
   "Required %s %d is higher than the row count %d.")
 
 (def ^:private DIMENSION_MSG
-  "Different dimensions - %s:%d, %s:%d.")
+  "Different dimensions - required:%d, is:%d.")
 
 (defn zero [x]
   (p/zero x))
@@ -31,6 +31,42 @@
 
 (defn segment [^Vector x ^long k ^long l]
   (.segment x k l))
+
+(defn rotg! [^Vector x]
+  (if (< 3 (.dim x))
+    (.rotg x)
+    (throw (IllegalArgumentException.
+            (format DIMENSION_MSG 4 (.dim x))))))
+
+(defn rotm! [^Vector x ^Vector y ^Vector p]
+  (cond
+   (not= (.dim x) (.dim y))
+   (throw (IllegalArgumentException.
+           (format DIMENSION_MSG (.dim x) (.dim y))))
+   (< (.dim p) 4)
+   (throw (IllegalArgumentException.
+           (format DIMENSION_MSG 4 (.dim p))))
+   :default (.rotm x y p)))
+
+(defn rotmg! [^Vector p ^Vector args]
+  (cond
+   (< (.dim p) 5)
+   (throw (IllegalArgumentException.
+           (format DIMENSION_MSG 5 (.dim p))))
+   (< (.dim args) 4)
+   (throw (IllegalArgumentException.
+           (format DIMENSION_MSG 4 (.dim args))))
+   :default (.rotmg p args)))
+
+(defn rotm! [^Vector x ^Vector y ^Vector p]
+  (cond
+   (< (.dim p) 5)
+   (throw (IllegalArgumentException.
+           (format DIMENSION_MSG 5 (.dim p))))
+   (not= (.dim x) (.dim y))
+   (throw (IllegalArgumentException.
+           (format DIMENSION_MSG (.dim x) (.dim y))))
+   :default (.rotm x y p)))
 
 ;; ================= Matrix =======================
 (defn mrows ^long [^Matrix m]
@@ -61,7 +97,7 @@
 (defn iamax ^long [^Vector x]
   (.iamax x))
 
-(defn swapv! [^Vector x ^Vector y]
+(defn swp! [^Vector x ^Vector y]
   (if (= (.dim x) (.dim y))
     (.swap x y)
     (throw (IllegalArgumentException.

@@ -17,18 +17,18 @@ int cblas_errprn(int ierr, int info, char *form, ...) {
     (javavm, (void **)&env, NULL);
   jclass iaexception = (*env)->FindClass
     (env, "java/lang/IllegalArgumentException");
-  
+
   va_list argptr;
   va_start(argptr, form);
 
   char *message = malloc(vsnprintf(NULL, 0, form, argptr) + 1);
   vsprintf(message, form, argptr);
-  
+
   (*env)->ThrowNew(env, iaexception, message);
   va_end(argptr);
-  if (ierr < info) 
+  if (ierr < info)
     return(ierr);
-  else return(info);  
+  else return(info);
 };
 
 void cblas_xerbla(int p, const char *rout, const char *form, ...) {
@@ -38,7 +38,7 @@ void cblas_xerbla(int p, const char *rout, const char *form, ...) {
   return;
 };
 
-/* 
+/*
  * ======================================================
  * Level 1 BLAS functions
  * ======================================================
@@ -51,10 +51,10 @@ void cblas_xerbla(int p, const char *rout, const char *form, ...) {
  */
 
 JNIEXPORT jfloat JNICALL Java_uncomplicate_neanderthal_CBLAS_sdsdot
-(JNIEnv *env, jclass clazz, jint N, jfloat alpha, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N, jfloat alpha,
+ jobject X, jint incX,
  jobject Y, jint incY) {
- 
+
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
   float *cY = (float *) (*env)->GetDirectBufferAddress(env, Y);
   return cblas_sdsdot(N, alpha, cX, incX, cY, incY);
@@ -62,8 +62,8 @@ JNIEXPORT jfloat JNICALL Java_uncomplicate_neanderthal_CBLAS_sdsdot
 
 
 JNIEXPORT jdouble JNICALL Java_uncomplicate_neanderthal_CBLAS_dsdot
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -72,8 +72,8 @@ JNIEXPORT jdouble JNICALL Java_uncomplicate_neanderthal_CBLAS_dsdot
 };
 
 JNIEXPORT jdouble JNICALL Java_uncomplicate_neanderthal_CBLAS_ddot
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -82,8 +82,8 @@ JNIEXPORT jdouble JNICALL Java_uncomplicate_neanderthal_CBLAS_ddot
 };
 
 JNIEXPORT jfloat JNICALL Java_uncomplicate_neanderthal_CBLAS_sdot
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -119,7 +119,7 @@ JNIEXPORT jdouble JNICALL Java_uncomplicate_neanderthal_CBLAS_dnrm2
 
 JNIEXPORT jfloat JNICALL Java_uncomplicate_neanderthal_CBLAS_sasum
 (JNIEnv *env, jclass clazz, jint N, jobject X, jint incX) {
-  
+
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
   return cblas_sasum(N, cX, incX);
 };
@@ -150,7 +150,7 @@ JNIEXPORT jint JNICALL Java_uncomplicate_neanderthal_CBLAS_idamax
   return cblas_idamax(N, cX, incX);
 };
 
-/* 
+/*
  * ======================================================
  * Level 1 BLAS procedures
  * ======================================================
@@ -163,9 +163,9 @@ JNIEXPORT jint JNICALL Java_uncomplicate_neanderthal_CBLAS_idamax
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srot
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jfloat c, jfloat s) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -174,9 +174,9 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srot
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drot
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jdouble c, jdouble s) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -191,26 +191,22 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drot
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srotg
-(JNIEnv *env, jclass clazz, 
- jobject a, jobject b, 
- jobject c, jobject s) {
+(JNIEnv *env, jclass clazz, jobject params) {
 
-  float *ca = (float *) (*env)->GetDirectBufferAddress(env, a);
-  float *cb = (float *) (*env)->GetDirectBufferAddress(env, b);
-  float *cc = (float *) (*env)->GetDirectBufferAddress(env, c);
-  float *cs = (float *) (*env)->GetDirectBufferAddress(env, s);
+  float *ca = (float *) (*env)->GetDirectBufferAddress(env, params);
+  float *cb = ca + 1;
+  float *cc = ca + 2;
+  float *cs = ca + 3;
   cblas_srotg(ca, cb, cc, cs);
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotg
-(JNIEnv *env, jclass clazz, 
- jobject a, jobject b, 
- jobject c, jobject s) {
+(JNIEnv *env, jclass clazz, jobject params) {
 
-  double *ca = (double *) (*env)->GetDirectBufferAddress(env, a);
-  double *cb = (double *) (*env)->GetDirectBufferAddress(env, b);
-  double *cc = (double *) (*env)->GetDirectBufferAddress(env, c);
-  double *cs = (double *) (*env)->GetDirectBufferAddress(env, s);
+  double *ca = (double *) (*env)->GetDirectBufferAddress(env, params);
+  double *cb = ca + 1;
+  double *cc = ca + 2;
+  double *cs = ca + 3;
   cblas_drotg(ca, cb, cc, cs);
 };
 
@@ -221,29 +217,19 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotg
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srotmg
-(JNIEnv *env, jclass clazz, 
- jobject d1, jobject d2, 
- jobject b1, jfloat b2, 
- jobject P) {
+(JNIEnv *env, jclass clazz, jobject args, jobject P) {
 
-  float *cd1 = (float *) (*env)->GetDirectBufferAddress(env, d1);
-  float *cd2 = (float *) (*env)->GetDirectBufferAddress(env, d2);
-  float *cb1 = (float *) (*env)->GetDirectBufferAddress(env, b1);
+  float *cargs = (float *) (*env)->GetDirectBufferAddress(env, args);
   float *cP = (float *) (*env)->GetDirectBufferAddress(env, P);
-  cblas_srotmg(cd1, cd2, cb1, b2, cP);
+  cblas_srotmg(cargs, cargs + 1, cargs + 2, cargs[3], cP);
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotmg
-(JNIEnv *env, jclass clazz, 
- jobject d1, jobject d2, 
- jobject b1, jdouble b2, 
- jobject P) {
+(JNIEnv *env, jclass clazz, jobject args, jobject P) {
 
-  double *cd1 = (double *) (*env)->GetDirectBufferAddress(env, d1);
-  double *cd2 = (double *) (*env)->GetDirectBufferAddress(env, d2);
-  double *cb1 = (double *) (*env)->GetDirectBufferAddress(env, b1);
+  double *cargs = (double *) (*env)->GetDirectBufferAddress(env, args);
   double *cP = (double *) (*env)->GetDirectBufferAddress(env, P);
-  cblas_drotmg(cd1, cd2, cb1, b2, cP);
+  cblas_drotmg(cargs, cargs + 1, cargs + 2, cargs[3], cP);
 };
 
 /*
@@ -253,9 +239,9 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotmg
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srotm
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject P) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -265,9 +251,9 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srotm
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotm
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject P) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -283,8 +269,8 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotm
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sswap
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -293,14 +279,14 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sswap
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dswap
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
   double *cY = (double *) (*env)->GetDirectBufferAddress(env, Y);
   cblas_dswap(N, cX, incX, cY, incY);
-  
+
 };
 
 /*
@@ -310,8 +296,8 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dswap
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sscal
-(JNIEnv *env, jclass clazz, 
- jint N, jfloat alpha, 
+(JNIEnv *env, jclass clazz,
+ jint N, jfloat alpha,
  jobject X, jint incX) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -319,8 +305,8 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sscal
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dscal
-(JNIEnv *env, jclass clazz, 
- jint N, jdouble alpha, 
+(JNIEnv *env, jclass clazz,
+ jint N, jdouble alpha,
  jobject X, jint incX) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -334,8 +320,8 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dscal
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_scopy
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -344,8 +330,8 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_scopy
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dcopy
-(JNIEnv *env, jclass clazz, jint N, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz, jint N,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -360,9 +346,9 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dcopy
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_saxpy
-(JNIEnv *env, jclass clazz, 
- jint N, jfloat alpha, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz,
+ jint N, jfloat alpha,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -371,9 +357,9 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_saxpy
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_daxpy
-(JNIEnv *env, jclass clazz, 
- jint N, jdouble alpha, 
- jobject X, jint incX, 
+(JNIEnv *env, jclass clazz,
+ jint N, jdouble alpha,
+ jobject X, jint incX,
  jobject Y, jint incY) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -381,7 +367,7 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_daxpy
   cblas_daxpy(N, alpha, cX, incX, cY, incY);
 };
 
-/* 
+/*
  * ======================================================
  * Level 2 BLAS procedures
  * ======================================================
@@ -394,13 +380,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_daxpy
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sgemv
-(JNIEnv * env, jclass clazz, 
- jint Order, jint TransA, 
- jint M, jint N, 
- jfloat alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jfloat beta, 
+(JNIEnv * env, jclass clazz,
+ jint Order, jint TransA,
+ jint M, jint N,
+ jfloat alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jfloat beta,
  jobject Y, jint incY) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -410,13 +396,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sgemv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dgemv
-(JNIEnv * env, jclass clazz, 
- jint Order, jint TransA, 
- jint M, jint N, 
- jdouble alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jdouble beta, 
+(JNIEnv * env, jclass clazz,
+ jint Order, jint TransA,
+ jint M, jint N,
+ jdouble alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jdouble beta,
  jobject Y, jint incY) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -432,32 +418,32 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dgemv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sgbmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint TransA, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint TransA,
  jint M, jint N,
  jint KL, jint KU,
- jfloat alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jfloat beta, 
+ jfloat alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jfloat beta,
  jobject Y, jint incY) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
   float *cY = (float *) (*env)->GetDirectBufferAddress(env, Y);
-  cblas_sgbmv(Order, TransA, M, N, KL, KU, 
+  cblas_sgbmv(Order, TransA, M, N, KL, KU,
               alpha, cA, lda, cX, incX, beta, cY, incY);
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dgbmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint TransA, 
- jint M, jint N, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint TransA,
+ jint M, jint N,
  jint KL, jint KU,
- jdouble alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jdouble beta, 
+ jdouble alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jdouble beta,
  jobject Y, jint incY) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -474,13 +460,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dgbmv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssymv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, 
- jint N, 
- jfloat alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jfloat beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo,
+ jint N,
+ jfloat alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jfloat beta,
  jobject Y, jint incY) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -490,13 +476,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssymv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsymv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, 
- jint N, 
- jdouble alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jdouble beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo,
+ jint N,
+ jdouble alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jdouble beta,
  jobject Y, jint incY) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -512,13 +498,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsymv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssbmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, 
- jint N, int K, 
- jfloat alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jfloat beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo,
+ jint N, int K,
+ jfloat alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jfloat beta,
  jobject Y, jint incY) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -528,13 +514,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssbmv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsbmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, 
- jint N, int K, 
- jdouble alpha, 
- jobject A, jint lda, 
- jobject X, jint incX, 
- jdouble beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo,
+ jint N, int K,
+ jdouble alpha,
+ jobject A, jint lda,
+ jobject X, jint incX,
+ jdouble beta,
  jobject Y, jint incY) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -550,13 +536,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsbmv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sspmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, 
- jint N, 
- jfloat alpha, 
- jobject Ap, 
- jobject X, jint incX, 
- jfloat beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo,
+ jint N,
+ jfloat alpha,
+ jobject Ap,
+ jobject X, jint incX,
+ jfloat beta,
  jobject Y, jint incY) {
 
   float *cAp = (float *) (*env)->GetDirectBufferAddress(env, Ap);
@@ -566,13 +552,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sspmv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dspmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, 
- jint N, 
- jdouble alpha, 
- jobject Ap, 
- jobject X, jint incX, 
- jdouble beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo,
+ jint N,
+ jdouble alpha,
+ jobject Ap,
+ jobject X, jint incX,
+ jdouble beta,
  jobject Y, jint incY) {
 
   double *cAp = (double *) (*env)->GetDirectBufferAddress(env, Ap);
@@ -588,10 +574,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dspmv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, 
- jint N, jfloat alpha, 
- jobject A, jint lda, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA,
+ jint N, jfloat alpha,
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -601,10 +587,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strmv
 
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtrmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, 
- jint N, jdouble alpha, 
- jobject A, jint lda, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA,
+ jint N, jdouble alpha,
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -619,10 +605,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtrmv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stbmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
- jint N, jint K, 
- jobject A, jint lda, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
+ jint N, jint K,
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -631,10 +617,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stbmv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtbmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
- jint N, jint K, 
- jobject A, jint lda, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
+ jint N, jint K,
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -649,10 +635,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtbmv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stpmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
- jint N, 
- jobject Ap, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
+ jint N,
+ jobject Ap,
  jobject X, jint incX) {
 
   float *cAp = (float *) (*env)->GetDirectBufferAddress(env, Ap);
@@ -661,10 +647,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stpmv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtpmv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
- jint N, 
- jobject Ap, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
+ jint N,
+ jobject Ap,
  jobject X, jint incX) {
 
   double *cAp = (double *) (*env)->GetDirectBufferAddress(env, Ap);
@@ -679,10 +665,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtpmv
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strsv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
- jint N, 
- jobject A, jint lda, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
+ jint N,
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -691,10 +677,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strsv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtrsv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
- jint N, 
- jobject A, jint lda, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
+ jint N,
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -703,16 +689,16 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtrsv
 };
 
 /*
- * ------------------------------------------------------ 
+ * ------------------------------------------------------
  * TBSV
  * ------------------------------------------------------
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stbsv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
  jint N, jint K,
- jobject A, jint lda, 
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -721,10 +707,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stbsv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtbsv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
  jint N, jint K,
- jobject A, jint lda, 
+ jobject A, jint lda,
  jobject X, jint incX) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -733,16 +719,16 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtbsv
 };
 
 /*
- * ------------------------------------------------------ 
+ * ------------------------------------------------------
  * TPSV
  * ------------------------------------------------------
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stpsv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
  jint N,
- jobject Ap, 
+ jobject Ap,
  jobject X, jint incX) {
 
   float *cAp = (float *) (*env)->GetDirectBufferAddress(env, Ap);
@@ -751,10 +737,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_stpsv
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtpsv
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint TransA, jint Diag, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint TransA, jint Diag,
  jint N,
- jobject Ap, 
+ jobject Ap,
  jobject X, jint incX) {
 
   double *cAp = (double *) (*env)->GetDirectBufferAddress(env, Ap);
@@ -763,18 +749,18 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtpsv
 };
 
 /*
- * ------------------------------------------------------ 
+ * ------------------------------------------------------
  * GER
  * ------------------------------------------------------
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sger
-(JNIEnv *env, jclass clazz, 
- jint Order, 
- jint M, jint N, 
- jfloat alpha, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+(JNIEnv *env, jclass clazz,
+ jint Order,
+ jint M, jint N,
+ jfloat alpha,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject A, jint lda) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -784,12 +770,12 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sger
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dger
-(JNIEnv *env, jclass clazz, 
- jint Order, 
- jint M, jint N, 
- jdouble alpha, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+(JNIEnv *env, jclass clazz,
+ jint Order,
+ jint M, jint N,
+ jdouble alpha,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject A, jint lda) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -799,17 +785,17 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dger
 };
 
 /*
- * ------------------------------------------------------ 
+ * ------------------------------------------------------
  * SYR
  * ------------------------------------------------------
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyr
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Uplo,
  jint N,
- jfloat alpha, 
- jobject X, jint incX, 
+ jfloat alpha,
+ jobject X, jint incX,
  jobject A, jint lda) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -818,11 +804,11 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyr
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyr
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Uplo,
  jint N,
- jdouble alpha, 
- jobject X, jint incX, 
+ jdouble alpha,
+ jobject X, jint incX,
  jobject A, jint lda) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -831,17 +817,17 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyr
 }
 
 /*
- * ------------------------------------------------------ 
+ * ------------------------------------------------------
  * SPR
  * ------------------------------------------------------
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sspr
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Uplo,
  jint N,
- jfloat alpha, 
- jobject X, jint incX, 
+ jfloat alpha,
+ jobject X, jint incX,
  jobject Ap) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -850,11 +836,11 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sspr
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dspr
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Uplo,
  jint N,
- jdouble alpha, 
- jobject X, jint incX, 
+ jdouble alpha,
+ jobject X, jint incX,
  jobject Ap) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -863,18 +849,18 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dspr
 };
 
 /*
- * ------------------------------------------------------ 
+ * ------------------------------------------------------
  * SYR2
  * ------------------------------------------------------
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyr2
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, int Uplo,
- jint N, 
- jfloat alpha, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+ jint N,
+ jfloat alpha,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject A, jint lda) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -884,12 +870,12 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyr2
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyr2
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, int Uplo,
- jint N, 
- jdouble alpha, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+ jint N,
+ jdouble alpha,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject A, jint lda) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -899,18 +885,18 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyr2
 };
 
 /*
- * ------------------------------------------------------ 
+ * ------------------------------------------------------
  * SPR2
  * ------------------------------------------------------
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sspr2
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Uplo,
  jint N,
- jfloat alpha, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+ jfloat alpha,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject Ap) {
 
   float *cX = (float *) (*env)->GetDirectBufferAddress(env, X);
@@ -920,12 +906,12 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sspr2
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dspr2
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Uplo,
  jint N,
- jdouble alpha, 
- jobject X, jint incX, 
- jobject Y, jint incY, 
+ jdouble alpha,
+ jobject X, jint incX,
+ jobject Y, jint incY,
  jobject Ap) {
 
   double *cX = (double *) (*env)->GetDirectBufferAddress(env, X);
@@ -934,7 +920,7 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dspr2
   cblas_dspr2(Order, Uplo, N, alpha, cX, incX, cY, incY, cAp);
 };
 
-/* 
+/*
  * ======================================================
  * Level 3 BLAS procedures
  * ======================================================
@@ -948,13 +934,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dspr2
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sgemm
-(JNIEnv *env, jclass clazz, 
- jint Order, jint TransA, jint TransB, 
- jint M, jint N, jint K, 
- jfloat alpha, 
- jobject A, jint lda, 
- jobject B, jint ldb, 
- jfloat beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint TransA, jint TransB,
+ jint M, jint N, jint K,
+ jfloat alpha,
+ jobject A, jint lda,
+ jobject B, jint ldb,
+ jfloat beta,
  jobject C, jint ldc) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -964,13 +950,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_sgemm
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dgemm
-(JNIEnv *env, jclass clazz, 
- jint Order, jint TransA, jint TransB, 
- jint M, jint N, jint K, 
- jdouble alpha, 
- jobject A, jint lda, 
- jobject B, jint ldb, 
- jdouble beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint TransA, jint TransB,
+ jint M, jint N, jint K,
+ jdouble alpha,
+ jobject A, jint lda,
+ jobject B, jint ldb,
+ jdouble beta,
  jobject C, jint ldc) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -986,13 +972,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dgemm
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssymm
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Side, jint Uplo, 
- jint M, jint N, 
- jfloat alpha, 
- jobject A, jint lda, 
- jobject B, jint ldb, 
- jfloat beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Side, jint Uplo,
+ jint M, jint N,
+ jfloat alpha,
+ jobject A, jint lda,
+ jobject B, jint ldb,
+ jfloat beta,
  jobject C, jint ldc) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -1002,13 +988,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssymm
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsymm
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Side, jint Uplo, 
- jint M, jint N, 
- jdouble alpha, 
- jobject A, jint lda, 
- jobject B, jint ldb, 
- jdouble beta, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Side, jint Uplo,
+ jint M, jint N,
+ jdouble alpha,
+ jobject A, jint lda,
+ jobject B, jint ldb,
+ jdouble beta,
  jobject C, jint ldc) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -1024,10 +1010,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsymm
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyrk
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint Trans, 
- jint N, jint K, 
- jfloat alpha, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint Trans,
+ jint N, jint K,
+ jfloat alpha,
  jobject A, jint lda,
  jfloat beta,
  jobject C, jint ldc) {
@@ -1038,10 +1024,10 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyrk
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyrk
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint Trans, 
- jint N, jint K, 
- jdouble alpha, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint Trans,
+ jint N, jint K,
+ jdouble alpha,
  jobject A, jint lda,
  jfloat beta,
  jobject C, jint ldc) {
@@ -1058,13 +1044,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyrk
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyr2k
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint Trans, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint Trans,
  jint N, jint K,
- jfloat alpha, 
- jobject A, jint lda, 
- jobject B, jint ldb, 
- jfloat beta, 
+ jfloat alpha,
+ jobject A, jint lda,
+ jobject B, jint ldb,
+ jfloat beta,
  jobject C, jint ldc) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -1074,13 +1060,13 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_ssyr2k
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyr2k
-(JNIEnv *env, jclass clazz, 
- jint Order, jint Uplo, jint Trans, 
+(JNIEnv *env, jclass clazz,
+ jint Order, jint Uplo, jint Trans,
  jint N, jint K,
- jdouble alpha, 
- jobject A, jint lda, 
- jobject B, jint ldb, 
- jdouble beta, 
+ jdouble alpha,
+ jobject A, jint lda,
+ jobject B, jint ldb,
+ jdouble beta,
  jobject C, jint ldc) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -1096,12 +1082,12 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dsyr2k
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strmm
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Side,
- jint Uplo, jint TransA, jint Diag, 
+ jint Uplo, jint TransA, jint Diag,
  jint M, jint N,
- jfloat alpha, 
- jobject A, jint lda, 
+ jfloat alpha,
+ jobject A, jint lda,
  jobject B, jint ldb) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -1110,12 +1096,12 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strmm
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtrmm
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Side,
- jint Uplo, jint TransA, jint Diag, 
+ jint Uplo, jint TransA, jint Diag,
  jint M, jint N,
- jdouble alpha, 
- jobject A, jint lda, 
+ jdouble alpha,
+ jobject A, jint lda,
  jobject B, jint ldb) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);
@@ -1130,12 +1116,12 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtrmm
  */
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strsm
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Side,
- jint Uplo, jint TransA, jint Diag, 
+ jint Uplo, jint TransA, jint Diag,
  jint M, jint N,
- jfloat alpha, 
- jobject A, jint lda, 
+ jfloat alpha,
+ jobject A, jint lda,
  jobject B, jint ldb) {
 
   float *cA = (float *) (*env)->GetDirectBufferAddress(env, A);
@@ -1144,12 +1130,12 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_strsm
 };
 
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_dtrsm
-(JNIEnv *env, jclass clazz, 
+(JNIEnv *env, jclass clazz,
  jint Order, jint Side,
- jint Uplo, jint TransA, jint Diag, 
+ jint Uplo, jint TransA, jint Diag,
  jint M, jint N,
- jdouble alpha, 
- jobject A, jint lda, 
+ jdouble alpha,
+ jobject A, jint lda,
  jobject B, jint ldb) {
 
   double *cA = (double *) (*env)->GetDirectBufferAddress(env, A);

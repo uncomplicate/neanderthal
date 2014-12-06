@@ -5,6 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0-alpha3"]
                  [primitive-math "0.1.4"]
+                 [org.apache.commons/commons-math3 "3.3"]
                  [vertigo "0.1.3"]
                  [prismatic/hiphip "0.2.0"]]
 

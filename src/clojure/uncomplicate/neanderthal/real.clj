@@ -7,6 +7,7 @@
             [uncomplicate.neanderthal
              [protocols :as p]
              [core :refer [copy]]
+             [math :refer [f= pow sqrt]]
              [cblas :refer [MAT_BOUNDS_MSG]]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]
@@ -128,17 +129,23 @@
 (defn asum ^double [^RealVector x]
   (.asum x))
 
-#_(defn rot! [x y c s]
-    (.rot x y c s))
+(defn rot!
+  ([^RealVector x ^RealVector y
+    ^double c ^double s]
+   (cond
+    (not= (.dim x) (.dim y))
+    (throw (IllegalArgumentException.
+            (format "Incompatible dimensions - x:%d and y:%d."
+                    (.dim x) (.dim y))))
+    (not (and (<= -1.0 c 1.0) (<= -1.0 c 1.0)
+              (f= 1.0 (+ (pow c 2) (pow s 2)))))
+    (throw (IllegalArgumentException.
+            (format "s:%f and d:%f must be between -1 and 1, and sin2 + cos2 = 1."
+                    s c)))
+    :default (.rot x y c s)))
+  ([x y c]
+   (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
-#_(defn rotg! [a b c s]
-    (.rotg a b c s))
-
-#_(defn rotmg! [d1 d2 b1 b2 p]
-    (.rotmg d1 d2 b2 b2 p))
-
-#_(defn rotm! [x y p]
-    (.rotm x y p))
 
 (defn scal! [^double alpha ^RealVector x]
   (.scal x alpha))

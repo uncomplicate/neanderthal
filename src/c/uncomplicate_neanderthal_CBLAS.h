@@ -130,18 +130,18 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drot
 /*
  * Class:     uncomplicate_neanderthal_CBLAS
  * Method:    srotg
- * Signature: (Ljava/nio/Buffer;Ljava/nio/Buffer;Ljava/nio/Buffer;Ljava/nio/Buffer;)V
+ * Signature: (Ljava/nio/Buffer;)V
  */
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srotg
-  (JNIEnv *, jclass, jobject, jobject, jobject, jobject);
+  (JNIEnv *, jclass, jobject);
 
 /*
  * Class:     uncomplicate_neanderthal_CBLAS
  * Method:    drotg
- * Signature: (Ljava/nio/Buffer;Ljava/nio/Buffer;Ljava/nio/Buffer;Ljava/nio/Buffer;)V
+ * Signature: (Ljava/nio/Buffer;)V
  */
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotg
-  (JNIEnv *, jclass, jobject, jobject, jobject, jobject);
+  (JNIEnv *, jclass, jobject);
 
 /*
  * Class:     uncomplicate_neanderthal_CBLAS
@@ -149,7 +149,7 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotg
  * Signature: (Ljava/nio/Buffer;Ljava/nio/Buffer;Ljava/nio/Buffer;FLjava/nio/Buffer;)V
  */
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srotmg
-  (JNIEnv *, jclass, jobject, jobject, jobject, jfloat, jobject);
+  (JNIEnv *, jclass, jobject, jobject);
 
 /*
  * Class:     uncomplicate_neanderthal_CBLAS
@@ -157,7 +157,7 @@ JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_srotmg
  * Signature: (Ljava/nio/Buffer;Ljava/nio/Buffer;Ljava/nio/Buffer;DLjava/nio/Buffer;)V
  */
 JNIEXPORT void JNICALL Java_uncomplicate_neanderthal_CBLAS_drotmg
-  (JNIEnv *, jclass, jobject, jobject, jobject, jdouble, jobject);
+  (JNIEnv *, jclass, jobject, jobject);
 
 /*
  * Class:     uncomplicate_neanderthal_CBLAS

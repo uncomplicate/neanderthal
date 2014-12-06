@@ -6,6 +6,7 @@
             [uncomplicate.neanderthal
              [core :refer :all]
              [real :refer :all]
+             [math :refer :all]
              [protocols :as p]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]))
@@ -58,16 +59,42 @@
        (iamax (dv [])) => 0
        (iamax (dv [4 6 7 3])) => 2)
 
-(facts "BLAS 1 swapv!"
+(facts "BLAS 1 rot!"
+       (let [x (dv [1 2 3 4 5])
+             y (dv [-1 -2 -3 -4 -5])]
+         (do (rot! x y 1 0) [x y]) => [(dv 1 2 3 4 5) (dv -1 -2 -3 -4 -5)]
+         (do (rot! x y 0.5 (/ (sqrt 3) 2.0)) [x y])
+         => [(dv -0.3660254037844386 -0.7320508075688772 -1.098076211353316
+                 -1.4641016151377544 -1.8301270189221928)
+             (dv -1.3660254037844386 -2.732050807568877 -4.098076211353316
+                 -5.464101615137754 -6.830127018922193)]
+         (rot! x y (/ (sqrt 3) 2.0)  0.5) => x
+         (rot! x (dv 1) 0.5 0.5) => (throws IllegalArgumentException)
+         (rot! x y 300 0.3) => (throws IllegalArgumentException)
+         (rot! x y 0.5 0.5) => (throws IllegalArgumentException)))
+
+(facts "BLAS 1 rotg!"
+       (let [x (dv 1 2 3 4)]
+         (rotg! x) => x)
+       (rotg! (dv 0 0 0 0)) => (dv 0 0 1 0)
+       (rotg! (dv 0 2 0 0)) => (dv 2 1 0 1)
+       (rotg! (dv 6 -8 0 0))
+       => (dv -9.999999999999998 -1.6666666666666665
+              -0.6000000000000001 0.8000000000000002))
+
+(facts "BLAS 1 rotm! and rotmg!"
+       "TODO: Leave this for later since I am lacking good examples right now.")
+
+(facts "BLAS 1 swap!"
        (let [x (dv [1 2 3])]
-         (swapv! x (dv [10 20 30])) => (dv [10 20 30])
-         (swapv! x nil) => (throws NullPointerException)
-         (identical? (swapv! x (dv [10 20 30])) x) => true
-         (swapv! x (dv [10 20]))
+         (swp! x (dv [10 20 30])) => (dv [10 20 30])
+         (swp! x nil) => (throws NullPointerException)
+         (identical? (swp! x (dv [10 20 30])) x) => true
+         (swp! x (dv [10 20]))
          => (throws IllegalArgumentException))
 
        (let [y (dv [0 0 0])]
-           (swapv! (dv [1 2 3]) y)
+           (swp! (dv [1 2 3]) y)
            y)
        => (dv [1 2 3]))
 
@@ -127,8 +154,6 @@
          ;;=> (throws IllegalArgumentException)
          ))
 
-;; =========== Category functions =====================================
-
 (facts "General Matrix methods."
        (ncols (dge 2 3 [1 2 3 4 5 6])) => 3
        (ncols (dge 0 0 [])) => 0
@@ -150,10 +175,6 @@
        (col (dge 2 3 [1 2 3 4 5 6]) 1) => (dv 3 4)
        (col (dge 2 3 [1 2 3 4 5 6]) 4)
        => (throws IndexOutOfBoundsException))
-
-(facts "Matrix transpose"
-       (let [c (dge 2 2 [1 2 3 4])]
-         ))
 
 ;; ====================== BLAS 2 ===============================
 (facts "BLAS 2 mv!"
