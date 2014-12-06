@@ -503,7 +503,7 @@
                      (.buf ^DoubleBlockVector y)
                      (.stride ^DoubleBlockVector y))
         y))
-  #_(rank [a alpha x y] ;;TODO
+  (rank [a alpha x y]
       (do (CBLAS/dger order
                       m n
                       alpha

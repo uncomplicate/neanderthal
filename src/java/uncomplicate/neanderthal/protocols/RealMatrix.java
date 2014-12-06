@@ -13,4 +13,8 @@ public interface RealMatrix extends Matrix {
                      RealMatrix b,
                      double beta,
                      RealMatrix c);
+
+    RealMatrix rank (double alpha,
+                     RealVector x,
+                     RealVector y);
 }

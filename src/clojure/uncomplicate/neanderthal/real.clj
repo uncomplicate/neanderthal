@@ -200,8 +200,8 @@
               (= (.mrows a) (.dim y)))
        (.mv a alpha x beta y)
        (throw (IllegalArgumentException.
-               (format "Incompatible dimensions - a:%dx%d and x:%d."
-                       (.mrows a) (.ncols a) (.dim x))))))
+               (format "Incompatible dimensions - a:%dx%d, x:%d, y:%d."
+                       (.mrows a) (.ncols a) (.dim x) (.dim y))))))
   ([y alpha a x]
      (mv! y alpha a x 0.0))
   ([y a x]
@@ -212,6 +212,23 @@
      (mv! (dv (.mrows a)) alpha a x 0.0))
   ([a x]
      (mv 1.0 a x)))
+
+(defn rank!
+  ([^RealMatrix a ^double alpha ^RealVector x ^RealVector y]
+   (if (and (= (.mrows a) (.dim x))
+            (= (.ncols a) (.dim y)))
+     (.rank a alpha x y)
+     (throw (IllegalArgumentException.
+             (format "Incompatible dimensions - a:%dx%d, x:%d, y:%d."
+                     (.mrows a) (.ncols a) (.dim x) (.dim y))))))
+  ([a x y]
+   (rank! a 1.0 x y)))
+
+(defn rank
+  ([^double alpha ^RealVector x ^RealVector y]
+   (rank! (dge (.dim x) (.dim y)) alpha x y))
+  ([x y]
+   (rank 1.0 x y)))
 
 ;; ================ BLAS 3 ========================
 (defn mm!
