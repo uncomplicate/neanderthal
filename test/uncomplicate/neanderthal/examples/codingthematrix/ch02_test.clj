@@ -8,10 +8,10 @@
 
 (facts
  "2.1 What is a Vector?"
- (let [v (dv 3.14159 2.718281828 -1.0 2.0)]        
+ (let [v (dv 3.14159 2.718281828 -1.0 2.0)]
    (dim v) => 4
    (vect? v ) => true
-   
+
    (ifn? v) => true
    (v 0) => (entry v 0)
    (v 1) => (entry v 1)
@@ -102,7 +102,7 @@
 
  (let [haystack (dv 1 -1 1 1 1 -1 1 1 1)
        needle (dv 1 -1 1 1 -1 1)]
-   (map #(dot (segment haystack % (dim needle)) needle)
+   (map #(dot (subvector haystack % (dim needle)) needle)
         (range (inc (- (dim haystack) (dim needle)))))
    => [2.0 2.0 0.0 0.0]))
 
@@ -118,4 +118,3 @@
 (facts "2.10.4 Printing vectors"
        (pr-str (dv 2 3 4))
        => "#<DoubleBlockVector| n:3, stride:1 (2.0 3.0 4.0)>")
-
