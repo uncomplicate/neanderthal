@@ -149,7 +149,7 @@
 
 (facts "Matrix methods."
        (let [a (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                                      2 3 2 COLUMN_MAJOR)]
+                                      2 3 2 DEFAULT_ORDER)]
          (.mrows a) => 2
          (.ncols a) => 3
 
@@ -161,7 +161,7 @@
 
 (facts "IFn implementation for double general matrix"
        (let [x (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                                      2 3 2 COLUMN_MAJOR)]
+                                      2 3 2 DEFAULT_ORDER)]
          (x 1 2) => 6.0
          (x 2 1) => (throws IndexOutOfBoundsException)
          (x -1 3) => (throws IndexOutOfBoundsException)
@@ -169,9 +169,9 @@
          (.invokePrim x 0 0) => 1.0))
 
 (let [fx (fn [] (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                                       2 3 2 COLUMN_MAJOR))
+                                       2 3 2 DEFAULT_ORDER))
       fy (fn [] (->DoubleGeneralMatrix (seq-to-buffer [2 3 4 5 6 7])
-                                       2 3 2 COLUMN_MAJOR))
+                                       2 3 2 DEFAULT_ORDER))
       x (fx)
       pf1 (fn ^double [^double x]
             (double (+ x 1.0)))
@@ -189,18 +189,18 @@
 
          (fmap! (fx) pf2 (fy))
          => (->DoubleGeneralMatrix (seq-to-buffer [3 5 7 9 11 13])
-                                   2 3 2 COLUMN_MAJOR)
+                                   2 3 2 DEFAULT_ORDER)
          (fmap! x pf2 (fy))
          => x
 
          (fmap! (fx) pf3 (fy) (fy))
          => (->DoubleGeneralMatrix (seq-to-buffer [5 8 11 14 17 20])
-                                   2 3 2 COLUMN_MAJOR)
+                                   2 3 2 DEFAULT_ORDER)
          (fmap! x pf3 (fy) (fy)) => x
 
          (fmap! (fx) pf4 (fy) (fy) (fy))
          => (->DoubleGeneralMatrix (seq-to-buffer [7 11 15 19 23 27])
-                                   2 3 2 COLUMN_MAJOR)
+                                   2 3 2 DEFAULT_ORDER)
          (fmap! x pf4 (fy) (fy) (fy))
          => x
 
@@ -208,7 +208,7 @@
          => (throws UnsupportedOperationException)))
 
 (let [x (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                               2 3 2 COLUMN_MAJOR)
+                               2 3 2 DEFAULT_ORDER)
       *' (fn ^double [^double x ^double y]
            (double (* x y)))
       +' (fn ^double [^double x ^double y]
@@ -220,9 +220,9 @@
          (fold x +' 0.0) => (fold x)))
 
 (let [x (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                               2 3 2 COLUMN_MAJOR)
+                               2 3 2 DEFAULT_ORDER)
       y (->DoubleGeneralMatrix (seq-to-buffer [2 3 4 5 6 7])
-                               2 3 2 COLUMN_MAJOR)
+                               2 3 2 DEFAULT_ORDER)
       pf1 (fn ^double [^double res ^double x]
             (+ x res))
       pf1o (fn [res ^double x]
@@ -258,22 +258,22 @@
              xc (->DoubleBlockVector (seq-to-buffer [0 0 0]) 3 1)
              yc (->DoubleBlockVector (seq-to-buffer [0 0]) 2 1)
              a (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                                      2 3 2 COLUMN_MAJOR)
+                                      2 3 2 DEFAULT_ORDER)
              b (->DoubleGeneralMatrix (seq-to-buffer [0.1 0.2 0.3 0.4 0.5 0.6])
-                                      3 2 3 COLUMN_MAJOR)
+                                      3 2 3 DEFAULT_ORDER)
              c (->DoubleGeneralMatrix (seq-to-buffer [0 0 0 0])
-                                       2 2 2 COLUMN_MAJOR)]
+                                       2 2 2 DEFAULT_ORDER)]
 
          (.entry a 1 2) => 6.0
 
-         (.mv a 2.0 (.copy x xc) 3.0 (.copy y yc) NO_TRANS)
+         (.mv a 2.0 (.copy x xc) 3.0 (.copy y yc))
          => (->DoubleBlockVector (seq-to-buffer [50 65]) 2 1)
 
          ;;(.mm a 2 b 3 c NO_TRANS NO_TRANS)
          ;;=> (->DoubleGeneralMatrix (seq-to-buffer [0 0 0 0])
-           ;;                        2 2 2 COLUMN_MAJOR)
+           ;;                        2 2 2 DEFAULT_ORDER)
          ;;(.rank a 2.0 y x)
-         ;;=> (->DoubleGeneralMatrix (seq-to-buffer [5 8 11 16 17 24]) 2 3 3 COLUMN_MAJOR)
+         ;;=> (->DoubleGeneralMatrix (seq-to-buffer [5 8 11 16 17 24]) 2 3 3 DEFAULT_ORDER)
 
          ))
 

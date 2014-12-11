@@ -33,8 +33,8 @@
        (entry (dv [1 2 3]) 1) => 2.0
        (entry (dv []) 0) => (throws IndexOutOfBoundsException)
 
-       (segment (dv 1 2 3 4 5 6) 1 3) => (dv 2 3 4)
-       (segment (dv 1 2 3) 2 3)
+       (subvector (dv 1 2 3 4 5 6) 1 3) => (dv 2 3 4)
+       (subvector (dv 1 2 3) 2 3)
        => (throws IllegalArgumentException))
 
 ;;================ BLAS functions =========================================
@@ -174,6 +174,15 @@
 
        (col (dge 2 3 [1 2 3 4 5 6]) 1) => (dv 3 4)
        (col (dge 2 3 [1 2 3 4 5 6]) 4)
+       => (throws IndexOutOfBoundsException)
+
+       (submatrix (dge 3 4 (range 12)) 1 2 2 1)
+       => (dge 2 1 [7 8])
+       (submatrix (dge 3 4 (range 12)) 2 3)
+       => (dge 2 3 [0 1 3 4 6 7])
+       (submatrix (dge 3 4 (range 12)) 3 4)
+       => (dge 3 4 (range 12))
+       (submatrix (dge 3 4 (range 12)) 1 1 3 3)
        => (throws IndexOutOfBoundsException))
 
 ;; ====================== BLAS 2 ===============================

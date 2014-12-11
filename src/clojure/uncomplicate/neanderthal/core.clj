@@ -29,8 +29,8 @@
 (defn dim ^long [^Vector x]
   (.dim x))
 
-(defn segment [^Vector x ^long k ^long l]
-  (.segment x k l))
+(defn subvector [^Vector x ^long k ^long l]
+  (.subvector x k l))
 
 (defn rotg! [^Vector x]
   (if (< 3 (.dim x))
@@ -89,6 +89,19 @@
 
 (defn cols [^Matrix m] ;;TODO
   (map #(.col m %) (range (.ncols m))))
+
+(primitive-math/unuse-primitive-operators)
+(defn submatrix
+  ([^Matrix a i j k l]
+   (if (and (<= 0 i (+ i k) (.mrows a))
+            (<= 0 j (+ j l) (.ncols a)))
+     (.submatrix a i j k l)
+     (throw (IndexOutOfBoundsException.
+             (format "Submatrix %d,%d %d,%d is out of bounds of %dx%d."
+                     i j k l (.mrows a) (.ncols a))))))
+  ([^Matrix a k l]
+   (submatrix a 0 0 k l)))
+(primitive-math/use-primitive-operators)
 
 (defn trans [^Matrix m]
   (.transpose m))

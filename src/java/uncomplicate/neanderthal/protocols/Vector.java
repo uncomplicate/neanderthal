@@ -10,7 +10,7 @@ public interface Vector {
 
     Vector copy (Vector y);
 
-    Vector segment (long k, long l);
+    Vector subvector  (long k, long l);
 
     Vector rotg ();
 

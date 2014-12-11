@@ -11,4 +11,6 @@ public interface Matrix {
     Vector col (long j);
 
     Matrix transpose ();
+
+    Matrix submatrix (long i, long j, long k, long l);
 }
