@@ -13,3 +13,5 @@ docs
 hs_*.log
 .#*
 .DS_Store
+*.o
+*.so
