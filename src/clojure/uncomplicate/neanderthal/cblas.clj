@@ -265,7 +265,7 @@
 
 (defmethod print-method DoubleBlockVector
   [^DoubleBlockVector dv ^java.io.Writer w]
-  (.write w (format "#<DoubleBlockVector| n:%d, stride:%d %s>"
+  (.write w (format "#<DoubleBlockVector| n:%d, stride:%d, %s>"
                     (.dim dv) (.stride dv) (pr-str (seq dv)))))
 
 (declare update-segment)
@@ -560,7 +560,8 @@
 
 (defmethod print-method DoubleGeneralMatrix
   [^DoubleGeneralMatrix m ^java.io.Writer w]
-  (.write w (format "#<DoubleGeneralMatrix| mxn: %dx%d, ld:%d %s>"
+  (.write w (format "#<DoubleGeneralMatrix| %s, mxn: %dx%d, ld:%d, %s>"
+                    (if (= CBLAS/ORDER_COLUMN_MAJOR (.order m)) "COL" "ROW")
                     (.mrows m) (.ncols m) (.ld m) (pr-str (seq m)))))
 
 (primitive-math/unuse-primitive-operators)

@@ -117,4 +117,4 @@
 
 (facts "2.10.4 Printing vectors"
        (pr-str (dv 2 3 4))
-       => "#<DoubleBlockVector| n:3, stride:1 (2.0 3.0 4.0)>")
+       => "#<DoubleBlockVector| n:3, stride:1, (2.0 3.0 4.0)>")
