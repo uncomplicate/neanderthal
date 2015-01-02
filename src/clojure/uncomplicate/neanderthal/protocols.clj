@@ -1,7 +1,9 @@
 (ns uncomplicate.neanderthal.protocols)
 
 (defprotocol Carrier
-  (zero [_]))
+  (zero [_])
+  (copy [_ y])
+  (swp [_ y]))
 
 (defprotocol Functor
   (fmap! [x f] [x f y] [x f y z]

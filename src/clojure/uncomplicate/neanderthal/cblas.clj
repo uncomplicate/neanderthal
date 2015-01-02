@@ -28,6 +28,9 @@
 (def  MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")
 
+(def ^:private DIMENSION_MSG
+  "Different dimensions - required:%d, is:%d.")
+
 (defn ^:private hash-comb [h ^double x]
   (hash-combine h x))
 
@@ -56,6 +59,22 @@
   Carrier
   (zero [_]
     (DoubleBlockVector. (direct-buffer (* 8 n)) n 1))
+  (swp [x y]
+    (if (= n (.dim ^Vector y))
+      (do (CBLAS/dswap n buf stride
+                       (.buf ^DoubleBlockVector y)
+                       (.stride ^DoubleBlockVector y))
+          x)
+      (throw (IllegalArgumentException.
+              (format DIMENSION_MSG \x n \y (.dim ^Vector y))))))
+  (copy [_ y]
+    (if (= n (.dim ^Vector y))
+      (do (CBLAS/dcopy n buf stride
+                       (.buf ^DoubleBlockVector y)
+                       (.stride ^DoubleBlockVector y))
+          y)
+      (throw (IllegalArgumentException.
+              (format DIMENSION_MSG \x n \y (.dim ^Vector y))))))
   Functor
   (fmap! [x f]
     (loop [i 0 res buf]
@@ -244,19 +263,9 @@
           p)
       (throw (IllegalArgumentException.
               (format STRIDE_MSG 1 (.stride ^DoubleBlockVector p))))))
-  (swap [x y]
-    (do (CBLAS/dswap n buf stride
-                     (.buf ^DoubleBlockVector y)
-                     (.stride ^DoubleBlockVector y))
-        x))
   (scal [x alpha]
     (do (CBLAS/dscal n alpha buf stride)
         x))
-  (copy [_ y]
-    (do (CBLAS/dcopy n buf stride
-                     (.buf ^DoubleBlockVector y)
-                     (.stride ^DoubleBlockVector y))
-        y))
   (axpy [_ alpha y]
     (do (CBLAS/daxpy n alpha buf stride
                      (.buf ^DoubleBlockVector y)
@@ -292,8 +301,58 @@
   Carrier
   (zero [_]
     (DoubleGeneralMatrix. (direct-buffer (* 8 m n)) m n m order))
+  (copy [a b]
+    (let [dgeb ^DoubleGeneralMatrix b]
+      (if (and (= m (.m b)) (= n (.n b)))
+        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order dgeb))
+                     (= m ld (.ld dgeb)))
+                (and (= CBLAS/ORDER_ROW_MAJOR order (.order dgeb))
+                     (= n ld (.ld dgeb))))
+          (do
+            (CBLAS/dcopy (* m n) buf 1 (.buf b) 1)
+            b)
+          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+            (loop [i 0]
+              (if (< i n)
+                (do
+                  (copy (.col a i) (.col b i))
+                  (recur (inc i)))
+                b))
+            (loop [i 0]
+              (if (< i m)
+                (do
+                  (copy (.row a i) (.row b i))
+                  (recur (inc i)))
+                b))))
+        (throw (IllegalArgumentException.
+                "I can not copy incompatible matrices.")))))
+  (swp [a b]
+    (let [dgeb ^DoubleGeneralMatrix b]
+      (if (and (= m (.m b)) (= n (.n b)))
+        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order dgeb))
+                     (= m ld (.ld dgeb)))
+                (and (= CBLAS/ORDER_ROW_MAJOR order (.order dgeb))
+                     (= n ld (.ld dgeb))))
+          (do
+            (CBLAS/dswap (* m n) buf 1 (.buf b) 1)
+            a)
+          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+            (loop [i 0]
+              (if (< i n)
+                (do
+                  (swp (.col a i) (.col b i))
+                  (recur (inc i)))
+                a))
+            (loop [i 0]
+              (if (< i m)
+                (do
+                  (swp (.row a i) (.row b i))
+                  (recur (inc i)))
+                a))))
+        (throw (IllegalArgumentException.
+                "I can not swap incompatible matrices.")))))
   clojure.lang.Seqable
-  (seq [a];;TODO ld
+  (seq [a]
     (if (= CBLAS/ORDER_COLUMN_MAJOR order)
       (map #(seq (.col a %)) (range 0 n))
       (map #(seq (.row a %)) (range 0 m))))

@@ -25,9 +25,36 @@
          (= x1 y3) => false))
 
 (facts "Carrier methods."
-       (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)]
-         (zero x) => (->DoubleBlockVector (seq-to-buffer [0 0 0 0]) 4 1)
-         (identical? x (zero x)) => false))
+       (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3]) 3 1)
+             y (->DoubleBlockVector (seq-to-buffer [2 3 4]) 3 1)
+             xc (->DoubleBlockVector (seq-to-buffer [0 0 0]) 3 1)
+             yc (->DoubleBlockVector (seq-to-buffer [0 0 0]) 3 1)]
+
+         (zero x) => (->DoubleBlockVector (seq-to-buffer [0 0 0]) 3 1)
+         (identical? x (zero x)) => false
+
+         (.copy x xc) => xc
+         x => xc
+
+         (.swp (.copy x xc) (.copy y yc)) => y
+         yc => x)
+
+       (let [a (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
+                                      2 3 2 DEFAULT_ORDER)
+             ac (->DoubleGeneralMatrix (seq-to-buffer [0 0 0 0 0 0])
+                                       2 3 2 DEFAULT_ORDER)
+             b (->DoubleGeneralMatrix (seq-to-buffer [2 3 4 5 6 7])
+                                      2 3 2 DEFAULT_ORDER)
+             bc (->DoubleGeneralMatrix (seq-to-buffer [0 0 0 0 0 0])
+                                       2 3 2 DEFAULT_ORDER)]
+         (zero a) => ac
+         (identical? a (zero a)) => false
+
+         (.copy a ac) => ac
+         a => ac
+
+         (.swp (.copy a ac) (.copy b bc)) => b
+         bc => a))
 
 (facts "IFn implementation for double vector"
        (let [x (->DoubleBlockVector (seq-to-buffer [1 2 3 4]) 4 1)]
@@ -115,6 +142,7 @@
 
 (facts "Vector methods."
        (let [x (->DoubleBlockVector (seq-to-buffer [1 5 3]) 3 1)]
+
          (.dim x) => 3
          (.iamax x) => 1))
 
@@ -133,23 +161,18 @@
          (.dot x y) => 20.0
          (.nrm2 x) => (Math/sqrt 14.0)
          (.asum x) => 6.0
-         (.iamax x) => 2
 
          (.scal (.copy x xc) 3)
          => (->DoubleBlockVector (seq-to-buffer [3 6 9]) 3 1)
-
-         (.copy x xc) => xc
-         x => xc
-
-         (.swap (.copy x xc) (.copy y yc)) => y
-         yc => x
 
          (.axpy (.copy x xc) 4 (.copy y yc))
          => (->DoubleBlockVector (seq-to-buffer [6 11 16]) 3 1)))
 
 (facts "Matrix methods."
        (let [a (->DoubleGeneralMatrix (seq-to-buffer [1 2 3 4 5 6])
-                                      2 3 2 DEFAULT_ORDER)]
+                                      2 3 2 DEFAULT_ORDER)
+             ac (->DoubleGeneralMatrix (seq-to-buffer [0 0 0 0 0 0])
+                                       2 3 2 DEFAULT_ORDER)]
          (.mrows a) => 2
          (.ncols a) => 3
 

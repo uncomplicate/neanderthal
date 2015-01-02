@@ -6,10 +6,6 @@ public interface Vector {
 
     long iamax ();
 
-    Vector swap (Vector y);
-
-    Vector copy (Vector y);
-
     Vector subvector  (long k, long l);
 
     Vector rotg ();

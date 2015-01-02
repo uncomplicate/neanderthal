@@ -261,6 +261,7 @@
   "BLAS 1: Swap vectors.
   Swaps the entries of vectors x and y. x and y must have
   equal dimensions. Both x and y will be changed.
+  Also works on matrices.
 
   (def x (dv 1 2 3))
   (def y (dv 3 4 5))
@@ -269,16 +270,14 @@
   y
   => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
   "
-  [^Vector x ^Vector y]
-  (if (= (.dim x) (.dim y))
-    (.swap x y)
-    (throw (IllegalArgumentException.
-            (format DIMENSION_MSG \x (.dim x) \y (.dim y))))))
+  [x y]
+  (p/swp x y))
 
 (defn copy!
   "BLAS 1: Copy vector.
   Copies the entries of x into y. x and y must have
-  equal dimensions.  y will be changed.
+  equal dimensions.  y will be changed. Also works on
+  matrices.
 
   (def x (dv 1 2 3))
   (def y (dv 3 4 5))
@@ -287,11 +286,8 @@
   y
   => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
   "
-  [^Vector x ^Vector y]
-  (if (= (.dim x) (.dim y))
-    (.copy x y)
-    (throw (IllegalArgumentException.
-            (format DIMENSION_MSG \x (.dim x) \y (.dim y))))))
+  [x y]
+  (p/copy x y))
 
 (defn copy
   "Returns a new vector and copies the entries from x.
