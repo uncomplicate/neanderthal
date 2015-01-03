@@ -1,0 +1,7 @@
+web:
+  build: .
+  command: jekyll serve --watch
+  volumes:
+    - .:/usr/src/app
+  ports:
+    - "4000:4000"
