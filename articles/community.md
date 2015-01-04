@@ -14,7 +14,8 @@ To subscribe for announcements of releases, important changes and so on, please 
 ## What is Uncomplicate?
 
 A collection of Clojure libraries, currently containing:
-* [Neanderthal] - you are reading about it.
+
+* [Neanderthal](http://neanderthal.uncomplicate.org) - you are reading about it.
 * [Fluokitten](http://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure.
 
 ## Get Involved
