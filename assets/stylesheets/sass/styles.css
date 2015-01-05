@@ -2,30 +2,45 @@
  * Snippets of reusable CSS to develop faster and keep code readable
  * ----------------------------------------------------------------- */
 .clearfix {
-  zoom: 1; }
-  .clearfix:before, .clearfix:after {
+  zoom: 1;
+}
+.clearfix:before, .clearfix:after {
     display: table;
     content: "";
     zoom: 1;
     *display: inline; }
   .clearfix:after {
-    clear: both; }
+    clear: both;
+  }
 
-.fixed-container {
-  width: 1200px;
+.container {
+  padding: 20px;
+  color: black;
   margin-left: auto;
   margin-right: auto;
-  zoom: 1; }
-  .fixed-container:before, .fixed-container:after {
+  zoom: 1;
+}
+
+.container:before, .container:after {
     display: table;
     content: "";
     zoom: 1;
-    *display: inline; }
-  .fixed-container:after {
-    clear: both; }
+    *display: inline;
+                   }
+
+.container:after {
+  clear: both;
+}
 
 body {
-  background-image: url(/assets/images/escheresque.png); }
+  background-image: url(/assets/images/gridme.png);
+  position: relative;
+  padding-top: 70px;
+}
+
+header > .container {
+  padding: 0px;
+}
 
 article pre {
   font-size: 13px !important; }
@@ -70,26 +85,28 @@ footer {
 .marketing h2 {
   margin: 36px 0 27px;
   text-align: center; }
-
+p
 .sidebar-nav {
   padding: 9px 0; }
 
 .headline {
-  padding: 50px; }
+  padding: 50px;
+  text-align: center;}
   .headline h1 {
     font-size: 100px;
-    line-height: 250px;
+    line-height: 150px;
     font-family: "Signika Negative", "Helvetica Neue", Helvetica, Arial, sans-serif; }
   .headline p {
-    padding-top: 20px;
+    padding-top: 1px;
+    padding-bottom: 10px;
     font-family: "Signika Negative", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 200;
-    line-height: 27px; }
+    line-height: 30px; }
   .headline .logo {
     margin-left: auto;
     margin-right: auto;
-    width: 900px; }
+    text-align: center; }
 
 .clear {
   clear: both; }
@@ -104,14 +121,14 @@ h2 {
   .headline h1 {
     font-size: 65px; }
 
-  .container-fluid footer {
+  .container footer {
     padding-left: 0px;
     border-top: 1px solid #e5e5e5; } }
 @media (max-width: 767px) {
   .headline h1 {
     font-size: 60px; }
 
-  .container-fluid footer {
+  .container footer {
     padding-left: 0px;
     border-top: 1px solid #e5e5e5; } }
 @media (max-width: 480px) {
@@ -122,12 +139,10 @@ h2 {
       padding-top: 85px;
       font-size: 30px; }
 
-  .container-fluid footer {
+  .container footer {
     padding-left: 0px;
     border-top: 1px solid #e5e5e5; } }
+
 .container {
   padding: 20px;
   color: black; }
-
-.row-fluid {
-  padding-top: 55px; }

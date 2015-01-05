@@ -1,46 +1,56 @@
-jQuery.fn.toc = function () {
-  if(this.length === 0)
-    return;
-
-  var listStack = [ $("<ul class='nav nav-list' />")];
-  listStack[0].appendTo(this);
-
-  Array.prototype.last = function() { return this[this.length - 1]};
-
-  var level = 2;
-  $(document).ready(function() {
-    $(":header").filter(function(idx, el) {
-      // filter out H1
-      return !(parseInt(el.tagName[1]) === 1);
-    }).
-    each(function(index, el) {
-      var currentLevel = parseInt(el.tagName[1]);
-
-      var text = $(el).text();
-      var anchor = text.replace(/[^a-zA-Z 0-9]+/g,'').replace(/\s/g, "_").toLowerCase();
-
-      $(el).attr('id', anchor);
-
-      if(currentLevel > level) {
-        var nextLevelList = $("<ul class='nav nav-list'/>");
-        nextLevelList.appendTo(listStack.last().children("li").last());
-        listStack.push(nextLevelList);
-      } else if(currentLevel < level) {
-	var delta = level - currentLevel;
-        for(var i = 0; i < delta; i ++) {
-	  listStack.pop();
-	}
-      }
-
-      level = currentLevel;
-      var li = $("<li />");
-
-      $("<a />").text(text).attr('href', "#" + anchor).appendTo(li);
-      li.appendTo(listStack.last());
-    });
-  });
-};
-
 $(document).ready(function() {
-  $(".well.sidebar-nav").toc();
+  var $toc = $('#toc');
+
+  function format (item) {
+    if (item.children && item.children.length > 0) {
+      return "<li> <a href=#" + item.id + ">" + item.title + "</a><ul class='nav'>"
+        + item.children.map(format).join('')
+        + "</ul></li>";
+    } else {
+      return "<li> <a href=#" + item.id + ">" + item.title + "</a></li>";
+    }
+  }
+  // return;
+
+  if($toc.length) {
+    var $h3s = $('.container .col-md-9 :header');
+
+    var tocTree = [];
+    var lastRoot;
+
+    $h3s.each(function(i, el) {
+      var $el = $(el);
+      var id = $el.attr('id');
+      var title = $el.text();
+      var depth = parseInt($el.prop("tagName")[1]);
+
+      if(depth > 3)
+        return;
+
+      if (lastRoot && depth > lastRoot.depth) {
+        lastRoot.children.push({id: id, title: title });
+      } else {
+        lastRoot = {depth: depth,
+                    title: title,
+                    id: id,
+                    children: []};
+        tocTree.push(lastRoot);
+      }
+    });
+
+    var titles = tocTree.map(format).join('');
+
+    $toc.html(titles);
+  }
+
+  $("#toc").parent().affix();
+
+  $('#side-navigation').on('activate.bs.scrollspy', function (e) {
+    var parent = $(e.target).parent().parent()[0];
+    if (parent.tagName == "LI") {
+      $(parent).addClass("active");
+    }
+
+  });
+
 });
