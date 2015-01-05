@@ -60,21 +60,22 @@
             </div>
         </header>
 
-        <div class='container'>
+        <div class='container bs-docs-container'>
             <div class='row'>
-                <div class='col-md-3 bs-docs-sidebar' id="side-navigation">
-                    <div class="bs-sidebar hidden-print affix-top" role="complimentary">
-                        <ul id="toc" class="nav bs-sidenav">
-                    </div>
+                <div class='col-md-3' role="complimentary">
+                    <nav class='bs-docs-sidebar hidden-print hidden-xs affix-top' id="toc">
+                    </nav>
                 </div>
-                <div class='col-md-9'>
+                <div class='col-md-9 bs-docs-section' role=main>
                     <div class="alert alert-info alert-dismissible" role="alert">
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                             <span aria-hidden="true">&times;</span></button>
                         <strong>Are you a native English speaker? Please <a href="/articles/community.html">help us improve this page</a>. Clone <a href="https://github.com/uncomplicate/neanderthal/tree/gh-pages">the source code of this website</a>, make your changes, and issue a pull request on GitHub or, if you prefer, simply send us the changes in plain text files.</strong>
                     </div>
+
                     {{ content }}
-                    <h2 id="tell_us_what_you_think">Tell Us What You Think!</h2>
+
+                    <h1 id="tell_us_what_you_think">Tell Us What You Think!</h2>
                     <p>Please take some time to tell us about your experience with the library and this site. <a href="/articles/community.html">Let us know</a> what we should be explaining or is not clear enough. If you are willing to contribute improvements, even better!</p>
                 </div>
             </div>
@@ -112,6 +113,12 @@
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
         <script src="/assets/javascripts/docs.min.js"></script>
         <script src='/assets/javascripts/toc.js'></script>
+
+        <script type="text/javascript">
+         $(document).ready(function() {
+             $('#toc').toc({listType: 'ul'});
+         });
+        </script>
 
         <script>
          window.twttr = (function (d,s,id) {
