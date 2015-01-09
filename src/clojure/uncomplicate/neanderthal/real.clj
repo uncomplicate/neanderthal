@@ -456,15 +456,15 @@
                        (.mrows a) (.ncols a)
                        (.mrows b) (.ncols b))))))
   ([c a b]
-     (mm! c 1.0 a b 1.0)))
+   (mm! c 1.0 a b 1.0)))
 
 (defn mm
   "A pure version of mm!, that returns the result
   in a new matrix instance.
   Computes alpha a * b"
   ([alpha ^RealMatrix a ^RealMatrix b]
-       (mm! (dge (.mrows a) (.ncols b)) a alpha b))
-    ([a b]
-       (mm a 1.0 b)))
+   (mm! (dge (.mrows a) (.ncols b)) alpha a b 0.0))
+  ([a b]
+   (mm 1.0 a b)))
 
 (primitive-math/unuse-primitive-operators)

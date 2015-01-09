@@ -1,16 +1,16 @@
 (let [nar-classifier (str (System/getProperty "os.arch") "-"
                           (System/getProperty "os.name") "-gpp-jni")
 
-      project-version "0.1.0"]
-  (defproject uncomplicate/neanderthal project-version
-    :description "FIXME: write description"
+      atlas-version "0.1.0"]
+  (defproject uncomplicate/neanderthal "0.1.1-SNAPSHOT"
+    :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
     :url "https://github.com/uncomplicate/neanderthal"
     :scm {:name "git"
           :url "https://github.com/uncomplicate/neanderthal"}
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
     :dependencies [[org.clojure/clojure "1.7.0-alpha4"]
-                   [uncomplicate/neanderthal-atlas ~project-version]
+                   [uncomplicate/neanderthal-atlas ~atlas-version]
                    [primitive-math "0.1.4"]
                    [org.apache.commons/commons-math3 "3.3"]
                    [vertigo "0.1.3"]]
@@ -29,7 +29,7 @@
                                [codox "0.8.10"]]
                      :global-vars {*warn-on-reflection* true
                                    *assert* false}
-                     :dependencies [[uncomplicate/neanderthal-atlas ~project-version
+                     :dependencies [[uncomplicate/neanderthal-atlas ~atlas-version
                                      :classifier ~nar-classifier]
                                     [midje "1.6.3"]
                                     [criterium "0.4.3"]]}}
