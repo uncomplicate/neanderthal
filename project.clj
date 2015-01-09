@@ -1,8 +1,8 @@
 (let [nar-classifier (str (System/getProperty "os.arch") "-"
                           (System/getProperty "os.name") "-gpp-jni")
 
-      project-version "0.1.0-SNAPSHOT"]
-  (defproject uncomplicate/neanderthal "0.1.0-SNAPSHOT"
+      project-version "0.1.0"]
+  (defproject uncomplicate/neanderthal project-version
     :description "FIXME: write description"
     :url "https://github.com/uncomplicate/neanderthal"
     :scm {:name "git"
