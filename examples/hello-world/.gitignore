@@ -1,4 +1,5 @@
 /target
+/lib
 /classes
 /checkouts
 pom.xml
@@ -7,3 +8,12 @@ pom.xml.asc
 *.class
 /.lein-*
 /.nrepl-port
+doc
+docs
+hs_*.log
+.#*
+.DS_Store
+*.o
+*.so
+*/nrepl-port
+*/target

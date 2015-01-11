@@ -9,7 +9,7 @@
           :url "https://github.com/uncomplicate/neanderthal"}
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
-    :dependencies [[org.clojure/clojure "1.7.0-alpha4"]
+    :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [primitive-math "0.1.4"]
                    [org.apache.commons/commons-math3 "3.3"]

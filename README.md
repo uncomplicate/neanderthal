@@ -10,4 +10,4 @@ Read the documentation at [Neanderthal Web Site](http://neanderthal.uncomplicate
 
 Copyright © 2015 Dragan Djuric
 
-Distributed under the Eclipse Public License either version 1.0 or any later version.
+Distributed under the Eclipse Public License either version 1.0 or (at your option) any later version.

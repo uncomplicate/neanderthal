@@ -1,6 +1,10 @@
-# hello-world
+# benchmarks
 
-A Hello World example that helps you get started with Neanderthal.
+A Clojure library designed to ... well, that part is up to you.
+
+## Usage
+
+FIXME
 
 ## License
 

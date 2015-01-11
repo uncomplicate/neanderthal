@@ -38,13 +38,18 @@
 (defn seq-to-buffer
   "Copies the entries from sequence s to new direct
   java.nio.ByteBuffer.
+  If called with two arguments, n is the number of entries
+  that the buffer will hold.
   "
-  [s]
-  (.position ^ByteBuffer
-             (reduce (fn [^ByteBuffer bb ^double e]
-                       (.putDouble bb e))
-                     (direct-buffer (* 8 (count s))) s)
-             0))
+  ([^long n s]
+   (.position ^ByteBuffer
+              (reduce (fn [^ByteBuffer bb ^double e]
+                        (.putDouble bb e))
+                      (direct-buffer (* 8 n))
+                      s)
+              0))
+  ([s]
+   (seq-to-buffer (count s) s)))
 
 (defn dv
   "Creates a native-backed double vector from source.
@@ -123,7 +128,7 @@
         (throw (IllegalArgumentException.
                 (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
                         m n))))
-      (sequential? source) (dge m n (seq-to-buffer source))
+      (sequential? source) (dge m n (seq-to-buffer (* m n) source))
       :default (throw (IllegalArgumentException.
                        (format "I do not know how to create a double vector from %s ."
                                (type source))))))
