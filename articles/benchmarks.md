@@ -14,8 +14,8 @@ We will concentrate on the performance of matrix-matrix multiplication, since it
 
 We compared Neanderthal with:
 
-* JBlas - an easy to install library that uses native BLAS implementation, and is the most popular and easy to install native Java matrix library. It is fast for large matrices, but slow for small matrices. It is used by `clojure.core.matrix library;
-* Vectorz - a pure java/clojure matrix library. Fast for small matrices, but slow for large matrices. Also used by `clojure.core.matrix;
+* JBlas - an easy to install library that uses native BLAS implementation, and is the most popular and the most easy to install native Java matrix library. It is fast for large matrices, but slow for small matrices. It is used by `clojure.core.matrix library;
+* Vectorz - a pure java/clojure matrix library. Fast for small matrices, but slower for large matrices. Also used by `clojure.core.matrix;
 * Java vector summation - for reference, we also measure the time needed to sum a primitive array that has the length equal to the dimension of the matrix.
 
 
@@ -27,20 +27,20 @@ For large matrices, it is 2x faster than JBlas.
 
 ## Results
 
-The code of the benchmark is [here]. The measurements have been done with the help of criterium benchmarking library. On my Intel Core i7 4790k, the results are as follows, measured in seconds:
+The code of the benchmark is [here](https://github.com/uncomplicate/neanderthal/blob/master/examples/benchmarks/src/benchmarks/core.clj). The measurements have been done with the help of criterium benchmarking library. On my Intel Core i7 4790k, running Arch Linux, with Neanderthal 0.1.1, the results are as follows, measured in seconds:
 
-| Neanderthal __________________ | JBLAS | Vectorz |
-| -------------------------- | ----- | ------- | -----
-| 1.1248269524260018E-7 | 6.871390045899843E-6 | 5.737400138982502E-8 |
-| 1.5087644122502282E-7 | 7.034027075057496E-6 | 1.3233027786541422E-7 |
-| 3.856649117594858E-7 | 7.2360799646406735E-6 | 6.138861532689319E-7 |
-| 1.198124521836305E-6 | 8.314695169604258E-6 | 3.792117722521979E-6 |
-| 8.037340273329063E-6 | 1.5561976039736462E-5 | 2.5823903242277254E-5 |
-| 2.460520679909561E-5 | 5.0651585861139204E-5 | 2.108128557894737E-4 |
-| 1.6425813087431694E-4 | 3.056505868686869E-4 | 0.0015566585 |
-| 0.0014111504844444445 | 0.0025484064875 | 0.012041842240740742 |
-| 0.009230138227272727 | 0.018934235111111114 | 0.09465789791666668 |
-| 0.07092692575000001 | 0.13637988016666666 | 0.7515386003333334 |
-| 0.5559446783333334 | 1.0808136156666668 | 6.0170086933333335 |
-| 4.4479705565000005 | 8.589283991166667 | 45.923629157 |
-| 32.518151697 | 66.165910085 | 368.720424231 |
+| Matrix Dimensions | Neanderthal | JBlas | Vectorz | Neanderthal vs JBlas | Neanderthal vs Vectorz |
+| --------------------------:| -----:| -------:| -----:| -------:| --------:|
+| 2x2 | 112.48270 ns | 6.87139 µs | 57.37400 ns | 61.09 | 0.51 |
+| 4x4 | 150.87644 ns | 7.03403 µs | 132.33028 ns | 46.62 | 0.88 |
+| 8x8 | 385.66491 ns | 7.23608 µs | 613.88615 ns | 18.76 | 1.59 |
+| 16x16 | 1.19812 µs | 8.31470 µs | 3.79212 µs | 6.94 | 3.17 |
+| 32x32 | 8.03734 µs | 15.56198 µs | 25.82390 µs | 1.94 | 3.21 |
+| 64x64 | 24.60521 µs | 50.65159 µs | 210.81286 µs | 2.06 | 8.57 |
+| 128x128 | 164.25813 µs | 305.65059 µs | 1.55666 ms | 1.86 | 9.48 |
+| 256x256 | 1.41115 ms | 2.54841 ms | 12.04184 ms | 1.81 | 8.53 |
+| 512x512 | 9.23014 ms | 18.93424 ms | 94.65790 ms | 2.05 | 10.26 |
+| 1024x1024 | 70.92693 ms | 136.37988 ms | 751.53860 ms | 1.92 | 10.60 |
+| 2048x2048 | 555.94468 ms | 1.08081 sec | 6.01701 sec | 1.94 | 10.82 |
+| 4096x4096 | 4.44797 sec | 8.58928 sec | 45.92363 sec | 1.93 | 10.32 |
+| 8192x8192 | 32.51815 sec | 1.10277 min | 6.14534 min | 2.03 | 11.34 |
