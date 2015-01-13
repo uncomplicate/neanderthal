@@ -1,6 +1,6 @@
 (let [nar-classifier (str (System/getProperty "os.arch") "-"
                           (System/getProperty "os.name") "-gpp-jni")]
-  (defproject benchmarks "0.1.1-SNAPSHOT"
+  (defproject benchmarks "0.1.1"
     :description "Benchmarks and comparisons between Neanderthal and other Java matrix libraries."
     :url "https://github.com/uncomplicate/neanderthal/tree/master/examples/benchmarks"
     :license {:name "Eclipse Public License"
@@ -15,5 +15,5 @@
                    [clatrix "0.4.0"]
                    [net.mikera/vectorz-clj "0.28.0"]
                    [org.jblas/jblas "1.2.3"]
-                   [uncomplicate/neanderthal "0.1.1-SNAPSHOT"]
+                   [uncomplicate/neanderthal "0.1.1"]
                    [uncomplicate/neanderthal-atlas "0.1.0" :classifier ~nar-classifier]]))

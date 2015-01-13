@@ -2,7 +2,7 @@
                           (System/getProperty "os.name") "-gpp-jni")
 
       atlas-version "0.1.0"]
-  (defproject uncomplicate/neanderthal "0.1.1-SNAPSHOT"
+  (defproject uncomplicate/neanderthal "0.1.1"
     :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
     :url "https://github.com/uncomplicate/neanderthal"
     :scm {:name "git"
@@ -23,8 +23,7 @@
 
     :aot [uncomplicate.neanderthal.protocols]
 
-    :profiles {:dev {:plugins [[cider/cider-nrepl "0.8.2-SNAPSHOT"]
-                               [lein-midje "3.1.3"]
+    :profiles {:dev {:plugins [[lein-midje "3.1.3"]
                                [lein-marginalia "0.8.0"]
                                [codox "0.8.10"]]
                      :global-vars {*warn-on-reflection* true

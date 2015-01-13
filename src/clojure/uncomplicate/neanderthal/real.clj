@@ -262,7 +262,8 @@
   a is a scalar.
 
   Multiplies vector x by scalar alpha and adds it to
-  vector y. After axpy!, y will be changed.
+  vector y. After axpy!, y will be changed. The first argument
+  always have to be the vector in which the result will be put.
 
   If called with 2 arguments, x and y, adds vector x
   to vector y.
@@ -332,7 +333,7 @@
   ([x y]
    (axpy! (copy y) 1.0 x))
   ([x y & zs]
-   (loop [res (axpy! (p/zero y) 1.0 x) s zs]
+   (loop [res (axpy! (copy y) 1.0 x) s zs]
      (if s
        (recur (axpy! res 1.0 (first s)) (next s))
        res))))
