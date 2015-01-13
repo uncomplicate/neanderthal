@@ -24,7 +24,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 ## On the TODO list
 
 * LAPACK routines;
-* Banded, symmetric, triangular matrices;
+* Banded, symmetric, triangular, and sparse matrices;
 * Support for complex numbers;
 * Support for single-precision floats.
 
@@ -35,14 +35,16 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 ## With Leiningen
 
-The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependencies to your `project.clj`:
+The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependencies to your `project.clj`, just like in [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj):
 
 ```clojure
-[uncomplicate/neanderthal "0.1.0"]
+[uncomplicate/neanderthal "0.1.1"]
 [uncomplicate/neanderthal-atlas "0.1.0" :classifier "amd64-Linux-gpp-jni"]
 ```
 
 Replace `amd64-Linux-gpp-jni` with your system's architecture and OS classifier. If you are not sure what exactly to write, check `(System/getProperty "os.arch")` and `(System/getProperty "os.name")`.
+
+I will always provide at least the Linux library in Clojars. If the library for your OS is not in Clojars, checkout [neanderthal-atlas](https://github.com/uncomplicate/neanderthal-atlas) source and build it with maven using `mvn install`. The build is fully automatic if you have gcc and other related gnu tools. If you can successfully build ATLAS, you already have all the necessary tools.
 
 ## Requirements
 
@@ -51,7 +53,10 @@ Neanderthal is a Clojure library packaged in two `jar` files, distributed throug
 * Pure Clojure lib: `groupId` is `uncomplicate` and `artifactId` is `neanderthal`.
 * Native JNI lib: `groupId` is `uncomplicate` and `artifactId` is `neanderthal-atlas` with a classifier for your operating system and architecture, e.g. `amd64-Linux-gpp-jni`.
 
-Neanderthal also **uses the native ATLAS library and expects that you make it available on your system, typically as a shared so, dll, or dylib!** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). If you do not follow this procedure, and use a pre-packaged ATLAS provided by your system (if it exists), you will probably get very degraded performance compared to a properly installed ATLAS.
+Neanderthal also **uses the native ATLAS library and expects that you make it available on your system, typically as a shared so, dll, or dylib!** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). If you do not follow this procedure, and use a pre-packaged ATLAS provided by your system (if it exists), you will probably get degraded performance compared to a properly installed ATLAS.
+
+**If you know your way around gcc on OS X, or gcc and MinGW on Windows, and are willing to help users of those
+operating systems by providing the convenient binaries, please [contact me](/articles/community.html).**
 
 # Usage
 
@@ -82,4 +87,4 @@ This is one of the ways we can multiply matrices:
 
 # Where to go next
 
-Hopefully this guide got you started and now you'd like to learn more. I expect to build a comprehensive base of articles and references for exploring this topic, so please check the [All Guides](/articles/guides.html) page from time to time. Of course, you should also check Neanderthal API for specific details, and feel free to take a gander at the source while you are there.
+Hopefully this guide got you started and now you'd like to learn more. I expect to build a comprehensive base of articles and references for exploring this topic, so please check the [All Guides](/articles/guides.html) page from time to time. Of course, you should also check the [Neanderthal API](/codox) for specific details, and feel free to take a gander at [the source](https://github.com/uncomplicate/neanderthal) while you are there.

@@ -6,32 +6,32 @@ layout: article
 
 # Matrix Multiplication: Neanderthal vs JBlas vs Vectorz (clojure.core.matrix)
 
-The theme of this article is Neanderthal's performance. For comparisons of Matrix APIs see the tutorials.
+The theme of this article is Neanderthal's performance. For comparisons of Matrix APIs, see the tutorials.
+
+## TL;DR Results
+
+Even for very small matrices (except for matrices smaller than 5x5), Neanderthal is faster than pure Java vectorz.
+For all sizes, it is faster than jBLAS. For large matrices, it is **2x faster than jBLAS**. **Neanderthal uses single-threaded ATLAS by default**, it can be even faster with parallel ATLAS, but for my use cases, I prefer to leave parallelism in Clojure parts of the app.
 
 ## What is measured
 
 Neanderthal uses [ATLAS](http://math-atlas.sourceforge.net/) with almost no overhead - it is expected that it will be as fast as your ATLAS installation (which is quite fast if set up properly).
 
-We will concentrate on the performance of matrix-matrix multiplications, since it is the most complex operation O(n^3) (BLAS 3), and is the most telling. Neanderthal takes great care to be as light as possible, so vector (BLAS 1) and matrix-vector (BLAS 2) are also faster than in similar libraries.
+I will concentrate on the performance of matrix-matrix multiplications, since it is the most complex operation O(n^3) (BLAS 3), and is the most telling. Neanderthal takes great care to be as light as possible, and does not use data copying, so even linear operations, vector (BLAS 1) and quadratic matrix-vector (BLAS 2) are faster than in pure Java.
 
-We compared Neanderthal with:
+I compared Neanderthal with:
 
-* [JBlas](http://mikiobraun.github.io/jblas/) - an easy to install library that uses a staticaly compiled ATLAS BLAS implementation, and is the most popular and the most easy to install native Java matrix library. It is fast for large matrices, but slow for small matrices.
+* [jBLAS](http://mikiobraun.github.io/jblas/) - an easy to install library that uses a staticaly compiled ATLAS BLAS implementation, and is the most popular and the most easy to install native Java matrix library. It is fast for large matrices, but slow for small matrices.
 * [Vectorz](https://github.com/mikera/vectorz) - a pure Java/Clojure matrix library. Fast for small matrices, but slower for large matrices.
 
-These two libraries are a good representation of the state of matrix computations in Java with native (JBlas) and pure Java (Vectors) libraries. They also back the most popular Clojure matrix library, [core.matrix](https://github.com/mikera/core.matrix).
+These two libraries are a good representation of the state of matrix computations in Java with native (jBLAS) and pure Java (Vectors) libraries. They also back the most popular Clojure matrix library, [core.matrix](https://github.com/mikera/core.matrix).
 
-
-## TL;DR Results
-
-Even for very small matrices (except for matrices smaller than 5x5), Neanderthal is faster than pure Java vectorz.
-For all sizes, it is faster than JBlas. For large matrices, it is 2x faster than JBlas.
 
 ## Results
 
 The code of the benchmark is [here](https://github.com/uncomplicate/neanderthal/blob/master/examples/benchmarks/src/benchmarks/core.clj). The measurements have been done with the help of the [Criterium](https://github.com/hugoduncan/criterium) benchmarking library. On my Intel Core i7 4790k with 32GB of RAM, running Arch Linux, with Neanderthal 0.1.1 calling ATLAS 3.10.2, the results are:
 
-| Matrix Dimensions | Neanderthal | JBlas | Vectorz | Neanderthal vs JBlas | Neanderthal vs Vectorz |
+| Matrix Dimensions | Neanderthal | jBLAS | Vectorz | Neanderthal vs jBLAS | Neanderthal vs Vectorz |
 | --------------------------:| -----:| -------:| -----:| -------:| --------:|
 | 2x2 | 112.48270 ns | 6.87139 µs | 57.37400 ns | 61.09 | 0.51 |
 | 4x4 | 150.87644 ns | 7.03403 µs | 132.33028 ns | 46.62 | 0.88 |
