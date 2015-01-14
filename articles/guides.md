@@ -36,7 +36,7 @@ The complete naming scheme is here: [BLAS & LAPACK Naming Scheme](http://www.net
 
 First, set up your environment, as described in the [Getting Started](getting_started.html) guide. [Hello world](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world) project can also help you with leiningen details.
 
-Then, proceed to [Neanderthal Tutorial](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial.clj).
+Then, proceed to [Neanderthal Tutorial](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_test.clj).
 
 Some examples that follow the [Coding the Matrix](http://codingthematrix.com/) book can be found at [Coding the Matrix in Neanderthal](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples/codingthematrix).
 
