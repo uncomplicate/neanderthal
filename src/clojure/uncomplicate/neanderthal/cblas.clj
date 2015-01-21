@@ -1,21 +1,19 @@
 (ns uncomplicate.neanderthal.cblas
-  (:require [primitive-math]
-            [vertigo
+  (:require [vertigo
              [bytes :refer [direct-buffer byte-seq
                             slice-buffer cross-section]]
              [structs :refer [float64 wrap-byte-seq]]]
             [uncomplicate.neanderthal.protocols :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
-           [clojure.lang IFn
-            IFn$LD IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
-            IFn$DO IFn$ODO IFn$ODDO IFn$ODDDO]
+           [clojure.lang IFn IFn$D IFn$DD IFn$LD
+            IFn$DDD IFn$LDD IFn$DDDD IFn$LDDD IFn$DDDDD
+            IFn$DLDD IFn$DLDDD
+            IFn$LDDDD IFn$DO IFn$ODO IFn$OLDO IFn$ODDO
+            IFn$OLDDO IFn$ODDDO]
            [uncomplicate.neanderthal.protocols
             RealVector RealMatrix Vector Matrix
-            RealVectorEditor RealMatrixEditor]))
-
-(set! *warn-on-reflection* true)
-(primitive-math/use-primitive-operators)
+            RealChangeable]))
 
 (def ^:const DEFAULT_ORDER CBLAS/ORDER_COLUMN_MAJOR)
 
@@ -77,38 +75,79 @@
               (format DIMENSION_MSG \x n \y (.dim ^Vector y))))))
   Functor
   (fmap! [x f]
-    (loop [i 0 res buf]
-      (if (< i n)
-        (recur (inc i)
-               (.putDouble
-                res (* 8 stride i)
-                (.invokePrim ^IFn$DD f
-                             (.getDouble buf (* 8 stride i)))))
-        x)))
+    (cond (instance? IFn$DD f)
+          (loop [i 0 res buf]
+            (if (< i n)
+              (recur (inc i)
+                     (.putDouble
+                      res (* 8 stride i)
+                      (.invokePrim ^IFn$DD f
+                                   (.getDouble buf (* 8 stride i)))))
+              x))
+          (instance? IFn$LDD f)
+          (loop [i 0 res buf]
+            (if (< i n)
+              (recur (inc i)
+                     (.putDouble
+                      res (* 8 stride i)
+                      (.invokePrim ^IFn$LDD f i
+                                   (.getDouble buf (* 8 stride i)))))
+              x))
+          (instance? IFn$D f)
+          (loop [i 0 res buf]
+            (if (< i n)
+              (recur (inc i)
+                     (.putDouble
+                      res (* 8 stride i)
+                      (.invokePrim ^IFn$D f)))
+              x))))
   (fmap! [x f y]
     (if (<= n (.dim ^Vector y))
-      (loop [i 0 res buf]
-        (if (< i n)
-          (recur (inc i)
-                 (.putDouble
-                  res (* 8 stride i)
-                  (.invokePrim ^IFn$DDD f
-                               (.getDouble buf (* 8 stride i))
-                               (.entry ^RealVector y i))))
-          x))
+      (cond (instance? IFn$DDD f)
+            (loop [i 0 res buf]
+              (if (< i n)
+                (recur (inc i)
+                       (.putDouble
+                        res (* 8 stride i)
+                        (.invokePrim ^IFn$DDD f
+                                     (.getDouble buf (* 8 stride i))
+                                     (.entry ^RealVector y i))))
+                x))
+            (instance? IFn$LDDD f)
+            (loop [i 0 res buf]
+              (if (< i n)
+                (recur (inc i)
+                       (.putDouble
+                        res (* 8 stride i)
+                        (.invokePrim ^IFn$LDDD f i
+                                     (.getDouble buf (* 8 stride i))
+                                     (.entry ^RealVector y i))))
+                x)))
       (throw (IllegalArgumentException. (format DIFF_DIM_MSG n)))))
   (fmap! [x f y z]
     (if (<= n (min (.dim ^Vector y) (.dim ^Vector z)))
-      (loop [i 0 res buf]
-        (if (< i n)
-          (recur (inc i)
-                 (.putDouble
-                  res (* 8 stride i)
-                  (.invokePrim ^IFn$DDDD f
-                               (.getDouble buf (* 8 stride i))
-                               (.entry ^RealVector y i)
-                               (.entry ^RealVector z i))))
-          x))
+      (cond (instance? IFn$DDDD f)
+            (loop [i 0 res buf]
+              (if (< i n)
+                (recur (inc i)
+                       (.putDouble
+                        res (* 8 stride i)
+                        (.invokePrim ^IFn$DDDD f
+                                     (.getDouble buf (* 8 stride i))
+                                     (.entry ^RealVector y i)
+                                     (.entry ^RealVector z i))))
+                x))
+            (instance? IFn$LDDDD f)
+            (loop [i 0 res buf]
+              (if (< i n)
+                (recur (inc i)
+                       (.putDouble
+                        res (* 8 stride i)
+                        (.invokePrim ^IFn$LDDDD f i
+                                     (.getDouble buf (* 8 stride i))
+                                     (.entry ^RealVector y i)
+                                     (.entry ^RealVector z i))))
+                x)))
       (throw (IllegalArgumentException. (format DIFF_DIM_MSG n)))))
   (fmap! [x f y z w]
     (if (<= n (min (.dim ^Vector y) (.dim ^Vector z) (.dim ^Vector w)))
@@ -140,43 +179,77 @@
     (freduce x id f))
   Reducible
   (freduce [x f]
-    (loop [i 0 res 0.0]
+    (loop [i 2 res (.invokePrim ^IFn$DDD f
+                                (.entry x 0)
+                                (.entry x 1))]
       (if (< i n)
         (recur (inc i)
                (.invokePrim ^IFn$DDD f res
                             (.getDouble buf (* 8 stride i))))
         res)))
   (freduce [x acc f]
-    (if (number? acc)
-      (loop [i 0 res (double acc)]
-        (if (< i n)
-          (recur (inc i)
-                 (.invokePrim ^IFn$DDD f res
-                              (.getDouble buf (* 8 stride i))))
-          res))
-      (loop [i 0 res acc]
-        (if (and (< i n) res)
-          (recur (inc i)
-                 (.invokePrim ^IFn$ODO f res
-                              (.getDouble buf (* 8 stride i))))
-          res))))
+    (cond (instance? IFn$DDD f)
+          (loop [i 0 res (double acc)]
+            (if (< i n)
+              (recur (inc i)
+                     (.invokePrim ^IFn$DDD f res
+                                  (.getDouble buf (* 8 stride i))))
+              res))
+          (instance? IFn$DLDD f)
+          (loop [i 0 res (double acc)]
+            (if (< i n)
+              (recur (inc i)
+                     (.invokePrim ^IFn$DLDD f res i
+                                  (.getDouble buf (* 8 stride i))))
+              res))
+          (instance? IFn$ODO f)
+          (loop [i 0 res acc]
+            (if (and (< i n) res)
+              (recur (inc i)
+                     (.invokePrim ^IFn$ODO f res
+                                  (.getDouble buf (* 8 stride i))))
+              res))
+          (instance? IFn$OLDO f)
+          (loop [i 0 res acc]
+            (if (and (< i n) res)
+              (recur (inc i)
+                     (.invokePrim ^IFn$OLDO f res i
+                                  (.getDouble buf (* 8 stride i))))
+              res))))
   (freduce [x acc f y]
     (if (<= n (.dim ^Vector y))
-      (if (number? acc)
-        (loop [i 0 res (double acc)]
-          (if (and (< i n) (Double/isFinite res))
-            (recur (inc i)
-                   (.invokePrim ^IFn$DDDD f res
-                                (.getDouble buf (* 8 stride i))
-                                (.entry ^RealVector y i)))
-            res))
-        (loop [i 0 res acc]
-          (if (and (< i n) res)
-            (recur (inc i)
-                   (.invokePrim ^IFn$ODDO f res
-                                (.getDouble buf (* 8 stride i))
-                                (.entry ^RealVector y i)))
-            res)))
+      (cond (instance? IFn$DDDD f)
+            (loop [i 0 res (double acc)]
+              (if (and (< i n) (Double/isFinite res))
+                (recur (inc i)
+                       (.invokePrim ^IFn$DDDD f res
+                                    (.getDouble buf (* 8 stride i))
+                                    (.entry ^RealVector y i)))
+                res))
+            (instance? IFn$DLDDD f)
+            (loop [i 0 res (double acc)]
+              (if (and (< i n) (Double/isFinite res))
+                (recur (inc i)
+                       (.invokePrim ^IFn$DLDDD f res i
+                                    (.getDouble buf (* 8 stride i))
+                                    (.entry ^RealVector y i)))
+                res))
+            (instance? IFn$ODDO f)
+            (loop [i 0 res acc]
+              (if (and (< i n) res)
+                (recur (inc i)
+                       (.invokePrim ^IFn$ODDO f res
+                                    (.getDouble buf (* 8 stride i))
+                                    (.entry ^RealVector y i)))
+                res))
+            (instance? IFn$OLDDO)
+            (loop [i 0 res acc]
+              (if (and (< i n) res)
+                (recur (inc i)
+                       (.invokePrim ^IFn$OLDDO f res i
+                                    (.getDouble buf (* 8 stride i))
+                                    (.entry ^RealVector y i)))
+                res)))
       (throw (IllegalArgumentException. (format DIFF_DIM_MSG n)))))
   (freduce [x acc f y z]
     (if (<= n (min (.dim ^Vector y) (.dim ^Vector z)))
@@ -207,20 +280,28 @@
   IFn
   (invoke [x i]
     (.entry x i))
-  RealVectorEditor
-  (dim [_]
-    n)
-  (entry [_ i]
-    (.getDouble buf (* 8 stride i)))
-  (setEntry [x i val]
+  RealChangeable
+  (set [x val]
+    (loop [i 0]
+      (if (< i n)
+        (do
+          (.putDouble buf (* 8 stride i) val)
+          (recur (inc i)))
+        x)))
+  (set [x i val]
     (do
       (.putDouble buf (* 8 stride i) val)
       x))
-  (update [x i f]
+  (alter [x i f]
     (do
       (.putDouble buf (* 8 stride i)
                   (.invokePrim ^IFn$DD f
                                (.getDouble buf (* 8 stride i))))))
+  RealVector
+  (dim [_]
+    n)
+  (entry [_ i]
+    (.getDouble buf (* 8 stride i)))
   (subvector [_ k l]
     (DoubleBlockVector.
      (slice-buffer buf (* 8 k stride) (* 8 l stride))
@@ -277,9 +358,13 @@
   (.write w (format "#<DoubleBlockVector| n:%d, stride:%d, %s>"
                     (.dim dv) (.stride dv) (pr-str (seq dv)))))
 
+;; ================= GE General Matrix =====================
 (declare update-segment)
 
-;; ================= GE General Matrix =====================
+(declare set-segment)
+
+(declare compact?)
+
 (deftype DoubleGeneralMatrix [^ByteBuffer buf ^long m
                               ^long n ^long ld ^long order]
   Object
@@ -302,12 +387,13 @@
   (zero [_]
     (DoubleGeneralMatrix. (direct-buffer (* 8 m n)) m n m order))
   (copy [a b]
-    (let [dgeb ^DoubleGeneralMatrix b]
+    (let [a ^DoubleGeneralMatrix a
+          b ^DoubleGeneralMatrix b]
       (if (and (= m (.m b)) (= n (.n b)))
-        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order dgeb))
-                     (= m ld (.ld dgeb)))
-                (and (= CBLAS/ORDER_ROW_MAJOR order (.order dgeb))
-                     (= n ld (.ld dgeb))))
+        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order b))
+                     (= m ld (.ld b)))
+                (and (= CBLAS/ORDER_ROW_MAJOR order (.order b))
+                     (= n ld (.ld b))))
           (do
             (CBLAS/dcopy (* m n) buf 1 (.buf b) 1)
             b)
@@ -327,12 +413,13 @@
         (throw (IllegalArgumentException.
                 "I can not copy incompatible matrices.")))))
   (swp [a b]
-    (let [dgeb ^DoubleGeneralMatrix b]
+    (let [a ^DoubleGeneralMatrix a
+          b ^DoubleGeneralMatrix b]
       (if (and (= m (.m b)) (= n (.n b)))
-        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order dgeb))
-                     (= m ld (.ld dgeb)))
-                (and (= CBLAS/ORDER_ROW_MAJOR order (.order dgeb))
-                     (= n ld (.ld dgeb))))
+        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order b))
+                     (= m ld (.ld b)))
+                (and (= CBLAS/ORDER_ROW_MAJOR order (.order b))
+                     (= n ld (.ld b))))
           (do
             (CBLAS/dswap (* m n) buf 1 (.buf b) 1)
             a)
@@ -376,7 +463,7 @@
           (do (update-segment x j f)
               (recur (inc j)))
           x))))
-  (fmap! [x f y]
+  (fmap! [x f y] ;; TODO support IFn$LDxxx
     (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y)))
       (loop [j 0]
         (if (< j n)
@@ -510,22 +597,27 @@
   (freduce [x acc f y z ws]
     (throw (UnsupportedOperationException.
             "Primitive functions support max 4 args.")))
-  RealMatrixEditor
-  (mrows [_]
-    m)
-  (ncols [_]
-    n)
-  (entry [_ i j]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-      (.getDouble buf (+ (* 8 ld j) (* 8 i)))
-      (.getDouble buf (+ (* 8 ld i) (* 8 j)))))
-  (setEntry [a i j val]
+  RealChangeable
+  (set [a val]
+    (if (compact? a)
+      (loop [i 0]
+        (if (< i (* m n))
+          (do (.putDouble buf (* 8 i) val)
+              (recur (inc i)))
+          a))
+      (let [end (if (= CBLAS/ORDER_COLUMN_MAJOR order) n m)]
+        (loop [j 0]
+          (if (< j end)
+            (do (set-segment a j val)
+                (recur (inc j)))
+            a)))))
+  (set [a i j val]
     (do
       (if (= CBLAS/ORDER_COLUMN_MAJOR order)
         (.putDouble buf (+ (* 8 ld j) (* 8 i)) val)
         (.putDouble buf (+ (* 8 ld i) (* 8 j)) val))
       a))
-  (update [a i j f]
+  (alter [a i j f]
     (do
       (let [ind (if (= CBLAS/ORDER_COLUMN_MAJOR order)
                   (+ (* 8 ld j) (* 8 i))
@@ -534,6 +626,15 @@
                     (.invokePrim ^IFn$DD f
                                  (.getDouble buf ind))))
       a))
+  RealMatrix
+  (mrows [_]
+    m)
+  (ncols [_]
+    n)
+  (entry [_ i j]
+    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+      (.getDouble buf (+ (* 8 ld j) (* 8 i)))
+      (.getDouble buf (+ (* 8 ld i) (* 8 j)))))
   (row [_ i]
     (if (= CBLAS/ORDER_COLUMN_MAJOR order)
       (DoubleBlockVector.
@@ -603,6 +704,11 @@
                        (.ld ^DoubleGeneralMatrix c))
           c))))
 
+(defn compact? [^DoubleGeneralMatrix a]
+  (if (= CBLAS/ORDER_COLUMN_MAJOR (.order a))
+    (= (.m a) (.ld a))
+    (= (.n a) (.ld a))))
+
 (defn ^:private update-segment [^DoubleGeneralMatrix a ^long k f]
   (let [start (* 8 (long (.ld a)) k)
         end (+ start (* 8 (if (= CBLAS/ORDER_COLUMN_MAJOR (.order a))
@@ -614,6 +720,18 @@
         (do (.putDouble buf ind
                         (.invokePrim ^IFn$DD f
                                      (.getDouble buf ind)))
+            (recur (+ 8 ind)))
+        a))))
+
+(defn ^:private set-segment [^DoubleGeneralMatrix a ^long k ^long end ^double val]
+  (let [start (* 8 (.ld a) k)
+        end (+ start (* 8 (if (= CBLAS/ORDER_COLUMN_MAJOR (.order a))
+                            (.m a)
+                            (.n a))))
+        buf ^ByteBuffer (.buf a)]
+    (loop [ind start]
+      (if (< ind end)
+        (do (.putDouble buf ind val)
             (recur (+ 8 ind)))
         a))))
 

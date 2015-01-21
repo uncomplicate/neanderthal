@@ -11,7 +11,7 @@ public interface RealVector extends Vector {
     double asum ();
 
     RealVector rot (RealVector y,
-                      double c, double s);
+                    double c, double s);
 
     RealVector scal (double alpha);
 

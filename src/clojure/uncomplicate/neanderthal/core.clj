@@ -14,13 +14,9 @@
   (ns test
     (:require [uncomplicate.neanderthal core real]))
   "
-  (:require [primitive-math]
-            [uncomplicate.neanderthal.protocols :as p])
+  (:require  [uncomplicate.neanderthal.protocols :as p])
   (:import [uncomplicate.neanderthal.protocols
             Vector Matrix Carrier]))
-
-(set! *warn-on-reflection* true)
-(primitive-math/use-primitive-operators)
 
 (def ^:private SEGMENT_MSG
   "Required segment %d-%d does not fit in a %d-dim vector.")
@@ -209,8 +205,6 @@
   [^Matrix m]
   (map #(.row m %) (range (.mrows m))))
 
-(primitive-math/unuse-primitive-operators)
-
 (defn submatrix
   "Returns a submatrix of m starting with row i, column j,
   that has k columns and l rows.
@@ -226,16 +220,14 @@
   => #<DoubleGeneralMatrix| COL, mxn: 2x1, ld:4 ((5.0 6.0))>
   "
   ([^Matrix a i j k l]
-   (if (and (<= 0 i (+ i k) (.mrows a))
-            (<= 0 j (+ j l) (.ncols a)))
+   (if (and (<= 0 (long i) (+ (long i) (long k)) (.mrows a))
+            (<= 0 (long j) (+ (long j) (long l)) (.ncols a)))
      (.submatrix a i j k l)
      (throw (IndexOutOfBoundsException.
              (format "Submatrix %d,%d %d,%d is out of bounds of %dx%d."
                      i j k l (.mrows a) (.ncols a))))))
   ([^Matrix a k l]
    (submatrix a 0 0 k l)))
-
-(primitive-math/use-primitive-operators)
 
 (defn trans
   "Transposes matrix m, i.e returns a matrix that has
@@ -298,5 +290,3 @@
   "
   [^Carrier x]
   (copy! x (p/zero x)))
-
-(primitive-math/unuse-primitive-operators)

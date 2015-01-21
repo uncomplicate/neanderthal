@@ -1,10 +1,5 @@
 (ns uncomplicate.neanderthal.math
-  (:require [primitive-math])
   (:import [org.apache.commons.math3.util FastMath Precision]))
-
-(set! *warn-on-reflection* true)
-
-(primitive-math/use-primitive-operators)
 
 (defn f=
   ([^double x ^double y ^double nepsilons]
@@ -39,6 +34,9 @@
 (defn round ^double [^double x]
   (Math/floor (+ 0.5 x)))
 
+(defn round? [^double x]
+  (= x (Math/floor (+ 0.5 x))))
+
 (defn floor ^double [^double x]
   (Math/floor x))
 
@@ -56,5 +54,3 @@
 
 (defn abs ^double [^double x]
   (if (< x 0.0) (- x) x))
-
-(primitive-math/unuse-primitive-operators)

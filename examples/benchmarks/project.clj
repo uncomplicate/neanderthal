@@ -6,7 +6,7 @@
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-    :jvm-opts ^:replace ["-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"] ;;also replaces lein's default JVM argument TieredStopAtLevel=1
+    :jvm-opts ^:replace ["-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"];;also replaces lein's default JVM argument TieredStopAtLevel=1
 
     :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
                    [criterium "0.4.3"]

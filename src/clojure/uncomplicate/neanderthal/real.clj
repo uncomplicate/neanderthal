@@ -14,24 +14,21 @@
   (ns test
     (:require [uncomplicate.neanderthal core real]))
   "
-  (:require [primitive-math]
-            [vertigo
-             [bytes :refer [direct-buffer]]
-             [core :refer [wrap]]
-             [structs :refer [float64]]]
+  (:require  [vertigo
+              [bytes :refer [direct-buffer]]
+              [core :refer [wrap]]
+              [structs :refer [float64]]]
             [uncomplicate.neanderthal
              [protocols :as p]
-             [core :refer [copy]]
+             [core :refer [copy mrows ncols]]
              [math :refer [f= pow sqrt]]
              [cblas :refer [MAT_BOUNDS_MSG DEFAULT_ORDER]]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix]
            [uncomplicate.neanderthal.protocols
             RealVector RealMatrix Carrier
-            RealVectorEditor RealMatrixEditor]
+            RealChangeable]
            [java.nio ByteBuffer]))
-
-(primitive-math/use-primitive-operators)
 
 ;; ============ Creating double constructs  ==============
 
@@ -87,7 +84,8 @@
       (DoubleBlockVector. source
                           (/ (.capacity ^ByteBuffer source) 8)
                           1)
-      (and (integer? source) (pos? source)) (dv (direct-buffer (* 8 (long source))))
+      (and (integer? source) (<= 0 (long source)))
+      (dv (direct-buffer (* 8 (long source))))
       (float? source) (dv [source])
       (sequential? source) (dv (seq-to-buffer source))
       :default (throw (IllegalArgumentException.
@@ -136,26 +134,32 @@
      (dge m n (direct-buffer (* 8 m n)))))
 
 ;; ============ Vector and Matrix access methods ===
-(defn entry ^double
+(defn entry
   {:doc "Returns the i-th entry of vector x, or ij-th entry of matrix m."}
-  ([^RealVector x ^long i]
+  (^double [^RealVector x ^long i]
    (.entry x i))
-  ([^RealMatrix m ^long i ^long j]
+  (^double [^RealMatrix m ^long i ^long j]
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.entry m i j)
      (throw (IndexOutOfBoundsException.
              (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
-(defn set-entry!
+(defn fset!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
+  or all entries if no index is provided,
   to value val and returns the vector or matrix."
-  ([^RealVectorEditor v ^long i ^double val]
-   (.setEntry v i val))
-  ([^RealMatrixEditor m ^long i ^long j ^double val]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
-     (.setEntry m i j val)
+  ([^RealChangeable c ^double val]
+   (.set c val))
+  ([^RealChangeable v ^long i ^double val]
+   (.set v i val))
+  ([^RealChangeable m ^long i ^long j ^double val]
+   (if (and (< -1 i (mrows m)) (< -1 j (ncols m)))
+     (.set m i j val)
      (throw (IndexOutOfBoundsException.
-             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format MAT_BOUNDS_MSG i j (mrows m) (ncols m)))))))
+
+(defn alter! []
+  nil) ;;TODO
 
 ;; ================== Category functions  ==============
 (defn fmap!
@@ -192,10 +196,11 @@
 
 ;; ================== BLAS 1 =======================
 
-(defn dot ^double
+(defn dot
   {:doc "BLAS 1: Dot product.
         Computes the dot product of vectors x and y.
         (dot (dv 1 2 3) (dv 1 2 3)) => 14.0"}
+  ^double
   [^RealVector x ^RealVector y]
   (if (= (.dim x) (.dim y))
     (.dot x y)
@@ -203,17 +208,19 @@
             (format "Incompatible dimensions - x:%d and y:%d."
                     (.dim x) (.dim y))))))
 
-(defn nrm2 ^double
+(defn nrm2
   {:doc "BLAS 1: Euclidean norm.
         Computes the Euclidan (L2) norm of vector x.
         (nrm2 (dv 1 2 3)) => 3.7416573867739413"}
+  ^double
   [^RealVector x]
   (.nrm2 x))
 
-(defn asum ^double
+(defn asum
   {:doc "BLAS 1: Sum absolute values.
          Sums absolute values of entries of vector x.
          (asum (dv -1 2 -3)) => 6.0"}
+  ^double
   [^RealVector x]
   (.asum x))
 
@@ -472,5 +479,3 @@
    (mm! (dge (.mrows a) (.ncols b)) alpha a b 0.0))
   ([a b]
    (mm 1.0 a b)))
-
-(primitive-math/unuse-primitive-operators)
