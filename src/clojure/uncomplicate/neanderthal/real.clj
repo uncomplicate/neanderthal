@@ -16,37 +16,75 @@
   "
   (:require  [vertigo
               [bytes :refer [direct-buffer]]
-              [core :refer [wrap]]
-              [structs :refer [float64]]]
+              [core :refer [wrap marshal-seq]]
+              [structs :refer [float64 float32 unwrap-byte-seq]]]
             [uncomplicate.neanderthal
              [protocols :as p]
              [core :refer [copy mrows ncols]]
              [math :refer [f= pow sqrt]]
              [cblas :refer [MAT_BOUNDS_MSG DEFAULT_ORDER]]])
   (:import [uncomplicate.neanderthal.cblas
-            DoubleBlockVector DoubleGeneralMatrix]
+            DoubleBlockVector DoubleGeneralMatrix
+            FloatBlockVector]
            [uncomplicate.neanderthal.protocols
             RealVector RealMatrix Carrier
             RealChangeable]
-           [java.nio ByteBuffer]))
+           [java.nio ByteBuffer]
+           [vertigo.bytes ByteSeq]))
 
 ;; ============ Creating double constructs  ==============
 
-(defn seq-to-buffer
-  "Copies the entries from sequence s to new direct
-  java.nio.ByteBuffer.
-  If called with two arguments, n is the number of entries
-  that the buffer will hold.
-  "
-  ([^long n s]
-   (.position ^ByteBuffer
-              (reduce (fn [^ByteBuffer bb ^double e]
-                        (.putDouble bb e))
-                      (direct-buffer (* 8 n))
-                      s)
-              0))
+(defn to-buffer
+  ([type s]
+   (.buf ^ByteSeq (unwrap-byte-seq (marshal-seq type s))))
   ([s]
-   (seq-to-buffer (count s) s)))
+   (to-buffer float64 s)))
+
+(defn fv
+  "Creates a native-backed float vector from source.
+
+  Accepts following source:
+  - java.nio.ByteBuffer with a capacity divisible by 4,
+  . which will be used as-is for backing the vector.
+  - a positive integer, which will be used as a dimension
+  . of new vector with zeroes as entries.
+  - a floating point number, which will be the only entry
+  . in a one-dimensional vector.
+  - a clojure sequence, which will be copied into a
+  . direct ByteBuffer that backs the new vector.
+  - varargs will be treated as a clojure sequence.
+
+  (fv (java.nio.ByteBuffer/allocateDirect 16))
+  => #<FloatBlockVector| n:4, stride:1 (0.0 0.0 0.0 0.0)>
+
+  (fv 4)
+  => #<FloatBlockVector| n:4, stride:1 (0.0 0.0 0.0 0.0)>
+
+  (fv 12.4)
+  => #<FloatBlockVector| n:1, stride:1 (12.4)>
+
+  (fv (range 4))
+  => #<FloatBlockVector| n:4, stride:1 (0.0 1.0 2.0 3.0)>
+
+  (fv 1 2 3)
+  => #<FloatBlockVector| n:3, stride:1, (1.0 2.0 3.0)>
+  "
+  ([source]
+     (cond
+      (and (instance? ByteBuffer source)
+           (zero? (long (mod (.capacity ^ByteBuffer source) Float/BYTES))))
+      (FloatBlockVector. source
+                          (/ (.capacity ^ByteBuffer source) Float/BYTES)
+                          1)
+      (and (integer? source) (<= 0 (long source)))
+      (fv (direct-buffer (* Float/BYTES (long source))))
+      (float? source) (fv [source])
+      (sequential? source) (fv (to-buffer float32 source))
+      :default (throw (IllegalArgumentException.
+                       (format "I do not know how to create a float vector from %s ."
+                               (type source))))))
+  ([x & xs]
+     (fv (cons x xs))))
 
 (defn dv
   "Creates a native-backed double vector from source.
@@ -80,19 +118,20 @@
   ([source]
      (cond
       (and (instance? ByteBuffer source)
-           (zero? (long (mod (.capacity ^ByteBuffer source) 8))))
+           (zero? (long (mod (.capacity ^ByteBuffer source) Double/BYTES))))
       (DoubleBlockVector. source
-                          (/ (.capacity ^ByteBuffer source) 8)
+                          (/ (.capacity ^ByteBuffer source) Double/BYTES)
                           1)
       (and (integer? source) (<= 0 (long source)))
-      (dv (direct-buffer (* 8 (long source))))
+      (dv (direct-buffer (* Double/BYTES (long source))))
       (float? source) (dv [source])
-      (sequential? source) (dv (seq-to-buffer source))
+      (sequential? source) (dv (to-buffer float64 source))
       :default (throw (IllegalArgumentException.
                        (format "I do not know how to create a double vector from %s ."
                                (type source))))))
   ([x & xs]
-     (dv (cons x xs))))
+   (dv (cons x xs))))
+
 
 (defn dge
   "Creates a native-backed, dense, column-oriented
@@ -102,7 +141,7 @@
   with dimensions mxn.
 
   Accepts following sources:
-  - java.nio.ByteBuffer with a capacity = 8 * m * n,
+  - java.nio.ByteBuffer with a capacity = Double/BYTES * m * n,
   . which will be used as-is for backing the matrix.
   - a clojure sequence, which will be copied into a
   . direct ByteBuffer that backs the new vector.
@@ -119,19 +158,20 @@
   ([^long m ^long n source]
      (cond
       (and (instance? ByteBuffer source)
-           (zero? (long (mod (.capacity ^ByteBuffer source) 8))))
-      (if (= (* 8 m n) (.capacity ^ByteBuffer source))
+           (zero? (long (mod (.capacity ^ByteBuffer source) Double/BYTES)))
+           (= (* m n) (quot (.capacity ^ByteBuffer source) Double/BYTES)))
+      (if (= (* Double/BYTES m n) (.capacity ^ByteBuffer source))
         (DoubleGeneralMatrix.
          source m n (max m 1) DEFAULT_ORDER)
         (throw (IllegalArgumentException.
                 (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
                         m n))))
-      (sequential? source) (dge m n (seq-to-buffer (* m n) source))
+      (sequential? source) (dge m n (to-buffer source))
       :default (throw (IllegalArgumentException.
                        (format "I do not know how to create a double vector from %s ."
                                (type source))))))
   ([^long m ^long n]
-     (dge m n (direct-buffer (* 8 m n)))))
+     (dge m n (direct-buffer (* Double/BYTES m n)))))
 
 ;; ============ Vector and Matrix access methods ===
 (defn entry
@@ -175,7 +215,7 @@
    (apply p/fmap! x f y z w ws)))
 
 (defn fold
-  ([x]
+  (^double [x] ;;TODO all categorical functions than can be primitive should be checked
    (p/fold x))
   ([f x]
    (p/fold x f))

@@ -5,7 +5,7 @@
   ([^double x ^double y ^double nepsilons]
      (Precision/equals x y (* Precision/EPSILON nepsilons)))
   ([^double x ^double y]
-     (Precision/equals x y Precision/EPSILON)))
+   (Precision/equals x y Precision/EPSILON)))
 
 (defn f<
   ([^double x ^double y ^double nepsilons]
