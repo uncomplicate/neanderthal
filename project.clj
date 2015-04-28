@@ -23,6 +23,7 @@
                       uncomplicate.neanderthal.protocols]
             :output-dir "docs/codox"}
 
+    :jvm-opts ^:replace ["-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"];;also replaces lein's default JVM argument TieredStopAtLevel=1
     :aot [uncomplicate.neanderthal.protocols]
 
     :profiles {:dev {:plugins [[lein-midje "3.1.3"]

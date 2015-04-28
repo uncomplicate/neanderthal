@@ -38,6 +38,56 @@
 (defn entry-eq [res ^double x ^double y]
   (= x y))
 
+(defn real-fmap
+  ([^RealVector x f]
+   (cond
+     (instance? IFn$DD f)
+     (dotimes [i (.dim x)]
+       (.alter ^RealChangeable x i f))
+     (instance? IFn$LDD f)
+     (dotimes [i (.dim x)]
+       (.set ^RealChangeable x i (.invokePrim ^IFn$LDD f i (.entry x i))))
+     (instance? IFn$LD f)
+     (dotimes [i (.dim x)]
+       (.set ^RealChangeable x i (.invokePrim ^IFn$LD f i)))
+     :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
+  ([^RealVector x f ^RealVector y]
+   (if (<= (.dim x) (.dim y))
+     (cond
+       (instance? IFn$DDD f)
+       (dotimes [i (.dim x)]
+         (.set ^RealChangeable x i
+               (.invokePrim ^IFn$DDD f (.entry x i) (.entry y i))))
+       (instance? IFn$LDDD f)
+       (dotimes [i (.dim x)]
+         (.set ^RealChangeable x i
+               (.invokePrim ^IFn$LDDD f i (.entry x i) (.entry y i))))
+       :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([^RealVector x f ^RealVector y ^RealVector z]
+   (if (<= (.dim x) (min (.dim y) (.dim z)))
+     (cond
+       (instance? IFn$DDDD f)
+       (dotimes [i (.dim x)]
+         (.set ^RealChangeable x i
+               (.invokePrim ^IFn$DDDD f (.entry x i) (.entry y i) (.entry z i))))
+       (instance? IFn$LDDDD f)
+       (dotimes [i (.dim x)]
+         (.set ^RealChangeable x i
+               (.invokePrim ^IFn$LDDDD f i (.entry x i) (.entry y i) (.entry z i))))
+       :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([^RealVector x f ^RealVector y ^RealVector z ^RealVector w]
+   (if (<= (.dim x) (min (.dim y) (.dim z) (.dim w)))
+     (dotimes [i (.dim x)]
+       (.set ^RealChangeable x i
+             (.invokePrim ^IFn$DDDDD f
+                          (.entry x i) (.entry y i) (.entry z i) (.entry w i))))
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([x f y z w ws]
+   (throw (UnsupportedOperationException.
+           "Primitive functions support max 4 args."))))
+
 ;;-------------- Float Vector -----------------------------
 (deftype FloatBlockVector [^ByteBuffer buf ^long n ^long stride]
   Object
@@ -48,12 +98,12 @@
         res)))
   (equals [x y]
     (cond
-     (nil? y) false
-     (identical? x y) true
-     (instance? FloatBlockVector y)
-     (and (= n (.dim ^Vector y))
-          (freduce x true entry-eq y))
-     :default false))
+      (nil? y) false
+      (identical? x y) true
+      (instance? FloatBlockVector y) ;;TODO may be unnecessary, test for RealVector
+      (and (= n (.dim ^Vector y))
+           (freduce x true entry-eq y))
+      :default false))
   clojure.lang.Seqable
   (seq [_]
     (wrap-byte-seq float32 (* Float/BYTES stride) 0 (byte-seq buf)))
@@ -76,110 +126,7 @@
           y)
       (throw (IllegalArgumentException.
               (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
-  Functor
-  (fmap! [x f]
-    (cond (instance? IFn$DD f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putFloat
-                      res (* Float/BYTES stride i)
-                      (.invokePrim ^IFn$DD f
-                                   (.getFloat buf (* Float/BYTES stride i)))))
-              x))
-          (instance? IFn$D f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putFloat
-                      res (* Float/BYTES stride i)
-                      (.invokePrim ^IFn$D f)))
-              x))
-          (instance? IFn$LDD f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putFloat
-                      res (* Float/BYTES stride i)
-                      (.invokePrim ^IFn$LDD f i
-                                   (.getFloat buf (* Float/BYTES stride i)))))
-              x))
-          (instance? IFn$LD f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putFloat
-                      res (* Float/BYTES stride i)
-                      (.invokePrim ^IFn$LD f i)))
-              x))
-          :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
-  (fmap! [x f y]
-    (if (<= n (.dim ^Vector y))
-      (cond (instance? IFn$DDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putFloat
-                        res (* Float/BYTES stride i)
-                        (.invokePrim ^IFn$DDD f
-                                     (.getFloat buf (* Float/BYTES stride i))
-                                     (.entry ^RealVector y i))))
-                x))
-            (instance? IFn$LDDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putFloat
-                        res (* Float/BYTES stride i)
-                        (.invokePrim ^IFn$LDDD f i
-                                     (.getFloat buf (* Float/BYTES stride i))
-                                     (.entry ^RealVector y i))))
-                x))
-            :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z]
-    (if (<= n (min (.dim ^Vector y) (.dim ^Vector z)))
-      (cond (instance? IFn$DDDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putFloat
-                        res (* Float/BYTES stride i)
-                        (.invokePrim ^IFn$DDDD f
-                                     (.getFloat buf (* Float/BYTES stride i))
-                                     (.entry ^RealVector y i)
-                                     (.entry ^RealVector z i))))
-                x))
-            (instance? IFn$LDDDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putFloat
-                        res (* Float/BYTES stride i)
-                        (.invokePrim ^IFn$LDDDD f i
-                                     (.getFloat buf (* Float/BYTES stride i))
-                                     (.entry ^RealVector y i)
-                                     (.entry ^RealVector z i))))
-                x))
-            :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w]
-    (if (<= n (min (.dim ^Vector y) (.dim ^Vector z) (.dim ^Vector w)))
-      (loop [i 0 res buf]
-        (if (< i n)
-          (recur (inc i)
-                 (.putFloat
-                  res (* Float/BYTES stride i)
-                  (.invokePrim ^IFn$DDDDD f
-                               (.getFloat buf (* Float/BYTES stride i))
-                               (.entry ^RealVector y i)
-                               (.entry ^RealVector z i)
-                               (.entry ^RealVector w i))))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
+
   Foldable
   (fold [x]
     (loop [i 0 res 0.0]
@@ -296,12 +243,10 @@
     (.entry x i))
   RealChangeable
   (set [x val]
-    (loop [i 0]
-      (if (< i n)
-        (do
-          (.putFloat buf (* Float/BYTES stride i) val)
-          (recur (inc i)))
-        x)))
+    (do
+      (dotimes [i n]
+        (.putFloat buf (* Float/BYTES stride i) val))
+      x))
   (set [x i val]
     (do
       (.putFloat buf (* Float/BYTES stride i) val)
@@ -309,8 +254,9 @@
   (alter [x i f]
     (do
       (.putFloat buf (* Float/BYTES stride i)
-                  (.invokePrim ^IFn$DD f
-                               (.getFloat buf (* Float/BYTES stride i))))))
+                 (.invokePrim ^IFn$DD f
+                              (.getFloat buf (* Float/BYTES stride i))))
+      x))
   RealVector
   (dim [_]
     n)
@@ -367,6 +313,10 @@
                      (.stride ^FloatBlockVector y))
         y)))
 
+(extend FloatBlockVector
+  Functor
+  {:fmap! real-fmap})
+
 (defmethod print-method FloatBlockVector
   [^FloatBlockVector dv ^java.io.Writer w]
   (.write w (format "#<FloatBlockVector| n:%d, stride:%d, %s>"
@@ -410,110 +360,6 @@
           y)
       (throw (IllegalArgumentException.
               (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
-  Functor
-  (fmap! [x f]
-    (cond (instance? IFn$DD f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putDouble
-                      res (* Double/BYTES stride i)
-                      (.invokePrim ^IFn$DD f
-                                   (.getDouble buf (* Double/BYTES stride i)))))
-              x))
-          (instance? IFn$D f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putDouble
-                      res (* Double/BYTES stride i)
-                      (.invokePrim ^IFn$D f)))
-              x))
-          (instance? IFn$LDD f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putDouble
-                      res (* Double/BYTES stride i)
-                      (.invokePrim ^IFn$LDD f i
-                                   (.getDouble buf (* Double/BYTES stride i)))))
-              x))
-          (instance? IFn$LD f)
-          (loop [i 0 res buf]
-            (if (< i n)
-              (recur (inc i)
-                     (.putDouble
-                      res (* Double/BYTES stride i)
-                      (.invokePrim ^IFn$LD f i)))
-              x))
-          :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
-  (fmap! [x f y]
-    (if (<= n (.dim ^Vector y))
-      (cond (instance? IFn$DDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putDouble
-                        res (* Double/BYTES stride i)
-                        (.invokePrim ^IFn$DDD f
-                                     (.getDouble buf (* Double/BYTES stride i))
-                                     (.entry ^RealVector y i))))
-                x))
-            (instance? IFn$LDDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putDouble
-                        res (* Double/BYTES stride i)
-                        (.invokePrim ^IFn$LDDD f i
-                                     (.getDouble buf (* Double/BYTES stride i))
-                                     (.entry ^RealVector y i))))
-                x))
-            :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z]
-    (if (<= n (min (.dim ^Vector y) (.dim ^Vector z)))
-      (cond (instance? IFn$DDDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putDouble
-                        res (* Double/BYTES stride i)
-                        (.invokePrim ^IFn$DDDD f
-                                     (.getDouble buf (* Double/BYTES stride i))
-                                     (.entry ^RealVector y i)
-                                     (.entry ^RealVector z i))))
-                x))
-            (instance? IFn$LDDDD f)
-            (loop [i 0 res buf]
-              (if (< i n)
-                (recur (inc i)
-                       (.putDouble
-                        res (* Double/BYTES stride i)
-                        (.invokePrim ^IFn$LDDDD f i
-                                     (.getDouble buf (* Double/BYTES stride i))
-                                     (.entry ^RealVector y i)
-                                     (.entry ^RealVector z i))))
-                x))
-            :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w]
-    (if (<= n (min (.dim ^Vector y) (.dim ^Vector z) (.dim ^Vector w)))
-      (loop [i 0 res buf]
-        (if (< i n)
-          (recur (inc i)
-                 (.putDouble
-                  res (* Double/BYTES stride i)
-                  (.invokePrim ^IFn$DDDDD f
-                               (.getDouble buf (* Double/BYTES stride i))
-                               (.entry ^RealVector y i)
-                               (.entry ^RealVector z i)
-                               (.entry ^RealVector w i))))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
   Foldable
   (fold [x]
     (loop [i 0 res 0.0]
@@ -702,6 +548,10 @@
                      (.buf ^DoubleBlockVector y)
                      (.stride ^DoubleBlockVector y))
         y)))
+
+(extend DoubleBlockVector
+  Functor
+  {:fmap! real-fmap})
 
 (defmethod print-method DoubleBlockVector
   [^DoubleBlockVector dv ^java.io.Writer w]
