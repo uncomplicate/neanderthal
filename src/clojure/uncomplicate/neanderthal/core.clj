@@ -27,6 +27,40 @@
 (def ^:private DIMENSION_MSG
   "Different dimensions - required:%d, is:%d.")
 
+;; ================== Category functions  ==============
+(defn fmap!
+  ([f x]
+   (p/fmap! x f))
+  ([f x y]
+   (p/fmap! x f y))
+  ([f x y z]
+   (p/fmap! x f y z))
+  ([f x y z w]
+   (p/fmap! x f y z w))
+  ([f x y z w & ws]
+   (apply p/fmap! x f y z w ws)))
+
+(defn fold
+  (^double [x] ;;TODO all categorical functions than can be primitive should be checked
+           (p/fold x))
+  ([f x]
+   (p/fold x f))
+  ([f id x]
+   (p/fold x f id)))
+
+(defn freduce
+  ([f x]
+   (p/freduce x f))
+  ([f acc x]
+   (p/freduce x acc f))
+  ([f acc x y]
+   (p/freduce x acc f y))
+  ([f acc x y z]
+   (p/freduce x acc f y z))
+  ([f acc x y z & ws]
+   (apply p/freduce x acc f y z ws)))
+
+;; ================= Carrier  ===================================
 (defn zero
   "Returns an empty instance of the same type and dimension(s)
   as x, which can be vector, matrix or any other neanderthal object."

@@ -40,57 +40,61 @@
 
 ;; ================== map/reduce functions ================================
 
-(defn vector-fmap!
+(defn ^:private vector-fmap!
   ([^RealVector x f]
-   (cond
-     (instance? IFn$DD f)
-     (dotimes [i (.dim x)]
-       (.alter ^RealChangeable x i f))
-     (instance? IFn$LDD f)
-     (dotimes [i (.dim x)]
-       (.set ^RealChangeable x i (.invokePrim ^IFn$LDD f i (.entry x i))))
-     (instance? IFn$LD f)
-     (dotimes [i (.dim x)]
-       (.set ^RealChangeable x i (.invokePrim ^IFn$LD f i)))
-     :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
+   (do (cond
+         (instance? IFn$DD f)
+         (dotimes [i (.dim x)]
+           (.alter ^RealChangeable x i f))
+         (instance? IFn$LDD f)
+         (dotimes [i (.dim x)]
+           (.set ^RealChangeable x i (.invokePrim ^IFn$LDD f i (.entry x i))))
+         (instance? IFn$LD f)
+         (dotimes [i (.dim x)]
+           (.set ^RealChangeable x i (.invokePrim ^IFn$LD f i)))
+         :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
+       x))
   ([^RealVector x f ^RealVector y]
-   (if (<= (.dim x) (.dim y))
-     (cond
-       (instance? IFn$DDD f)
-       (dotimes [i (.dim x)]
-         (.set ^RealChangeable x i
-               (.invokePrim ^IFn$DDD f (.entry x i) (.entry y i))))
-       (instance? IFn$LDDD f)
-       (dotimes [i (.dim x)]
-         (.set ^RealChangeable x i
-               (.invokePrim ^IFn$LDDD f i (.entry x i) (.entry y i))))
-       :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+   (do (if (<= (.dim x) (.dim y))
+         (cond
+           (instance? IFn$DDD f)
+           (dotimes [i (.dim x)]
+             (.set ^RealChangeable x i
+                   (.invokePrim ^IFn$DDD f (.entry x i) (.entry y i))))
+           (instance? IFn$LDDD f)
+           (dotimes [i (.dim x)]
+             (.set ^RealChangeable x i
+                   (.invokePrim ^IFn$LDDD f i (.entry x i) (.entry y i))))
+           :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
+         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
+       x))
   ([^RealVector x f ^RealVector y ^RealVector z]
-   (if (<= (.dim x) (min (.dim y) (.dim z)))
-     (cond
-       (instance? IFn$DDDD f)
-       (dotimes [i (.dim x)]
-         (.set ^RealChangeable x i
-               (.invokePrim ^IFn$DDDD f (.entry x i) (.entry y i) (.entry z i))))
-       (instance? IFn$LDDDD f)
-       (dotimes [i (.dim x)]
-         (.set ^RealChangeable x i
-               (.invokePrim ^IFn$LDDDD f i (.entry x i) (.entry y i) (.entry z i))))
-       :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+   (do (if (<= (.dim x) (min (.dim y) (.dim z)))
+         (cond
+           (instance? IFn$DDDD f)
+           (dotimes [i (.dim x)]
+             (.set ^RealChangeable x i
+                   (.invokePrim ^IFn$DDDD f (.entry x i) (.entry y i) (.entry z i))))
+           (instance? IFn$LDDDD f)
+           (dotimes [i (.dim x)]
+             (.set ^RealChangeable x i
+                   (.invokePrim ^IFn$LDDDD f i (.entry x i) (.entry y i) (.entry z i))))
+           :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
+         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
+       x))
   ([^RealVector x f ^RealVector y ^RealVector z ^RealVector w]
-   (if (<= (.dim x) (min (.dim y) (.dim z) (.dim w)))
-     (dotimes [i (.dim x)]
-       (.set ^RealChangeable x i
-             (.invokePrim ^IFn$DDDDD f
-                          (.entry x i) (.entry y i) (.entry z i) (.entry w i))))
-     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+   (do (if (<= (.dim x) (min (.dim y) (.dim z) (.dim w)))
+         (dotimes [i (.dim x)]
+           (.set ^RealChangeable x i
+                 (.invokePrim ^IFn$DDDDD f
+                              (.entry x i) (.entry y i) (.entry z i) (.entry w i))))
+         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
+       x))
   ([x f y z w ws]
    (throw (UnsupportedOperationException.
            "Primitive functions support max 4 args."))))
 
-(defn vector-fold
+(defn ^:private vector-fold
   ([^RealVector x]
    (loop [i 0 res 0.0]
      (if (< i (.dim x))
@@ -102,7 +106,7 @@
   ([x f id]
    (freduce x id f)))
 
-(defn vector-freduce
+(defn ^:private vector-freduce
   ([^RealVector x f]
    (loop [i 2 res (.invokePrim ^IFn$DDD f (.entry x 0) (.entry x 1))]
      (if (< i (.dim x))
@@ -178,36 +182,40 @@
    (throw (UnsupportedOperationException.
            "Primitive functions support max 4 args."))))
 
-(defn matrix-fmap!
+(defn ^:private matrix-fmap!
   ([^Matrix x f]
-   (if (column-major? x)
-     (dotimes [i (.ncols x)]
-       (fmap! (.col x i) f))
-     (dotimes [i (.mrows x)]
-       (fmap! (.row x i) f))))
+   (do (if (column-major? x)
+         (dotimes [i (.ncols x)]
+           (fmap! (.col x i) f))
+         (dotimes [i (.mrows x)]
+           (fmap! (.row x i) f)))
+       x))
   ([^Matrix x f ^Matrix y]
-   (if (column-major? x)
-     (dotimes [i (.ncols x)]
-       (fmap! (.col x i) f (.col y i)))
-     (dotimes [i (.mrows x)]
-       (fmap! (.row x i) f (.row y i)))))
+   (do (if (column-major? x)
+         (dotimes [i (.ncols x)]
+           (fmap! (.col x i) f (.col y i)))
+         (dotimes [i (.mrows x)]
+           (fmap! (.row x i) f (.row y i))))
+       x))
   ([^Matrix x f ^Matrix y ^Matrix z]
-   (if (column-major? x)
-     (dotimes [i (.ncols x)]
-       (fmap! (.col x i) f (.col y i) (.col z i)))
-     (dotimes [i (.mrows x)]
-       (fmap! (.row x i) f (.row y i) (.row z i)))))
+   (do (if (column-major? x)
+         (dotimes [i (.ncols x)]
+           (fmap! (.col x i) f (.col y i) (.col z i)))
+         (dotimes [i (.mrows x)]
+           (fmap! (.row x i) f (.row y i) (.row z i))))
+       x))
   ([^Matrix x f ^Matrix y ^Matrix z ^Matrix w]
-   (if (column-major? x)
-     (dotimes [i (.ncols x)]
-       (fmap! (.col x i) f (.col y i) (.col z i) (.col w i)))
-     (dotimes [i (.mrows x)]
-       (fmap! (.row x i) f (.row y i) (.row z i) (.col w i)))))
+   (do (if (column-major? x)
+         (dotimes [i (.ncols x)]
+           (fmap! (.col x i) f (.col y i) (.col z i) (.col w i)))
+         (dotimes [i (.mrows x)]
+           (fmap! (.row x i) f (.row y i) (.row z i) (.col w i))))
+       x))
   ([x f y z w ws]
    (throw (UnsupportedOperationException.
            "Primitive functions support max 4 args."))))
 
-(defn matrix-fold
+(defn ^:private matrix-fold
  ([^RealMatrix x]
   (loop [j 0 res 0.0]
     (if (< j (.ncols x))
@@ -224,23 +232,23 @@
  ([x f id]
   (freduce x id f)))
 
-(defn matrix-freduce
+(defn ^:private matrix-freduce
   ([x f]
    (fold x f))
   ([^Matrix x acc f]
    (loop [i 0 res acc]
      (if (< i (.ncols x))
-       (recur (inc i) (freduce (.col x i) acc f))
+       (recur (inc i) (freduce (.col x i) res f))
        res)))
   ([^Matrix x acc f ^Matrix y]
    (loop [i 0 res acc]
      (if (< i (.ncols x))
-       (recur (inc i) (freduce (.col x i) acc f (.col y i)))
+       (recur (inc i) (freduce (.col x i) res f (.col y i)))
        res)))
   ([^Matrix x acc f ^Matrix y ^Matrix z]
    (loop [i 0 res acc]
      (if (< i (.ncols x))
-       (recur (inc i) (freduce (.col x i) acc f (.col y i) (.col z i)))
+       (recur (inc i) (freduce (.col x i) res f (.col y i) (.col z i)))
        res)))
   ([x acc f y z ws]
    (throw (UnsupportedOperationException.
@@ -270,6 +278,8 @@
   Carrier
   (zero [_]
     (DoubleBlockVector. (direct-buffer (* Double/BYTES n)) n 1))
+  (byte-size [_]
+    Double/BYTES)
   (swp [x y]
     (if (= n (.dim ^Vector y))
       (do (CBLAS/dswap n buf stride
@@ -395,6 +405,8 @@
   Carrier
   (zero [_]
     (FloatBlockVector. (direct-buffer (* Float/BYTES n)) n 1))
+  (byte-size [_]
+    Float/BYTES)
   (swp [x y]
     (if (= n (.dim ^Vector y))
       (do (CBLAS/sswap n buf stride
@@ -498,7 +510,6 @@
   (.write w (format "#<FloatBlockVector| n:%d, stride:%d, %s>"
                     (.dim dv) (.stride dv) (pr-str (take 100 (seq dv))))))
 
-
 ;; ================= GE General Matrix =====================
 
 ;;-------------- Double General Matrix  -----------------------------
@@ -523,6 +534,8 @@
   Carrier
   (zero [_]
     (DoubleGeneralMatrix. (direct-buffer (* Double/BYTES m n)) m n m order))
+  (byte-size [_]
+    Double/BYTES)
   (copy [a b]
     (let [a ^DoubleGeneralMatrix a
           b ^DoubleGeneralMatrix b]
@@ -552,7 +565,7 @@
                 (swp (.col a i) (.col b i)))
               (dotimes [i m]
                 (swp (.row a i) (.row b i)))))
-          b)
+          a)
         (throw (IllegalArgumentException.
                 "I can not copy incompatible matrices.")))))
   (column-major? [a]
@@ -715,6 +728,8 @@
   Carrier
   (zero [_]
     (FloatGeneralMatrix. (direct-buffer (* Float/BYTES m n)) m n m order))
+  (byte-size [_]
+    Float/BYTES)
   (copy [a b]
     (let [a ^FloatGeneralMatrix a
           b ^FloatGeneralMatrix b]
@@ -744,7 +759,7 @@
                 (swp (.col a i) (.col b i)))
               (dotimes [i m]
                 (swp (.row a i) (.row b i)))))
-          b)
+          a)
         (throw (IllegalArgumentException.
                 "I can not copy incompatible matrices.")))))
   (column-major? [a]

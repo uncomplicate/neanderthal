@@ -14,14 +14,14 @@
 
 
 (facts "Create a float vector."
-       (let [x (FloatBlockVector. (to-buffer float32 [1 2 3]) 3 1)]
+       (let [x (FloatBlockVector. (to-buffer Float/BYTES [1 2 3]) 3 1)]
          (sv [1 2 3]) => x
          (sv 1 2 3) => (sv [1 2 3])
          (sv 3) => (sv [0 0 0])
-         (sv (to-buffer float32 [1 2 3]))
+         (sv (to-buffer Float/BYTES [1 2 3]))
          => x
          (sv nil) => (throws IllegalArgumentException)
-         (sv []) => (sv (to-buffer float32 []))
+         (sv []) => (sv (to-buffer Float/BYTES []))
          (sv 3) => (zero x)
 ;;         (sv (long-array [1 3]))
          ;;=> (throws IllegalArgumentException)
@@ -143,11 +143,11 @@
 ;; ================= Real Matrix functions ===========================
 (facts "Create a float matrix."
        (let [a (FloatGeneralMatrix.
-                (to-buffer float32 [1 2 3 4 5 6]) 2 3 2 cblas/DEFAULT_ORDER)]
+                (to-buffer Float/BYTES [1 2 3 4 5 6]) 2 3 2 cblas/DEFAULT_ORDER)]
          (sge 2 3 [1 2 3 4 5 6]) => a
-         (sge 2 3 (to-buffer float32 [1 2 3 4 5 6])) => a
+         (sge 2 3 (to-buffer Float/BYTES [1 2 3 4 5 6])) => a
          (sge 2 3 nil) => (throws IllegalArgumentException)
-         (sge 0 0 []) => (sge 0 0 (to-buffer float32 []))
+         (sge 0 0 []) => (sge 0 0 (to-buffer Float/BYTES []))
          ;;(sge 2 1 (long-array [1 3]))
          ;;=> (throws IllegalArgumentException)
          ;;(sge 2 1 (object-array [1 3]))

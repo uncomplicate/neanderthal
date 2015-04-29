@@ -2,6 +2,7 @@
 
 (defprotocol Carrier
   (zero [_])
+  (byte-size [_])
   (copy [_ y])
   (swp [_ y])
   (column-major? [x]))

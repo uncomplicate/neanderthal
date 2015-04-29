@@ -22,7 +22,9 @@
              [protocols :as p]
              [core :refer [copy mrows ncols]]
              [math :refer [f= pow sqrt]]
-             [cblas :refer [MAT_BOUNDS_MSG DEFAULT_ORDER]]])
+             [cblas :refer [MAT_BOUNDS_MSG DEFAULT_ORDER
+                            ->FloatBlockVector ->FloatGeneralMatrix
+                            ->DoubleBlockVector ->DoubleGeneralMatrix]]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix
             FloatBlockVector FloatGeneralMatrix]
@@ -35,10 +37,52 @@
 ;; ============ Creating double constructs  ==============
 
 (defn to-buffer
-  ([type s]
-   (.buf ^ByteSeq (unwrap-byte-seq (marshal-seq type s))))
+  ([^long bytesize s]
+   (.buf ^ByteSeq (unwrap-byte-seq
+                   (marshal-seq (case bytesize
+                                  8 float64
+                                  4 float32)
+                                s))))
   ([s]
-   (to-buffer float64 s)))
+   (to-buffer Double/BYTES s)))
+
+(defn real-vector
+  ([^long bytesize source]
+   (cond
+     (and (instance? ByteBuffer source)
+          (zero? (long (mod (.capacity ^ByteBuffer source) bytesize))))
+     ((case bytesize
+        8 ->DoubleBlockVector
+        4 ->FloatBlockVector)
+      source (/ (.capacity ^ByteBuffer source) bytesize) 1)
+     (and (integer? source) (<= 0 (long source)))
+     (real-vector bytesize (direct-buffer (* bytesize (long source))))
+     (float? source) (real-vector bytesize [source])
+     (sequential? source) (real-vector bytesize (to-buffer bytesize source))
+     :default (throw (IllegalArgumentException.
+                      (format "I do not know how to create a vector from %s."
+                              (type source)))))))
+
+(defn real-matrix
+  ([^long bytesize ^long m ^long n source]
+   (cond
+     (and (instance? ByteBuffer source)
+          (zero? (long (mod (.capacity ^ByteBuffer source) bytesize)))
+          (= (* m n) (quot (.capacity ^ByteBuffer source) bytesize)))
+     (if (= (* bytesize m n) (.capacity ^ByteBuffer source))
+       ((case bytesize
+          8 ->DoubleGeneralMatrix
+          4 ->FloatGeneralMatrix)
+        source m n (max m 1) DEFAULT_ORDER)
+       (throw (IllegalArgumentException.
+               (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
+                       m n))))
+     (sequential? source) (real-matrix bytesize m n (to-buffer bytesize source))
+     :default (throw (IllegalArgumentException.
+                      (format "I do not know how to create a double matrix from %s ."
+                              (type source))))))
+  ([^long bytesize ^long m ^long n]
+   (real-matrix bytesize m n (direct-buffer (* bytesize m n)))))
 
 (defn sv
   "Creates a native-backed float vector from source.
@@ -70,21 +114,9 @@
   => #<FloatBlockVector| n:3, stride:1, (1.0 2.0 3.0)>
   "
   ([source]
-     (cond
-      (and (instance? ByteBuffer source)
-           (zero? (long (mod (.capacity ^ByteBuffer source) Float/BYTES))))
-      (FloatBlockVector. source
-                          (/ (.capacity ^ByteBuffer source) Float/BYTES)
-                          1)
-      (and (integer? source) (<= 0 (long source)))
-      (sv (direct-buffer (* Float/BYTES (long source))))
-      (float? source) (sv [source])
-      (sequential? source) (sv (to-buffer float32 source))
-      :default (throw (IllegalArgumentException.
-                       (format "I do not know how to create a float vector from %s ."
-                               (type source))))))
+   (real-vector Float/BYTES source))
   ([x & xs]
-     (sv (cons x xs))))
+   (sv (cons x xs))))
 
 (defn dv
   "Creates a native-backed double vector from source.
@@ -116,19 +148,7 @@
   => #<DoubleBlockVector| n:3, stride:1, (1.0 2.0 3.0)>
   "
   ([source]
-     (cond
-      (and (instance? ByteBuffer source)
-           (zero? (long (mod (.capacity ^ByteBuffer source) Double/BYTES))))
-      (DoubleBlockVector. source
-                          (/ (.capacity ^ByteBuffer source) Double/BYTES)
-                          1)
-      (and (integer? source) (<= 0 (long source)))
-      (dv (direct-buffer (* Double/BYTES (long source))))
-      (float? source) (dv [source])
-      (sequential? source) (dv (to-buffer float64 source))
-      :default (throw (IllegalArgumentException.
-                       (format "I do not know how to create a double vector from %s ."
-                               (type source))))))
+   (real-vector Double/BYTES source))
   ([x & xs]
    (dv (cons x xs))))
 
@@ -155,22 +175,9 @@
   => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
   "
   ([^long m ^long n source]
-     (cond
-      (and (instance? ByteBuffer source)
-           (zero? (long (mod (.capacity ^ByteBuffer source) Double/BYTES)))
-           (= (* m n) (quot (.capacity ^ByteBuffer source) Double/BYTES)))
-      (if (= (* Double/BYTES m n) (.capacity ^ByteBuffer source))
-        (DoubleGeneralMatrix.
-         source m n (max m 1) DEFAULT_ORDER)
-        (throw (IllegalArgumentException.
-                (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
-                        m n))))
-      (sequential? source) (dge m n (to-buffer source))
-      :default (throw (IllegalArgumentException.
-                       (format "I do not know how to create a double matrix from %s ."
-                               (type source))))))
+   (real-matrix Double/BYTES m n source))
   ([^long m ^long n]
-     (dge m n (direct-buffer (* Double/BYTES m n)))))
+   (real-matrix Double/BYTES m n)))
 
 (defn sge
   "Creates a native-backed, dense, column-oriented
@@ -195,22 +202,9 @@
   => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
   "
   ([^long m ^long n source]
-     (cond
-      (and (instance? ByteBuffer source)
-           (zero? (long (mod (.capacity ^ByteBuffer source) Float/BYTES)))
-           (= (* m n) (quot (.capacity ^ByteBuffer source) Float/BYTES)))
-      (if (= (* Float/BYTES m n) (.capacity ^ByteBuffer source))
-        (FloatGeneralMatrix.
-         source m n (max m 1) DEFAULT_ORDER)
-        (throw (IllegalArgumentException.
-                (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
-                        m n))))
-      (sequential? source) (sge m n (to-buffer float32 source))
-      :default (throw (IllegalArgumentException.
-                       (format "I do not know how to create a float matrix from %s ."
-                               (type source))))))
+   (real-matrix Float/BYTES m n source))
   ([^long m ^long n]
-     (sge m n (direct-buffer (* Float/BYTES m n)))))
+   (real-matrix Float/BYTES m n)))
 
 ;; ============ Vector and Matrix access methods ===
 (defn entry
@@ -240,38 +234,6 @@
 (defn alter! []
   nil) ;;TODO
 
-;; ================== Category functions  ==============
-(defn fmap!
-  ([f x]
-   (p/fmap! x f))
-  ([f x y]
-   (p/fmap! x f y))
-  ([f x y z]
-   (p/fmap! x f y z))
-  ([f x y z w]
-   (p/fmap! x f y z w))
-  ([f x y z w & ws]
-   (apply p/fmap! x f y z w ws)))
-
-(defn fold
-  (^double [x] ;;TODO all categorical functions than can be primitive should be checked
-   (p/fold x))
-  ([f x]
-   (p/fold x f))
-  ([f id x]
-   (p/fold x f id)))
-
-(defn freduce
-  ([f x]
-   (p/freduce x f))
-  ([f acc x]
-   (p/freduce x acc f))
-  ([f acc x y]
-   (p/freduce x acc f y))
-  ([f acc x y z]
-   (p/freduce x acc f y z))
-  ([f acc x y z & ws]
-   (apply p/freduce x acc f y z ws)))
 
 ;; ================== BLAS 1 =======================
 
@@ -468,7 +430,7 @@
   "A pure version of mv! that returns the result
   in a new vector instance. Computes alpha a * x."
   ([^double alpha ^RealMatrix a ^Carrier x]
-     (mv! (dv (.mrows a)) alpha a x 0.0))
+     (mv! (real-vector (p/byte-size a) (.mrows a)) alpha a x 0.0))
   ([a x]
      (mv 1.0 a x)))
 
@@ -502,7 +464,7 @@
   in a new matrix instance.
   "
   ([^double alpha ^RealVector x ^RealVector y]
-   (rank! (dge (.dim x) (.dim y)) alpha x y))
+   (rank! (real-matrix (p/byte-size x) (.dim x) (.dim y)) alpha x y))
   ([x y]
    (rank 1.0 x y)))
 
@@ -555,6 +517,6 @@
   in a new matrix instance.
   Computes alpha a * b"
   ([alpha ^RealMatrix a ^RealMatrix b]
-   (mm! (dge (.mrows a) (.ncols b)) alpha a b 0.0))
+   (mm! (real-matrix (p/byte-size a) (.mrows a) (.ncols b)) alpha a b 0.0))
   ([a b]
    (mm 1.0 a b)))
