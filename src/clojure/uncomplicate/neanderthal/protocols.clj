@@ -3,7 +3,8 @@
 (defprotocol Carrier
   (zero [_])
   (copy [_ y])
-  (swp [_ y]))
+  (swp [_ y])
+  (column-major? [x]))
 
 (defprotocol Functor
   (fmap! [x f] [x f y] [x f y z]
@@ -14,4 +15,4 @@
 
 (defprotocol Reducible
   (freduce [x f] [x acc f] [x acc f y]
-    [x acc f y z] [x acc f y z  ws]))
+    [x acc f y z] [x acc f y z ws]))

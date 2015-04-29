@@ -25,7 +25,7 @@
              [cblas :refer [MAT_BOUNDS_MSG DEFAULT_ORDER]]])
   (:import [uncomplicate.neanderthal.cblas
             DoubleBlockVector DoubleGeneralMatrix
-            FloatBlockVector]
+            FloatBlockVector FloatGeneralMatrix]
            [uncomplicate.neanderthal.protocols
             RealVector RealMatrix Carrier
             RealChangeable]
@@ -40,7 +40,7 @@
   ([s]
    (to-buffer float64 s)))
 
-(defn fv
+(defn sv
   "Creates a native-backed float vector from source.
 
   Accepts following source:
@@ -54,19 +54,19 @@
   . direct ByteBuffer that backs the new vector.
   - varargs will be treated as a clojure sequence.
 
-  (fv (java.nio.ByteBuffer/allocateDirect 16))
+  (sv (java.nio.ByteBuffer/allocateDirect 16))
   => #<FloatBlockVector| n:4, stride:1 (0.0 0.0 0.0 0.0)>
 
-  (fv 4)
+  (sv 4)
   => #<FloatBlockVector| n:4, stride:1 (0.0 0.0 0.0 0.0)>
 
-  (fv 12.4)
+  (sv 12.4)
   => #<FloatBlockVector| n:1, stride:1 (12.4)>
 
-  (fv (range 4))
+  (sv (range 4))
   => #<FloatBlockVector| n:4, stride:1 (0.0 1.0 2.0 3.0)>
 
-  (fv 1 2 3)
+  (sv 1 2 3)
   => #<FloatBlockVector| n:3, stride:1, (1.0 2.0 3.0)>
   "
   ([source]
@@ -77,14 +77,14 @@
                           (/ (.capacity ^ByteBuffer source) Float/BYTES)
                           1)
       (and (integer? source) (<= 0 (long source)))
-      (fv (direct-buffer (* Float/BYTES (long source))))
-      (float? source) (fv [source])
-      (sequential? source) (fv (to-buffer float32 source))
+      (sv (direct-buffer (* Float/BYTES (long source))))
+      (float? source) (sv [source])
+      (sequential? source) (sv (to-buffer float32 source))
       :default (throw (IllegalArgumentException.
                        (format "I do not know how to create a float vector from %s ."
                                (type source))))))
   ([x & xs]
-     (fv (cons x xs))))
+     (sv (cons x xs))))
 
 (defn dv
   "Creates a native-backed double vector from source.
@@ -132,7 +132,6 @@
   ([x & xs]
    (dv (cons x xs))))
 
-
 (defn dge
   "Creates a native-backed, dense, column-oriented
   double mxn matrix from source.
@@ -168,10 +167,50 @@
                         m n))))
       (sequential? source) (dge m n (to-buffer source))
       :default (throw (IllegalArgumentException.
-                       (format "I do not know how to create a double vector from %s ."
+                       (format "I do not know how to create a double matrix from %s ."
                                (type source))))))
   ([^long m ^long n]
      (dge m n (direct-buffer (* Double/BYTES m n)))))
+
+(defn sge
+  "Creates a native-backed, dense, column-oriented
+  float mxn matrix from source.
+
+  If called with two arguments, creates a zero matrix
+  with dimensions mxn.
+
+  Accepts following sources:
+  - java.nio.ByteBuffer with a capacity = Float/BYTES * m * n,
+  . which will be used as-is for backing the matrix.
+  - a clojure sequence, which will be copied into a
+  . direct ByteBuffer that backs the new vector.
+
+  (sge 2 3)
+  => #<DoubleGeneralMatrix| COL, mxn: 2x3, ld:2, ((0.0 0.0) (0.0 0.0) (0.0 0.0))>
+
+  (sge 3 2 (range 6))
+  => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 1.0 2.0) (3.0 4.0 5.0))>
+
+  (sge 3 2 (java.nio.ByteBuffer/allocateDirect 48))
+  => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
+  "
+  ([^long m ^long n source]
+     (cond
+      (and (instance? ByteBuffer source)
+           (zero? (long (mod (.capacity ^ByteBuffer source) Float/BYTES)))
+           (= (* m n) (quot (.capacity ^ByteBuffer source) Float/BYTES)))
+      (if (= (* Float/BYTES m n) (.capacity ^ByteBuffer source))
+        (FloatGeneralMatrix.
+         source m n (max m 1) DEFAULT_ORDER)
+        (throw (IllegalArgumentException.
+                (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
+                        m n))))
+      (sequential? source) (sge m n (to-buffer float32 source))
+      :default (throw (IllegalArgumentException.
+                       (format "I do not know how to create a float matrix from %s ."
+                               (type source))))))
+  ([^long m ^long n]
+     (sge m n (direct-buffer (* Float/BYTES m n)))))
 
 ;; ============ Vector and Matrix access methods ===
 (defn entry

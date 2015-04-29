@@ -38,7 +38,9 @@
 (defn entry-eq [res ^double x ^double y]
   (= x y))
 
-(defn real-fmap
+;; ================== map/reduce functions ================================
+
+(defn vector-fmap!
   ([^RealVector x f]
    (cond
      (instance? IFn$DD f)
@@ -88,240 +90,164 @@
    (throw (UnsupportedOperationException.
            "Primitive functions support max 4 args."))))
 
-;;-------------- Float Vector -----------------------------
-(deftype FloatBlockVector [^ByteBuffer buf ^long n ^long stride]
-  Object
-  (hashCode [this]
-    (loop [i 0 res (hash-combine (hash :FloatBlockVector) n)]
-      (if (< i n)
-        (recur (inc i) (hash-combine res (.entry this i)))
-        res)))
-  (equals [x y]
-    (cond
-      (nil? y) false
-      (identical? x y) true
-      (instance? FloatBlockVector y) ;;TODO may be unnecessary, test for RealVector
-      (and (= n (.dim ^Vector y))
-           (freduce x true entry-eq y))
-      :default false))
-  clojure.lang.Seqable
-  (seq [_]
-    (wrap-byte-seq float32 (* Float/BYTES stride) 0 (byte-seq buf)))
-  Carrier
-  (zero [_]
-    (FloatBlockVector. (direct-buffer (* Float/BYTES n)) n 1))
-  (swp [x y]
-    (if (= n (.dim ^Vector y))
-      (do (CBLAS/sswap n buf stride
-                       (.buf ^FloatBlockVector y)
-                       (.stride ^FloatBlockVector y))
-          x)
-      (throw (IllegalArgumentException.
-              (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
-  (copy [_ y]
-    (if (= n (.dim ^Vector y))
-      (do (CBLAS/scopy n buf stride
-                       (.buf ^FloatBlockVector y)
-                       (.stride ^FloatBlockVector y))
-          y)
-      (throw (IllegalArgumentException.
-              (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
+(defn vector-fold
+  ([^RealVector x]
+   (loop [i 0 res 0.0]
+     (if (< i (.dim x))
+       (recur (inc i)
+              (+ res (.entry x i)))
+       res)))
+  ([x f]
+   (freduce x f))
+  ([x f id]
+   (freduce x id f)))
 
-  Foldable
-  (fold [x]
-    (loop [i 0 res 0.0]
-      (if (< i n)
-        (recur (inc i)
-               (+ res (.getFloat buf (* Float/BYTES stride i))))
-        res)))
-  (fold [x f]
-    (freduce x f))
-  (fold [x f id]
-    (freduce x id f))
-  Reducible
-  (freduce [x f]
-    (loop [i 2 res (.invokePrim ^IFn$DDD f (.entry x 0) (.entry x 1))]
-      (if (< i n)
-        (recur (inc i)
-               (.invokePrim ^IFn$DDD f res
-                            (.getFloat buf (* Float/BYTES stride i))))
-        res)))
-  (freduce [x acc f]
-    (cond (instance? IFn$DDD f)
-          (loop [i 0 res (double acc)]
-            (if (< i n)
-              (recur (inc i)
-                     (.invokePrim ^IFn$DDD f res
-                                  (.getFloat buf (* Float/BYTES stride i))))
-              res))
-          (instance? IFn$DLDD f)
-          (loop [i 0 res (double acc)]
-            (if (< i n)
-              (recur (inc i)
-                     (.invokePrim ^IFn$DLDD f res i
-                                  (.getFloat buf (* Float/BYTES stride i))))
-              res))
-          (instance? IFn$ODO f)
-          (loop [i 0 res acc]
-            (if (and (< i n) res)
-              (recur (inc i)
-                     (.invokePrim ^IFn$ODO f res
-                                  (.getFloat buf (* Float/BYTES stride i))))
-              res))
-          (instance? IFn$OLDO f)
-          (loop [i 0 res acc]
-            (if (and (< i n) res)
-              (recur (inc i)
-                     (.invokePrim ^IFn$OLDO f res i
-                                  (.getFloat buf (* Float/BYTES stride i))))
-              res))
-          :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
-  (freduce [x acc f y]
-    (if (<= n (.dim ^Vector y))
-      (cond (instance? IFn$DDDD f)
-            (loop [i 0 res (double acc)]
-              (if (and (< i n) (Double/isFinite res))
-                (recur (inc i)
-                       (.invokePrim ^IFn$DDDD f res
-                                    (.getFloat buf (* Float/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            (instance? IFn$DLDDD f)
-            (loop [i 0 res (double acc)]
-              (if (and (< i n) (Double/isFinite res))
-                (recur (inc i)
-                       (.invokePrim ^IFn$DLDDD f res i
-                                    (.getFloat buf (* Float/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            (instance? IFn$ODDO f)
-            (loop [i 0 res acc]
-              (if (and (< i n) res)
-                (recur (inc i)
-                       (.invokePrim ^IFn$ODDO f res
-                                    (.getFloat buf (* Float/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            (instance? IFn$OLDDO f)
-            (loop [i 0 res acc]
-              (if (and (< i n) res)
-                (recur (inc i)
-                       (.invokePrim ^IFn$OLDDO f res i
-                                    (.getFloat buf (* Float/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z]
-    (if (<= n (min (.dim ^Vector y) (.dim ^Vector z)))
-      (if (number? acc)
-        (loop [i 0 res (double acc)]
-          (if (and (< i n) (Double/isFinite res))
-            (recur (inc i)
-                   (.invokePrim ^IFn$DDDDD f res
-                                (.getFloat buf (* Float/BYTES stride i))
-                                (.entry ^RealVector y i)
-                                (.entry ^RealVector z i)))
-            res))
-        (loop [i 0 res acc]
-          (if (and (< i n) res)
-            (recur (inc i)
-                   (.invokePrim ^IFn$ODDDO f res
-                                (.getFloat buf (* Float/BYTES stride i))
-                                (.entry ^RealVector y i)
-                                (.entry ^RealVector z i)))
-            res)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
-  IFn$LD
-  (invokePrim [x i]
-    (.entry x i))
-  IFn
-  (invoke [x i]
-    (.entry x i))
-  RealChangeable
-  (set [x val]
-    (do
-      (dotimes [i n]
-        (.putFloat buf (* Float/BYTES stride i) val))
-      x))
-  (set [x i val]
-    (do
-      (.putFloat buf (* Float/BYTES stride i) val)
-      x))
-  (alter [x i f]
-    (do
-      (.putFloat buf (* Float/BYTES stride i)
-                 (.invokePrim ^IFn$DD f
-                              (.getFloat buf (* Float/BYTES stride i))))
-      x))
-  RealVector
-  (dim [_]
-    n)
-  (entry [_ i]
-    (.getFloat buf (* Float/BYTES stride i)))
-  (subvector [_ k l]
-    (FloatBlockVector.
-     (slice-buffer buf (* Float/BYTES k stride) (* Float/BYTES l stride))
-     l stride))
-  (dot [_ y]
-    (CBLAS/sdot n
-                buf stride
-                (.buf ^FloatBlockVector y)
-                (.stride ^FloatBlockVector y)))
-  (nrm2 [_]
-    (CBLAS/snrm2 n buf stride))
-  (asum [_]
-    (CBLAS/sasum n buf stride))
-  (iamax [_]
-    (CBLAS/isamax n buf stride))
-  (rot [x y c s]
-    (do (CBLAS/srot n buf stride
-                    (.buf ^FloatBlockVector y)
-                    (.stride ^FloatBlockVector y)
-                    c s)
-        x))
-  (rotg [x]
-    (if (= 1 stride)
-      (do (CBLAS/srotg buf)
-          x)
-      (throw (IllegalArgumentException.
-              (format STRIDE_MSG 1 stride)))))
-  (rotm [x y p]
-    (if (= 1 (.stride ^FloatBlockVector p))
-      (do (CBLAS/srotm n buf stride
-                       (.buf ^FloatBlockVector y)
-                       (.stride ^FloatBlockVector y)
-                       (.buf ^FloatBlockVector p))
-          x)
-      (throw (IllegalArgumentException.
-              (format STRIDE_MSG 1 (.stride ^FloatBlockVector p))))))
-  (rotmg [p args]
-    (if (= 1 stride (.stride ^FloatBlockVector p))
-      (do (CBLAS/srotmg (.buf ^FloatBlockVector args) buf)
-          p)
-      (throw (IllegalArgumentException.
-              (format STRIDE_MSG 1 (.stride ^FloatBlockVector p))))))
-  (scal [x alpha]
-    (do (CBLAS/sscal n alpha buf stride)
-        x))
-  (axpy [_ alpha y]
-    (do (CBLAS/saxpy n alpha buf stride
-                     (.buf ^FloatBlockVector y)
-                     (.stride ^FloatBlockVector y))
-        y)))
+(defn vector-freduce
+  ([^RealVector x f]
+   (loop [i 2 res (.invokePrim ^IFn$DDD f (.entry x 0) (.entry x 1))]
+     (if (< i (.dim x))
+       (recur (inc i) (.invokePrim ^IFn$DDD f res (.entry x i)))
+       res)))
+  ([^RealVector x acc f]
+   (cond
+     (instance? IFn$DDD f)
+     (loop [i 0 res (double acc)]
+       (if (< i (.dim x))
+         (recur (inc i) (.invokePrim ^IFn$DDD f res (.entry x i)))
+         res))
+     (instance? IFn$DLDD f)
+     (loop [i 0 res (double acc)]
+       (if (< i (.dim x))
+         (recur (inc i) (.invokePrim ^IFn$DLDD f res i (.entry x i)))
+         res))
+     (instance? IFn$ODO f)
+     (loop [i 0 res acc]
+       (if (and (< i (.dim x)) res)
+         (recur (inc i) (.invokePrim ^IFn$ODO f res (.entry x i)))
+         res))
+     (instance? IFn$OLDO f)
+     (loop [i 0 res acc]
+       (if (and (< i (.dim x)) res)
+         (recur (inc i) (.invokePrim ^IFn$OLDO f res i (.entry x i)))
+         res))
+     :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
+  ([^RealVector x acc f ^RealVector y]
+   (if (<= (.dim x) (.dim y))
+     (cond
+       (instance? IFn$DDDD f)
+       (loop [i 0 res (double acc)]
+         (if (and (< i (.dim x)) (Double/isFinite res))
+           (recur (inc i) (.invokePrim ^IFn$DDDD f res (.entry x i) (.entry y i)))
+           res))
+       (instance? IFn$DLDDD f)
+       (loop [i 0 res (double acc)]
+         (if (and (< i (.dim x)) (Double/isFinite res))
+           (recur (inc i) (.invokePrim ^IFn$DLDDD f res i
+                                       (.entry x i) (.entry y i)))
+           res))
+       (instance? IFn$ODDO f)
+       (loop [i 0 res acc]
+         (if (and (< i (.dim x)) res)
+           (recur (inc i) (.invokePrim ^IFn$ODDO f res (.entry x i) (.entry y i)))
+           res))
+       (instance? IFn$OLDDO f)
+       (loop [i 0 res acc]
+         (if (and (< i (.dim x)) res)
+           (recur (inc i) (.invokePrim ^IFn$OLDDO f res i
+                                       (.entry x i) (.entry y i)))
+           res))
+       :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([^RealVector x acc f ^RealVector y ^RealVector z]
+   (if (<= (.dim x) (min (.dim y) (.dim z)))
+     (if (number? acc)
+       (loop [i 0 res (double acc)]
+         (if (and (< i (.dim x)) (Double/isFinite res))
+           (recur (inc i)
+                  (.invokePrim ^IFn$DDDDD f res
+                               (.entry x i) (.entry y i) (.entry z i)))
+           res))
+       (loop [i 0 res acc]
+         (if (and (< i (.dim x)) res)
+           (recur (inc i)
+                  (.invokePrim ^IFn$ODDDO f res
+                               (.entry x i) (.entry y i) (.entry z i)))
+           res)))
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([x acc f y z ws]
+   (throw (UnsupportedOperationException.
+           "Primitive functions support max 4 args."))))
 
-(extend FloatBlockVector
-  Functor
-  {:fmap! real-fmap})
+(defn matrix-fmap!
+  ([^Matrix x f]
+   (if (column-major? x)
+     (dotimes [i (.ncols x)]
+       (fmap! (.col x i) f))
+     (dotimes [i (.mrows x)]
+       (fmap! (.row x i) f))))
+  ([^Matrix x f ^Matrix y]
+   (if (column-major? x)
+     (dotimes [i (.ncols x)]
+       (fmap! (.col x i) f (.col y i)))
+     (dotimes [i (.mrows x)]
+       (fmap! (.row x i) f (.row y i)))))
+  ([^Matrix x f ^Matrix y ^Matrix z]
+   (if (column-major? x)
+     (dotimes [i (.ncols x)]
+       (fmap! (.col x i) f (.col y i) (.col z i)))
+     (dotimes [i (.mrows x)]
+       (fmap! (.row x i) f (.row y i) (.row z i)))))
+  ([^Matrix x f ^Matrix y ^Matrix z ^Matrix w]
+   (if (column-major? x)
+     (dotimes [i (.ncols x)]
+       (fmap! (.col x i) f (.col y i) (.col z i) (.col w i)))
+     (dotimes [i (.mrows x)]
+       (fmap! (.row x i) f (.row y i) (.row z i) (.col w i)))))
+  ([x f y z w ws]
+   (throw (UnsupportedOperationException.
+           "Primitive functions support max 4 args."))))
 
-(defmethod print-method FloatBlockVector
-  [^FloatBlockVector dv ^java.io.Writer w]
-  (.write w (format "#<FloatBlockVector| n:%d, stride:%d, %s>"
-                    (.dim dv) (.stride dv) (pr-str (take 100 (seq dv))))))
-;;-------------- Double Vector -----------------------------
+(defn matrix-fold
+ ([^RealMatrix x]
+  (loop [j 0 res 0.0]
+    (if (< j (.ncols x))
+      (recur (inc j)
+             (double
+              (loop [i 0 res res]
+                (if (< i (.mrows x))
+                  (recur (inc i)
+                         (+ res (.entry x i j)))
+                  res))))
+      res)))
+ ([x f]
+  (fold f 0.0))
+ ([x f id]
+  (freduce x id f)))
+
+(defn matrix-freduce
+  ([x f]
+   (fold x f))
+  ([^Matrix x acc f]
+   (loop [i 0 res acc]
+     (if (< i (.ncols x))
+       (recur (inc i) (freduce (.col x i) acc f))
+       res)))
+  ([^Matrix x acc f ^Matrix y]
+   (loop [i 0 res acc]
+     (if (< i (.ncols x))
+       (recur (inc i) (freduce (.col x i) acc f (.col y i)))
+       res)))
+  ([^Matrix x acc f ^Matrix y ^Matrix z]
+   (loop [i 0 res acc]
+     (if (< i (.ncols x))
+       (recur (inc i) (freduce (.col x i) acc f (.col y i) (.col z i)))
+       res)))
+  ([x acc f y z ws]
+   (throw (UnsupportedOperationException.
+           "Primitive functions support max 4 args."))))
+
+;; ============ Real Vectors ===========================================
+;; -------------- Double Vector -----------------------------
 
 (deftype DoubleBlockVector [^ByteBuffer buf ^long n ^long stride]
   Object
@@ -360,116 +286,6 @@
           y)
       (throw (IllegalArgumentException.
               (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
-  Foldable
-  (fold [x]
-    (loop [i 0 res 0.0]
-      (if (< i n)
-        (recur (inc i)
-               (+ res (.getDouble buf (* Double/BYTES stride i))))
-        res)))
-  (fold [x f]
-    (freduce x f))
-  (fold [x f id]
-    (freduce x id f))
-  Reducible
-  (freduce [x f]
-    (loop [i 2 res (.invokePrim ^IFn$DDD f
-                                (.entry x 0)
-                                (.entry x 1))]
-      (if (< i n)
-        (recur (inc i)
-               (.invokePrim ^IFn$DDD f res
-                            (.getDouble buf (* Double/BYTES stride i))))
-        res)))
-  (freduce [x acc f]
-    (cond (instance? IFn$DDD f)
-          (loop [i 0 res (double acc)]
-            (if (< i n)
-              (recur (inc i)
-                     (.invokePrim ^IFn$DDD f res
-                                  (.getDouble buf (* Double/BYTES stride i))))
-              res))
-          (instance? IFn$DLDD f)
-          (loop [i 0 res (double acc)]
-            (if (< i n)
-              (recur (inc i)
-                     (.invokePrim ^IFn$DLDD f res i
-                                  (.getDouble buf (* Double/BYTES stride i))))
-              res))
-          (instance? IFn$ODO f)
-          (loop [i 0 res acc]
-            (if (and (< i n) res)
-              (recur (inc i)
-                     (.invokePrim ^IFn$ODO f res
-                                  (.getDouble buf (* Double/BYTES stride i))))
-              res))
-          (instance? IFn$OLDO f)
-          (loop [i 0 res acc]
-            (if (and (< i n) res)
-              (recur (inc i)
-                     (.invokePrim ^IFn$OLDO f res i
-                                  (.getDouble buf (* Double/BYTES stride i))))
-              res))
-          :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
-  (freduce [x acc f y]
-    (if (<= n (.dim ^Vector y))
-      (cond (instance? IFn$DDDD f)
-            (loop [i 0 res (double acc)]
-              (if (and (< i n) (Double/isFinite res))
-                (recur (inc i)
-                       (.invokePrim ^IFn$DDDD f res
-                                    (.getDouble buf (* Double/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            (instance? IFn$DLDDD f)
-            (loop [i 0 res (double acc)]
-              (if (and (< i n) (Double/isFinite res))
-                (recur (inc i)
-                       (.invokePrim ^IFn$DLDDD f res i
-                                    (.getDouble buf (* Double/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            (instance? IFn$ODDO f)
-            (loop [i 0 res acc]
-              (if (and (< i n) res)
-                (recur (inc i)
-                       (.invokePrim ^IFn$ODDO f res
-                                    (.getDouble buf (* Double/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            (instance? IFn$OLDDO f)
-            (loop [i 0 res acc]
-              (if (and (< i n) res)
-                (recur (inc i)
-                       (.invokePrim ^IFn$OLDDO f res i
-                                    (.getDouble buf (* Double/BYTES stride i))
-                                    (.entry ^RealVector y i)))
-                res))
-            :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z]
-    (if (<= n (min (.dim ^Vector y) (.dim ^Vector z)))
-      (if (number? acc)
-        (loop [i 0 res (double acc)]
-          (if (and (< i n) (Double/isFinite res))
-            (recur (inc i)
-                   (.invokePrim ^IFn$DDDDD f res
-                                (.getDouble buf (* Double/BYTES stride i))
-                                (.entry ^RealVector y i)
-                                (.entry ^RealVector z i)))
-            res))
-        (loop [i 0 res acc]
-          (if (and (< i n) res)
-            (recur (inc i)
-                   (.invokePrim ^IFn$ODDDO f res
-                                (.getDouble buf (* Double/BYTES stride i))
-                                (.entry ^RealVector y i)
-                                (.entry ^RealVector z i)))
-            res)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
   IFn$LD
   (invokePrim [x i]
     (.entry x i))
@@ -478,21 +294,16 @@
     (.entry x i))
   RealChangeable
   (set [x val]
-    (loop [i 0]
-      (if (< i n)
-        (do
-          (.putDouble buf (* Double/BYTES stride i) val)
-          (recur (inc i)))
-        x)))
+    (do
+      (dotimes [i n]
+        (.putDouble buf (* Double/BYTES stride i) val))
+      x))
   (set [x i val]
     (do
       (.putDouble buf (* Double/BYTES stride i) val)
       x))
   (alter [x i f]
-    (do
-      (.putDouble buf (* Double/BYTES stride i)
-                  (.invokePrim ^IFn$DD f
-                               (.getDouble buf (* Double/BYTES stride i))))))
+    (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
   RealVector
   (dim [_]
     n)
@@ -503,8 +314,7 @@
      (slice-buffer buf (* Double/BYTES k stride) (* Double/BYTES l stride))
      l stride))
   (dot [_ y]
-    (CBLAS/ddot n
-                buf stride
+    (CBLAS/ddot n buf stride
                 (.buf ^DoubleBlockVector y)
                 (.stride ^DoubleBlockVector y)))
   (nrm2 [_]
@@ -551,26 +361,154 @@
 
 (extend DoubleBlockVector
   Functor
-  {:fmap! real-fmap})
+  {:fmap! vector-fmap!}
+  Foldable
+  {:fold vector-fold}
+  Reducible
+  {:freduce vector-freduce})
 
 (defmethod print-method DoubleBlockVector
   [^DoubleBlockVector dv ^java.io.Writer w]
   (.write w (format "#<DoubleBlockVector| n:%d, stride:%d, %s>"
                     (.dim dv) (.stride dv) (pr-str (take 100 (seq dv))))))
 
+;;-------------- Float Vector -----------------------------
+
+(deftype FloatBlockVector [^ByteBuffer buf ^long n ^long stride]
+  Object
+  (hashCode [this]
+    (loop [i 0 res (hash-combine (hash :FloatBlockVector) n)]
+      (if (< i n)
+        (recur (inc i) (hash-combine res (.entry this i)))
+        res)))
+  (equals [x y]
+    (cond
+      (nil? y) false
+      (identical? x y) true
+      (instance? FloatBlockVector y)
+      (and (= n (.dim ^Vector y))
+           (freduce x true entry-eq y))
+      :default false))
+  clojure.lang.Seqable
+  (seq [_]
+    (wrap-byte-seq float32 (* Float/BYTES stride) 0 (byte-seq buf)))
+  Carrier
+  (zero [_]
+    (FloatBlockVector. (direct-buffer (* Float/BYTES n)) n 1))
+  (swp [x y]
+    (if (= n (.dim ^Vector y))
+      (do (CBLAS/sswap n buf stride
+                       (.buf ^FloatBlockVector y)
+                       (.stride ^FloatBlockVector y))
+          x)
+      (throw (IllegalArgumentException.
+              (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
+  (copy [_ y]
+    (if (= n (.dim ^Vector y))
+      (do (CBLAS/scopy n buf stride
+                       (.buf ^FloatBlockVector y)
+                       (.stride ^FloatBlockVector y))
+          y)
+      (throw (IllegalArgumentException.
+              (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
+
+  IFn$LD
+  (invokePrim [x i]
+    (.entry x i))
+  IFn
+  (invoke [x i]
+    (.entry x i))
+  RealChangeable
+  (set [x val]
+    (do
+      (dotimes [i n]
+        (.putFloat buf (* Float/BYTES stride i) val))
+      x))
+  (set [x i val]
+    (do
+      (.putFloat buf (* Float/BYTES stride i) val)
+      x))
+  (alter [x i f]
+    (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
+  RealVector
+  (dim [_]
+    n)
+  (entry [_ i]
+    (.getFloat buf (* Float/BYTES stride i)))
+  (subvector [_ k l]
+    (FloatBlockVector.
+     (slice-buffer buf (* Float/BYTES k stride) (* Float/BYTES l stride))
+     l stride))
+  (dot [_ y]
+    (CBLAS/sdot n buf stride
+                (.buf ^FloatBlockVector y)
+                (.stride ^FloatBlockVector y)))
+  (nrm2 [_]
+    (CBLAS/snrm2 n buf stride))
+  (asum [_]
+    (CBLAS/sasum n buf stride))
+  (iamax [_]
+    (CBLAS/isamax n buf stride))
+  (rot [x y c s]
+    (do (CBLAS/srot n buf stride
+                    (.buf ^FloatBlockVector y)
+                    (.stride ^FloatBlockVector y)
+                    c s)
+        x))
+  (rotg [x]
+    (if (= 1 stride)
+      (do (CBLAS/srotg buf)
+          x)
+      (throw (IllegalArgumentException.
+              (format STRIDE_MSG 1 stride)))))
+  (rotm [x y p]
+    (if (= 1 (.stride ^FloatBlockVector p))
+      (do (CBLAS/srotm n buf stride
+                       (.buf ^FloatBlockVector y)
+                       (.stride ^FloatBlockVector y)
+                       (.buf ^FloatBlockVector p))
+          x)
+      (throw (IllegalArgumentException.
+              (format STRIDE_MSG 1 (.stride ^FloatBlockVector p))))))
+  (rotmg [p args]
+    (if (= 1 stride (.stride ^FloatBlockVector p))
+      (do (CBLAS/srotmg (.buf ^FloatBlockVector args) buf)
+          p)
+      (throw (IllegalArgumentException.
+              (format STRIDE_MSG 1 (.stride ^FloatBlockVector p))))))
+  (scal [x alpha]
+    (do (CBLAS/sscal n alpha buf stride)
+        x))
+  (axpy [_ alpha y]
+    (do (CBLAS/saxpy n alpha buf stride
+                     (.buf ^FloatBlockVector y)
+                     (.stride ^FloatBlockVector y))
+        y)))
+
+(extend FloatBlockVector
+  Functor
+  {:fmap! vector-fmap!}
+  Foldable
+  {:fold vector-fold}
+  Reducible
+  {:freduce vector-freduce})
+
+(defmethod print-method FloatBlockVector
+  [^FloatBlockVector dv ^java.io.Writer w]
+  (.write w (format "#<FloatBlockVector| n:%d, stride:%d, %s>"
+                    (.dim dv) (.stride dv) (pr-str (take 100 (seq dv))))))
+
+
 ;; ================= GE General Matrix =====================
-(declare update-segment)
 
-(declare set-segment)
-
-(declare compact?)
+;;-------------- Double General Matrix  -----------------------------
 
 (deftype DoubleGeneralMatrix [^ByteBuffer buf ^long m
                               ^long n ^long ld ^long order]
   Object
   (hashCode [this]
     (freduce this
-             (-> (hash :DoubleBandMatrix)
+             (-> (hash :DoubleGeneralMatrix)
                  (hash-combine m) (hash-combine n))
              hash-comb))
   (equals [x y]
@@ -589,57 +527,39 @@
     (let [a ^DoubleGeneralMatrix a
           b ^DoubleGeneralMatrix b]
       (if (and (= m (.m b)) (= n (.n b)))
-        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order b))
-                     (= m ld (.ld b)))
-                (and (= CBLAS/ORDER_ROW_MAJOR order (.order b))
-                     (= n ld (.ld b))))
-          (do
+        (do
+          (if (and (= order (.order b))
+                   (= (if (column-major? a) m n) ld (.ld b)))
             (CBLAS/dcopy (* m n) buf 1 (.buf b) 1)
-            b)
-          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-            (loop [i 0]
-              (if (< i n)
-                (do
-                  (copy (.col a i) (.col b i))
-                  (recur (inc i)))
-                b))
-            (loop [i 0]
-              (if (< i m)
-                (do
-                  (copy (.row a i) (.row b i))
-                  (recur (inc i)))
-                b))))
+            (if (column-major? a)
+              (dotimes [i n]
+                (copy (.col a i) (.col b i)))
+              (dotimes [i m]
+                (copy (.row a i) (.row b i)))))
+          b)
         (throw (IllegalArgumentException.
                 "I can not copy incompatible matrices.")))))
   (swp [a b]
     (let [a ^DoubleGeneralMatrix a
           b ^DoubleGeneralMatrix b]
       (if (and (= m (.m b)) (= n (.n b)))
-        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order b))
-                     (= m ld (.ld b)))
-                (and (= CBLAS/ORDER_ROW_MAJOR order (.order b))
-                     (= n ld (.ld b))))
-          (do
+        (do
+          (if (and (= order (.order b))
+                   (= (if (column-major? a) m n) ld (.ld b)))
             (CBLAS/dswap (* m n) buf 1 (.buf b) 1)
-            a)
-          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-            (loop [i 0]
-              (if (< i n)
-                (do
-                  (swp (.col a i) (.col b i))
-                  (recur (inc i)))
-                a))
-            (loop [i 0]
-              (if (< i m)
-                (do
-                  (swp (.row a i) (.row b i))
-                  (recur (inc i)))
-                a))))
+            (if (column-major? a)
+              (dotimes [i n]
+                (swp (.col a i) (.col b i)))
+              (dotimes [i m]
+                (swp (.row a i) (.row b i)))))
+          b)
         (throw (IllegalArgumentException.
-                "I can not swap incompatible matrices.")))))
+                "I can not copy incompatible matrices.")))))
+  (column-major? [a]
+    (= CBLAS/ORDER_COLUMN_MAJOR order))
   clojure.lang.Seqable
   (seq [a]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+    (if (column-major? a)
       (map #(seq (.col a %)) (range 0 n))
       (map #(seq (.row a %)) (range 0 m))))
   clojure.lang.IFn$LLD
@@ -654,162 +574,17 @@
       (.entry x i j)
       (throw (IndexOutOfBoundsException.
               (format MAT_BOUNDS_MSG i j m n)))))
-  Functor
-  (fmap! [x f]
-    (let [end (if (= CBLAS/ORDER_COLUMN_MAJOR order) n m)]
-      (loop [j 0]
-        (if (< j end)
-          (do (update-segment x j f)
-              (recur (inc j)))
-          x))))
-  (fmap! [x f y] ;; TODO support IFn$LDxxx
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y)))
-      (loop [j 0]
-        (if (< j n)
-          (do
-            (fmap! (.col x j) f (.col ^Matrix y j))
-            (recur (inc j)))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z]
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y))
-             (<= m (.mrows ^Matrix z)) (<= n (.ncols ^Matrix z)))
-      (loop [j 0]
-        (if (< j n)
-          (do
-            (fmap! (.col x j) f (.col ^Matrix y j) (.col ^Matrix z j))
-            (recur (inc j)))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w]
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y))
-             (<= m (.mrows ^Matrix z)) (<= n (.ncols ^Matrix z))
-             (<= m (.mrows ^Matrix w)) (<= n (.ncols ^Matrix w)))
-      (loop [j 0]
-        (if (< j n)
-          (do
-            (fmap! (.col x j) f (.col ^Matrix y j)
-                   (.col ^Matrix z j) (.col ^Matrix w j))
-            (recur (inc j)))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
-  Foldable
-  (fold [x]
-    (loop [j 0 res 0.0]
-      (if (< j n)
-        (recur (inc j)
-               (double
-                (loop [i 0 res res]
-                  (if (< i m)
-                    (recur (inc i)
-                           (+ res (.entry x i j)))
-                    res))))
-        res)))
-  (fold [x f]
-    (fold f 0.0))
-  (fold [x f id]
-    (freduce x id f))
-  Reducible
-  (freduce [x f]
-    (fold x f))
-  (freduce [x acc f]
-    (if (number? acc)
-      (loop [j 0 res (double acc)]
-        (if (< j n)
-          (recur (inc j)
-                 (double
-                  (loop [i 0 res res]
-                    (if (< i m)
-                      (recur (inc i)
-                             (.invokePrim ^IFn$DDD f res
-                                          (.entry x i j)))
-                      res))))
-          res))
-      (loop [j 0 res acc]
-        (if (< j n)
-          (recur (inc j)
-                 (loop [i 0 res res]
-                   (if (< i m)
-                     (recur (inc i)
-                            (.invokePrim ^IFn$ODO f res
-                                         (.entry x i j)))
-                     res)))
-          res))))
-  (freduce [x acc f y];;TODO benchmark this against fmap! approach
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y)))
-      (if (number? acc)
-        (loop [j 0 res (double acc)]
-          (if (< j n)
-            (recur (inc j)
-                   (double (loop [i 0 res res]
-                             (if (< i m)
-                               (recur (inc i)
-                                      (.invokePrim ^IFn$DDDD f res
-                                                   (.entry x i j)
-                                                   (.entry ^RealMatrix y i j)))
-                               res))))
-            res))
-        (loop [j 0 res acc]
-          (if (and (< j n) res)
-            (recur (inc j)
-                   (loop [i 0 res res]
-                     (if (and (< i m) res)
-                       (recur (inc i)
-                              (.invokePrim ^IFn$ODDO f res
-                                           (.entry x i j)
-                                           (.entry ^RealMatrix y i j)))
-                       res)))
-            res)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z]
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y))
-             (<= m (.mrows ^Matrix z)) (<= n (.ncols ^Matrix z)))
-      (if (number? acc)
-        (loop [j 0 res (double acc)]
-          (if (< j n)
-            (recur (inc j)
-                   (double (loop [i 0 res res]
-                             (if (< i m)
-                               (recur (inc i)
-                                      (.invokePrim ^IFn$DDDDD f res
-                                                   (.entry x i j)
-                                                   (.entry ^RealMatrix y i j)
-                                                   (.entry ^RealMatrix z i j)))
-                               res))))
-            res))
-        (loop [j 0 res acc]
-          (if (and (< j n) res)
-            (recur (inc j)
-                   (loop [i 0 res res]
-                     (if (and (< i m) res)
-                       (recur (inc i)
-                              (.invokePrim ^IFn$ODDDO f res
-                                           (.entry x i j)
-                                           (.entry ^RealMatrix y i j)
-                                           (.entry ^RealMatrix z i j)))
-                       res)))
-            res)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
   RealChangeable
   (set [a val]
-    (if (compact? a)
-      (loop [i 0]
-        (if (< i (* m n))
-          (do (.putDouble buf (* Double/BYTES i) val)
-              (recur (inc i)))
-          a))
-      (let [end (if (= CBLAS/ORDER_COLUMN_MAJOR order) n m)]
-        (loop [j 0]
-          (if (< j end)
-            (do (set-segment a j val)
-                (recur (inc j)))
-            a)))))
+    (do (if (= ld (if (column-major? a) m n))
+          (dotimes [i (* m n)]
+            (.putDouble buf (* Double/BYTES i) val))
+          (if (column-major? a)
+            (dotimes [i n]
+              (.set ^RealChangeable (.col a i) val))
+            (dotimes [i (.mrows a)]
+              (.set ^RealChangeable (.row a i) val))))
+        a))
   (set [a i j val]
     (do
       (if (= CBLAS/ORDER_COLUMN_MAJOR order)
@@ -818,7 +593,7 @@
       a))
   (alter [a i j f]
     (do
-      (let [ind (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+      (let [ind (if (column-major? a)
                   (+ (* Double/BYTES ld j) (* Double/BYTES i))
                   (+ (* Double/BYTES ld i) (* Double/BYTES j)))]
         (.putDouble buf ind
@@ -834,32 +609,33 @@
     (if (= CBLAS/ORDER_COLUMN_MAJOR order)
       (.getDouble buf (+ (* Double/BYTES ld j) (* Double/BYTES i)))
       (.getDouble buf (+ (* Double/BYTES ld i) (* Double/BYTES j)))))
-  (row [_ i]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+  (row [a i]
+    (if (column-major? a)
       (DoubleBlockVector.
        (slice-buffer buf (* Double/BYTES i) (- (.capacity buf) (* Double/BYTES i)))
        n ld)
       (DoubleBlockVector.
        (slice-buffer buf (* Double/BYTES ld i) (* Double/BYTES n))
        n 1)))
-  (col [_ j]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+  (col [a j]
+    (if (column-major? a)
       (DoubleBlockVector.
        (slice-buffer buf (* Double/BYTES ld j) (* Double/BYTES m))
        m 1)
       (DoubleBlockVector.
        (slice-buffer buf (* Double/BYTES j) (- (.capacity buf) (* Double/BYTES j)))
        m ld)))
-  (submatrix [_ i j k l]
-    (DoubleGeneralMatrix. (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-                            (slice-buffer buf (+ (* Double/BYTES ld j) (* Double/BYTES i))
-                                          (* Double/BYTES ld l))
-                            (slice-buffer buf (+ (* Double/BYTES ld i) (* Double/BYTES j))
-                                          (* Double/BYTES ld k)))
-                          k l ld order))
-  (transpose [_]
+  (submatrix [a i j k l]
+    (DoubleGeneralMatrix.
+     (if (column-major? a)
+       (slice-buffer buf (+ (* Double/BYTES ld j) (* Double/BYTES i))
+                     (* Double/BYTES ld l))
+       (slice-buffer buf (+ (* Double/BYTES ld i) (* Double/BYTES j))
+                     (* Double/BYTES ld k)))
+     k l ld order))
+  (transpose [a]
     (DoubleGeneralMatrix. buf n m ld
-                          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+                          (if (column-major? a)
                             CBLAS/ORDER_ROW_MAJOR
                             CBLAS/ORDER_COLUMN_MAJOR)))
   (mv [_ alpha x beta y]
@@ -903,12 +679,28 @@
                        (.ld ^DoubleGeneralMatrix c))
           c))))
 
+(extend DoubleGeneralMatrix
+  Functor
+  {:fmap! matrix-fmap!}
+  Foldable
+  {:fold matrix-fold}
+  Reducible
+  {:freduce matrix-freduce})
+
+(defmethod print-method DoubleGeneralMatrix
+  [^DoubleGeneralMatrix m ^java.io.Writer w]
+  (.write w (format "#<DoubleGeneralMatrix| %s, mxn: %dx%d, ld:%d, %s>"
+                    (if (= CBLAS/ORDER_COLUMN_MAJOR (.order m)) "COL" "ROW")
+                    (.mrows m) (.ncols m) (.ld m) (pr-str (seq m)))))
+
+;;-------------- Float General Matrix  -----------------------------
+
 (deftype FloatGeneralMatrix [^ByteBuffer buf ^long m
                               ^long n ^long ld ^long order]
   Object
   (hashCode [this]
     (freduce this
-             (-> (hash :FloatBandMatrix)
+             (-> (hash :FloatGeneralMatrix)
                  (hash-combine m) (hash-combine n))
              hash-comb))
   (equals [x y]
@@ -927,57 +719,39 @@
     (let [a ^FloatGeneralMatrix a
           b ^FloatGeneralMatrix b]
       (if (and (= m (.m b)) (= n (.n b)))
-        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order b))
-                     (= m ld (.ld b)))
-                (and (= CBLAS/ORDER_ROW_MAJOR order (.order b))
-                     (= n ld (.ld b))))
-          (do
+        (do
+          (if (and (= order (.order b))
+                   (= (if (column-major? a) m n) ld (.ld b)))
             (CBLAS/scopy (* m n) buf 1 (.buf b) 1)
-            b)
-          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-            (loop [i 0]
-              (if (< i n)
-                (do
-                  (copy (.col a i) (.col b i))
-                  (recur (inc i)))
-                b))
-            (loop [i 0]
-              (if (< i m)
-                (do
-                  (copy (.row a i) (.row b i))
-                  (recur (inc i)))
-                b))))
+            (if (column-major? a)
+              (dotimes [i n]
+                (copy (.col a i) (.col b i)))
+              (dotimes [i m]
+                (copy (.row a i) (.row b i)))))
+          b)
         (throw (IllegalArgumentException.
                 "I can not copy incompatible matrices.")))))
   (swp [a b]
     (let [a ^FloatGeneralMatrix a
           b ^FloatGeneralMatrix b]
       (if (and (= m (.m b)) (= n (.n b)))
-        (if (or (and (= CBLAS/ORDER_COLUMN_MAJOR order (.order b))
-                     (= m ld (.ld b)))
-                (and (= CBLAS/ORDER_ROW_MAJOR order (.order b))
-                     (= n ld (.ld b))))
-          (do
+        (do
+          (if (and (= order (.order b))
+                   (= (if (column-major? a) m n) ld (.ld b)))
             (CBLAS/sswap (* m n) buf 1 (.buf b) 1)
-            a)
-          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-            (loop [i 0]
-              (if (< i n)
-                (do
-                  (swp (.col a i) (.col b i))
-                  (recur (inc i)))
-                a))
-            (loop [i 0]
-              (if (< i m)
-                (do
-                  (swp (.row a i) (.row b i))
-                  (recur (inc i)))
-                a))))
+            (if (column-major? a)
+              (dotimes [i n]
+                (swp (.col a i) (.col b i)))
+              (dotimes [i m]
+                (swp (.row a i) (.row b i)))))
+          b)
         (throw (IllegalArgumentException.
-                "I can not swap incompatible matrices.")))))
+                "I can not copy incompatible matrices.")))))
+  (column-major? [a]
+    (= CBLAS/ORDER_COLUMN_MAJOR order))
   clojure.lang.Seqable
   (seq [a]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+    (if (column-major? a)
       (map #(seq (.col a %)) (range 0 n))
       (map #(seq (.row a %)) (range 0 m))))
   clojure.lang.IFn$LLD
@@ -992,162 +766,17 @@
       (.entry x i j)
       (throw (IndexOutOfBoundsException.
               (format MAT_BOUNDS_MSG i j m n)))))
-  Functor
-  (fmap! [x f]
-    (let [end (if (= CBLAS/ORDER_COLUMN_MAJOR order) n m)]
-      (loop [j 0]
-        (if (< j end)
-          (do (update-segment x j f)
-              (recur (inc j)))
-          x))))
-  (fmap! [x f y] ;; TODO support IFn$LDxxx
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y)))
-      (loop [j 0]
-        (if (< j n)
-          (do
-            (fmap! (.col x j) f (.col ^Matrix y j))
-            (recur (inc j)))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z]
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y))
-             (<= m (.mrows ^Matrix z)) (<= n (.ncols ^Matrix z)))
-      (loop [j 0]
-        (if (< j n)
-          (do
-            (fmap! (.col x j) f (.col ^Matrix y j) (.col ^Matrix z j))
-            (recur (inc j)))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w]
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y))
-             (<= m (.mrows ^Matrix z)) (<= n (.ncols ^Matrix z))
-             (<= m (.mrows ^Matrix w)) (<= n (.ncols ^Matrix w)))
-      (loop [j 0]
-        (if (< j n)
-          (do
-            (fmap! (.col x j) f (.col ^Matrix y j)
-                   (.col ^Matrix z j) (.col ^Matrix w j))
-            (recur (inc j)))
-          x))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (fmap! [x f y z w ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
-  Foldable
-  (fold [x]
-    (loop [j 0 res 0.0]
-      (if (< j n)
-        (recur (inc j)
-               (double
-                (loop [i 0 res res]
-                  (if (< i m)
-                    (recur (inc i)
-                           (+ res (.entry x i j)))
-                    res))))
-        res)))
-  (fold [x f]
-    (fold f 0.0))
-  (fold [x f id]
-    (freduce x id f))
-  Reducible
-  (freduce [x f]
-    (fold x f))
-  (freduce [x acc f]
-    (if (number? acc)
-      (loop [j 0 res (double acc)]
-        (if (< j n)
-          (recur (inc j)
-                 (double
-                  (loop [i 0 res res]
-                    (if (< i m)
-                      (recur (inc i)
-                             (.invokePrim ^IFn$DDD f res
-                                          (.entry x i j)))
-                      res))))
-          res))
-      (loop [j 0 res acc]
-        (if (< j n)
-          (recur (inc j)
-                 (loop [i 0 res res]
-                   (if (< i m)
-                     (recur (inc i)
-                            (.invokePrim ^IFn$ODO f res
-                                         (.entry x i j)))
-                     res)))
-          res))))
-  (freduce [x acc f y];;TODO benchmark this against fmap! approach
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y)))
-      (if (number? acc)
-        (loop [j 0 res (double acc)]
-          (if (< j n)
-            (recur (inc j)
-                   (double (loop [i 0 res res]
-                             (if (< i m)
-                               (recur (inc i)
-                                      (.invokePrim ^IFn$DDDD f res
-                                                   (.entry x i j)
-                                                   (.entry ^RealMatrix y i j)))
-                               res))))
-            res))
-        (loop [j 0 res acc]
-          (if (and (< j n) res)
-            (recur (inc j)
-                   (loop [i 0 res res]
-                     (if (and (< i m) res)
-                       (recur (inc i)
-                              (.invokePrim ^IFn$ODDO f res
-                                           (.entry x i j)
-                                           (.entry ^RealMatrix y i j)))
-                       res)))
-            res)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z]
-    (if (and (<= m (.mrows ^Matrix y)) (<= n (.ncols ^Matrix y))
-             (<= m (.mrows ^Matrix z)) (<= n (.ncols ^Matrix z)))
-      (if (number? acc)
-        (loop [j 0 res (double acc)]
-          (if (< j n)
-            (recur (inc j)
-                   (double (loop [i 0 res res]
-                             (if (< i m)
-                               (recur (inc i)
-                                      (.invokePrim ^IFn$DDDDD f res
-                                                   (.entry x i j)
-                                                   (.entry ^RealMatrix y i j)
-                                                   (.entry ^RealMatrix z i j)))
-                               res))))
-            res))
-        (loop [j 0 res acc]
-          (if (and (< j n) res)
-            (recur (inc j)
-                   (loop [i 0 res res]
-                     (if (and (< i m) res)
-                       (recur (inc i)
-                              (.invokePrim ^IFn$ODDDO f res
-                                           (.entry x i j)
-                                           (.entry ^RealMatrix y i j)
-                                           (.entry ^RealMatrix z i j)))
-                       res)))
-            res)))
-      (throw (IllegalArgumentException. (format DIMENSIONS_MSG n)))))
-  (freduce [x acc f y z ws]
-    (throw (UnsupportedOperationException.
-            "Primitive functions support max 4 args.")))
   RealChangeable
   (set [a val]
-    (if (compact? a)
-      (loop [i 0]
-        (if (< i (* m n))
-          (do (.putFloat buf (* Float/BYTES i) val)
-              (recur (inc i)))
-          a))
-      (let [end (if (= CBLAS/ORDER_COLUMN_MAJOR order) n m)]
-        (loop [j 0]
-          (if (< j end)
-            (do (set-segment a j val)
-                (recur (inc j)))
-            a)))))
+    (do (if (= ld (if (column-major? a) m n))
+          (dotimes [i (* m n)]
+            (.putFloat buf (* Float/BYTES i) val))
+          (if (column-major? a)
+            (dotimes [i n]
+              (.set ^RealChangeable (.col a i) val))
+            (dotimes [i (.mrows a)]
+              (.set ^RealChangeable (.row a i) val))))
+        a))
   (set [a i j val]
     (do
       (if (= CBLAS/ORDER_COLUMN_MAJOR order)
@@ -1156,7 +785,7 @@
       a))
   (alter [a i j f]
     (do
-      (let [ind (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+      (let [ind (if (column-major? a)
                   (+ (* Float/BYTES ld j) (* Float/BYTES i))
                   (+ (* Float/BYTES ld i) (* Float/BYTES j)))]
         (.putFloat buf ind
@@ -1172,34 +801,35 @@
     (if (= CBLAS/ORDER_COLUMN_MAJOR order)
       (.getFloat buf (+ (* Float/BYTES ld j) (* Float/BYTES i)))
       (.getFloat buf (+ (* Float/BYTES ld i) (* Float/BYTES j)))))
-  (row [_ i]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+  (row [a i]
+    (if (column-major? a)
       (FloatBlockVector.
        (slice-buffer buf (* Float/BYTES i) (- (.capacity buf) (* Float/BYTES i)))
        n ld)
       (FloatBlockVector.
        (slice-buffer buf (* Float/BYTES ld i) (* Float/BYTES n))
        n 1)))
-  (col [_ j]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR order)
+  (col [a j]
+    (if (column-major? a)
       (FloatBlockVector.
        (slice-buffer buf (* Float/BYTES ld j) (* Float/BYTES m))
        m 1)
       (FloatBlockVector.
        (slice-buffer buf (* Float/BYTES j) (- (.capacity buf) (* Float/BYTES j)))
        m ld)))
-  (submatrix [_ i j k l]
-    (FloatGeneralMatrix. (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-                            (slice-buffer buf (+ (* Float/BYTES ld j) (* Float/BYTES i))
-                                          (* Float/BYTES ld l))
-                            (slice-buffer buf (+ (* Float/BYTES ld i) (* Float/BYTES j))
-                                          (* Float/BYTES ld k)))
-                          k l ld order))
-  (transpose [_]
+  (submatrix [a i j k l]
+    (FloatGeneralMatrix.
+     (if (column-major? a)
+       (slice-buffer buf (+ (* Float/BYTES ld j) (* Float/BYTES i))
+                     (* Float/BYTES ld l))
+       (slice-buffer buf (+ (* Float/BYTES ld i) (* Float/BYTES j))
+                     (* Float/BYTES ld k)))
+     k l ld order))
+  (transpose [a]
     (FloatGeneralMatrix. buf n m ld
-                          (if (= CBLAS/ORDER_COLUMN_MAJOR order)
-                            CBLAS/ORDER_ROW_MAJOR
-                            CBLAS/ORDER_COLUMN_MAJOR)))
+                         (if (column-major? a)
+                           CBLAS/ORDER_ROW_MAJOR
+                           CBLAS/ORDER_COLUMN_MAJOR)))
   (mv [_ alpha x beta y]
     (do (CBLAS/sgemv order
                      CBLAS/TRANSPOSE_NO_TRANS
@@ -1241,41 +871,16 @@
                        (.ld ^FloatGeneralMatrix c))
           c))))
 
-(defn compact? [^DoubleGeneralMatrix a]
-  (if (= CBLAS/ORDER_COLUMN_MAJOR (.order a))
-    (= (.m a) (.ld a))
-    (= (.n a) (.ld a))))
+(extend FloatGeneralMatrix
+  Functor
+  {:fmap! matrix-fmap!}
+  Foldable
+  {:fold matrix-fold}
+  Reducible
+  {:freduce matrix-freduce})
 
-(defn ^:private update-segment [^DoubleGeneralMatrix a ^long k f]
-  (let [start (* Double/BYTES (long (.ld a)) k)
-        end (+ start (* Double/BYTES (if (= CBLAS/ORDER_COLUMN_MAJOR (.order a))
-                            (.m a)
-                            (.n a))))
-        buf ^ByteBuffer (.buf a)]
-    (loop [ind start]
-      (if (< ind end)
-        (do (.putDouble buf ind
-                        (.invokePrim ^IFn$DD f
-                                     (.getDouble buf ind)))
-            (recur (+ Double/BYTES ind)))
-        a))))
-
-(defn ^:private set-segment [^DoubleGeneralMatrix a ^long k ^long end ^double val]
-  (let [start (* Double/BYTES (.ld a) k)
-        end (+ start (* Double/BYTES (if (= CBLAS/ORDER_COLUMN_MAJOR (.order a))
-                            (.m a)
-                            (.n a))))
-        buf ^ByteBuffer (.buf a)]
-    (loop [ind start]
-      (if (< ind end)
-        (do (.putDouble buf ind val)
-            (recur (+ Double/BYTES ind)))
-        a))))
-
-(defmethod print-method DoubleGeneralMatrix
-  [^DoubleGeneralMatrix m ^java.io.Writer w]
-  (.write w (format "#<DoubleGeneralMatrix| %s, mxn: %dx%d, ld:%d, %s>"
+(defmethod print-method FloatGeneralMatrix
+  [^FloatGeneralMatrix m ^java.io.Writer w]
+  (.write w (format "#<FloatGeneralMatrix| %s, mxn: %dx%d, ld:%d, %s>"
                     (if (= CBLAS/ORDER_COLUMN_MAJOR (.order m)) "COL" "ROW")
                     (.mrows m) (.ncols m) (.ld m) (pr-str (seq m)))))
-
-(primitive-math/unuse-primitive-operators)

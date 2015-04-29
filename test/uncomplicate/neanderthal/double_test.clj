@@ -12,13 +12,13 @@
             DoubleBlockVector DoubleGeneralMatrix]))
 
 (facts "Create a double vector."
-       (let [x (DoubleBlockVector. (seq-to-buffer [1 2 3]) 3 1)]
+       (let [x (DoubleBlockVector. (to-buffer [1 2 3]) 3 1)]
          (dv [1 2 3]) => x
          (dv 1 2 3) => (dv [1 2 3])
          (dv 3) => (dv [0 0 0])
-         (dv (seq-to-buffer [1 2 3])) => x
+         (dv (to-buffer [1 2 3])) => x
          (dv nil) => (throws IllegalArgumentException)
-         (dv []) => (dv (seq-to-buffer []))
+         (dv []) => (dv (to-buffer []))
          (dv 3) => (zero x)
 ;;         (dv (long-array [1 3]))
          ;;=> (throws IllegalArgumentException)
@@ -143,11 +143,11 @@
 ;; ================= Real Matrix functions ===========================
 (facts "Create a double matrix."
        (let [a (DoubleGeneralMatrix.
-                (seq-to-buffer [1 2 3 4 5 6]) 2 3 2 cblas/DEFAULT_ORDER)]
+                (to-buffer [1 2 3 4 5 6]) 2 3 2 cblas/DEFAULT_ORDER)]
          (dge 2 3 [1 2 3 4 5 6]) => a
-         (dge 2 3 (seq-to-buffer [1 2 3 4 5 6])) => a
+         (dge 2 3 (to-buffer [1 2 3 4 5 6])) => a
          (dge 2 3 nil) => (throws IllegalArgumentException)
-         (dge 0 0 []) => (dge 0 0 (seq-to-buffer []))
+         (dge 0 0 []) => (dge 0 0 (to-buffer []))
          ;;(dge 2 1 (long-array [1 3]))
          ;;=> (throws IllegalArgumentException)
          ;;(dge 2 1 (object-array [1 3]))
