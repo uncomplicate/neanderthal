@@ -232,7 +232,7 @@
              (format MAT_BOUNDS_MSG i j (mrows m) (ncols m)))))))
 
 (defn alter! []
-  nil) ;;TODO
+  (throw (UnsupportedOperationException.))) ;;TODO
 
 
 ;; ================== BLAS 1 =======================

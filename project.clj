@@ -2,7 +2,7 @@
                           (System/getProperty "os.name") "-gpp-jni")
 
       atlas-version "0.1.0"]
-  (defproject uncomplicate/neanderthal "0.2.0-SNAPSHOT"
+  (defproject uncomplicate/neanderthal "0.2.0"
     :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
     :url "https://github.com/uncomplicate/neanderthal"
     :scm {:name "git"
@@ -13,9 +13,6 @@
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.3"]
                    [vertigo "0.1.3"]]
-
-    :global-vars {*warn-on-reflection* true
-                  *unchecked-math* :warn-on-boxed}
 
     :codox {:src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"
             :src-linenum-anchor-prefix "L"
@@ -30,7 +27,9 @@
                                [bilus/lein-marginalia "0.8.8"]
                                [codox "0.8.12"]]
                      :global-vars {*warn-on-reflection* true
-                                   *assert* false}
+                                   *assert* true
+                                   *unchecked-math* :warn-on-boxed
+                                   *print-length* 128}
                      :dependencies [[uncomplicate/neanderthal-atlas ~atlas-version
                                      :classifier ~nar-classifier]
                                     [midje "1.7.0-beta1"]
