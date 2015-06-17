@@ -38,7 +38,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependencies to your `project.clj`, just like in [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj):
 
 ```clojure
-[uncomplicate/neanderthal "0.1.1"]
+[uncomplicate/neanderthal "0.2.0"]
 [uncomplicate/neanderthal-atlas "0.1.0" :classifier "amd64-Linux-gpp-jni"]
 ```
 
