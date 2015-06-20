@@ -21,7 +21,9 @@
 (deftype FloatCLVector [cl-buf linear-work-size queue swp-kernel]
   Releaseable
   (release [_]
-    (release cl-buf))
+    (and
+      (release cl-buf)
+      (release swp-kernel)))
   Mappable
   (read! [_ host]
     (enq-read! queue cl-buf (.buf ^FloatBlockVector host)))
@@ -36,21 +38,20 @@
         (enq-nd! queue swp-kernel linear-work-size)
         x)))
 
-(defrecord CLSettings [^long max-local-size queue prog swp-kernel]
+(defrecord CLSettings [^long max-local-size queue prog]
   Releaseable
   (release [_]
-    (do
-      (release prog)
-      (release swp-kernel))))
+    (release prog)))
 
 (defn cl-settings [queue]
   (let [prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]))
         max-local-size (max-work-group-size (queue-device queue))]
-    (->CLSettings max-local-size queue prog (kernel prog "swp_kernel"))))
+    (->CLSettings max-local-size queue prog)))
 
 (defn cl-fv [^CLSettings settings ^long size]
-  (let [cl-buf (cl-buffer (* size Float/BYTES))]
+  (let [cl-buf (cl-buffer (* size Float/BYTES))
+        prog (.prog settings)]
     (->FloatCLVector cl-buf
                      (work-size [size] [(min size (.max-local-size settings))])
                      (.queue settings)
-                     (.swp-kernel settings))))
+                     (kernel prog "swp_kernel"))))
