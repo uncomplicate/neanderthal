@@ -10,7 +10,7 @@
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
     :dependencies [[org.clojure/clojure "1.7.0-RC1"]
-                   [uncomplicate/clojurecl "0.1.1"]
+                   [uncomplicate/clojurecl "0.1.2"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.3"]
                    [vertigo "0.1.3"]]
@@ -22,7 +22,9 @@
             :output-dir "docs/codox"}
 
     :jvm-opts ^:replace ["-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"];;also replaces lein's default JVM argument TieredStopAtLevel=1
-    :aot [uncomplicate.neanderthal.protocols]
+    :aot [uncomplicate.neanderthal.protocols
+          uncomplicate.neanderthal.cblas
+          uncomplicate.neanderthal.opencl]
 
     :profiles {:dev {:plugins [[lein-midje "3.1.3"]
                                [bilus/lein-marginalia "0.8.8"]

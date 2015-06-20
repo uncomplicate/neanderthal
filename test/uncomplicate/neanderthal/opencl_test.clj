@@ -1,42 +1,52 @@
 (ns uncomplicate.neanderthal.opencl-test
   (:require [midje.sweet :refer :all]
-            [vertigo
-             [core :refer [wrap]]
-             [structs :refer [float64]]]
             [uncomplicate.neanderthal
-             [protocols :refer :all]
+             [protocols :as p]
              [opencl :refer :all]
-             [real :refer [to-buffer sv]]]
-            [uncomplicate.clojurecl
              [core :refer :all]
-             [info :refer [max-work-group-size queue-device]]])
+             [real :refer :all]]
+            [uncomplicate.clojurecl
+             [core :refer [with-default with-release *command-queue*]]])
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix]))
 
 (with-default
-  (let [cnt 257
+  (let [cnt 259
         host-x (sv cnt)
-        host-y (sv cnt)]
+        host-y (sv cnt)
+        host-range (sv (range cnt))
+        host-range2 (sv (range cnt (* 2 cnt)))]
+
+    (facts
+     "RealVector methods"
+     (with-release [settings (cl-settings *command-queue*)
+                    cl-x (cl-sv settings cnt)]
+       (dim cl-x) => cnt
+
+       )
+     )
+
     (facts
      "Carrier methods"
      (with-release [settings (cl-settings *command-queue*)
-                    cl-x (cl-fv settings cnt)
-                    cl-y (cl-fv settings cnt)]
-       (write! cl-x (sv (range cnt)))
-       (write! cl-y (sv (range cnt (* 2 cnt))))
+                    cl-x (cl-sv settings cnt)
+                    cl-y (cl-sv settings cnt)]
 
-       (time (swp cl-x cl-y)) => cl-x
+       (p/byte-size cl-x) => Float/BYTES
 
-       (read! cl-x host-x)
-       (read! cl-y host-y)
+       (write! cl-x host-range) => cl-x
+       (write! cl-y host-range2) => cl-y
 
-       host-x => (sv (range cnt (* 2 cnt)))
-       host-y => (sv (range cnt))
+       (read! (zero cl-x) (sv cnt)) => (sv cnt)
 
-       (copy cl-x cl-y) => cl-y
+       (swp! cl-x cl-y) => cl-x
 
-       (read! cl-y host-y)
-       host-y =>  host-x
+       (read! cl-x host-x) => host-range2
+       (read! cl-y host-y) => host-range
+
+       (copy! cl-x cl-y) => cl-y
+
+       (read! cl-y host-y) => host-x
 
 
        )
