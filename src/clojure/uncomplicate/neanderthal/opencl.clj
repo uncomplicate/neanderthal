@@ -32,7 +32,16 @@
 (def zero-array (float-array [0]))
 
 (deftype FloatCLBlockVector [^CLSettings settings cl-buf ^long n
-                             linear-work-size swp-kernel]
+                             linear-work-size swp-kernel scal-kernel
+                             axpy-kernel]
+
+  Releaseable
+  (release [_]
+    (and
+     (release cl-buf)
+     (release swp-kernel)
+     (release scal-kernel)))
+
   RealVector
   (dim [_]
     n)
@@ -42,11 +51,22 @@
     (cl-sv* settings
             (cl-sub-buffer cl-buf (* Float/BYTES k) (* Float/BYTES l))
             l))
-  Releaseable
-  (release [_]
-    (and
-     (release cl-buf)
-     (release swp-kernel)))
+  (scal [x alpha]
+    (do
+      (set-arg! scal-kernel 0 (float-array [alpha]))
+      (enq-nd! (.queue settings) scal-kernel linear-work-size)
+      x))
+  (axpy [_ alpha y]
+    (do
+      (set-arg! axpy-kernel 0 (float-array [alpha]))
+      (set-arg! axpy-kernel 2 (.cl-buf ^FloatCLBlockVector y))
+      (enq-nd! (.queue settings) axpy-kernel linear-work-size)
+      y))
+  RealChangeable
+  (set [x val]
+    (do
+      (enq-fill! (.queue settings) cl-buf (float-array [val]))
+      x))
   Mappable
   (read! [_ host]
     (do
@@ -67,9 +87,10 @@
     (do (enq-copy! cl-buf (.cl-buf ^FloatCLBlockVector y))
         y))
   (swp [x y]
-    (do (set-arg! swp-kernel 1 (.cl-buf ^FloatCLBlockVector y))
-        (enq-nd! (.queue settings) swp-kernel linear-work-size)
-        x)))
+    (do
+      (set-arg! swp-kernel 1 (.cl-buf ^FloatCLBlockVector y))
+      (enq-nd! (.queue settings) swp-kernel linear-work-size)
+      x)))
 
 (defn cl-sv*
   ([^CLSettings settings ^long dim]
@@ -82,7 +103,9 @@
                            cl-buf
                            dim
                            (work-size [dim] [(min dim (.max-local-size settings))])
-                           (doto (kernel prog "swp_kernel") (set-arg! 0 cl-buf))))))
+                           (doto (kernel prog "swp_kernel") (set-arg! 0 cl-buf))
+                           (doto (kernel prog "scal_kernel") (set-arg! 1 cl-buf))
+                           (doto (kernel prog "axpy_kernel") (set-arg! 1 cl-buf))))))
 
 (defn cl-sv [settings ^long dim]
   (cl-sv* settings dim))
