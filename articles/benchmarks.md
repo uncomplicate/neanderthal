@@ -44,5 +44,5 @@ The code of the benchmark is [here](https://github.com/uncomplicate/neanderthal/
 | 512x512 | 9.2 ms | 18.9 ms | 94.7 ms | 2.05 | 10.26 |
 | 1024x1024 | 71 ms | 136 ms | 752 ms | 1.92 | 10.60 |
 | 2048x2048 | 556 ms | 1.08 sec | 6.02 sec | 1.94 | 10.82 |
-| 4096x4096 | 4.45 sec | 8.58928 sec | 45.9 sec | 1.93 | 10.32 |
+| 4096x4096 | 4.45 sec | 8.59 sec | 45.9 sec | 1.93 | 10.32 |
 | 8192x8192 | 32.5 sec | 1.10 min | 6.14 min | 2.03 | 11.34 |
