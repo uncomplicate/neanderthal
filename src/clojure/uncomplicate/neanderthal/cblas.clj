@@ -414,7 +414,7 @@
                        (.stride ^FloatBlockVector y))
           x)
       (throw (IllegalArgumentException.
-              t DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
+              (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
   (copy [_ y]
     (if (= n (.dim ^Vector y))
       (do (CBLAS/scopy n buf stride

@@ -8,8 +8,12 @@
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix Carrier
             RealChangeable]
+           [uncomplicate.clojurecl.core WorkSize]
            [uncomplicate.neanderthal.cblas FloatBlockVector]
            [java.nio ByteBuffer]))
+
+(defn power-of-2? [^long n]
+  (= 0 (bit-and n (- n 1))))
 
 (defprotocol Mappable
   (read! [this v])
@@ -25,22 +29,28 @@
     (release prog)))
 
 (defn cl-settings [queue]
-  (let [prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]))
-        max-local-size (max-work-group-size (queue-device queue))]
+  (let [dev (queue-device queue)
+        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]) [dev] "-cl-std=CL2.0" nil)
+        max-local-size (max-work-group-size dev)]
     (->CLSettings max-local-size queue (queue-context queue) prog)))
 
 (def zero-array (float-array [0]))
 
 (deftype FloatCLBlockVector [^CLSettings settings cl-buf ^long n
                              linear-work-size swp-kernel scal-kernel
-                             axpy-kernel]
+                             axpy-kernel
+                             dot-local-reduce-kernel
+                             sum-local-destructive-kernel]
 
   Releaseable
   (release [_]
     (and
      (release cl-buf)
      (release swp-kernel)
-     (release scal-kernel)))
+     (release scal-kernel)
+     (release axpy-kernel)
+     (release dot-local-reduce-kernel)
+     (release sum-local-destructive-kernel)))
 
   RealVector
   (dim [_]
@@ -51,6 +61,33 @@
     (cl-sv* settings
             (cl-sub-buffer cl-buf (* Float/BYTES k) (* Float/BYTES l))
             l))
+  (dot [_ y]
+    (let [group-size (aget ^longs (.local ^WorkSize linear-work-size) 0)
+          res-size (long (quot (+ n (dec group-size)) group-size))]
+      (if (power-of-2? (long (rem n (.max-local-size settings))))
+        (with-release [res (cl-buffer (.context settings) (* Float/BYTES res-size) :read-write)]
+          (set-arg! dot-local-reduce-kernel 1 (.cl-buf ^FloatCLBlockVector y))
+          (set-arg! dot-local-reduce-kernel 2 res)
+          (set-arg! dot-local-reduce-kernel 3 (* Float/BYTES group-size))
+          (enq-nd! (.queue settings) dot-local-reduce-kernel linear-work-size)
+          (set-arg! sum-local-destructive-kernel 0 res)
+          (loop [global-size res-size]
+            (if (= 1 global-size)
+              (let [res-array (float-array 1)]
+                (enq-read! (.queue settings) res res-array)
+                (aget res-array 0))
+              (recur
+               (long (if (power-of-2? (long (rem (long global-size) (.max-local-size settings))))
+                       (let [local-size (min (long group-size) (long global-size))]
+                         (set-arg! sum-local-destructive-kernel 1 local-size)
+                         (enq-nd! (.queue settings) sum-local-destructive-kernel
+                                  (work-size [global-size] [local-size]))
+                         (quot (+ (long global-size) (dec local-size)) local-size))
+                       (throw (UnsupportedOperationException. "Dot is supported in OpenCL only on vectors with dimensions where all local group size is a power of 2." global-size))))
+               ))
+            )
+          )
+        (throw (UnsupportedOperationException. "Dot is supported in OpenCL only on vectors with dimensions where all local group size is a power of 2.")))))
   (scal [x alpha]
     (do
       (set-arg! scal-kernel 0 (float-array [alpha]))
@@ -103,9 +140,11 @@
                            cl-buf
                            dim
                            (work-size [dim] [(min dim (.max-local-size settings))])
-                           (doto (kernel prog "swp_kernel") (set-arg! 0 cl-buf))
-                           (doto (kernel prog "scal_kernel") (set-arg! 1 cl-buf))
-                           (doto (kernel prog "axpy_kernel") (set-arg! 1 cl-buf))))))
+                           (doto (kernel prog "swp") (set-arg! 0 cl-buf))
+                           (doto (kernel prog "scal") (set-arg! 1 cl-buf))
+                           (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
+                           (doto (kernel prog "dot_local_reduce") (set-arg! 0 cl-buf))
+                           (kernel prog "local_reduce_destructive")))))
 
 (defn cl-sv [settings ^long dim]
   (cl-sv* settings dim))
