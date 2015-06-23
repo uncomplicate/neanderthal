@@ -13,11 +13,10 @@
 
 (with-default
   (let [cnt (long (+ (pow 2 28)))
-        ;;host-x (sv cnt)
-        ;;host-y (sv cnt)
-        ;;host-range (sv (range cnt))
-        ;;host-range2 (sv (range cnt (* 2 cnt)))
-        ]
+        host-x (sv cnt)
+        host-y (sv cnt)
+        host-range (doto (sv cnt) (fset! 3.5))
+        host-range2 (doto (sv cnt) (fset! 1.1))]
 
     (facts
      "RealVector methods"
@@ -43,29 +42,29 @@
        )
      )
 
-    (comment (facts
-              "Carrier methods"
-              (with-release [settings (cl-settings *command-queue*)
-                             cl-x (cl-sv settings cnt)
-                             cl-y (cl-sv settings cnt)]
+    (comment(facts
+             "Carrier methods"
+             (with-release [settings (cl-settings *command-queue*)
+                            cl-x (cl-sv settings cnt)
+                            cl-y (cl-sv settings cnt)]
 
-                (p/byte-size cl-x) => Float/BYTES
+               (p/byte-size cl-x) => Float/BYTES
 
-                (write! cl-x host-range) => cl-x
-                (write! cl-y host-range2) => cl-y
+               (write! cl-x host-range) => cl-x
+               (write! cl-y host-range2) => cl-y
 
-                (read! (zero cl-x) (sv cnt)) => (sv cnt)
+               (read! (zero cl-x) (sv cnt)) => (sv cnt)
 
-                (swp! cl-x cl-y) => cl-x
+               (swp! cl-x cl-y) => cl-x
 
-                (read! cl-x host-x) => host-range2
-                (read! cl-y host-y) => host-range
+               (read! cl-x host-x) => host-range2
+               (read! cl-y host-y) => host-range
 
-                (copy! cl-x cl-y) => cl-y
+               (copy! cl-x cl-y) => cl-y
 
-                (read! cl-y host-y) => host-x
+               (read! cl-y host-y) => host-x
 
 
-                )
+               )
 
-              ))))
+             ))))

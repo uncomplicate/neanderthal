@@ -30,7 +30,7 @@
 
 (defn cl-settings [queue]
   (let [dev (queue-device queue)
-        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]) [dev] "-cl-std=CL2.0" nil)
+        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]))
         max-local-size (max-work-group-size dev)]
     (->CLSettings max-local-size queue (queue-context queue) prog)))
 
@@ -83,10 +83,7 @@
                          (enq-nd! (.queue settings) sum-local-destructive-kernel
                                   (work-size [global-size] [local-size]))
                          (quot (+ (long global-size) (dec local-size)) local-size))
-                       (throw (UnsupportedOperationException. "Dot is supported in OpenCL only on vectors with dimensions where all local group size is a power of 2." global-size))))
-               ))
-            )
-          )
+                       (throw (UnsupportedOperationException. "Dot is supported in OpenCL only on vectors with dimensions where all local group size is a power of 2." global-size))))))))
         (throw (UnsupportedOperationException. "Dot is supported in OpenCL only on vectors with dimensions where all local group size is a power of 2.")))))
   (scal [x alpha]
     (do

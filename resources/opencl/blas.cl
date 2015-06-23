@@ -29,7 +29,7 @@ __kernel void local_reduce_destructive (__global float* inout,
     lacc[lid] = pacc;
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    for(int i = local_size/2; i>0; i >>= 1) {
+    for(int i = local_size >> 1; i>0; i >>= 1) {
         if(lid < i) {
             pacc += lacc[lid + 1];
             lacc[lid] = pacc;
@@ -54,7 +54,7 @@ __kernel void dot_local_reduce (__global float* x, __global float* y,
     lacc[lid] = pacc;
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    for(int i = local_size/2; i>0; i >>= 1) {
+    for(int i = local_size >> 1; i>0; i >>= 1) {
         if(lid < i) {
             pacc += lacc[lid + i];
             lacc[lid] = pacc;
