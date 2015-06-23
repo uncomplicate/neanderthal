@@ -15,6 +15,26 @@
 (defn power-of-2? [^long n]
   (= 0 (bit-and n (- n 1))))
 
+(defn reduction-work-sizes [^long max-local-size ^long n]
+  (if (power-of-2? n)
+    (loop [acc [] global-size n]
+      (if (= 1 global-size)
+        acc
+        (let [local-size (min global-size max-local-size)]
+          (recur (conj acc (work-size [global-size] [local-size]))
+                 (quot (+ global-size (dec local-size)) local-size)))))
+    (throw (UnsupportedOperationException.
+            (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
+
+(defn doreduction [queue reduction-kernel work-sizes cl-buf]
+  (let [res (float-array 1)]
+    (set-arg! reduction-kernel 0 cl-buf)
+    (doseq [wsize work-sizes]
+      (set-arg! reduction-kernel 1 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
+      (enq-nd! queue reduction-kernel wsize))
+    (enq-read! queue cl-buf res)
+    (aget res 0)))
+
 (defprotocol Mappable
   (read! [this v])
   (write! [this v])
@@ -40,7 +60,7 @@
                              linear-work-size swp-kernel scal-kernel
                              axpy-kernel
                              dot-local-reduce-kernel
-                             sum-local-destructive-kernel]
+                             sum-reduction-kernel]
 
   Releaseable
   (release [_]
@@ -50,7 +70,7 @@
      (release scal-kernel)
      (release axpy-kernel)
      (release dot-local-reduce-kernel)
-     (release sum-local-destructive-kernel)))
+     (release sum-reduction-kernel)))
 
   RealVector
   (dim [_]
@@ -63,28 +83,18 @@
             l))
   (dot [_ y]
     (let [group-size (aget ^longs (.local ^WorkSize linear-work-size) 0)
-          res-size (long (quot (+ n (dec group-size)) group-size))]
-      (if (power-of-2? (long (rem n (.max-local-size settings))))
-        (with-release [res (cl-buffer (.context settings) (* Float/BYTES res-size) :read-write)]
+          res-count (long (quot (+ n (dec group-size)) group-size))]
+      (if (power-of-2? n)
+        (with-release [res (cl-buffer (.context settings) (* Float/BYTES res-count) :read-write)]
           (set-arg! dot-local-reduce-kernel 1 (.cl-buf ^FloatCLBlockVector y))
           (set-arg! dot-local-reduce-kernel 2 res)
           (set-arg! dot-local-reduce-kernel 3 (* Float/BYTES group-size))
           (enq-nd! (.queue settings) dot-local-reduce-kernel linear-work-size)
-          (set-arg! sum-local-destructive-kernel 0 res)
-          (loop [global-size res-size]
-            (if (= 1 global-size)
-              (let [res-array (float-array 1)]
-                (enq-read! (.queue settings) res res-array)
-                (aget res-array 0))
-              (recur
-               (long (if (power-of-2? (long (rem (long global-size) (.max-local-size settings))))
-                       (let [local-size (min (long group-size) (long global-size))]
-                         (set-arg! sum-local-destructive-kernel 1 local-size)
-                         (enq-nd! (.queue settings) sum-local-destructive-kernel
-                                  (work-size [global-size] [local-size]))
-                         (quot (+ (long global-size) (dec local-size)) local-size))
-                       (throw (UnsupportedOperationException. "Dot is supported in OpenCL only on vectors with dimensions where all local group size is a power of 2." global-size))))))))
-        (throw (UnsupportedOperationException. "Dot is supported in OpenCL only on vectors with dimensions where all local group size is a power of 2.")))))
+          (doreduction (.queue settings) sum-reduction-kernel
+                       (reduction-work-sizes (.max-local-size settings) res-count)
+                       res))
+        (throw (UnsupportedOperationException.
+                (format "Dot is supported only on CL vectors with power-of-2 dimension: %d." n))))))
   (scal [x alpha]
     (do
       (set-arg! scal-kernel 0 (float-array [alpha]))
