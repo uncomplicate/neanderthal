@@ -24,16 +24,16 @@
                     cl-x (cl-sv settings cnt)
                     cl-y (cl-sv settings cnt)]
 
-       (comment        (dim cl-x) => cnt
+       (dim cl-x) => cnt
 
-                       (fset! cl-x 2.5)
-                       (read! (scal! 1.5 cl-x) (sv cnt)) => (sv (take cnt (repeat 3.75)))
+       (fset! cl-x 2.5)
+       (read! (scal! 1.5 cl-x) (sv cnt)) => (sv (take cnt (repeat 3.75)))
 
-                       (write! cl-x host-range)
-                       (write! cl-y host-range2)
+       (write! cl-x host-range)
+       (write! cl-y host-range2)
 
-                       (read! (axpy! cl-y 1.5 cl-x) (sv cnt))
-                       => (axpy! host-range2 1.5 host-range))
+       (read! (axpy! cl-y 1.5 cl-x) (sv cnt))
+       => (axpy! host-range2 1.5 host-range)
 
        (fset! cl-x 2.0)
        (fset! cl-y 5.0)
