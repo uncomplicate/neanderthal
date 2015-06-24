@@ -1,6 +1,7 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl
-  (:require [uncomplicate.clojurecl
+  (:require [uncomplicate.neanderthal.math :refer [power-of-2?]]
+   [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device queue-context]]])
   (:import [uncomplicate.neanderthal.protocols
@@ -10,21 +11,15 @@
            [uncomplicate.neanderthal.cblas FloatBlockVector]
            [java.nio ByteBuffer]))
 
-(defn power-of-2? [^long n]
-  (= 0 (bit-and n (- n 1))))
+(defn ^:private reduction-work-sizes [^long max-local-size ^long n]
+  (loop [acc [] global-size n]
+    (if (= 1 global-size)
+      acc
+      (let [local-size (min global-size max-local-size)]
+        (recur (conj acc (work-size [global-size] [local-size]))
+               (quot (+ global-size (dec local-size)) local-size))))))
 
-(defn reduction-work-sizes [^long max-local-size ^long n]
-  (if (power-of-2? n)
-    (loop [acc [] global-size n]
-      (if (= 1 global-size)
-        acc
-        (let [local-size (min global-size max-local-size)]
-          (recur (conj acc (work-size [global-size] [local-size]))
-                 (quot (+ global-size (dec local-size)) local-size)))))
-    (throw (UnsupportedOperationException.
-            (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
-
-(defn enq-reduce! [queue reduction-kernel work-sizes cl-buf]
+(defn ^:private enq-reduce! [queue reduction-kernel work-sizes cl-buf]
   (let [acc (float-array 1)]
     (set-arg! reduction-kernel 0 cl-buf)
     (doseq [wsize work-sizes]
@@ -33,16 +28,20 @@
     (enq-read! queue cl-buf acc)
     (aget acc 0)))
 
-(defn enq-reduce [context queue main-kernel reduce-kernel max-local-size n]
-  (let [local-size (min (long n) (long max-local-size))
-        acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-    (with-release [acc (cl-buffer context (* Float/BYTES acc-count) :read-write)]
-      (set-arg! main-kernel 0 acc)
-      (set-arg! main-kernel 1 (* Float/BYTES local-size))
-      (enq-nd! queue main-kernel (work-size [n] [local-size]))
-      (enq-reduce! queue reduce-kernel
-                   (reduction-work-sizes max-local-size acc-count)
-                   acc))))
+(defn ^:private enq-reduce [context queue main-kernel reduce-kernel
+                            max-local-size n]
+  (if (power-of-2? n)
+    (let [local-size (min (long n) (long max-local-size))
+          acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
+      (with-release [acc (cl-buffer context (* Float/BYTES acc-count) :read-write)]
+        (set-arg! main-kernel 0 acc)
+        (set-arg! main-kernel 1 (* Float/BYTES local-size))
+        (enq-nd! queue main-kernel (work-size [n] [local-size]))
+        (enq-reduce! queue reduce-kernel
+                     (reduction-work-sizes max-local-size acc-count)
+                     acc)))
+    (throw (UnsupportedOperationException.
+            (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
 
 (defprotocol Mappable
   (read! [this v])
@@ -91,14 +90,11 @@
             (cl-sub-buffer cl-buf (* Float/BYTES k) (* Float/BYTES l))
             l))
   (dot [_ y]
-    (if (power-of-2? n)
-      (do
-        (set-arg! dot-reduce-kernel 3 (.cl-buf ^FloatCLBlockVector y))
-        (enq-reduce (.context settings) (.queue settings)
-                     dot-reduce-kernel reduce-kernel
-                     (.max-local-size settings) n))
-      (throw (UnsupportedOperationException.
-              (format "Dot is supported only on CL vectors with power-of-2 dimension: %d." n)))))
+    (do
+      (set-arg! dot-reduce-kernel 3 (.cl-buf ^FloatCLBlockVector y))
+      (enq-reduce (.context settings) (.queue settings)
+                  dot-reduce-kernel reduce-kernel
+                  (.max-local-size settings) n)))
   (scal [x alpha]
     (do
       (set-arg! scal-kernel 0 (float-array [alpha]))

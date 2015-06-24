@@ -11,60 +11,50 @@
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix]))
 
-(with-default
-  (let [cnt (long (pow 2 25))
-        host-x (sv cnt)
-        host-y (sv cnt)
-        host-range (doto (sv cnt) (fset! 3.5))
-        host-range2 (doto (sv cnt) (fset! 1.1))]
+(def cnt (long (pow 2 20)))
+(def host-z (sv cnt))
 
-    (facts
-     "RealVector methods"
+(facts
+ "RealVector methods"
+ (with-default
+   (let [host-x (doto (sv cnt) (fset! 3.0))
+         host-y (doto (sv cnt) (fset! 2.0))]
      (with-release [settings (cl-settings *command-queue*)
                     cl-x (cl-sv settings cnt)
                     cl-y (cl-sv settings cnt)]
 
        (dim cl-x) => cnt
 
-       (fset! cl-x 2.5)
-       (read! (scal! 1.5 cl-x) (sv cnt)) => (sv (take cnt (repeat 3.75)))
+       (fset! cl-x 3.0)
+       (fset! cl-y 2.0)
+       (read! (scal! 2.0 cl-x) (sv cnt)) => (scal! 2.0 host-x)
 
-       (write! cl-x host-range)
-       (write! cl-y host-range2)
+       (read! (axpy! cl-y 2.0 cl-x) (sv cnt))
+       => (axpy! host-y 2.0 host-x)
 
-       (read! (axpy! cl-y 1.5 cl-x) (sv cnt))
-       => (axpy! host-range2 1.5 host-range)
+       (time (dot cl-x cl-y)) => (dot host-x host-y)))))
 
-       (fset! cl-x 2.0)
-       (fset! cl-y 5.0)
-       (time (dot cl-x cl-y)) => (float (* cnt 10))
+(with-default
+  (facts
+   "Carrier methods"
+   (let [host-x (doto (sv cnt) (fset! 3.5))
+         host-y (doto (sv cnt) (fset! 1.1))]
+     (with-release [settings (cl-settings *command-queue*)
+                    cl-x (cl-sv settings cnt)
+                    cl-y (cl-sv settings cnt)]
 
-       )
-     )
+       (p/byte-size cl-x) => Float/BYTES
 
-    (comment(facts
-             "Carrier methods"
-             (with-release [settings (cl-settings *command-queue*)
-                            cl-x (cl-sv settings cnt)
-                            cl-y (cl-sv settings cnt)]
+       (write! cl-x host-x) => cl-x
+       (write! cl-y host-y) => cl-y
 
-               (p/byte-size cl-x) => Float/BYTES
+       (read! (zero cl-x) (sv cnt)) => (sv cnt)
 
-               (write! cl-x host-range) => cl-x
-               (write! cl-y host-range2) => cl-y
+       (swp! cl-x cl-y) => cl-x
+       (swp! cl-x cl-y) => cl-x
 
-               (read! (zero cl-x) (sv cnt)) => (sv cnt)
+       (read! cl-x (sv cnt)) => host-x
 
-               (swp! cl-x cl-y) => cl-x
+       (copy! cl-x cl-y) => cl-y
 
-               (read! cl-x host-x) => host-range2
-               (read! cl-y host-y) => host-range
-
-               (copy! cl-x cl-y) => cl-y
-
-               (read! cl-y host-y) => host-x
-
-
-               )
-
-             ))))
+       (read! cl-y host-y) => host-x))))
