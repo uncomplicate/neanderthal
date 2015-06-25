@@ -12,8 +12,8 @@
             RealVector RealMatrix]))
 
 (def cnt (long (pow 2 25)))
-(def x-magic 3.3)
-(def y-magic 1.)
+(def x-magic 2.0)
+(def y-magic 4.0)
 
 (facts
  "RealVector methods"
@@ -28,16 +28,20 @@
 
        (fset! cl-x x-magic)
        (fset! cl-y y-magic)
-       (time (dot cl-x cl-y)) => (float (dot host-x host-y))
+       (time (dot cl-x cl-y)) => (time (float (dot host-x host-y)))
 
        (time (asum cl-x)) => (* (float x-magic) (float cnt))
 
-       (read! (scal! 1.5 cl-x) (sv cnt)) => (scal! 1.5 host-x)
+       (fset! host-x 70000 (inc (float x-magic)))
+       (write! cl-x host-x)
+       (time (iamax cl-x)) => 70000
 
-       (read! (axpy! cl-y 1.3 cl-x) (sv cnt))
-       => (axpy! host-y 1.3 host-x)
+       (read! (scal! 2 cl-x) (sv cnt)) => (scal! 2 host-x)
 
-       (fset! host-x (cnt - 3) (inc x-magic)) => 1
+       (read! (axpy! cl-y 2 cl-x) (sv cnt))
+       => (axpy! host-y 2 host-x)
+
+
 
 ))))
 

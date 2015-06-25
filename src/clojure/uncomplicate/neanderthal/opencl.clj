@@ -18,58 +18,62 @@
         (recur (conj acc (work-size [global-size] [local-size]))
                (quot (+ global-size (dec local-size)) local-size))))))
 
-(defn ^:private enq-reduce! [queue reduction-kernel work-sizes cl-buf]
-  (let [cnt 1]
-    (set-arg! reduction-kernel 1 cl-buf)
-    (doseq [wsize work-sizes]
-      (let [local-size (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0))]
-        (set-arg! reduction-kernel 0 local-size))
-      (enq-nd! queue reduction-kernel wsize))))
+(defn ^:private enq-reduce!
+  ([queue reduction-kernel work-sizes cl-buf]
+   (do
+     (set-arg! reduction-kernel 1 cl-buf)
+     (doseq [wsize work-sizes]
+       (set-arg! reduction-kernel 0 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
+       (enq-nd! queue reduction-kernel wsize))))
+  ([queue reduction-kernel work-sizes cl-buf-0 cl-buf-1]
+   (do
+     (set-arg! reduction-kernel 2 cl-buf-0)
+     (set-arg! reduction-kernel 3 cl-buf-1)
+     (doseq [wsize work-sizes]
+       (set-args! reduction-kernel 0 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0))
+              (* Integer/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
+       (enq-nd! queue reduction-kernel wsize)))))
 
-(comment (defn ^:private enq-reduce! [queue reduction-kernel work-sizes & cl-bufs]
-           (let [cnt (count cl-bufs)]
-             (apply set-args! reduction-kernel cnt cl-bufs)
-             (doseq [wsize work-sizes]
-               (let [local-size (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0))]
-                 (apply set-args! reduction-kernel 0 (take cnt (repeat local-size))))
-               (enq-nd! queue reduction-kernel wsize)))))
-
-(defn ^:private enq-reduce [context queue main-kernel reduction-kernel
+(defn ^:private enq-reduce [context queue main-kernel reduce-kernel
                             max-local-size n]
   (if (power-of-2? n)
-    (let [result (float-array 1)
+    (let [res (float-array 1)
           local-size (min (long n) (long max-local-size))
           acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
       (with-release [acc (cl-buffer context (* Float/BYTES acc-count) :read-write)]
-        (set-arg! main-kernel 0 (* Float/BYTES local-size))
         (set-arg! main-kernel 1 acc)
+        (set-arg! main-kernel 0 (* Float/BYTES local-size))
         (enq-nd! queue main-kernel (work-size [n] [local-size]))
-        (enq-reduce! queue reduction-kernel
+        (enq-reduce! queue reduce-kernel
                      (reduction-work-sizes max-local-size acc-count)
                      acc)
-        (enq-read! queue acc result)
-        (println "--------" (vec result))
-        (aget result 0)))
+        (enq-read! queue acc res)
+        (aget res 0)))
     (throw (UnsupportedOperationException.
             (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
 
-(defn ^:private enq-reduce2 [context queue main-kernel reduction-kernel
+(defn ^:private enq-reduce2 [context queue main-kernel reduce-kernel
                             max-local-size n]
   (if (power-of-2? n)
-    (let [result (float-array 1)
+    (let [res (int-array 1)
+          entry-size Float/BYTES
           local-size (min (long n) (long max-local-size))
           acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-      (with-release [acc (cl-buffer context (* Float/BYTES acc-count) :read-write)]
-        (set-arg! main-kernel 0 (* Float/BYTES local-size))
-        (set-arg! main-kernel 1 acc)
+      (with-release [acc-0 (cl-buffer context (* entry-size acc-count) :read-write)
+                     acc-1 (cl-buffer context (* entry-size acc-count) :read-write)]
+        (set-arg! main-kernel 0 (* entry-size local-size))
+        (set-arg! main-kernel 1 (* entry-size local-size))
+        (set-arg! main-kernel 2 acc-0)
+        (set-arg! main-kernel 3 acc-1)
         (enq-nd! queue main-kernel (work-size [n] [local-size]))
-        (enq-reduce! queue reduction-kernel
+        (enq-reduce! queue reduce-kernel
                      (reduction-work-sizes max-local-size acc-count)
-                     acc)
-        (enq-read! queue acc result)
-        (aget result 0)))
+                     acc-0 acc-1)
+        (enq-read! queue acc-0 res)
+        (aget res 0)))
     (throw (UnsupportedOperationException.
             (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
+
 
 (defprotocol Mappable
   (read! [this v])
@@ -95,11 +99,10 @@
                              linear-work-size swp-kernel scal-kernel
                              axpy-kernel
                              sum-reduction-kernel
-      ;                       max-reduction-kernel
+                             max-reduction-kernel
                              dot-reduce-kernel
                              asum-reduce-kernel
-                             ;iamax-reduce-kernel
-                             ]
+                             iamax-reduce-kernel]
 
   Releaseable
   (release [_]
@@ -109,11 +112,10 @@
      (release scal-kernel)
      (release axpy-kernel)
      (release sum-reduction-kernel)
-     ;(release max-reduction-kernel)
+     (release max-reduction-kernel)
      (release dot-reduce-kernel)
      (release asum-reduce-kernel)
-     ;(release iamax-reduce-kernel)
-     ))
+     (release iamax-reduce-kernel)))
 
   Vector
   (dim [_]
@@ -123,9 +125,9 @@
             (cl-sub-buffer cl-buf (* Float/BYTES k) (* Float/BYTES l))
             l))
   (iamax [_]
-    (comment (enq-reduce (.context settings) (.queue settings)
-                         iamax-reduce-kernel max-reduction-kernel
-                         (.max-local-size settings) n)))
+    (enq-reduce2 (.context settings) (.queue settings)
+                iamax-reduce-kernel max-reduction-kernel
+                (.max-local-size settings) n))
   (rotg [x]
     (throw (UnsupportedOperationException.
             "TODO.")))
@@ -211,10 +213,10 @@
                            (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                            (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
                            (kernel prog "sum_reduction")
-                           ;;(kernel prog "max_reduction")
+                           (kernel prog "max_reduction")
                            (doto (kernel prog "dot_reduce") (set-arg! 2 cl-buf))
                            (doto (kernel prog "asum_reduce") (set-arg! 2 cl-buf))
-                           ;;(doto (kernel prog "iamax_reduce") (set-arg! 4 cl-buf))
+                           (doto (kernel prog "iamax_reduce") (set-arg! 4 cl-buf))
                            ))))
 
 (defn cl-sv [settings ^long dim]

@@ -10,7 +10,7 @@
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
     :dependencies [[org.clojure/clojure "1.7.0-RC2"]
-                   [uncomplicate/clojurecl "0.1.2"]
+                   [uncomplicate/clojurecl "0.1.3-SNAPSHOT"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.3"]
                    [vertigo "0.1.3"]]
