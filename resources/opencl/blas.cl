@@ -68,4 +68,30 @@ __kernel void dot_reduce (__global float* acc, __local float* lacc,
     }
 }
 
+// ================== asum ====== ===========================================
+
+__kernel void asum_reduce (__global float* acc, __local float* lacc,
+                           __global float* x) {
+
+    uint gid = get_global_id(0);
+    uint lid = get_local_id(0);
+    uint local_size = get_local_size(0);
+
+    float pacc = fabs(x[gid]);
+    lacc[lid] = pacc;
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for(int i = local_size >> 1; i > 0; i >>= 1) {
+        if (lid < i) {
+            pacc += lacc[lid + i];
+            lacc[lid] = pacc;
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    if(lid == 0) {
+        acc[get_group_id(0)] = pacc;
+    }
+}
+
 //==================

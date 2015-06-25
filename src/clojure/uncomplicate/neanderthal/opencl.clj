@@ -68,7 +68,8 @@
                              linear-work-size swp-kernel scal-kernel
                              axpy-kernel
                              reduce-kernel
-                             dot-reduce-kernel]
+                             dot-reduce-kernel
+                             asum-reduce-kernel]
 
   Releaseable
   (release [_]
@@ -78,7 +79,8 @@
      (release scal-kernel)
      (release axpy-kernel)
      (release reduce-kernel)
-     (release dot-reduce-kernel)))
+     (release dot-reduce-kernel)
+     (release asum-reduce-kernel)))
 
   RealVector
   (dim [_]
@@ -95,6 +97,10 @@
       (enq-reduce (.context settings) (.queue settings)
                   dot-reduce-kernel reduce-kernel
                   (.max-local-size settings) n)))
+  (asum [_]
+    (enq-reduce (.context settings) (.queue settings)
+                asum-reduce-kernel reduce-kernel
+                (.max-local-size settings) n))
   (scal [x alpha]
     (do
       (set-arg! scal-kernel 0 (float-array [alpha]))
@@ -151,7 +157,8 @@
                            (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                            (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
                            (kernel prog "reduce")
-                           (doto (kernel prog "dot_reduce") (set-arg! 2 cl-buf))))))
+                           (doto (kernel prog "dot_reduce") (set-arg! 2 cl-buf))
+                           (doto (kernel prog "asum_reduce") (set-arg! 2 cl-buf))))))
 
 (defn cl-sv [settings ^long dim]
   (cl-sv* settings dim))

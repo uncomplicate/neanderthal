@@ -28,7 +28,9 @@
 
        (fset! cl-x x-magic)
        (fset! cl-y y-magic)
-       (time (dot cl-x cl-y)) => (roughly (dot host-x host-y))
+       (time (dot cl-x cl-y)) => (float (dot host-x host-y))
+
+       (time (asum cl-x)) => (* (float x-magic) (float cnt))
 
        (read! (scal! 1.5 cl-x) (sv cnt)) => (scal! 1.5 host-x)
 
@@ -37,9 +39,10 @@
 
 ))))
 
-(with-default
-  (facts
-   "Carrier methods"
+
+(facts
+ "Carrier methods"
+ (with-default
    (let [host-x (doto (sv cnt) (fset! 3.5))
          host-y (doto (sv cnt) (fset! 1.1))]
      (with-release [settings (cl-settings *command-queue*)
@@ -51,13 +54,14 @@
        (write! cl-x host-x) => cl-x
        (write! cl-y host-y) => cl-y
 
-       (read! (zero cl-x) (sv cnt)) => (sv cnt)
+       (with-release [cl-zero (zero cl-x)]
+         (read! cl-zero (sv cnt))) => (sv cnt)
 
-       (swp! cl-x cl-y) => cl-x
-       (swp! cl-x cl-y) => cl-x
+         (swp! cl-x cl-y) => cl-x
+         (swp! cl-x cl-y) => cl-x
 
-       (read! cl-x (sv cnt)) => host-x
+         (read! cl-x (sv cnt)) => host-x
 
-       (copy! cl-x cl-y) => cl-y
+         (copy! cl-x cl-y) => cl-y
 
-       (read! cl-y host-y) => host-x))))
+         (read! cl-y host-y) => host-x))))
