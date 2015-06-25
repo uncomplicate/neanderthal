@@ -13,7 +13,7 @@
 
 (def cnt (long (pow 2 25)))
 (def x-magic 3.3)
-(def y-magic 1.3)
+(def y-magic 1.)
 
 (facts
  "RealVector methods"
@@ -36,6 +36,8 @@
 
        (read! (axpy! cl-y 1.3 cl-x) (sv cnt))
        => (axpy! host-y 1.3 host-x)
+
+       (fset! host-x (cnt - 3) (inc x-magic)) => 1
 
 ))))
 

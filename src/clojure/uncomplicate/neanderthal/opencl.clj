@@ -5,8 +5,7 @@
              [core :refer :all]
              [info :refer [max-work-group-size queue-device queue-context]]])
   (:import [uncomplicate.neanderthal.protocols
-            RealVector RealMatrix Carrier
-            RealChangeable]
+            Vector RealVector Matrix RealMatrix Carrier RealChangeable]
            [uncomplicate.clojurecl.core WorkSize]
            [uncomplicate.neanderthal.cblas FloatBlockVector]
            [java.nio ByteBuffer]))
@@ -20,26 +19,55 @@
                (quot (+ global-size (dec local-size)) local-size))))))
 
 (defn ^:private enq-reduce! [queue reduction-kernel work-sizes cl-buf]
-  (let [acc (float-array 1)]
-    (set-arg! reduction-kernel 0 cl-buf)
+  (let [cnt 1]
+    (set-arg! reduction-kernel 1 cl-buf)
     (doseq [wsize work-sizes]
-      (set-arg! reduction-kernel 1 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
-      (enq-nd! queue reduction-kernel wsize))
-    (enq-read! queue cl-buf acc)
-    (aget acc 0)))
+      (let [local-size (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0))]
+        (set-arg! reduction-kernel 0 local-size))
+      (enq-nd! queue reduction-kernel wsize))))
 
-(defn ^:private enq-reduce [context queue main-kernel reduce-kernel
+(comment (defn ^:private enq-reduce! [queue reduction-kernel work-sizes & cl-bufs]
+           (let [cnt (count cl-bufs)]
+             (apply set-args! reduction-kernel cnt cl-bufs)
+             (doseq [wsize work-sizes]
+               (let [local-size (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0))]
+                 (apply set-args! reduction-kernel 0 (take cnt (repeat local-size))))
+               (enq-nd! queue reduction-kernel wsize)))))
+
+(defn ^:private enq-reduce [context queue main-kernel reduction-kernel
                             max-local-size n]
   (if (power-of-2? n)
-    (let [local-size (min (long n) (long max-local-size))
+    (let [result (float-array 1)
+          local-size (min (long n) (long max-local-size))
           acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
       (with-release [acc (cl-buffer context (* Float/BYTES acc-count) :read-write)]
-        (set-arg! main-kernel 0 acc)
-        (set-arg! main-kernel 1 (* Float/BYTES local-size))
+        (set-arg! main-kernel 0 (* Float/BYTES local-size))
+        (set-arg! main-kernel 1 acc)
         (enq-nd! queue main-kernel (work-size [n] [local-size]))
-        (enq-reduce! queue reduce-kernel
+        (enq-reduce! queue reduction-kernel
                      (reduction-work-sizes max-local-size acc-count)
-                     acc)))
+                     acc)
+        (enq-read! queue acc result)
+        (println "--------" (vec result))
+        (aget result 0)))
+    (throw (UnsupportedOperationException.
+            (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
+
+(defn ^:private enq-reduce2 [context queue main-kernel reduction-kernel
+                            max-local-size n]
+  (if (power-of-2? n)
+    (let [result (float-array 1)
+          local-size (min (long n) (long max-local-size))
+          acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
+      (with-release [acc (cl-buffer context (* Float/BYTES acc-count) :read-write)]
+        (set-arg! main-kernel 0 (* Float/BYTES local-size))
+        (set-arg! main-kernel 1 acc)
+        (enq-nd! queue main-kernel (work-size [n] [local-size]))
+        (enq-reduce! queue reduction-kernel
+                     (reduction-work-sizes max-local-size acc-count)
+                     acc)
+        (enq-read! queue acc result)
+        (aget result 0)))
     (throw (UnsupportedOperationException.
             (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
 
@@ -58,18 +86,20 @@
 
 (defn cl-settings [queue]
   (let [dev (queue-device queue)
-        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]))
-        max-local-size (max-work-group-size dev)]
-    (->CLSettings max-local-size queue (queue-context queue) prog)))
+        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]))]
+    (->CLSettings (max-work-group-size dev) queue (queue-context queue) prog)))
 
 (def zero-array (float-array [0]))
 
 (deftype FloatCLBlockVector [^CLSettings settings cl-buf ^long n
                              linear-work-size swp-kernel scal-kernel
                              axpy-kernel
-                             reduce-kernel
+                             sum-reduction-kernel
+      ;                       max-reduction-kernel
                              dot-reduce-kernel
-                             asum-reduce-kernel]
+                             asum-reduce-kernel
+                             ;iamax-reduce-kernel
+                             ]
 
   Releaseable
   (release [_]
@@ -78,29 +108,53 @@
      (release swp-kernel)
      (release scal-kernel)
      (release axpy-kernel)
-     (release reduce-kernel)
+     (release sum-reduction-kernel)
+     ;(release max-reduction-kernel)
      (release dot-reduce-kernel)
-     (release asum-reduce-kernel)))
+     (release asum-reduce-kernel)
+     ;(release iamax-reduce-kernel)
+     ))
 
-  RealVector
+  Vector
   (dim [_]
     n)
-  (entry [_ i]
-    (throw (UnsupportedOperationException.)))
   (subvector [_ k l]
     (cl-sv* settings
             (cl-sub-buffer cl-buf (* Float/BYTES k) (* Float/BYTES l))
             l))
+  (iamax [_]
+    (comment (enq-reduce (.context settings) (.queue settings)
+                         iamax-reduce-kernel max-reduction-kernel
+                         (.max-local-size settings) n)))
+  (rotg [x]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  (rotm [x y p]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  (rotmg [p args]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  RealVector
+  (entry [_ i]
+    (throw (UnsupportedOperationException.
+            "To acces values from the CL device, read! them first.")))
   (dot [_ y]
     (do
       (set-arg! dot-reduce-kernel 3 (.cl-buf ^FloatCLBlockVector y))
       (enq-reduce (.context settings) (.queue settings)
-                  dot-reduce-kernel reduce-kernel
+                  dot-reduce-kernel sum-reduction-kernel
                   (.max-local-size settings) n)))
-  (asum [_]
+  (nrm2 [_]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  (asum [_n]
     (enq-reduce (.context settings) (.queue settings)
-                asum-reduce-kernel reduce-kernel
+                asum-reduce-kernel sum-reduction-kernel
                 (.max-local-size settings) n))
+  (rot [x y c s]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
   (scal [x alpha]
     (do
       (set-arg! scal-kernel 0 (float-array [alpha]))
@@ -156,9 +210,12 @@
                            (doto (kernel prog "swp") (set-arg! 0 cl-buf))
                            (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                            (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
-                           (kernel prog "reduce")
+                           (kernel prog "sum_reduction")
+                           ;;(kernel prog "max_reduction")
                            (doto (kernel prog "dot_reduce") (set-arg! 2 cl-buf))
-                           (doto (kernel prog "asum_reduce") (set-arg! 2 cl-buf))))))
+                           (doto (kernel prog "asum_reduce") (set-arg! 2 cl-buf))
+                           ;;(doto (kernel prog "iamax_reduce") (set-arg! 4 cl-buf))
+                           ))))
 
 (defn cl-sv [settings ^long dim]
   (cl-sv* settings dim))
