@@ -452,7 +452,7 @@
      (slice-buffer buf (* Float/BYTES k stride) (* Float/BYTES l stride))
      l stride))
   (dot [_ y]
-    (CBLAS/sdot n buf stride
+    (CBLAS/dsdot n buf stride
                 (.buf ^FloatBlockVector y)
                 (.stride ^FloatBlockVector y)))
   (nrm2 [_]
