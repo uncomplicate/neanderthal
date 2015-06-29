@@ -131,7 +131,7 @@ __kernel void max_reduction (__local int* liacc, __local float* lvacc,
     }
 }
 
-// ================== iamax reduce  =================================================
+// ================== iamax reduce  ============================================
 
 __kernel void iamax_reduce (__local int* liacc, __local float* lvacc,
                             __global int* iacc, __global float* vacc,
@@ -167,3 +167,48 @@ __kernel void iamax_reduce (__local int* liacc, __local float* lvacc,
     }
 
 }
+
+// ======================== BLAS 2 ============================================
+
+/*__kernel void gemv_reduce (__local float* lacc, __global float* acc,
+                           __global float* x, __global float* y) {
+
+    uint gid = get_global_id(0);
+    uint lid = get_local_id(0);
+    uint local_size = get_local_size(0);
+
+    float pacc;
+    pacc = x[gid] * y[gid];
+    lacc[lid] = pacc;
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for(int i = local_size >> 1; i > 0; i >>= 1) {
+        if (lid < i) {
+            pacc += lacc[lid + i];
+            lacc[lid] = pacc;
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    if(lid == 0) {
+        acc[get_group_id(0)] = pacc;
+    }
+    }*/
+
+
+/*__kernel void gemv(__local int* lacc,
+                   const float alpha, const float beta,
+                   const __global float* restrict A,
+                   const __global float* restrict X,
+                   __global float* Y) {
+
+    int col = get_global_id(0);
+    int row = get_global_id(1);
+
+    int local_col_size = get_global_id(0);
+    int local_row_size = get_global_id(1);
+
+
+
+}
+*/

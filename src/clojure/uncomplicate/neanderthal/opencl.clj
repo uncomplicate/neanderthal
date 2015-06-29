@@ -20,11 +20,9 @@
 
 (defn ^:private enq-reduce!
   ([queue reduction-kernel work-sizes cl-buf]
-   (do
-     (set-arg! reduction-kernel 1 cl-buf)
-     (doseq [wsize work-sizes]
-       (set-arg! reduction-kernel 0 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
-       (enq-nd! queue reduction-kernel wsize))))
+   (doseq [wsize work-sizes]
+     (set-arg! reduction-kernel 0 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
+     (enq-nd! queue reduction-kernel wsize)))
   ([queue reduction-kernel work-sizes cl-buf-0 cl-buf-1]
    (do
      (set-arg! reduction-kernel 2 cl-buf-0)
@@ -35,20 +33,17 @@
        (enq-nd! queue reduction-kernel wsize)))))
 
 (defn ^:private enq-reduce [context queue main-kernel reduce-kernel
-                            max-local-size n]
+                            max-local-size n acc]
   (if (power-of-2? n)
     (let [res (float-array 1)
           local-size (min (long n) (long max-local-size))
           acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-      (with-release [acc (cl-buffer context (* Float/BYTES acc-count) :read-write)]
-        (set-arg! main-kernel 1 acc)
-        (set-arg! main-kernel 0 (* Float/BYTES local-size))
-        (enq-nd! queue main-kernel (work-size [n] [local-size]))
-        (enq-reduce! queue reduce-kernel
-                     (reduction-work-sizes max-local-size acc-count)
-                     acc)
-        (enq-read! queue acc res)
-        (aget res 0)))
+      (enq-nd! queue main-kernel (work-size [n] [local-size]))
+      (enq-reduce! queue reduce-kernel
+                   (reduction-work-sizes max-local-size acc-count)
+                   acc)
+      (enq-read! queue acc res)
+      (aget res 0))
     (throw (UnsupportedOperationException.
             (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
 
@@ -96,7 +91,10 @@
 (def zero-array (float-array [0]))
 
 (deftype FloatCLBlockVector [^CLSettings settings cl-buf ^long n
-                             linear-work-size swp-kernel scal-kernel
+                             reduce-acc
+                             linear-work-size
+                             swp-kernel
+                             scal-kernel
                              axpy-kernel
                              sum-reduction-kernel
                              max-reduction-kernel
@@ -108,6 +106,7 @@
   (release [_]
     (and
      (release cl-buf)
+     (release reduce-acc)
      (release swp-kernel)
      (release scal-kernel)
      (release axpy-kernel)
@@ -146,14 +145,14 @@
       (set-arg! dot-reduce-kernel 3 (.cl-buf ^FloatCLBlockVector y))
       (enq-reduce (.context settings) (.queue settings)
                   dot-reduce-kernel sum-reduction-kernel
-                  (.max-local-size settings) n)))
+                  (.max-local-size settings) n reduce-acc)))
   (nrm2 [_]
     (throw (UnsupportedOperationException.
             "TODO.")))
   (asum [_n]
     (enq-reduce (.context settings) (.queue settings)
                 asum-reduce-kernel sum-reduction-kernel
-                (.max-local-size settings) n))
+                (.max-local-size settings) n reduce-acc))
   (rot [x y c s]
     (throw (UnsupportedOperationException.
             "TODO.")))
@@ -204,20 +203,28 @@
            (cl-buffer (.context settings) (* dim Float/BYTES) :read-write)
            dim))
   ([^CLSettings settings cl-buf ^long dim]
-   (let [prog (.prog settings)]
+   (let [prog (.prog settings)
+         local-size (min dim (long (.max-local-size settings)))
+         acc-count (long (quot (+ dim (dec local-size)) local-size))
+         cl-acc (cl-buffer (.context settings) (* Float/BYTES acc-count) :read-write)];; TODO TODO this should be a part of the engine (queue)
      (->FloatCLBlockVector settings
                            cl-buf
                            dim
+                           cl-acc
                            (work-size [dim] [(min dim (.max-local-size settings))])
                            (doto (kernel prog "swp") (set-arg! 0 cl-buf))
                            (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                            (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
-                           (kernel prog "sum_reduction")
+                           (doto (kernel prog "sum_reduction") (set-arg! 1 cl-acc))
                            (kernel prog "max_reduction")
-                           (doto (kernel prog "dot_reduce") (set-arg! 2 cl-buf))
-                           (doto (kernel prog "asum_reduce") (set-arg! 2 cl-buf))
+                           (doto (kernel prog "dot_reduce")
+                             (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
+                           (doto (kernel prog "asum_reduce")
+                             (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
                            (doto (kernel prog "iamax_reduce") (set-arg! 4 cl-buf))
                            ))))
 
 (defn cl-sv [settings ^long dim]
   (cl-sv* settings dim))
+
+;; ======================= Dense Matrix ========================================

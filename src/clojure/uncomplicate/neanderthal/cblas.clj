@@ -423,7 +423,6 @@
           y)
       (throw (IllegalArgumentException.
               (format DIFF_DIM_MSG \x n \y (.dim ^Vector y))))))
-
   IFn$LD
   (invokePrim [x i]
     (.entry x i))
