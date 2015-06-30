@@ -44,6 +44,8 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 Replace `amd64-Linux-gpp-jni` with your system's architecture and OS classifier. If you are not sure what exactly to write, check `(System/getProperty "os.arch")` and `(System/getProperty "os.name")`.
 
+**MacOSX** will be available in Clojars in the next release. In the meantime, you should download [neanderthal-atlas-0.1.0-x86_64-MacOSX-gpp-jni.jar](https://mega.nz/#!uwB10LDY!Mb_oKJf8X-C9KBQ1haNRVnKcF55cedNYYUQeie2i1HI) and put it in your `.m2` directory.
+
 I will always provide at least the Linux library in Clojars. If the library for your OS is not in Clojars, checkout [neanderthal-atlas](https://github.com/uncomplicate/neanderthal-atlas) source and build it with maven using `mvn install`. The build is fully automatic if you have gcc and other related gnu tools. If you can successfully build ATLAS, you already have all the necessary tools.
 
 ## Requirements
