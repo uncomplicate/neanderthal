@@ -11,7 +11,7 @@
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix]))
 
-(def cnt (long (pow 2 19)))
+(def cnt (long (pow 2 25)))
 (def x-magic 2.0)
 (def y-magic 4.0)
 
