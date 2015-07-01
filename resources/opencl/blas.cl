@@ -17,24 +17,12 @@ __kernel void axpy (__private float alpha, __global float* x, __global float* y)
 
 // ================= Summing reduction ==============================================
 
-__kernel void sum_reduction (__local float* lacc, __global float* acc) {
+__kernel void sum_reduction (__global float* acc) {
 
     int gid = get_global_id(0);
     int lid = get_local_id(0);
-    int local_size = get_enqueued_local_size(0);
 
-    float pacc;
-    pacc = acc[gid];
-    lacc[lid] = pacc;
-    barrier(CLK_LOCAL_MEM_FENCE);
-
-    for(int i = local_size >> 1; i > 0; i >>= 1) {
-        if (lid < i) {
-            pacc += lacc[lid + i];
-            lacc[lid] = pacc;
-        }
-        barrier(CLK_LOCAL_MEM_FENCE);
-    }
+    float pacc = work_group_reduce_add(acc[gid]);
 
     if(lid == 0) {
         acc[get_group_id(0)] = pacc;
@@ -52,15 +40,16 @@ __kernel void dot_reduce (__local float* lacc, __global float* acc,
 
     float pacc;
     pacc = x[gid] * y[gid];
+
     lacc[lid] = pacc;
-    barrier(CLK_LOCAL_MEM_FENCE);
+    work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = local_size >> 1; i > 0; i >>= 1) {
         if (lid < i) {
             pacc += lacc[lid + i];
             lacc[lid] = pacc;
         }
-        barrier(CLK_LOCAL_MEM_FENCE);
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
     }
 
     if(lid == 0) {
@@ -80,14 +69,14 @@ __kernel void asum_reduce (__local float* lacc, __global float* acc,
     float pacc;
     pacc = fabs(x[gid]);
     lacc[lid] = pacc;
-    barrier(CLK_LOCAL_MEM_FENCE);
+    work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = local_size >> 1; i > 0; i >>= 1) {
         if (lid < i) {
             pacc += lacc[lid + i];
             lacc[lid] = pacc;
         }
-        barrier(CLK_LOCAL_MEM_FENCE);
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
     }
 
     if(lid == 0) {
@@ -97,7 +86,7 @@ __kernel void asum_reduce (__local float* lacc, __global float* acc,
 
 // ================ Max reduction =======================================
 
-__kernel void max_reduction (__local int* liacc, __local float* lvacc,
+__kernel void imax_reduction (__local int* liacc, __local float* lvacc,
                              __global int* iacc, __global float* vacc) {
 
     int gid = get_global_id(0);
@@ -109,7 +98,7 @@ __kernel void max_reduction (__local int* liacc, __local float* lvacc,
     liacc[lid] = index;
     lvacc[lid] = value;
 
-    barrier(CLK_LOCAL_MEM_FENCE);
+    work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = local_size >> 1; i > 0; i >>= 1) {
         if (lid < i) {
@@ -121,7 +110,7 @@ __kernel void max_reduction (__local int* liacc, __local float* lvacc,
                 liacc[lid] = index;
             }
         }
-        barrier(CLK_LOCAL_MEM_FENCE);
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
     }
 
     if(lid == 0) {
@@ -145,7 +134,7 @@ __kernel void iamax_reduce (__local int* liacc, __local float* lvacc,
     liacc[lid] = gid;
     lvacc[lid] = value;
 
-    barrier(CLK_LOCAL_MEM_FENCE);
+    work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = local_size >> 1; i > 0; i >>= 1) {
         if (lid < i) {
@@ -157,7 +146,7 @@ __kernel void iamax_reduce (__local int* liacc, __local float* lvacc,
                 liacc[lid] = index;
             }
         }
-        barrier(CLK_LOCAL_MEM_FENCE);
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
     }
 
     if(lid == 0) {
@@ -180,14 +169,14 @@ __kernel void iamax_reduce (__local int* liacc, __local float* lvacc,
     float pacc;
     pacc = x[gid] * y[gid];
     lacc[lid] = pacc;
-    barrier(CLK_LOCAL_MEM_FENCE);
+    work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = local_size >> 1; i > 0; i >>= 1) {
         if (lid < i) {
             pacc += lacc[lid + i];
             lacc[lid] = pacc;
         }
-        barrier(CLK_LOCAL_MEM_FENCE);
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
     }
 
     if(lid == 0) {

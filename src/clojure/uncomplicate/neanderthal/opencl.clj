@@ -21,7 +21,6 @@
 (defn ^:private enq-reduce!
   ([queue reduction-kernel work-sizes cl-buf]
    (doseq [wsize work-sizes]
-     (set-arg! reduction-kernel 0 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
      (enq-nd! queue reduction-kernel wsize)))
   ([queue reduction-kernel work-sizes cl-buf-0 cl-buf-1]
    (do
@@ -48,24 +47,19 @@
             (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
 
 (defn ^:private enq-reduce2 [context queue main-kernel reduce-kernel
-                            max-local-size n]
+                            max-local-size n iacc vacc]
   (if (power-of-2? n)
     (let [res (int-array 1)
           entry-size Float/BYTES
           local-size (min (long n) (long max-local-size))
           acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-      (with-release [acc-0 (cl-buffer context (* entry-size acc-count) :read-write)
-                     acc-1 (cl-buffer context (* entry-size acc-count) :read-write)]
-        (set-arg! main-kernel 0 (* entry-size local-size))
-        (set-arg! main-kernel 1 (* entry-size local-size))
-        (set-arg! main-kernel 2 acc-0)
-        (set-arg! main-kernel 3 acc-1)
-        (enq-nd! queue main-kernel (work-size [n] [local-size]))
-        (enq-reduce! queue reduce-kernel
-                     (reduction-work-sizes max-local-size acc-count)
-                     acc-0 acc-1)
-        (enq-read! queue acc-0 res)
-        (aget res 0)))
+      (set-args! main-kernel 0 (* entry-size local-size) (* entry-size local-size))
+      (enq-nd! queue main-kernel (work-size [n] [local-size]))
+      (enq-reduce! queue reduce-kernel
+                   (reduction-work-sizes max-local-size acc-count)
+                   iacc vacc)
+      (enq-read! queue iacc res)
+      (aget res 0))
     (throw (UnsupportedOperationException.
             (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
 
@@ -92,12 +86,13 @@
 
 (deftype FloatCLBlockVector [^CLSettings settings cl-buf ^long n
                              reduce-acc
+                             reduce-iacc
                              linear-work-size
                              swp-kernel
                              scal-kernel
                              axpy-kernel
                              sum-reduction-kernel
-                             max-reduction-kernel
+                             imax-reduction-kernel
                              dot-reduce-kernel
                              asum-reduce-kernel
                              iamax-reduce-kernel]
@@ -107,11 +102,12 @@
     (and
      (release cl-buf)
      (release reduce-acc)
+     (release reduce-iacc)
      (release swp-kernel)
      (release scal-kernel)
      (release axpy-kernel)
      (release sum-reduction-kernel)
-     (release max-reduction-kernel)
+     (release imax-reduction-kernel)
      (release dot-reduce-kernel)
      (release asum-reduce-kernel)
      (release iamax-reduce-kernel)))
@@ -125,8 +121,8 @@
             l))
   (iamax [_]
     (enq-reduce2 (.context settings) (.queue settings)
-                iamax-reduce-kernel max-reduction-kernel
-                (.max-local-size settings) n))
+                iamax-reduce-kernel imax-reduction-kernel
+                (.max-local-size settings) n reduce-iacc reduce-acc))
   (rotg [x]
     (throw (UnsupportedOperationException.
             "TODO.")))
@@ -177,7 +173,7 @@
     (do
       (enq-read! (.queue settings) cl-buf (.buf ^FloatBlockVector host))
       host))
-  (write! [this host]
+  (write! [this host]n
     (do
       (enq-write! (.queue settings) cl-buf (.buf ^FloatBlockVector host))
       this))
@@ -206,22 +202,27 @@
    (let [prog (.prog settings)
          local-size (min dim (long (.max-local-size settings)))
          acc-count (long (quot (+ dim (dec local-size)) local-size))
-         cl-acc (cl-buffer (.context settings) (* Float/BYTES acc-count) :read-write)];; TODO TODO this should be a part of the engine (queue)
+         ;; TODO TODO this should be a part of the engine (queue)
+         cl-acc (cl-buffer (.context settings) (* Float/BYTES acc-count) :read-write)
+         ;; TODO TODO this should be a part of the engine (queue)
+         cl-iacc (cl-buffer (.context settings) (* Integer/BYTES acc-count) :read-write)]
+
      (->FloatCLBlockVector settings
                            cl-buf
                            dim
                            cl-acc
+                           cl-iacc
                            (work-size [dim] [(min dim (.max-local-size settings))])
                            (doto (kernel prog "swp") (set-arg! 0 cl-buf))
                            (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                            (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
-                           (doto (kernel prog "sum_reduction") (set-arg! 1 cl-acc))
-                           (kernel prog "max_reduction")
+                           (doto (kernel prog "sum_reduction") (set-arg! 0 cl-acc))
+                           (doto (kernel prog "imax_reduction") (set-args! 2 cl-iacc cl-acc))
                            (doto (kernel prog "dot_reduce")
                              (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
                            (doto (kernel prog "asum_reduce")
                              (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
-                           (doto (kernel prog "iamax_reduce") (set-arg! 4 cl-buf))
+                           (doto (kernel prog "iamax_reduce") (set-args! 2 cl-iacc cl-acc cl-buf))
                            ))))
 
 (defn cl-sv [settings ^long dim]
