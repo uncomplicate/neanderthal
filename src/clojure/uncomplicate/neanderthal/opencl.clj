@@ -85,7 +85,7 @@
 
 (defn cl-settings [queue]
   (let [dev (queue-device queue)
-        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]))]
+        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]) "-cl-std=CL2.0" nil)]
     (->CLSettings (max-work-group-size dev) queue (queue-context queue) prog)))
 
 (def zero-array (float-array [0]))

@@ -21,7 +21,7 @@ __kernel void sum_reduction (__local float* lacc, __global float* acc) {
 
     int gid = get_global_id(0);
     int lid = get_local_id(0);
-    int local_size = get_local_size(0);
+    int local_size = get_enqueued_local_size(0);
 
     float pacc;
     pacc = acc[gid];
@@ -48,7 +48,7 @@ __kernel void dot_reduce (__local float* lacc, __global float* acc,
 
     uint gid = get_global_id(0);
     uint lid = get_local_id(0);
-    uint local_size = get_local_size(0);
+    uint local_size = get_enqueued_local_size(0);
 
     float pacc;
     pacc = x[gid] * y[gid];
@@ -75,7 +75,7 @@ __kernel void asum_reduce (__local float* lacc, __global float* acc,
 
     uint gid = get_global_id(0);
     uint lid = get_local_id(0);
-    uint local_size = get_local_size(0);
+    uint local_size = get_enqueued_local_size(0);
 
     float pacc;
     pacc = fabs(x[gid]);
@@ -102,7 +102,7 @@ __kernel void max_reduction (__local int* liacc, __local float* lvacc,
 
     int gid = get_global_id(0);
     int lid = get_local_id(0);
-    int local_size = get_local_size(0);
+    int local_size = get_enqueued_local_size(0);
 
     int index = iacc[gid];
     float value = vacc[gid];
@@ -138,7 +138,7 @@ __kernel void iamax_reduce (__local int* liacc, __local float* lvacc,
                             __global float* x) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
-    int local_size = get_local_size(0);
+    int local_size = get_enqueued_local_size(0);
 
     float value = fabs(x[gid]);
     int index = gid;
