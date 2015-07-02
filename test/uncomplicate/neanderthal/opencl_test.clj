@@ -34,7 +34,7 @@
 
        (fset! host-x 7 (inc (float x-magic)))
        (write! cl-x host-x)
-       ;;(time (iamax cl-x)) => 7
+       (time (iamax cl-x)) => 7
 
        (read! (scal! 2 cl-x) (sv cnt)) => (scal! 2 host-x)
 

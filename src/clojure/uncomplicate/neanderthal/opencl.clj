@@ -32,35 +32,28 @@
 
 (defn ^:private enq-reduce [context queue main-kernel reduce-kernel
                             max-local-size n acc]
-  (if true;;(power-of-2? n)
-    (let [res (float-array 1)
-          local-size (min (long n) (long max-local-size))
-          acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-      (enq-nd! queue main-kernel (work-size [n] [local-size]))
-      (enq-reduce! queue reduce-kernel
-                   (reduction-work-sizes max-local-size acc-count)
-                   acc)
-      (enq-read! queue acc res)
-      (aget res 0))
-    (throw (UnsupportedOperationException.
-            (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
+  (let [res (float-array 1)
+        local-size (min (long n) (long max-local-size))
+        acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
+    (enq-nd! queue main-kernel (work-size [n] [local-size]))
+    (enq-reduce! queue reduce-kernel
+                 (reduction-work-sizes max-local-size acc-count)
+                 acc)
+    (enq-read! queue acc res)
+    (aget res 0)))
 
 (defn ^:private enq-reduce2 [context queue main-kernel reduce-kernel
                             max-local-size n iacc vacc]
-  (if (power-of-2? n)
-    (let [res (int-array 1)
-          entry-size Float/BYTES
-          local-size (min (long n) (long max-local-size))
-          acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-      (set-args! main-kernel 0 (* entry-size local-size) (* entry-size local-size))
-      (enq-nd! queue main-kernel (work-size [n] [local-size]))
-      (enq-reduce! queue reduce-kernel
-                   (reduction-work-sizes max-local-size acc-count)
-                   iacc vacc)
-      (enq-read! queue iacc res)
-      (aget res 0))
-    (throw (UnsupportedOperationException.
-            (format "Reduction is supported in CL only on power-of-2 number of elements: %d." n)))))
+  (let [res (int-array 1)
+        entry-size Float/BYTES
+        local-size (min (long n) (long max-local-size))
+        acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
+    (enq-nd! queue main-kernel (work-size [n] [local-size]))
+    (enq-reduce! queue reduce-kernel
+                 (reduction-work-sizes max-local-size acc-count)
+                 iacc vacc)
+    (enq-read! queue iacc res)
+    (aget res 0)))
 
 
 (defprotocol Mappable
@@ -225,7 +218,10 @@
                              (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
                            (doto (kernel prog "asum_reduce")
                              (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
-                           (doto (kernel prog "iamax_reduce") (set-args! 2 cl-iacc cl-acc cl-buf))
+                           (doto (kernel prog "iamax_reduce")
+                             (set-args! 0 (* Float/BYTES local-size)
+                                        (* Float/BYTES local-size)
+                                        cl-iacc cl-acc cl-buf))
                            ))))
 
 (defn cl-sv [settings ^long dim]
