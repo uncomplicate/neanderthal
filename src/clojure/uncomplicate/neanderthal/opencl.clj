@@ -10,6 +10,9 @@
            [uncomplicate.neanderthal.cblas FloatBlockVector]
            [java.nio ByteBuffer]))
 
+(defn work-group-size-2n? [^long max-local-size ^long n]
+  (power-of-2? (rem n max-local-size)))
+
 (defn ^:private reduction-work-sizes [^long max-local-size ^long n]
   (loop [acc [] global-size n]
     (if (= 1 global-size)
@@ -24,16 +27,12 @@
      (enq-nd! queue reduction-kernel wsize)))
   ([queue reduction-kernel work-sizes cl-buf-0 cl-buf-1]
    (do
-     (set-arg! reduction-kernel 2 cl-buf-0)
-     (set-arg! reduction-kernel 3 cl-buf-1)
      (doseq [wsize work-sizes]
-       (set-args! reduction-kernel 0 (* Float/BYTES (aget ^longs (.local ^WorkSize wsize) 0))
-              (* Integer/BYTES (aget ^longs (.local ^WorkSize wsize) 0)))
        (enq-nd! queue reduction-kernel wsize)))))
 
 (defn ^:private enq-reduce [context queue main-kernel reduce-kernel
                             max-local-size n acc]
-  (if (power-of-2? n)
+  (if true;;(power-of-2? n)
     (let [res (float-array 1)
           local-size (min (long n) (long max-local-size))
           acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
@@ -79,8 +78,9 @@
 
 (defn cl-settings [queue]
   (let [dev (queue-device queue)
-        prog (build-program! (program-with-source [(slurp "resources/opencl/blas.cl")]) "-cl-std=CL2.0" nil)]
-    (->CLSettings (max-work-group-size dev) queue (queue-context queue) prog)))
+        ctx (queue-context queue)
+        prog (build-program! (program-with-source ctx [(slurp "resources/opencl/blas.cl")]) "-cl-std=CL2.0" nil)]
+    (->CLSettings (max-work-group-size dev) queue ctx prog)))
 
 (def zero-array (float-array [0]))
 
@@ -104,7 +104,7 @@
      (release reduce-acc)
      (release reduce-iacc)
      (release swp-kernel)
-     (release scal-kernel)
+     (release scal-kernel)n
      (release axpy-kernel)
      (release sum-reduction-kernel)
      (release imax-reduction-kernel)
@@ -217,7 +217,10 @@
                            (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                            (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
                            (doto (kernel prog "sum_reduction") (set-arg! 0 cl-acc))
-                           (doto (kernel prog "imax_reduction") (set-args! 2 cl-iacc cl-acc))
+                           (doto (kernel prog "imax_reduction")
+                             (set-args! 0 (* Float/BYTES local-size)
+                                        (* Float/BYTES local-size)
+                                        cl-iacc cl-acc))
                            (doto (kernel prog "dot_reduce")
                              (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
                            (doto (kernel prog "asum_reduce")

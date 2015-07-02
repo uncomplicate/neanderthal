@@ -11,9 +11,9 @@
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix]))
 
-(def cnt (long (pow 2 25)))
+(def cnt (+ 1000 (long (pow 2 25))))
 (def x-magic 2.0)
-(def y-magic 4.0)
+(def y-magic 5.0)
 
 (facts
  "RealVector methods"
@@ -34,7 +34,7 @@
 
        (fset! host-x 7 (inc (float x-magic)))
        (write! cl-x host-x)
-       (time (iamax cl-x)) => 7
+       ;;(time (iamax cl-x)) => 7
 
        (read! (scal! 2 cl-x) (sv cnt)) => (scal! 2 host-x)
 
@@ -43,7 +43,7 @@
 
 
 
-))))
+       ))))
 
 
 (facts

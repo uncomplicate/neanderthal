@@ -15,12 +15,12 @@ __kernel void axpy (__private float alpha, __global float* x, __global float* y)
     y[gid] = alpha * x[gid] + y[gid];
 }
 
-// ================= Summing reduction ==============================================
+// ================= Summing reduction =====================================
 
 __kernel void sum_reduction (__global float* acc) {
 
-    int gid = get_global_id(0);
-    int lid = get_local_id(0);
+    uint gid = get_global_id(0);
+    uint lid = get_local_id(0);
 
     float pacc = work_group_reduce_add(acc[gid]);
 
@@ -36,15 +36,20 @@ __kernel void dot_reduce (__local float* lacc, __global float* acc,
 
     uint gid = get_global_id(0);
     uint lid = get_local_id(0);
-    uint local_size = get_enqueued_local_size(0);
+    uint local_size = get_local_size(0);
 
     float pacc;
     pacc = x[gid] * y[gid];
-
     lacc[lid] = pacc;
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-    for(int i = local_size >> 1; i > 0; i >>= 1) {
+    uint i = local_size;
+    while (i > 0) {
+        bool include_odd = (i > ((i >> 1) << 1)) && (lid == ((i >> 1) - 1));
+        i >>= 1;
+        if (include_odd) {
+            pacc += lacc[lid + i + 1];
+        }
         if (lid < i) {
             pacc += lacc[lid + i];
             lacc[lid] = pacc;
@@ -64,14 +69,20 @@ __kernel void asum_reduce (__local float* lacc, __global float* acc,
 
     uint gid = get_global_id(0);
     uint lid = get_local_id(0);
-    uint local_size = get_enqueued_local_size(0);
+    uint local_size = get_local_size(0);
 
     float pacc;
     pacc = fabs(x[gid]);
     lacc[lid] = pacc;
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-    for(int i = local_size >> 1; i > 0; i >>= 1) {
+    uint i = local_size;
+    while (i > 0) {
+        bool include_odd = (i > ((i >> 1) << 1)) && (lid == ((i >> 1) - 1));
+        i >>= 1;
+        if (include_odd) {
+            pacc += lacc[lid + i + 1];
+        }
         if (lid < i) {
             pacc += lacc[lid + i];
             lacc[lid] = pacc;
@@ -87,11 +98,11 @@ __kernel void asum_reduce (__local float* lacc, __global float* acc,
 // ================ Max reduction =======================================
 
 __kernel void imax_reduction (__local int* liacc, __local float* lvacc,
-                             __global int* iacc, __global float* vacc) {
+                              __global int* iacc, __global float* vacc) {
 
     int gid = get_global_id(0);
     int lid = get_local_id(0);
-    int local_size = get_enqueued_local_size(0);
+    int local_size = get_local_size(0);
 
     int index = iacc[gid];
     float value = vacc[gid];
@@ -123,11 +134,11 @@ __kernel void imax_reduction (__local int* liacc, __local float* lvacc,
 // ================== iamax reduce  ============================================
 
 __kernel void iamax_reduce (__local int* liacc, __local float* lvacc,
-                            __global int* iacc, __global float* vacc,
-                            __global float* x) {
+                               __global int* iacc, __global float* vacc,
+                               __global float* x) {
     int gid = get_global_id(0);
     int lid = get_local_id(0);
-    int local_size = get_enqueued_local_size(0);
+    int local_size = get_local_size(0);
 
     float value = fabs(x[gid]);
     int index = gid;
