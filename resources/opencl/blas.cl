@@ -83,6 +83,22 @@ __kernel void asum_reduce (__local float* lacc, __global float* acc,
 
 }
 
+// ================== nrm2 =================================================
+
+__kernel void nrm2_reduce (__local float* lacc, __global float* acc,
+                           __global float* x) {
+
+    uint lid = get_local_id(0);
+
+    float pacc = work_group_reduction_sum(lacc, lid,
+                                          pown(x[get_global_id(0)], 2));
+
+    if(lid == 0) {
+        acc[get_group_id(0)] = pacc;
+    }
+
+}
+
 // ================ Max reduction =======================================
 
 inline void work_group_reduction_imax (__local uint* liacc,

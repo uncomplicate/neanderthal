@@ -1,6 +1,6 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl
-  (:require [uncomplicate.neanderthal.math :refer [power-of-2?]]
+  (:require [uncomplicate.neanderthal.math :refer [sqrt]]
    [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device queue-context]]])
@@ -55,7 +55,6 @@
     (enq-read! queue iacc res)
     (aget res 0)))
 
-
 (defprotocol Mappable
   (read! [this v])
   (write! [this v])
@@ -87,6 +86,7 @@
                              sum-reduction-kernel
                              imax-reduction-kernel
                              dot-reduce-kernel
+                             nrm2-reduce-kernel
                              asum-reduce-kernel
                              iamax-reduce-kernel]
 
@@ -102,6 +102,7 @@
      (release sum-reduction-kernel)
      (release imax-reduction-kernel)
      (release dot-reduce-kernel)
+     (release nrm2-reduce-kernel)
      (release asum-reduce-kernel)
      (release iamax-reduce-kernel)))
 
@@ -128,7 +129,7 @@
   RealVector
   (entry [_ i]
     (throw (UnsupportedOperationException.
-            "To acces values from the CL device, read! them first.")))
+            "To access values from the CL device, read! them first.")))
   (dot [_ y]
     (do
       (set-arg! dot-reduce-kernel 3 (.cl-buf ^FloatCLBlockVector y))
@@ -136,8 +137,9 @@
                   dot-reduce-kernel sum-reduction-kernel
                   (.max-local-size settings) n reduce-acc)))
   (nrm2 [_]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (sqrt (enq-reduce (.context settings) (.queue settings)
+                      nrm2-reduce-kernel sum-reduction-kernel
+                      (.max-local-size settings) n reduce-acc)))
   (asum [_n]
     (enq-reduce (.context settings) (.queue settings)
                 asum-reduce-kernel sum-reduction-kernel
@@ -216,6 +218,8 @@
                                         (* Float/BYTES local-size)
                                         cl-iacc cl-acc))
                            (doto (kernel prog "dot_reduce")
+                             (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
+                           (doto (kernel prog "nrm2_reduce")
                              (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
                            (doto (kernel prog "asum_reduce")
                              (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
