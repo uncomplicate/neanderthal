@@ -33,7 +33,8 @@
 
        (time (dot cl-x cl-y)) => (time (float (dot host-x host-y)))
 
-       (time (asum cl-x)) => (roughly (+ 10000 (* x-magic cnt)))
+       (time (asum cl-x)) => (roughly (+ (float 10000)
+                                         (* (float x-magic) (float cnt))))
 
        (time (nrm2 cl-x)) => (roughly (nrm2 host-x))
 

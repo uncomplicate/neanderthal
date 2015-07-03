@@ -10,49 +10,29 @@
            [uncomplicate.neanderthal.cblas FloatBlockVector]
            [java.nio ByteBuffer]))
 
-(defn work-group-size-2n? [^long max-local-size ^long n]
-  (power-of-2? (rem n max-local-size)))
+(defn ^:private count-work-groups ^long [^long max-local-size ^long n]
+  (if (< max-local-size n)
+    (quot (+ n (dec max-local-size)) max-local-size)
+    1))
 
-(defn ^:private reduction-work-sizes [^long max-local-size ^long n]
-  (loop [acc [] global-size n]
+(defn ^:private enq-reduce
+  [queue main-kernel reduce-kernel max-local-size n]
+  (loop [queue (enq-nd! queue main-kernel (work-size [n]))
+         global-size (count-work-groups max-local-size n)]
     (if (= 1 global-size)
-      acc
-      (let [local-size (min global-size max-local-size)]
-        (recur (conj acc (work-size [global-size] [local-size]))
-               (quot (+ global-size (dec local-size)) local-size))))))
+      queue
+      (recur
+       (enq-nd! queue reduce-kernel (work-size [global-size]))
+       (count-work-groups max-local-size global-size)))))
 
-(defn ^:private enq-reduce!
-  ([queue reduction-kernel work-sizes cl-buf]
-   (doseq [wsize work-sizes]
-     (enq-nd! queue reduction-kernel wsize)))
-  ([queue reduction-kernel work-sizes cl-buf-0 cl-buf-1]
-   (do
-     (doseq [wsize work-sizes]
-       (enq-nd! queue reduction-kernel wsize)))))
-
-(defn ^:private enq-reduce [context queue main-kernel reduce-kernel
-                            max-local-size n acc]
-  (let [res (float-array 1)
-        local-size (min (long n) (long max-local-size))
-        acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-    (enq-nd! queue main-kernel (work-size [n] [local-size]))
-    (enq-reduce! queue reduce-kernel
-                 (reduction-work-sizes max-local-size acc-count)
-                 acc)
-    (enq-read! queue acc res)
+(defn ^:private enq-read-int ^long [queue cl-buf]
+  (let [res (int-array 1)]
+    (enq-read! queue cl-buf res)
     (aget res 0)))
 
-(defn ^:private enq-reduce2 [context queue main-kernel reduce-kernel
-                            max-local-size n iacc vacc]
-  (let [res (int-array 1)
-        entry-size Float/BYTES
-        local-size (min (long n) (long max-local-size))
-        acc-count (long (quot (+ (long n) (dec local-size)) local-size))]
-    (enq-nd! queue main-kernel (work-size [n] [local-size]))
-    (enq-reduce! queue reduce-kernel
-                 (reduction-work-sizes max-local-size acc-count)
-                 iacc vacc)
-    (enq-read! queue iacc res)
+(defn ^:private enq-read-float ^double [queue cl-buf]
+  (let [res (float-array 1)]
+    (enq-read! queue cl-buf res)
     (aget res 0)))
 
 (defprotocol Mappable
@@ -114,9 +94,11 @@
             (cl-sub-buffer cl-buf (* Float/BYTES k) (* Float/BYTES l))
             l))
   (iamax [_]
-    (enq-reduce2 (.context settings) (.queue settings)
-                iamax-reduce-kernel imax-reduction-kernel
-                (.max-local-size settings) n reduce-iacc reduce-acc))
+    (do
+      (enq-reduce (.queue settings)
+                  iamax-reduce-kernel imax-reduction-kernel
+                  (.max-local-size settings) n)
+      (enq-read-int (.queue settings) reduce-iacc)))
   (rotg [x]
     (throw (UnsupportedOperationException.
             "TODO.")))
@@ -133,17 +115,20 @@
   (dot [_ y]
     (do
       (set-arg! dot-reduce-kernel 3 (.cl-buf ^FloatCLBlockVector y))
-      (enq-reduce (.context settings) (.queue settings)
+      (enq-reduce (.queue settings)
                   dot-reduce-kernel sum-reduction-kernel
-                  (.max-local-size settings) n reduce-acc)))
+                  (.max-local-size settings) n)
+      (enq-read-float (.queue settings) reduce-acc)))
   (nrm2 [_]
-    (sqrt (enq-reduce (.context settings) (.queue settings)
-                      nrm2-reduce-kernel sum-reduction-kernel
-                      (.max-local-size settings) n reduce-acc)))
+    (do (enq-reduce (.queue settings)
+                    nrm2-reduce-kernel sum-reduction-kernel
+                    (.max-local-size settings) n)
+        (sqrt (enq-read-float (.queue settings) reduce-acc))))
   (asum [_n]
-    (enq-reduce (.context settings) (.queue settings)
-                asum-reduce-kernel sum-reduction-kernel
-                (.max-local-size settings) n reduce-acc))
+    (do (enq-reduce (.queue settings)
+                    asum-reduce-kernel sum-reduction-kernel
+                    (.max-local-size settings) n)
+        (enq-read-float (.queue settings) reduce-acc)))
   (rot [x y c s]
     (throw (UnsupportedOperationException.
             "TODO.")))
