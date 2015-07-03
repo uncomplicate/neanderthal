@@ -41,7 +41,7 @@
   (map-host [this])
   (unmap [this]))
 
-;;TODO
+;;TODO Switch to these (as interfaces) for ATLAS, too, and rename methods then.
 (defprotocol BLAS1
     (s-iamax [_ cl-x])
     (s-rotg [_ cl-x])
@@ -160,8 +160,6 @@
                        (doto (kernel prog "iamax_reduce")
                          (set-args! cl-iacc cl-acc cl-buf)))))
 
-(declare cl-real-vector)
-
 (defrecord CLSettings [^long max-local-size queue context prog]
   Releaseable
   (release [_]
@@ -170,10 +168,14 @@
 (defn cl-settings [queue]
   (let [dev (queue-device queue)
         ctx (queue-context queue)
-        prog (build-program! (program-with-source ctx [(slurp "resources/opencl/blas.cl")]) "-cl-std=CL2.0" nil)]
+        prog (build-program! (program-with-source
+                              ctx [(slurp "resources/opencl/blas.cl")])
+                             "-cl-std=CL2.0" nil)]
     (->CLSettings (max-work-group-size dev) queue ctx prog)))
 
 (def zero-array (float-array [0]))
+
+(declare cl-real-vector)
 
 (deftype RealVectorCL [^CLSettings settings engine cl-buf ^long width-bytes ^long n]
 

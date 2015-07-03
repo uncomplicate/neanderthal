@@ -19,21 +19,21 @@ __kernel void swp (__global REAL* x, __global REAL* y) {
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void scal (__private REAL alpha, __global REAL* x) {
+__kernel void scal (__private const REAL alpha, __global REAL* x) {
     uint gid = get_global_id(0);
     x[gid] = alpha * x[gid];
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void axpy (__private REAL alpha,
-                    __global REAL* x, __global REAL* y) {
+__kernel void axpy (__private const REAL alpha,
+                    __global const REAL* x, __global REAL* y) {
     uint gid = get_global_id(0);
     y[gid] = alpha * x[gid] + y[gid];
 }
 
 // ================= Sum reduction =============================================
 
-inline void work_group_reduction_sum (__global REAL* acc, REAL value) {
+inline void work_group_reduction_sum (__global REAL* acc, const REAL value) {
 
     uint local_size = get_local_size(0);
     uint local_id = get_local_id(0);
@@ -71,21 +71,21 @@ __kernel void sum_reduction (__global REAL* acc) {
 // ================== Dot product ==============================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void dot_reduce (__global REAL* acc,
-                          __global REAL* x, __global REAL* y) {
+                          __global const REAL* x, __global const REAL* y) {
     uint gid = get_global_id(0);
     work_group_reduction_sum(acc, x[gid] * y[gid]);
 }
 
 // ================== asum =====================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void asum_reduce (__global REAL* acc, __global REAL* x) {
+__kernel void asum_reduce (__global REAL* acc, __global const REAL* x) {
     work_group_reduction_sum(acc, fabs(x[get_global_id(0)]));
 }
 
 // ================== nrm2 =====================================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void nrm2_reduce (__global REAL* acc, __global REAL* x) {
+__kernel void nrm2_reduce (__global REAL* acc, __global const REAL* x) {
     work_group_reduction_sum(acc, pown(x[get_global_id(0)], 2));
 }
 
@@ -93,7 +93,7 @@ __kernel void nrm2_reduce (__global REAL* acc, __global REAL* x) {
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 inline void work_group_reduction_imax (__global uint* iacc,
                                        __global REAL* vacc,
-                                       uint ind, REAL val) {
+                                       uint const ind, const REAL val) {
 
     uint local_id = get_local_id(0);
     uint local_size = get_local_size(0);
@@ -151,7 +151,7 @@ __kernel void imax_reduction (__global uint* iacc, __global REAL* vacc) {
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void iamax_reduce (__global uint* iacc, __global REAL* vacc,
-                            __global REAL* x) {
+                            __global const REAL* x) {
     uint gid = get_global_id(0);
     work_group_reduction_imax(iacc, vacc, gid, fabs(x[gid]));
 }
