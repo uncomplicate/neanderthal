@@ -25,9 +25,9 @@ __kernel void axpy (__private float alpha,
 
 // ================= Sum reduction =====================================
 
-inline float work_group_reduction_sum (__local float* lacc,
-                                       uint local_id, float value) {
+inline float work_group_reduction_sum (uint local_id, float value) {
 
+    __local float lacc[WGS];
     lacc[local_id] = value;
     uint local_size = get_local_size(0);
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
@@ -53,9 +53,8 @@ __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void sum_reduction (__global float* acc) {
 
     uint lid = get_local_id(0);
-    __local float lacc[WGS];
 
-    float pacc = work_group_reduction_sum(lacc, lid, acc[get_global_id(0)]);
+    float pacc = work_group_reduction_sum(lid, acc[get_global_id(0)]);
 
     if(lid == 0) {
         acc[get_group_id(0)] = pacc;
@@ -64,13 +63,13 @@ __kernel void sum_reduction (__global float* acc) {
 
 // ================== Dot product ===========================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void dot_reduce (__local float* lacc, __global float* acc,
+__kernel void dot_reduce (__global float* acc,
                           __global float* x, __global float* y) {
 
     uint gid = get_global_id(0);
     uint lid = get_local_id(0);
 
-    float pacc = work_group_reduction_sum(lacc, lid, x[gid] * y[gid]);
+    float pacc = work_group_reduction_sum(lid, x[gid] * y[gid]);
 
     if(lid == 0) {
         acc[get_group_id(0)] = pacc;
@@ -79,45 +78,40 @@ __kernel void dot_reduce (__local float* lacc, __global float* acc,
 
 // ================== asum =================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void asum_reduce (__local float* lacc, __global float* acc,
-                           __global float* x) {
+__kernel void asum_reduce (__global float* acc, __global float* x) {
 
     uint lid = get_local_id(0);
 
-    float pacc = work_group_reduction_sum(lacc, lid, fabs(x[get_global_id(0)]));
+    float pacc = work_group_reduction_sum(lid, fabs(x[get_global_id(0)]));
 
     if(lid == 0) {
         acc[get_group_id(0)] = pacc;
     }
-
 }
 
 // ================== nrm2 =================================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void nrm2_reduce (__local float* lacc, __global float* acc,
-                           __global float* x) {
+__kernel void nrm2_reduce (__global float* acc, __global float* x) {
 
     uint lid = get_local_id(0);
 
-    float pacc = work_group_reduction_sum(lacc, lid,
-                                          pown(x[get_global_id(0)], 2));
+    float pacc = work_group_reduction_sum(lid, pown(x[get_global_id(0)], 2));
 
     if(lid == 0) {
         acc[get_group_id(0)] = pacc;
     }
-
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 // ================ Max reduction =======================================
 
-inline void work_group_reduction_imax (__local uint* liacc,
-                                       __local float* lvacc,
-                                       __global uint* iacc,
+inline void work_group_reduction_imax (__global uint* iacc,
                                        __global float* vacc,
                                        uint local_id,
                                        uint ind, float val) {
+    __local uint liacc[WGS];
+    __local float lvacc[WGS];
     liacc[local_id] = ind;
     lvacc[local_id] = val;
     uint local_size = get_local_size(0);
@@ -160,12 +154,11 @@ inline void work_group_reduction_imax (__local uint* liacc,
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void imax_reduction (__local uint* liacc, __local float* lvacc,
-                              __global uint* iacc, __global float* vacc) {
+__kernel void imax_reduction (__global uint* iacc, __global float* vacc) {
 
     uint gid = get_global_id(0);
 
-    work_group_reduction_imax(liacc, lvacc, iacc, vacc, get_local_id(0),
+    work_group_reduction_imax(iacc, vacc, get_local_id(0),
                               iacc[gid], vacc[gid]);
 
 }
@@ -173,12 +166,11 @@ __kernel void imax_reduction (__local uint* liacc, __local float* lvacc,
 // ================== iamax reduce  ============================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void iamax_reduce (__local uint* liacc, __local float* lvacc,
-                               __global uint* iacc, __global float* vacc,
-                               __global float* x) {
+__kernel void iamax_reduce (__global uint* iacc, __global float* vacc,
+                            __global float* x) {
     uint gid = get_global_id(0);
 
-    work_group_reduction_imax(liacc, lvacc, iacc, vacc, get_local_id(0),
+    work_group_reduction_imax(iacc, vacc, get_local_id(0),
                               gid, fabs(x[gid]));
 
 }

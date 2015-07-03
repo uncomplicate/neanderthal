@@ -114,7 +114,7 @@
             "To access values from the CL device, read! them first.")))
   (dot [_ y]
     (do
-      (set-arg! dot-reduce-kernel 3 (.cl-buf ^FloatCLBlockVector y))
+      (set-arg! dot-reduce-kernel 2 (.cl-buf ^FloatCLBlockVector y))
       (enq-reduce (.queue settings)
                   dot-reduce-kernel sum-reduction-kernel
                   (.max-local-size settings) n)
@@ -197,21 +197,17 @@
                            (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                            (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
                            (doto (kernel prog "sum_reduction")
-                             (set-args! 0 (* Float/BYTES local-size) cl-acc))
+                             (set-args! cl-acc))
                            (doto (kernel prog "imax_reduction")
-                             (set-args! 0 (* Integer/BYTES local-size)
-                                        (* Float/BYTES local-size)
-                                        cl-iacc cl-acc))
+                             (set-args! cl-iacc cl-acc))
                            (doto (kernel prog "dot_reduce")
-                             (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
+                             (set-args! cl-acc cl-buf))
                            (doto (kernel prog "nrm2_reduce")
-                             (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
+                             (set-args! cl-acc cl-buf))
                            (doto (kernel prog "asum_reduce")
-                             (set-args! 0 (* Float/BYTES local-size) cl-acc cl-buf))
+                             (set-args! cl-acc cl-buf))
                            (doto (kernel prog "iamax_reduce")
-                             (set-args! 0 (* Integer/BYTES local-size)
-                                        (* Float/BYTES local-size)
-                                        cl-iacc cl-acc cl-buf))
+                             (set-args! cl-iacc cl-acc cl-buf))
                            ))))
 
 (defn cl-sv [settings ^long dim]
