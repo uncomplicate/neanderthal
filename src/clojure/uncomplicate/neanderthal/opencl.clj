@@ -41,7 +41,126 @@
   (map-host [this])
   (unmap [this]))
 
-(declare cl-sv*)
+;;TODO
+(defprotocol BLAS1
+    (s-iamax [_ cl-x])
+    (s-rotg [_ cl-x])
+    (s-rotm [_ cl-x cl-y p])
+    (s-rotmg [_ p args])
+    (s-dot [_ cl-x cl-y])
+    (s-nrm2 [_ cl-x])
+    (s-asum [_ cl-x])
+    (s-rot [_ cl-x cl-y c s])
+    (s-scal [_ alpha cl-x])
+    (s-axpy [_ alpha cl-x cl-y])
+    (s-swp [_ cl-x cl-y]))
+
+(deftype GCNVectorEngine [^long entry-width
+                          ^long max-local-size
+                          queue
+                          n
+                          reduce-acc
+                          reduce-iacc
+                          linear-work-size
+                          swp-kernel
+                          scal-kernel
+                          axpy-kernel
+                          sum-reduction-kernel
+                          imax-reduction-kernel
+                          dot-reduce-kernel
+                          nrm2-reduce-kernel
+                          asum-reduce-kernel
+                          iamax-reduce-kernel]
+
+  Releaseable
+  (release [_]
+    (and
+     (release reduce-acc)
+     (release reduce-iacc)
+     (release swp-kernel)
+     (release scal-kernel)
+     (release axpy-kernel)
+     (release sum-reduction-kernel)
+     (release imax-reduction-kernel)
+     (release dot-reduce-kernel)
+     (release nrm2-reduce-kernel)
+     (release asum-reduce-kernel)
+     (release iamax-reduce-kernel)))
+
+  BLAS1
+  (s-iamax [_ _]
+    (do
+      (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel
+                  max-local-size n)
+      (enq-read-int queue reduce-iacc)))
+  (s-rotg [_ _]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  (s-rotm [_ _ cl-y p]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  (s-rotmg [_ p args]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  (s-dot [_ _ cl-y]
+    (do
+      (set-arg! dot-reduce-kernel 2 cl-y)
+      (enq-reduce queue dot-reduce-kernel sum-reduction-kernel max-local-size n)
+      (enq-read-float queue reduce-acc)))
+  (s-nrm2 [_ _]
+    (do
+      (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel max-local-size n)
+      (sqrt (enq-read-float queue reduce-acc))))
+  (s-asum [_ _]
+    (do
+      (enq-reduce queue asum-reduce-kernel sum-reduction-kernel max-local-size n)
+        (enq-read-float queue reduce-acc)))
+  (s-rot [_ _ cl-y c s]
+    (throw (UnsupportedOperationException.
+            "TODO.")))
+  (s-scal [_ alpha _]
+    (do
+      (set-arg! scal-kernel 0 (float-array [alpha]))
+      (enq-nd! queue scal-kernel linear-work-size)))
+  (s-axpy [_ alpha _ cl-y]
+    (do
+      (set-arg! axpy-kernel 0 (float-array [alpha]))
+      (set-arg! axpy-kernel 2 cl-y)
+      (enq-nd! queue axpy-kernel linear-work-size)))
+  (s-swp [_ _ cl-y]
+    (do
+      (set-arg! swp-kernel 1 cl-y)
+      (enq-nd! queue swp-kernel linear-work-size))))
+
+(defn gcn-vector-engine
+  [context queue prog max-local-size cl-buf entry-width n]
+  (let [acc-size (* (long entry-width) (count-work-groups max-local-size n))
+        cl-acc (cl-buffer context acc-size :read-write)
+        cl-iacc (cl-buffer context acc-size :read-write)]
+    (->GCNVectorEngine entry-width
+                       max-local-size
+                       queue
+                       n
+                       cl-acc
+                       cl-iacc
+                       (work-size [n])
+                       (doto (kernel prog "swp") (set-arg! 0 cl-buf))
+                       (doto (kernel prog "scal") (set-arg! 1 cl-buf))
+                       (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
+                       (doto (kernel prog "sum_reduction")
+                         (set-args! cl-acc))
+                       (doto (kernel prog "imax_reduction")
+                         (set-args! cl-iacc cl-acc))
+                       (doto (kernel prog "dot_reduce")
+                         (set-args! cl-acc cl-buf))
+                       (doto (kernel prog "nrm2_reduce")
+                         (set-args! cl-acc cl-buf))
+                       (doto (kernel prog "asum_reduce")
+                         (set-args! cl-acc cl-buf))
+                       (doto (kernel prog "iamax_reduce")
+                         (set-args! cl-iacc cl-acc cl-buf)))))
+
+(declare cl-real-vector)
 
 (defrecord CLSettings [^long max-local-size queue context prog]
   Releaseable
@@ -56,92 +175,49 @@
 
 (def zero-array (float-array [0]))
 
-(deftype FloatCLBlockVector [^CLSettings settings cl-buf ^long n
-                             reduce-acc
-                             reduce-iacc
-                             linear-work-size
-                             swp-kernel
-                             scal-kernel
-                             axpy-kernel
-                             sum-reduction-kernel
-                             imax-reduction-kernel
-                             dot-reduce-kernel
-                             nrm2-reduce-kernel
-                             asum-reduce-kernel
-                             iamax-reduce-kernel]
+(deftype RealVectorCL [^CLSettings settings engine cl-buf ^long width-bytes ^long n]
 
   Releaseable
   (release [_]
     (and
      (release cl-buf)
-     (release reduce-acc)
-     (release reduce-iacc)
-     (release swp-kernel)
-     (release scal-kernel)n
-     (release axpy-kernel)
-     (release sum-reduction-kernel)
-     (release imax-reduction-kernel)
-     (release dot-reduce-kernel)
-     (release nrm2-reduce-kernel)
-     (release asum-reduce-kernel)
-     (release iamax-reduce-kernel)))
+     (release engine)))
 
   Vector
   (dim [_]
     n)
   (subvector [_ k l]
-    (cl-sv* settings
-            (cl-sub-buffer cl-buf (* Float/BYTES k) (* Float/BYTES l))
-            l))
+    (cl-real-vector settings
+                    (cl-sub-buffer cl-buf (* width-bytes k) (* width-bytes l))
+                    width-bytes
+                    l))
   (iamax [_]
-    (do
-      (enq-reduce (.queue settings)
-                  iamax-reduce-kernel imax-reduction-kernel
-                  (.max-local-size settings) n)
-      (enq-read-int (.queue settings) reduce-iacc)))
-  (rotg [x]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
-  (rotm [x y p]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (s-iamax engine cl-buf))
+  (rotg [_]
+    (s-rotg engine cl-buf))
+  (rotm [_ y p]
+    (s-rotm engine cl-buf (.cl-buf ^RealVectorCL y) p))
   (rotmg [p args]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (s-rotmg engine p args))
   RealVector
   (entry [_ i]
     (throw (UnsupportedOperationException.
             "To access values from the CL device, read! them first.")))
   (dot [_ y]
-    (do
-      (set-arg! dot-reduce-kernel 2 (.cl-buf ^FloatCLBlockVector y))
-      (enq-reduce (.queue settings)
-                  dot-reduce-kernel sum-reduction-kernel
-                  (.max-local-size settings) n)
-      (enq-read-float (.queue settings) reduce-acc)))
+    (s-dot engine cl-buf (.cl-buf ^RealVectorCL y)))
   (nrm2 [_]
-    (do (enq-reduce (.queue settings)
-                    nrm2-reduce-kernel sum-reduction-kernel
-                    (.max-local-size settings) n)
-        (sqrt (enq-read-float (.queue settings) reduce-acc))))
-  (asum [_n]
-    (do (enq-reduce (.queue settings)
-                    asum-reduce-kernel sum-reduction-kernel
-                    (.max-local-size settings) n)
-        (enq-read-float (.queue settings) reduce-acc)))
-  (rot [x y c s]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (s-nrm2 engine cl-buf))
+  (asum [_]
+    (s-asum engine cl-buf))
+  (rot [_ y c s]
+    (s-rot engine cl-buf (.cl-buf ^RealVectorCL y) c s))
   (scal [x alpha]
     (do
-      (set-arg! scal-kernel 0 (float-array [alpha]))
-      (enq-nd! (.queue settings) scal-kernel linear-work-size)
+      (s-scal engine alpha cl-buf)
       x))
   (axpy [_ alpha y]
     (do
-      (set-arg! axpy-kernel 0 (float-array [alpha]))
-      (set-arg! axpy-kernel 2 (.cl-buf ^FloatCLBlockVector y))
-      (enq-nd! (.queue settings) axpy-kernel linear-work-size)
+      (s-axpy engine alpha cl-buf (.cl-buf ^RealVectorCL y))
       y))
   RealChangeable
   (set [x val]
@@ -153,64 +229,45 @@
     (do
       (enq-read! (.queue settings) cl-buf (.buf ^FloatBlockVector host))
       host))
-  (write! [this host]n
+  (write! [this host]
     (do
       (enq-write! (.queue settings) cl-buf (.buf ^FloatBlockVector host))
       this))
   Carrier
   (zero [_]
-    (let [zero-sv ^FloatCLBlockVector (cl-sv* settings n)]
+    (let [zero-sv ^RealVectorCL (cl-real-vector settings width-bytes n)]
       (enq-fill! (.queue settings) (.cl-buf zero-sv) zero-array)
       zero-sv))
   (byte-size [_]
-    Float/BYTES)
+    width-bytes)
   (copy [_ y]
-    (do (enq-copy! cl-buf (.cl-buf ^FloatCLBlockVector y))
+    (do (enq-copy! cl-buf (.cl-buf ^RealVectorCL y))
         y))
   (swp [x y]
     (do
-      (set-arg! swp-kernel 1 (.cl-buf ^FloatCLBlockVector y))
-      (enq-nd! (.queue settings) swp-kernel linear-work-size)
+      (s-swp engine cl-buf (.cl-buf ^RealVectorCL y))
       x)))
 
-(defn cl-sv*
-  ([^CLSettings settings ^long dim]
-   (cl-sv* settings
-           (cl-buffer (.context settings) (* dim Float/BYTES) :read-write)
-           dim))
-  ([^CLSettings settings cl-buf ^long dim]
-   (let [prog (.prog settings)
-         local-size (min dim (long (.max-local-size settings)))
-         acc-count (long (quot (+ dim (dec local-size)) local-size))
-         ;; TODO TODO this should be a part of the engine (queue)
-         cl-acc (cl-buffer (.context settings) (* Float/BYTES acc-count) :read-write)
-         ;; TODO TODO this should be a part of the engine (queue)
-         cl-iacc (cl-buffer (.context settings) (* Integer/BYTES acc-count) :read-write)]
+(defn cl-real-vector
+  ([^CLSettings settings cl-buf ^long width-bytes ^long dim]
+   (->RealVectorCL settings
+                   (gcn-vector-engine (.context settings)
+                                      (.queue settings)
+                                      (.prog settings)
+                                      (.max-local-size settings)
+                                      cl-buf
+                                      width-bytes
+                                      dim)
+                   cl-buf
+                   width-bytes
+                   dim))
 
-     (->FloatCLBlockVector settings
-                           cl-buf
-                           dim
-                           cl-acc
-                           cl-iacc
-                           (work-size [dim] [(min dim (.max-local-size settings))])
-                           (doto (kernel prog "swp") (set-arg! 0 cl-buf))
-                           (doto (kernel prog "scal") (set-arg! 1 cl-buf))
-                           (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
-                           (doto (kernel prog "sum_reduction")
-                             (set-args! cl-acc))
-                           (doto (kernel prog "imax_reduction")
-                             (set-args! cl-iacc cl-acc))
-                           (doto (kernel prog "dot_reduce")
-                             (set-args! cl-acc cl-buf))
-                           (doto (kernel prog "nrm2_reduce")
-                             (set-args! cl-acc cl-buf))
-                           (doto (kernel prog "asum_reduce")
-                             (set-args! cl-acc cl-buf))
-                           (doto (kernel prog "iamax_reduce")
-                             (set-args! cl-iacc cl-acc cl-buf))
-                           ))))
+  ([^CLSettings settings ^long width-bytes ^long dim]
+   (cl-real-vector settings
+                (cl-buffer (.context settings) (* dim width-bytes) :read-write)
+                width-bytes dim)))
 
 (defn cl-sv [settings ^long dim]
-  (cl-sv* settings dim))
+  (cl-real-vector settings Float/BYTES dim))
 
 ;; ======================= Dense Matrix ========================================
