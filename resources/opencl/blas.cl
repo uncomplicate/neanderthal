@@ -1,3 +1,8 @@
+#ifndef WGS
+    #define WGS 256
+#endif
+
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void swp (__global float* x, __global float* y) {
     uint gid = get_global_id(0);
     float temp = x[gid];
@@ -5,11 +10,13 @@ __kernel void swp (__global float* x, __global float* y) {
     y[gid] = temp;
 }
 
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void scal (__private float alpha, __global float* x) {
     uint gid = get_global_id(0);
     x[gid] = alpha * x[gid];
 }
 
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void axpy (__private float alpha,
                     __global float* x, __global float* y) {
     uint gid = get_global_id(0);
@@ -42,9 +49,11 @@ inline float work_group_reduction_sum (__local float* lacc,
     return result;
 }
 
-__kernel void sum_reduction (__local float* lacc, __global float* acc) {
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void sum_reduction (__global float* acc) {
 
     uint lid = get_local_id(0);
+    __local float lacc[WGS];
 
     float pacc = work_group_reduction_sum(lacc, lid, acc[get_global_id(0)]);
 
@@ -54,7 +63,7 @@ __kernel void sum_reduction (__local float* lacc, __global float* acc) {
 }
 
 // ================== Dot product ===========================================
-
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void dot_reduce (__local float* lacc, __global float* acc,
                           __global float* x, __global float* y) {
 
@@ -69,7 +78,7 @@ __kernel void dot_reduce (__local float* lacc, __global float* acc,
 }
 
 // ================== asum =================================================
-
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void asum_reduce (__local float* lacc, __global float* acc,
                            __global float* x) {
 
@@ -85,6 +94,7 @@ __kernel void asum_reduce (__local float* lacc, __global float* acc,
 
 // ================== nrm2 =================================================
 
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void nrm2_reduce (__local float* lacc, __global float* acc,
                            __global float* x) {
 
@@ -99,6 +109,7 @@ __kernel void nrm2_reduce (__local float* lacc, __global float* acc,
 
 }
 
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 // ================ Max reduction =======================================
 
 inline void work_group_reduction_imax (__local uint* liacc,
@@ -148,6 +159,7 @@ inline void work_group_reduction_imax (__local uint* liacc,
 
 }
 
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void imax_reduction (__local uint* liacc, __local float* lvacc,
                               __global uint* iacc, __global float* vacc) {
 
@@ -160,6 +172,7 @@ __kernel void imax_reduction (__local uint* liacc, __local float* lvacc,
 
 // ================== iamax reduce  ============================================
 
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void iamax_reduce (__local uint* liacc, __local float* lvacc,
                                __global uint* iacc, __global float* vacc,
                                __global float* x) {
