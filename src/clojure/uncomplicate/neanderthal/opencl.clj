@@ -31,7 +31,7 @@
     (aget res 0)))
 
 (defn ^:private enq-read-float ^double [queue cl-buf]
-  (let [res (float-array 1)]
+  (let [res (double-array 1)]
     (enq-read! queue cl-buf res)
     (aget res 0)))
 
@@ -135,7 +135,7 @@
 (defn gcn-vector-engine
   [context queue prog max-local-size cl-buf entry-width n]
   (let [acc-size (* (long entry-width) (count-work-groups max-local-size n))
-        cl-acc (cl-buffer context acc-size :read-write)
+        cl-acc (cl-buffer context (* 2 acc-size) :read-write)
         cl-iacc (cl-buffer context acc-size :read-write)]
     (->GCNVectorEngine entry-width
                        max-local-size

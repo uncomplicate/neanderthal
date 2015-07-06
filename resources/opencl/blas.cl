@@ -33,17 +33,17 @@ __kernel void axpy (__private const REAL alpha,
 
 // ================= Sum reduction =============================================
 
-inline void work_group_reduction_sum (__global REAL* acc, const REAL value) {
+inline void work_group_reduction_sum (__global double* acc, const REAL value) {
 
     uint local_size = get_local_size(0);
     uint local_id = get_local_id(0);
 
-    __local REAL lacc[WGS];
+    __local double lacc[WGS];
     lacc[local_id] = value;
 
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-    REAL pacc = value;
+    double pacc = value;
     uint i = local_size;
     while (i > 0) {
         bool include_odd = (i > ((i >> 1) << 1)) && (local_id == ((i >> 1) - 1));
@@ -64,13 +64,13 @@ inline void work_group_reduction_sum (__global REAL* acc, const REAL value) {
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void sum_reduction (__global REAL* acc) {
+__kernel void sum_reduction (__global double* acc) {
     work_group_reduction_sum(acc, acc[get_global_id(0)]);
 }
 
 // ================== Dot product ==============================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void dot_reduce (__global REAL* acc,
+__kernel void dot_reduce (__global double* acc,
                           __global const REAL* x, __global const REAL* y) {
     uint gid = get_global_id(0);
     work_group_reduction_sum(acc, x[gid] * y[gid]);
@@ -78,14 +78,14 @@ __kernel void dot_reduce (__global REAL* acc,
 
 // ================== asum =====================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void asum_reduce (__global REAL* acc, __global const REAL* x) {
+__kernel void asum_reduce (__global double* acc, __global const REAL* x) {
     work_group_reduction_sum(acc, fabs(x[get_global_id(0)]));
 }
 
 // ================== nrm2 =====================================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void nrm2_reduce (__global REAL* acc, __global const REAL* x) {
+__kernel void nrm2_reduce (__global double* acc, __global const REAL* x) {
     work_group_reduction_sum(acc, pown(x[get_global_id(0)], 2));
 }
 

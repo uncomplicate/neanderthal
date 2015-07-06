@@ -31,7 +31,7 @@
        (fset! host-x 6 10000.0)
        (write! cl-x host-x)
 
-       (time (dot cl-x cl-y)) => (time (float (dot host-x host-y)))
+       (time (dot cl-x cl-y)) => (time (dot host-x host-y))
 
        (time (asum cl-x)) => (roughly (+ (float 10000)
                                          (* (float x-magic) (float cnt))))
