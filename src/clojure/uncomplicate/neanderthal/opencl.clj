@@ -30,7 +30,7 @@
     (enq-read! queue cl-buf res)
     (aget res 0)))
 
-(defn ^:private enq-read-float ^double [queue cl-buf]
+(defn ^:private enq-read-double ^double [queue cl-buf]
   (let [res (double-array 1)]
     (enq-read! queue cl-buf res)
     (aget res 0)))
@@ -106,15 +106,15 @@
     (do
       (set-arg! dot-reduce-kernel 2 cl-y)
       (enq-reduce queue dot-reduce-kernel sum-reduction-kernel max-local-size n)
-      (enq-read-float queue reduce-acc)))
+      (enq-read-double queue reduce-acc)))
   (s-nrm2 [_ _]
     (do
       (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel max-local-size n)
-      (sqrt (enq-read-float queue reduce-acc))))
+      (sqrt (enq-read-double queue reduce-acc))))
   (s-asum [_ _]
     (do
       (enq-reduce queue asum-reduce-kernel sum-reduction-kernel max-local-size n)
-        (enq-read-float queue reduce-acc)))
+        (enq-read-double queue reduce-acc)))
   (s-rot [_ _ cl-y c s]
     (throw (UnsupportedOperationException.
             "TODO.")))
