@@ -134,9 +134,10 @@
 
 (defn gcn-vector-engine
   [context queue prog max-local-size cl-buf entry-width n]
-  (let [acc-size (* (long entry-width) (count-work-groups max-local-size n))
-        cl-acc (cl-buffer context (* 2 acc-size) :read-write)
-        cl-iacc (cl-buffer context acc-size :read-write)]
+  (let [iacc-size (* Integer/BYTES (count-work-groups max-local-size n))
+        acc-size (* Double/BYTES (count-work-groups max-local-size n))
+        cl-acc (cl-buffer context acc-size :read-write)
+        cl-iacc (cl-buffer context iacc-size :read-write)]
     (->GCNVectorEngine entry-width
                        max-local-size
                        queue

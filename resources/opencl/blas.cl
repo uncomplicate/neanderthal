@@ -33,7 +33,7 @@ __kernel void axpy (__private const REAL alpha,
 
 // ================= Sum reduction =============================================
 
-inline void work_group_reduction_sum (__global double* acc, const REAL value) {
+inline void work_group_reduction_sum (__global double* acc, const double value) {
 
     uint local_size = get_local_size(0);
     uint local_id = get_local_id(0);
@@ -73,47 +73,47 @@ __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void dot_reduce (__global double* acc,
                           __global const REAL* x, __global const REAL* y) {
     uint gid = get_global_id(0);
-    work_group_reduction_sum(acc, x[gid] * y[gid]);
+    work_group_reduction_sum(acc, (double)(x[gid] * y[gid]));
 }
 
 // ================== asum =====================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void asum_reduce (__global double* acc, __global const REAL* x) {
-    work_group_reduction_sum(acc, fabs(x[get_global_id(0)]));
+    work_group_reduction_sum(acc, (double)fabs(x[get_global_id(0)]));
 }
 
 // ================== nrm2 =====================================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void nrm2_reduce (__global double* acc, __global const REAL* x) {
-    work_group_reduction_sum(acc, pown(x[get_global_id(0)], 2));
+    work_group_reduction_sum(acc, (double)pown(x[get_global_id(0)], 2));
 }
 
 // ================ Max reduction ==============================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 inline void work_group_reduction_imax (__global uint* iacc,
-                                       __global REAL* vacc,
-                                       uint const ind, const REAL val) {
+                                       __global double* vacc,
+                                       uint const ind, const double val) {
 
     uint local_id = get_local_id(0);
     uint local_size = get_local_size(0);
 
     __local uint liacc[WGS];
-    __local REAL lvacc[WGS];
+    __local double lvacc[WGS];
     liacc[local_id] = ind;
     lvacc[local_id] = val;
 
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     uint index = ind;
-    REAL value = val;
+    double value = val;
 
     uint i = local_size;
     while (i > 0) {
         bool include_odd = (i > ((i >> 1) << 1)) && (local_id == ((i >> 1) - 1));
         i >>= 1;
         if (include_odd) {
-            REAL other_value = lvacc[local_id + i + 1];
+            double other_value = lvacc[local_id + i + 1];
             if (other_value > value) {
                 value = other_value;
                 index = liacc[local_id + i + 1];
@@ -122,7 +122,7 @@ inline void work_group_reduction_imax (__global uint* iacc,
             }
         }
         if (local_id < i) {
-            REAL other_value = lvacc[local_id + i];
+            double other_value = lvacc[local_id + i];
             if (other_value > value) {
                 value = other_value;
                 index = liacc[local_id + i];
@@ -142,9 +142,9 @@ inline void work_group_reduction_imax (__global uint* iacc,
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void imax_reduction (__global uint* iacc, __global REAL* vacc) {
+__kernel void imax_reduction (__global uint* iacc, __global double* vacc) {
     uint gid = get_global_id(0);
-    work_group_reduction_imax(iacc, vacc, iacc[gid], vacc[gid]);
+    work_group_reduction_imax(iacc, vacc, iacc[gid], (double)(vacc[gid]));
 }
 
 // ================== iamax reduce  ============================================
@@ -153,7 +153,7 @@ __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void iamax_reduce (__global uint* iacc, __global REAL* vacc,
                             __global const REAL* x) {
     uint gid = get_global_id(0);
-    work_group_reduction_imax(iacc, vacc, gid, fabs(x[gid]));
+    work_group_reduction_imax(iacc, vacc, gid, (double)(fabs(x[gid])));
 }
 
 // ||||||||||||||||       BLAS 2      ||||||||||||||||||||||||||||||||||||||||||

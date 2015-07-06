@@ -11,7 +11,7 @@
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix]))
 
-(def cnt (long (+ 1000 (pow 2 25))))
+(def cnt (long (+ 1000  (pow 2 25))))
 (def x-magic 0.00002)
 (def y-magic 0.00005)
 
@@ -28,13 +28,13 @@
 
        (fset! cl-x x-magic)
        (fset! cl-y y-magic)
-       (fset! host-x 6 10000.0)
+       (fset! host-x 6 100000.0)
        (write! cl-x host-x)
 
-       (time (dot cl-x cl-y)) => (time (dot host-x host-y))
+       (time (float (dot cl-x cl-y))) => (time (float (dot host-x host-y)))
 
-       (time (asum cl-x)) => (roughly (+ (float 10000)
-                                         (* (float x-magic) (float cnt))))
+       (time (float (asum cl-x)))
+       => (float (+ 100000 (* (double x-magic) (double cnt))))
 
        (time (nrm2 cl-x)) => (roughly (nrm2 host-x))
 
