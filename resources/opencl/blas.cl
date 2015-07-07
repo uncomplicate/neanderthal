@@ -178,6 +178,10 @@ __kernel void iamax_reduce (__global uint* iacc, __global double* vacc,
 inline void work_group_reduction_sum_horizontal
 (__global double* acc, const double value) {
 
+    uint global_size_m = get_global_size(0);
+    uint group_id_m = get_group_id(0);
+    uint group_id_n = get_group_id(1);
+
     uint local_m = get_local_size(0);
     uint local_n = get_local_size(1);
     uint local_row = get_local_id(0);
@@ -204,8 +208,11 @@ inline void work_group_reduction_sum_horizontal
     }
 
     if(local_col == 0) {
-        acc[get_global_id(0) * get_group_id(1) +
-            WGSm * get_group_id(0) + local_row] = pacc;
+        acc[(global_size_m * group_id_n)
+            + (group_id_m  * WGSm)
+            + (global_size_m * local_col) + local_row] = pacc;
+        //acc[get_global_id(0) * get_group_id(1) +
+        //  WGSm * get_group_id(0) + local_row] = pacc;
     }
 }
 
@@ -215,7 +222,18 @@ inline void work_group_reduction_sum_horizontal
    column-orientednes reads vector only once....*/
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void sum_reduction_horizontal (__global double* acc) {
-    work_group_reduction_sum(acc, acc[get_global_id(0)]);
+
+    uint global_size_m = get_global_size(0);
+    uint group_id_m = get_group_id(0);
+    uint group_id_n = get_group_id(1);
+    uint local_row = get_local_id(0);
+    uint local_col = get_local_id(1);
+
+    uint a_id = (global_size_m * WGSn * group_id_n)
+        + (group_id_m  * WGSm)
+        + (global_size_m * local_col) + local_row;
+
+    work_group_reduction_sum_horizontal(acc, acc[a_id]);
 }
 
 // ================== Dot product ==============================================

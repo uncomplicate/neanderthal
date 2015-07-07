@@ -72,8 +72,8 @@
 
          (read! cl-y host-y) => host-x))))
 
-(def m-cnt 20)
-(def n-cnt 20)
+(def m-cnt 16000)
+(def n-cnt 8000)
 (def a-magic 3)
 (def x-magic 2)
 (def y-magic 5)
@@ -93,6 +93,6 @@
        (fset! cl-x x-magic)
        (fset! cl-y y-magic)
 
-       (read! (mv! cl-y 10 cl-a cl-x 100) (sv m-cnt))
-       => (mv! host-y 10 host-a host-x 100)
+       (time (read! (mv! cl-y 10 cl-a cl-x 100) (sv m-cnt)))
+       => (time (mv! host-y 10 host-a host-x 100))
        ))))
