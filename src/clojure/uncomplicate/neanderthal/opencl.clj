@@ -318,7 +318,7 @@
 
 (defn gcn-matrix-engine
   [context queue prog local-size-n cl-buf entry-width m n]
-  (let [acc-size (* Double/BYTES (long m) (count-work-groups local-size-n n))
+  (let [acc-size (* Float/BYTES (long m) (count-work-groups local-size-n n))
         cl-acc (cl-buffer context acc-size :read-write)]
     (->GCNMatrixEngine entry-width
                        local-size-n

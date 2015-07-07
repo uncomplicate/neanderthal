@@ -72,8 +72,8 @@
 
          (read! cl-y host-y) => host-x))))
 
-(def m-cnt 16000)
-(def n-cnt 8000)
+(def m-cnt 8193)
+(def n-cnt 4095)
 (def a-magic 3)
 (def x-magic 2)
 (def y-magic 5)

@@ -40,7 +40,7 @@ __kernel void axpy (__private const REAL alpha, __global const REAL* x,
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void xpby (__global const double* x,
+__kernel void xpby (__global const REAL* x,
                     const REAL beta, __global REAL* y) {
     uint gid = get_global_id(0);
     y[gid] = x[gid] + beta * y[gid];
@@ -176,7 +176,7 @@ __kernel void iamax_reduce (__global uint* iacc, __global double* vacc,
 // ================== GEMV =====================================================
 
 inline void work_group_reduction_sum_horizontal
-(__global double* acc, const double value) {
+(__global REAL* acc, const REAL value) {
 
     uint global_size_m = get_global_size(0);
     uint group_id_m = get_group_id(0);
@@ -187,12 +187,12 @@ inline void work_group_reduction_sum_horizontal
     uint local_row = get_local_id(0);
     uint local_col = get_local_id(1);
 
-    __local double lacc[WGSm][WGSn];
+    __local REAL lacc[WGSm][WGSn];
     lacc[local_row][local_col] = value;
 
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-    double pacc = value;
+    REAL pacc = value;
     uint i = local_n;
     while (i > 0) {
         bool include_odd = (i > ((i >> 1) << 1)) && (local_col == ((i >> 1) - 1));
@@ -211,8 +211,6 @@ inline void work_group_reduction_sum_horizontal
         acc[(global_size_m * group_id_n)
             + (group_id_m  * WGSm)
             + (global_size_m * local_col) + local_row] = pacc;
-        //acc[get_global_id(0) * get_group_id(1) +
-        //  WGSm * get_group_id(0) + local_row] = pacc;
     }
 }
 
@@ -221,7 +219,7 @@ inline void work_group_reduction_sum_horizontal
    Maybe it'll be a good idea to concentrate on row-orientedness or, probably not because
    column-orientednes reads vector only once....*/
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
-__kernel void sum_reduction_horizontal (__global double* acc) {
+__kernel void sum_reduction_horizontal (__global REAL* acc) {
 
     uint global_size_m = get_global_size(0);
     uint group_id_m = get_group_id(0);
@@ -238,7 +236,7 @@ __kernel void sum_reduction_horizontal (__global double* acc) {
 
 // ================== Dot product ==============================================
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
-__kernel void gemv_reduce (__global double* acc,
+__kernel void gemv_reduce (__global REAL* acc,
                            const REAL alpha, __global const REAL* a,
                            __global const REAL* x) {
 
