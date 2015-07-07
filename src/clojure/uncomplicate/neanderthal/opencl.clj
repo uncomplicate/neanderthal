@@ -314,7 +314,7 @@
                              sum-reduction-horizontal-kernel
                              local-size-n m n)
       (set-args! xpby-kernel 1 (float-array [beta]) cl-y)
-      (enq-nd! xpby-kernel linear-work-size))))
+      (enq-nd! queue xpby-kernel linear-work-size))))
 
 (defn gcn-matrix-engine
   [context queue prog local-size-n cl-buf entry-width m n]

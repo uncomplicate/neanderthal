@@ -40,7 +40,7 @@ __kernel void axpy (__private const REAL alpha, __global const REAL* x,
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void xpby (__global const REAL* x,
+__kernel void xpby (__global const double* x,
                     const REAL beta, __global REAL* y) {
     uint gid = get_global_id(0);
     y[gid] = x[gid] + beta * y[gid];

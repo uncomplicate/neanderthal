@@ -72,25 +72,27 @@
 
          (read! cl-y host-y) => host-x))))
 
-(def m-cnt 2)
-(def n-cnt 2)
+(def m-cnt 20)
+(def n-cnt 20)
 (def a-magic 3)
+(def x-magic 2)
+(def y-magic 5)
 
 (facts
  "RealMatrix methods"
  (with-default
    (let [host-a (doto (sge m-cnt n-cnt) (fset! a-magic))
          host-x (doto (sv n-cnt) (fset! x-magic))
-         host-y (doto (sv n-cnt) (fset! y-magic))]
+         host-y (doto (sv m-cnt) (fset! y-magic))]
      (with-release [settings (cl-settings *command-queue*)
                     cl-a (cl-sge settings m-cnt n-cnt)
                     cl-x (cl-sv settings n-cnt)
-                    cl-y (cl-sv settings n-cnt)]
+                    cl-y (cl-sv settings m-cnt)]
 
        (fset! cl-a a-magic)
        (fset! cl-x x-magic)
        (fset! cl-y y-magic)
 
-       (read! (mv! cl-y 10 cl-a cl-x 100) (sv n-cnt))
+       (read! (mv! cl-y 10 cl-a cl-x 100) (sv m-cnt))
        => (mv! host-y 10 host-a host-x 100)
        ))))
