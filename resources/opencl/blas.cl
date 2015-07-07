@@ -6,6 +6,14 @@
     #define WGS 256
 #endif
 
+#ifndef WGSm
+    #define WGSm 16
+#endif
+
+#ifndef WGSn
+#define WGSn 16
+#endif
+
 //|||||||||||||||||       BLAS 1       |||||||||||||||||||||||||||||||||||||||||
 
 // ================ Embarassingly parallel kernels =============================
@@ -25,10 +33,17 @@ __kernel void scal (__private const REAL alpha, __global REAL* x) {
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void axpy (__private const REAL alpha,
-                    __global const REAL* x, __global REAL* y) {
+__kernel void axpy (__private const REAL alpha, __global const REAL* x,
+                     __global REAL* y) {
     uint gid = get_global_id(0);
     y[gid] = alpha * x[gid] + y[gid];
+}
+
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void xpby (__global const REAL* x,
+                    const REAL beta, __global REAL* y) {
+    uint gid = get_global_id(0);
+    y[gid] = x[gid] + beta * y[gid];
 }
 
 // ================= Sum reduction =============================================
@@ -150,7 +165,7 @@ __kernel void imax_reduction (__global uint* iacc, __global double* vacc) {
 // ================== iamax reduce  ============================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void iamax_reduce (__global uint* iacc, __global REAL* vacc,
+__kernel void iamax_reduce (__global uint* iacc, __global double* vacc,
                             __global const REAL* x) {
     uint gid = get_global_id(0);
     work_group_reduction_imax(iacc, vacc, gid, (double)(fabs(x[gid])));
@@ -158,45 +173,68 @@ __kernel void iamax_reduce (__global uint* iacc, __global REAL* vacc,
 
 // ||||||||||||||||       BLAS 2      ||||||||||||||||||||||||||||||||||||||||||
 
-/*__kernel void gemv_reduce (__local REAL* lacc, __global REAL* acc,
-                           __global REAL* x, __global REAL* y) {
+// ================== GEMV =====================================================
 
-    uint gid = get_global_id(0);
-    uint lid = get_local_id(0);
-    uint local_size = get_local_size(0);
+inline void work_group_reduction_sum_horizontal
+(__global double* acc, const double value) {
 
-    REAL pacc;
-    pacc = x[gid] * y[gid];
-    lacc[lid] = pacc;
+    uint local_m = get_local_size(0);
+    uint local_n = get_local_size(1);
+    uint local_row = get_local_id(0);
+    uint local_col = get_local_id(1);
+
+    __local double lacc[WGSm][WGSn];
+    lacc[local_row][local_col] = value;
+
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-    for(int i = local_size >> 1; i > 0; i >>= 1) {
-        if (lid < i) {
-            pacc += lacc[lid + i];
-            lacc[lid] = pacc;
+    double pacc = value;
+    uint i = local_n;
+    while (i > 0) {
+        bool include_odd = (i > ((i >> 1) << 1)) && (local_col == ((i >> 1) - 1));
+        i >>= 1;
+        if (include_odd) {
+            pacc += lacc[local_row][local_col + i + 1];
+        }
+        if (local_col < i) {
+            pacc += lacc[local_row][local_col + i];
+            lacc[local_row][local_col] = pacc;
         }
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
     }
 
-    if(lid == 0) {
-        acc[get_group_id(0)] = pacc;
+    if(local_col == 0) {
+        acc[get_global_id(0) * get_group_id(1) +
+            WGSm * get_group_id(0) + local_row] = pacc;
     }
-    }*/
-
-
-/*__kernel void gemv(__local int* lacc,
-                   const REAL alpha, const REAL beta,
-                   const __global REAL* restrict A,
-                   const __global REAL* restrict X,
-                   __global REAL* Y) {
-
-    int col = get_global_id(0);
-    int row = get_global_id(1);
-
-    int local_col_size = get_global_id(0);
-    int local_row_size = get_global_id(1);
-
-
-
 }
-*/
+
+/* TODO: first make it work with only one pass (m x 16) and then do the final reduction
+   Also think about doing some loops (or dot(float16)) in the kernel
+   Maybe it'll be a good idea to concentrate on row-orientedness or, probably not because
+   column-orientednes reads vector only once....*/
+__attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
+__kernel void sum_reduction_horizontal (__global double* acc) {
+    work_group_reduction_sum(acc, acc[get_global_id(0)]);
+}
+
+// ================== Dot product ==============================================
+__attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
+__kernel void gemv_reduce (__global double* acc,
+                           const REAL alpha, __global const REAL* a,
+                           __global const REAL* x) {
+
+    uint global_size_m = get_global_size(0);
+    uint group_id_m = get_group_id(0);
+    uint group_id_n = get_group_id(1);
+    uint local_row = get_local_id(0);
+    uint local_col = get_local_id(1);
+
+    uint a_id = (global_size_m * WGSn * group_id_n)
+        + (group_id_m  * WGSm)
+        + (global_size_m * local_col) + local_row;
+
+    uint x_id = WGSn * group_id_n + local_col;
+
+    work_group_reduction_sum_horizontal(acc, alpha * a[a_id] * x[x_id]);
+}

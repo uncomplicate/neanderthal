@@ -7,7 +7,7 @@
   (:import [uncomplicate.neanderthal.protocols
             Vector RealVector Matrix RealMatrix Carrier RealChangeable]
            [uncomplicate.clojurecl.core WorkSize]
-           [uncomplicate.neanderthal.cblas FloatBlockVector]
+           [uncomplicate.neanderthal.cblas FloatBlockVector FloatGeneralMatrix]
            [java.nio ByteBuffer]))
 
 (defn ^:private count-work-groups ^long [^long max-local-size ^long n]
@@ -24,6 +24,16 @@
       (recur
        (enq-nd! queue reduce-kernel (work-size [global-size]))
        (count-work-groups max-local-size global-size)))))
+
+(defn ^:private enq-reduce-horizontal
+  [queue main-kernel reduce-kernel max-local-size m n]
+  (loop [queue (enq-nd! queue main-kernel (work-size [m n]))
+         folded-n (count-work-groups max-local-size n)]
+    (if (= 1 folded-n)
+      queue
+      (recur
+       (enq-nd! queue reduce-kernel (work-size [m folded-n]))
+       (count-work-groups max-local-size folded-n)))))
 
 (defn ^:private enq-read-int ^long [queue cl-buf]
   (let [res (int-array 1)]
@@ -43,17 +53,20 @@
 
 ;;TODO Switch to these (as interfaces) for ATLAS, too, and rename methods then.
 (defprotocol BLAS1
-    (s-iamax [_ cl-x])
-    (s-rotg [_ cl-x])
-    (s-rotm [_ cl-x cl-y p])
-    (s-rotmg [_ p args])
-    (s-dot [_ cl-x cl-y])
-    (s-nrm2 [_ cl-x])
-    (s-asum [_ cl-x])
-    (s-rot [_ cl-x cl-y c s])
-    (s-scal [_ alpha cl-x])
-    (s-axpy [_ alpha cl-x cl-y])
-    (s-swp [_ cl-x cl-y]))
+  (s-iamax [_ cl-x])
+  (s-rotg [_ cl-x])
+  (s-rotm [_ cl-x cl-y p])
+  (s-rotmg [_ p args])
+  (s-dot [_ cl-x cl-y])
+  (s-nrm2 [_ cl-x])
+  (s-asum [_ cl-x])
+  (s-rot [_ cl-x cl-y c s])
+  (s-scal [_ alpha cl-x])
+  (s-axpy [_ alpha cl-x cl-y])
+  (s-swp [_ cl-x cl-y]))
+
+(defprotocol BLAS2
+  (s-mv [_ alpha cl-a cl-x beta cl-y]))
 
 (deftype GCNVectorEngine [^long entry-width
                           ^long max-local-size
@@ -274,3 +287,112 @@
   (cl-real-vector settings Float/BYTES dim))
 
 ;; ======================= Dense Matrix ========================================
+
+(deftype GCNMatrixEngine [^long entry-width
+                          ^long local-size-n
+                          queue
+                          m n
+                          reduce-acc
+                          linear-work-size
+                          xpby-kernel
+                          sum-reduction-horizontal-kernel
+                          gemv-reduce-kernel]
+
+  Releaseable
+  (release [_]
+    (and
+     (release reduce-acc)
+     (release xpby-kernel)
+     (release sum-reduction-horizontal-kernel)
+     (release gemv-reduce-kernel)))
+  BLAS2
+  (s-mv [_ alpha cl-a cl-x beta cl-y]
+    (do
+      (set-arg! gemv-reduce-kernel 1 (float-array [alpha]))
+      (set-arg! gemv-reduce-kernel 3 cl-x)
+      (enq-reduce-horizontal queue gemv-reduce-kernel
+                             sum-reduction-horizontal-kernel
+                             local-size-n m n)
+      (set-args! xpby-kernel 1 (float-array [beta]) cl-y)
+      (enq-nd! xpby-kernel linear-work-size))))
+
+(defn gcn-matrix-engine
+  [context queue prog local-size-n cl-buf entry-width m n]
+  (let [acc-size (* Double/BYTES (long m) (count-work-groups local-size-n n))
+        cl-acc (cl-buffer context acc-size :read-write)]
+    (->GCNMatrixEngine entry-width
+                       local-size-n
+                       queue
+                       m n
+                       cl-acc
+                       (work-size [m])
+                       (doto (kernel prog "xpby") (set-arg! 0 cl-acc))
+                       (doto (kernel prog "sum_reduction_horizontal")
+                         (set-arg! 0 cl-acc))
+                       (doto (kernel prog "gemv_reduce")
+                         (set-arg! 0 cl-acc)
+                         (set-arg! 2 cl-buf)))))
+
+(deftype RealGeneralMatrixCL [^CLSettings settings engine cl-buf
+                              ^long width-bytes ^long m ^long n]
+  Releaseable
+  (release [_]
+    (and
+     (release cl-buf)
+     (release engine)))
+  Carrier
+  (byte-size [_]
+    width-bytes)
+  (column-major? [a]
+    true)
+  RealChangeable
+  (set [x val]
+    (do
+      (enq-fill! (.queue settings) cl-buf (float-array [val]))
+      x))
+  Mappable
+  (read! [_ host]
+    (do
+      (enq-read! (.queue settings) cl-buf (.buf ^FloatGeneralMatrix host))
+      host))
+  (write! [this host]
+    (do
+      (enq-write! (.queue settings) cl-buf (.buf ^FloatGeneralMatrix host))
+      this))
+  RealMatrix
+  (mrows [_]
+    m)
+  (ncols [_]
+    n)
+  (mv [_ alpha x beta y]
+    (do
+      (s-mv engine
+            alpha cl-buf
+            (.cl-buf ^RealVectorCL x)
+            beta (.cl-buf ^RealVectorCL y))
+      y)))
+
+(def magic-n 16);;TODO automatize this
+
+(defn cl-real-general-matrix
+  ([^CLSettings settings cl-buf width-bytes m n]
+   (->RealGeneralMatrixCL settings
+                          (gcn-matrix-engine (.context settings)
+                                             (.queue settings)
+                                             (.prog settings)
+                                             magic-n
+                                             cl-buf
+                                             width-bytes
+                                             m n)
+                   cl-buf
+                   width-bytes
+                   m n))
+
+  ([^CLSettings settings ^long width-bytes ^long m ^long n]
+   (cl-real-general-matrix settings
+                           (cl-buffer (.context settings) (* m n width-bytes)
+                                      :read-write)
+                           width-bytes m n)))
+
+(defn cl-sge [settings ^long m ^long n]
+  (cl-real-general-matrix settings Float/BYTES m n))

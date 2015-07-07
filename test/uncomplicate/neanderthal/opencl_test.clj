@@ -12,8 +12,8 @@
             RealVector RealMatrix]))
 
 (def cnt (long (+ 1000  (pow 2 25))))
-(def x-magic 0.00002)
-(def y-magic 0.00005)
+(def x-magic 2)
+(def y-magic 5)
 
 (facts
  "RealVector methods"
@@ -31,23 +31,19 @@
        (fset! host-x 6 100000.0)
        (write! cl-x host-x)
 
-       (time (float (dot cl-x cl-y))) => (time (float (dot host-x host-y)))
+       (float (dot cl-x cl-y)) => (float (dot host-x host-y))
 
-       (time (float (asum cl-x)))
+       (float (asum cl-x))
        => (float (+ 100000 (* (double x-magic) (double cnt))))
 
-       (time (nrm2 cl-x)) => (roughly (nrm2 host-x))
+       (nrm2 cl-x) => (roughly (nrm2 host-x))
 
-       (time (iamax cl-x)) => 6
+       (iamax cl-x) => 6
 
        (read! (scal! 2 cl-x) (sv cnt)) => (scal! 2 host-x)
 
        (read! (axpy! cl-y 2 cl-x) (sv cnt))
-       => (axpy! host-y 2 host-x)
-
-
-
-       ))))
+       => (axpy! host-y 2 host-x)))))
 
 
 (facts
@@ -75,3 +71,26 @@
          (copy! cl-x cl-y) => cl-y
 
          (read! cl-y host-y) => host-x))))
+
+(def m-cnt 2)
+(def n-cnt 2)
+(def a-magic 3)
+
+(facts
+ "RealMatrix methods"
+ (with-default
+   (let [host-a (doto (sge m-cnt n-cnt) (fset! a-magic))
+         host-x (doto (sv n-cnt) (fset! x-magic))
+         host-y (doto (sv n-cnt) (fset! y-magic))]
+     (with-release [settings (cl-settings *command-queue*)
+                    cl-a (cl-sge settings m-cnt n-cnt)
+                    cl-x (cl-sv settings n-cnt)
+                    cl-y (cl-sv settings n-cnt)]
+
+       (fset! cl-a a-magic)
+       (fset! cl-x x-magic)
+       (fset! cl-y y-magic)
+
+       (read! (mv! cl-y 10 cl-a cl-x 100) (sv n-cnt))
+       => (mv! host-y 10 host-a host-x 100)
+       ))))
