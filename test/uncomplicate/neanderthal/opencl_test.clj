@@ -72,14 +72,14 @@
 
          (read! cl-y host-y) => host-x))))
 
-(def m-cnt 8193)
-(def n-cnt 4095)
+(def m-cnt 2048)
+(def n-cnt 1024)
 (def a-magic 3)
 (def x-magic 2)
 (def y-magic 5)
 
 (facts
- "RealMatrix methods"
+ "Real matrix-vector multiplication."
  (with-default
    (let [host-a (doto (sge m-cnt n-cnt) (fset! a-magic))
          host-x (doto (sv n-cnt) (fset! x-magic))
@@ -93,6 +93,30 @@
        (fset! cl-x x-magic)
        (fset! cl-y y-magic)
 
-       (time (read! (mv! cl-y 10 cl-a cl-x 100) (sv m-cnt)))
-       => (time (mv! host-y 10 host-a host-x 100))
-       ))))
+       (read! (mv! cl-y 10 cl-a cl-x 100) (sv m-cnt))
+       => (mv! host-y 10 host-a host-x 100)))))
+
+(def m-cnt 171)
+(def k-cnt 17)
+(def n-cnt 161)
+(def a-magic 1)
+(def x-magic 1)
+(def y-magic 1)
+
+(facts
+ "Real matrix-matrix multiplication."
+ (with-default
+   (let [host-a (doto (sge m-cnt k-cnt) (fset! a-magic))
+         host-b (doto (sge k-cnt n-cnt) (fset! x-magic))
+         host-c (doto (sge m-cnt n-cnt) (fset! y-magic))]
+     (with-release [settings (cl-settings *command-queue*)
+                    cl-a (cl-sge settings m-cnt k-cnt)
+                    cl-b (cl-sge settings k-cnt n-cnt)
+                    cl-c (cl-sge settings m-cnt n-cnt)]
+
+       (fset! cl-a a-magic)
+       (fset! cl-b x-magic)
+       (fset! cl-c y-magic)
+
+       (read! (mm! cl-c 10 cl-a cl-b 100) (sge m-cnt n-cnt))
+       => (mm! host-c 10 host-a host-b 100)))))

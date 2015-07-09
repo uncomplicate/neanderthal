@@ -66,7 +66,8 @@
   (s-swp [_ cl-x cl-y]))
 
 (defprotocol BLAS2
-  (s-mv [_ alpha cl-a cl-x beta cl-y]))
+  (s-mv [_ alpha cl-a cl-x beta cl-y])
+  (s-mm [_ alpha cl-a cl-b beta cl-c m k n]))
 
 (deftype GCNVectorEngine [^long entry-width
                           ^long max-local-size
@@ -296,7 +297,8 @@
                           linear-work-size
                           xpby-kernel
                           sum-reduction-horizontal-kernel
-                          gemv-reduce-kernel]
+                          gemv-reduce-kernel
+                          gemm-tiled-kernel]
 
   Releaseable
   (release [_]
@@ -304,7 +306,8 @@
      (release reduce-acc)
      (release xpby-kernel)
      (release sum-reduction-horizontal-kernel)
-     (release gemv-reduce-kernel)))
+     (release gemv-reduce-kernel)
+     (release gemm-tiled-kernel)))
   BLAS2
   (s-mv [_ alpha cl-a cl-x beta cl-y]
     (do
@@ -314,7 +317,16 @@
                              sum-reduction-horizontal-kernel
                              local-size-n m n)
       (set-args! xpby-kernel 1 (float-array [beta]) cl-y)
-      (enq-nd! queue xpby-kernel linear-work-size))))
+      (enq-nd! queue xpby-kernel linear-work-size)))
+  (s-mm [_ alpha cl-a cl-b beta cl-c m k n]
+    (do
+      (set-arg! gemm-tiled-kernel 0 (float-array [alpha]))
+      (set-args! gemm-tiled-kernel 2
+                 cl-b (float-array [beta]) cl-c
+                 (int-array [m]) (int-array [k]) (float-array [n]))
+      (enq-nd! queue gemm-tiled-kernel
+               (work-size [(* magic-n (count-work-groups magic-n m))
+                           (* magic-n (count-work-groups magic-n n))])))))
 
 (defn gcn-matrix-engine
   [context queue prog local-size-n cl-buf entry-width m n]
@@ -331,7 +343,9 @@
                          (set-arg! 0 cl-acc))
                        (doto (kernel prog "gemv_reduce")
                          (set-arg! 0 cl-acc)
-                         (set-arg! 2 cl-buf)))))
+                         (set-arg! 2 cl-buf))
+                       (doto (kernel prog "gemm_tiled")
+                         (set-arg! 1 cl-buf)))))
 
 (deftype RealGeneralMatrixCL [^CLSettings settings engine cl-buf
                               ^long width-bytes ^long m ^long n]
@@ -370,7 +384,15 @@
             alpha cl-buf
             (.cl-buf ^RealVectorCL x)
             beta (.cl-buf ^RealVectorCL y))
-      y)))
+      y))
+  (mm [_ alpha b beta c]
+    (do
+      (s-mm engine
+            alpha cl-buf
+            (.cl-buf ^RealGeneralMatrixCL b)
+            beta (.cl-buf ^RealGeneralMatrixCL c)
+            m n (.n ^RealGeneralMatrixCL b))
+      c)))
 
 (def magic-n 16);;TODO automatize this
 

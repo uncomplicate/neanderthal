@@ -11,7 +11,11 @@
 #endif
 
 #ifndef WGSn
-#define WGSn 16
+    #define WGSn 16
+#endif
+
+#ifndef WGS2
+    #define WGS2 16
 #endif
 
 //|||||||||||||||||       BLAS 1       |||||||||||||||||||||||||||||||||||||||||
@@ -214,10 +218,6 @@ inline void work_group_reduction_sum_horizontal
     }
 }
 
-/* TODO: first make it work with only one pass (m x 16) and then do the final reduction
-   Also think about doing some loops (or dot(float16)) in the kernel
-   Maybe it'll be a good idea to concentrate on row-orientedness or, probably not because
-   column-orientednes reads vector only once....*/
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void sum_reduction_horizontal (__global REAL* acc) {
 
@@ -234,7 +234,8 @@ __kernel void sum_reduction_horizontal (__global REAL* acc) {
     work_group_reduction_sum_horizontal(acc, acc[a_id]);
 }
 
-// ================== Dot product ==============================================
+// ========================= gemv ==============================================
+
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void gemv_reduce (__global REAL* acc,
                            const REAL alpha, __global const REAL* a,
@@ -253,4 +254,100 @@ __kernel void gemv_reduce (__global REAL* acc,
     uint x_id = WGSn * group_id_n + local_col;
 
     work_group_reduction_sum_horizontal(acc, alpha * a[a_id] * x[x_id]);
+}
+
+// ||||||||||||||||       BLAS 3      ||||||||||||||||||||||||||||||||||||||||||
+
+// ================== GEMM =====================================================
+
+inline uint index (const uint m, const uint row, const uint col) {
+    return row + m * col;
+}
+
+inline uint globalize (const uint tile_size, const uint tile_id,
+                       const uint id){
+    return tile_id * tile_size + id;
+}
+
+// ========================= gemm ==============================================
+
+__attribute__((reqd_work_group_size(WGS2, WGS2, 1)))
+__kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
+                          __global const REAL* b,
+                          const REAL beta, __global REAL* c,
+                          const uint m, const uint k, const uint n) {
+
+    uint global_row = get_global_id(0);
+    uint global_col = get_global_id(1);
+
+    uint tile_i = get_group_id(0);
+    uint tile_j = get_group_id(1);
+
+    uint local_row = get_local_id(0);
+    uint local_col = get_local_id(1);
+
+    uint c_row = globalize(WGSm, tile_i, local_row);
+    uint c_col = globalize(WGSn, tile_j, local_col);
+
+    uint c_id = index(m, c_row, c_col);
+
+    __local REAL c_tile[WGS2][WGS2];
+    __local REAL a_tile[WGS2][WGS2];
+    __local REAL b_tile[WGS2][WGS2];
+
+    REAL cacc = 0.0f;
+
+    uint tc = k / WGS2;
+
+    // Elements that are in partial m-tiles and n-tiles need to be
+    // loaded, but only if they exist.
+    bool load_row = global_row < m;
+    bool load_col = global_col < n;
+
+    // Compute full k-tiles
+    for (uint t = 0; t < tc; t++) {
+
+        a_tile[local_row][local_col] = load_row ?
+            a[index(m, c_row, globalize(WGS2, t, local_col))] : 0.0f;
+
+        b_tile[local_row][local_col] = load_col ?
+            b[index(k, globalize(WGS2, t, local_row), c_col)] : 0.0f;
+
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
+
+        #pragma unroll
+        for(uint i = 0; i < WGS2; i++) {
+            cacc += a_tile[local_row][i] * b_tile[i][local_col];
+        }
+
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    // Compute partial k-tiles.
+    uint rest_k = k - tc * WGS2;
+    if (0 < rest_k) {
+
+        a_tile[local_row][local_col] = load_row ?
+            a[index(m, c_row, globalize(WGS2, tc, local_col))] : 0.0f;
+
+        b_tile[local_row][local_col] = load_col ?
+            b[index(k, globalize(WGS2, tc, local_row), c_col)] : 0.0f;
+
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
+
+        for(uint i = 0; i < rest_k; i++) {
+            cacc += a_tile[local_row][i] * b_tile[i][local_col];
+        }
+
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
+
+    }
+
+    //Only the elements that exist in partial c-tiles should be stored.
+    bool store = load_row && load_col;
+
+    if (store) {
+        c[c_id] = alpha * cacc + beta * c[c_id];
+    }
+
 }
