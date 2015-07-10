@@ -96,27 +96,27 @@
        (read! (mv! cl-y 10 cl-a cl-x 100) (sv m-cnt))
        => (mv! host-y 10 host-a host-x 100)))))
 
-(def m-cnt 171)
-(def k-cnt 17)
-(def n-cnt 161)
-(def a-magic 1)
-(def x-magic 1)
-(def y-magic 1)
+(set! *unchecked-math* false)
+(def m-cnt 4096)
+(def k-cnt 4096)
+(def n-cnt 4096)
+(def host-a (sge m-cnt k-cnt (range (* m-cnt k-cnt))))
+(def host-b (sge k-cnt n-cnt (map (partial * 2) (range (* m-cnt k-cnt)))))
+(def host-c (sge m-cnt n-cnt (map (partial * 2) (range (* m-cnt n-cnt)))))
+(set! *unchecked-math* :warn-on-boxed)
 
 (facts
  "Real matrix-matrix multiplication."
  (with-default
-   (let [host-a (doto (sge m-cnt k-cnt) (fset! a-magic))
-         host-b (doto (sge k-cnt n-cnt) (fset! x-magic))
-         host-c (doto (sge m-cnt n-cnt) (fset! y-magic))]
-     (with-release [settings (cl-settings *command-queue*)
-                    cl-a (cl-sge settings m-cnt k-cnt)
-                    cl-b (cl-sge settings k-cnt n-cnt)
-                    cl-c (cl-sge settings m-cnt n-cnt)]
+   (with-release [settings (cl-settings *command-queue*)
+                  cl-a (cl-sge settings m-cnt k-cnt)
+                  cl-b (cl-sge settings k-cnt n-cnt)
+                  cl-c (cl-sge settings m-cnt n-cnt)]
 
-       (fset! cl-a a-magic)
-       (fset! cl-b x-magic)
-       (fset! cl-c y-magic)
+     (write! cl-a host-a)
+     (write! cl-b host-b)
+     (write! cl-c host-c)
 
-       (read! (mm! cl-c 10 cl-a cl-b 100) (sge m-cnt n-cnt))
-       => (mm! host-c 10 host-a host-b 100)))))
+     (time (do (mm! cl-c 10 cl-a cl-b 100) (finish! *command-queue*)))
+     ;=> (time (mm! host-c 10 host-a host-b 100))
+     )))

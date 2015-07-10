@@ -14,8 +14,8 @@
     #define WGSn 16
 #endif
 
-#ifndef WGS2
-    #define WGS2 16
+#ifndef TS
+    #define TS 16
 #endif
 
 //|||||||||||||||||       BLAS 1       |||||||||||||||||||||||||||||||||||||||||
@@ -270,8 +270,8 @@ inline uint globalize (const uint tile_size, const uint tile_id,
 }
 
 // ========================= gemm ==============================================
-
-__attribute__((reqd_work_group_size(WGS2, WGS2, 1)))
+/* Squared version
+__attribute__((reqd_work_group_size(TS, TS, 1)))
 __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
                           __global const REAL* b,
                           const REAL beta, __global REAL* c,
@@ -291,63 +291,151 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
 
     uint c_id = index(m, c_row, c_col);
 
-    __local REAL c_tile[WGS2][WGS2];
-    __local REAL a_tile[WGS2][WGS2];
-    __local REAL b_tile[WGS2][WGS2];
+    __local REAL c_tile[TS][TS];
+    __local REAL a_tile[TS][TS];
+    __local REAL b_tile[TS][TS];
 
     REAL cacc = 0.0f;
 
-    uint tc = k / WGS2;
+    uint tc = k / TS;
 
-    // Elements that are in partial m-tiles and n-tiles need to be
-    // loaded, but only if they exist.
-    bool load_row = global_row < m;
-    bool load_col = global_col < n;
 
     // Compute full k-tiles
     for (uint t = 0; t < tc; t++) {
 
-        a_tile[local_row][local_col] = load_row ?
-            a[index(m, c_row, globalize(WGS2, t, local_col))] : 0.0f;
+        a_tile[local_row][local_col] =
+            a[index(m, c_row, globalize(TS, t, local_col))];
 
-        b_tile[local_row][local_col] = load_col ?
-            b[index(k, globalize(WGS2, t, local_row), c_col)] : 0.0f;
+        b_tile[local_col][local_row] =
+            b[index(k, globalize(TS, t, local_row), c_col)];
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
         #pragma unroll
-        for(uint i = 0; i < WGS2; i++) {
-            cacc += a_tile[local_row][i] * b_tile[i][local_col];
+        for(uint i = 0; i < TS; i++) {
+            cacc += a_tile[local_row][i] * b_tile[local_col][i];
+        }
+
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+
+        c[c_id] = alpha * cacc + beta * c[c_id];
+
+
+        }*/
+
+
+__attribute__((reqd_work_group_size(TS, TS, 1)))
+__kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
+                          __global const REAL* b,
+                          const REAL beta, __global REAL* c,
+                          const uint m, const uint k, const uint n) {
+
+    const uint row = get_local_id(0);
+    const uint col = get_local_id(1);
+    const uint c_row = globalize(TS, get_group_id(0), row);
+    const uint c_col = globalize(TS, get_group_id(1), col);
+
+    __local REAL a_tile[TS][TS];
+    __local REAL b_tile[TS][TS];
+
+    REAL acc = 0.0f;
+
+    // Elements that are in partial m-tiles and n-tiles need to be
+    // loaded, but only if they exist.
+    const bool load_row = c_row < m;
+    const bool load_col = c_col < n;
+
+    // Compute full k-tiles
+    const uint tc = k / TS;
+    for (uint t = 0; t < tc; t++) {
+
+        const uint tile_row = TS * t + row;
+        const uint tile_col = TS * t + col;
+        a_tile[col][row] = load_row ? a[tile_col * m + c_row] : 0.0f;
+        b_tile[col][row] = load_col ? b[c_col * k + tile_row] : 0.0f;
+
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
+
+        #pragma unroll
+        for(uint i = 0; i < TS; i++) {
+            acc += a_tile[i][row] * b_tile[col][i];
         }
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
     }
 
     // Compute partial k-tiles.
-    uint rest_k = k - tc * WGS2;
+    const uint rest_k = k - tc * TS;
     if (0 < rest_k) {
 
-        a_tile[local_row][local_col] = load_row ?
-            a[index(m, c_row, globalize(WGS2, tc, local_col))] : 0.0f;
-
-        b_tile[local_row][local_col] = load_col ?
-            b[index(k, globalize(WGS2, tc, local_row), c_col)] : 0.0f;
+        const uint tile_row = TS * tc + row;
+        const uint tile_col = TS * tc + col;
+        a_tile[col][row] = load_row ? a[tile_col * m + c_row] : 0.0f;
+        b_tile[col][row] = load_col ? b[c_col * k + tile_row] : 0.0f;
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
         for(uint i = 0; i < rest_k; i++) {
-            cacc += a_tile[local_row][i] * b_tile[i][local_col];
+            acc += a_tile[i][row] * b_tile[col][i];
         }
-
-        work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     }
 
     //Only the elements that exist in partial c-tiles should be stored.
-    bool store = load_row && load_col;
+    const bool store = load_row && load_col;
 
+    const uint c_id = index(m, c_row, c_col);
     if (store) {
-        c[c_id] = alpha * cacc + beta * c[c_id];
+        c[c_id] = alpha * acc + beta * c[c_id];
     }
 
 }
+
+// Cedric's comparative example
+__attribute__((reqd_work_group_size(TS, TS, 1)))
+__kernel void ce_gemm_tiled (const REAL alpha, __global const REAL* A,
+                          __global const REAL* B,
+                          const REAL beta, __global REAL* C,
+                          const uint M, const uint K, const uint N) {
+
+    // Thread identifiers
+    const int row = get_local_id(0); // Local row ID (max: TS)
+    const int col = get_local_id(1); // Local col ID (max: TS)
+    const int globalRow = TS*get_group_id(0) + row; // Row ID of C (0..M)
+    const int globalCol = TS*get_group_id(1) + col; // Col ID of C (0..N)
+
+    // Local memory to fit a tile of TS*TS elements of A and B
+    __local float Asub[TS][TS];
+    __local float Bsub[TS][TS];
+
+    // Initialise the accumulation register
+    float acc = 0.0f;
+
+    // Loop over all tiles
+    const int numTiles = K/TS;
+    for (int t=0; t<numTiles; t++) {
+
+        // Load one tile of A and B into local memory
+        const int tiledRow = TS*t + row;
+        const int tiledCol = TS*t + col;
+        Asub[col][row] = A[tiledCol*M + globalRow];
+        Bsub[col][row] = B[globalCol*K + tiledRow];
+
+        // Synchronise to make sure the tile is loaded
+        work_group_barrier(CLK_LOCAL_MEM_FENCE);
+
+        // Perform the computation for a single tile
+        for (int k=0; k<TS; k++) {
+            acc += Asub[k][row] * Bsub[col][k];
+        }
+
+        // Synchronise before loading the next tile
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    // Store the final result in C
+    C[globalCol*M + globalRow] = alpha * acc + beta * C[globalCol*M + globalRow];
+}
+/**/
