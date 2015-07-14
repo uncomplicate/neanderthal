@@ -15,6 +15,7 @@ To subscribe for announcements of releases, important changes and so on, please 
 
 A collection of Clojure libraries, currently containing:
 
+* [ClojureCL](http://clojurecl.uncomplicate.org) - a Clojure library for parallell computations with OpenCL
 * [Neanderthal](http://neanderthal.uncomplicate.org) - you are reading about it.
 * [Fluokitten](http://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure.
 
