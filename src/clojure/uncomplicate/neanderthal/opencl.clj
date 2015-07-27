@@ -287,6 +287,8 @@
 (defn cl-sv [settings ^long dim]
   (cl-real-vector settings Float/BYTES dim))
 
+(def magic-n 16);;TODO automate this
+(def magic-ts 32)
 ;; ======================= Dense Matrix ========================================
 
 (deftype GCNMatrixEngine [^long entry-width
@@ -325,8 +327,8 @@
                  cl-b (float-array [beta]) cl-c
                  (int-array [m]) (int-array [k]) (float-array [n]))
       (enq-nd! queue gemm-tiled-kernel
-               (work-size [(* magic-n (count-work-groups magic-n m))
-                           (* magic-n (count-work-groups magic-n n))])))))
+               (work-size [(* (long magic-ts) (count-work-groups magic-ts m))
+                           (* (long magic-ts) (count-work-groups magic-ts (/ (long n) 4)))])))))
 
 (defn gcn-matrix-engine
   [context queue prog local-size-n cl-buf entry-width m n]
@@ -393,8 +395,6 @@
             beta (.cl-buf ^RealGeneralMatrixCL c)
             m n (.n ^RealGeneralMatrixCL b))
       c)))
-
-(def magic-n 16);;TODO automatize this
 
 (defn cl-real-general-matrix
   ([^CLSettings settings cl-buf width-bytes m n]

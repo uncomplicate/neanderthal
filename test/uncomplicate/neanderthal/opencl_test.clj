@@ -7,7 +7,7 @@
              [real :refer :all]
              [math :refer [pow]]]
             [uncomplicate.clojurecl
-             [core :refer [with-default with-release *command-queue*]]])
+             [core :refer [with-default with-release *command-queue* finish!]]])
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix]))
 
@@ -72,16 +72,15 @@
 
          (read! cl-y host-y) => host-x))))
 
-(def m-cnt 2048)
-(def n-cnt 1024)
-(def a-magic 3)
-(def x-magic 2)
-(def y-magic 5)
-
 (facts
  "Real matrix-vector multiplication."
  (with-default
-   (let [host-a (doto (sge m-cnt n-cnt) (fset! a-magic))
+   (let [m-cnt 2050
+         n-cnt 337
+         a-magic 3
+         x-magic 2
+         y-magic 5
+         host-a (doto (sge m-cnt n-cnt) (fset! a-magic))
          host-x (doto (sv n-cnt) (fset! x-magic))
          host-y (doto (sv m-cnt) (fset! y-magic))]
      (with-release [settings (cl-settings *command-queue*)
@@ -96,27 +95,24 @@
        (read! (mv! cl-y 10 cl-a cl-x 100) (sv m-cnt))
        => (mv! host-y 10 host-a host-x 100)))))
 
-(set! *unchecked-math* false)
-(def m-cnt 4096)
-(def k-cnt 4096)
-(def n-cnt 4096)
-(def host-a (sge m-cnt k-cnt (range (* m-cnt k-cnt))))
-(def host-b (sge k-cnt n-cnt (map (partial * 2) (range (* m-cnt k-cnt)))))
-(def host-c (sge m-cnt n-cnt (map (partial * 2) (range (* m-cnt n-cnt)))))
-(set! *unchecked-math* :warn-on-boxed)
-
 (facts
  "Real matrix-matrix multiplication."
- (with-default
-   (with-release [settings (cl-settings *command-queue*)
-                  cl-a (cl-sge settings m-cnt k-cnt)
-                  cl-b (cl-sge settings k-cnt n-cnt)
-                  cl-c (cl-sge settings m-cnt n-cnt)]
+ (let [m-cnt 4096
+       k-cnt 4096
+       n-cnt 4096
+       host-a (sge m-cnt k-cnt (range (* m-cnt k-cnt)))
+       host-b (sge k-cnt n-cnt (map (partial * 2) (range (* m-cnt k-cnt))))
+       host-c (sge m-cnt n-cnt (map (partial * 2) (range (* m-cnt n-cnt))))]
+   (with-default
+     (with-release [settings (cl-settings *command-queue*)
+                    cl-a (cl-sge settings m-cnt k-cnt)
+                    cl-b (cl-sge settings k-cnt n-cnt)
+                    cl-c (cl-sge settings m-cnt n-cnt)]
 
-     (write! cl-a host-a)
-     (write! cl-b host-b)
-     (write! cl-c host-c)
+       (write! cl-a host-a)
+       (write! cl-b host-b)
+       (write! cl-c host-c)
 
-     (time (do (mm! cl-c 10 cl-a cl-b 100) (finish! *command-queue*)))
-     ;=> (time (mm! host-c 10 host-a host-b 100))
-     )))
+       (time (do (mm! cl-c 10 cl-a cl-b 100) (finish! *command-queue*)))
+       ;;=> (time (mm! host-c 10 host-a host-b 100))
+       ))))
