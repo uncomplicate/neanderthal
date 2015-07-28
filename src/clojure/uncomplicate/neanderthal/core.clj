@@ -138,7 +138,7 @@
   For a detailed description see
   http://www.mathkeisan.com/usersguide/man/drotg.html
   "
-  [^Vector x]
+  [^Vector x];;TODO ensure that the stride is 1
   (if (< 3 (.dim x))
     (.rotg x)
     (throw (IllegalArgumentException.
@@ -147,7 +147,7 @@
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
   "
-  [^Vector p ^Vector args]
+  [^Vector p ^Vector args] ;;TODO ensue that the stride is 1
   (cond
    (< (.dim p) 5)
    (throw (IllegalArgumentException.
@@ -160,7 +160,7 @@
 (defn rotm!
   "BLAS 1: Apply modified plane rotation.
   "
-  [^Vector x ^Vector y ^Vector p]
+  [^Vector x ^Vector y ^Vector p] ;;TODO ensue that the stride is 1
   (cond
    (< (.dim p) 5)
    (throw (IllegalArgumentException.
@@ -296,13 +296,17 @@
   y
   => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
   "
-  [x y]
-  (p/swp x y))
+  [^VectorBlock x ^VectorBlock y]
+  (if (.compatible x y)
+    (.swap x y)
+    (throw (IllegalArgumentException.
+            (format INCOMPATIBLE_VECTOR_BLOCKS_MSG
+                    (.dim x) (.stride x) (.dim y) (.stride y))))))
 
 (defn copy!
   "BLAS 1: Copy vector.
   Copies the entries of x into y. x and y must have
-  equal dimensions.  y will be changed. Also works on
+  equal dimensions. y will be changed. Also works on
   matrices.
 
   (def x (dv 1 2 3))

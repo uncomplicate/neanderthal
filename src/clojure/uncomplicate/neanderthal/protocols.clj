@@ -1,11 +1,10 @@
 (ns uncomplicate.neanderthal.protocols)
 
 (defprotocol Carrier
-  (zero [_])
-  (byte-size [_]) ;; TODO consider renaming this to element-size, element-bytes etc. Also, move it to an interface and make it primitive if used frequently in openblas.clj
-  (copy [_ y])
-  (swp [_ y])
   (column-major? [x]));; TODO check when this is needed, and possibly move it to another interface
+
+(defprotocol Group
+  (zero [_]))
 
 (defprotocol Functor
   (fmap! [x f] [x f y] [x f y z]
