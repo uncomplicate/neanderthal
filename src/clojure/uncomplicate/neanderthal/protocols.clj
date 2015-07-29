@@ -1,8 +1,5 @@
 (ns uncomplicate.neanderthal.protocols)
 
-(defprotocol Carrier
-  (column-major? [x]));; TODO check when this is needed, and possibly move it to another interface
-
 (defprotocol Group
   (zero [_]))
 

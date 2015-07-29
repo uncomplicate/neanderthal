@@ -2,9 +2,7 @@
   (:require [uncomplicate.neanderthal.block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
-           [uncomplicate.neanderthal.protocols
-            RealBLAS RealVector RealMatrix Vector Matrix
-            RealChangeable]))
+           [uncomplicate.neanderthal.protocols BLAS]))
 
 (def ^:private STRIDE_MSG
   "I cannot use vectors with stride other than %d: stride: %d.")
@@ -12,7 +10,7 @@
 ;; ============ Real Vector Engines ============================================
 
 (deftype DoubleVectorEngine []
-  RealBLAS
+  BLAS
   (swap [_ x y];;TODO move the do/return parts to core and real namespace
     (do (CBLAS/dswap (.dim x) (.buffer x) (.stride x) (.buffer y) (.stride y))
         x))
@@ -25,7 +23,7 @@
     (CBLAS/dnrm2 (.dim x) (.buffer x) (.stride x)))
   (asum [_ x]
     (CBLAS/dasum (.dim x) (.buffer x) (.stride x)))
-  (iamax [_]
+  (iamax [_ x]
     (CBLAS/idamax (.dim x) (.buffer x) (.stride x)))
   (rot [_ x y c s]
     (do (CBLAS/drot (.dim x) (.buffer x) (.stride x) (.buffer y) (.stride y) c s)
@@ -47,8 +45,10 @@
     (do (CBLAS/daxpy (.dim x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y))
         y)))
 
+(def dv-engine (DoubleVectorEngine.))
+
 (deftype SingleVectorEngine []
-  RealBLAS
+  BLAS
   (swap [_ x y];;TODO move the do/return parts to core and real namespace
     (do (CBLAS/sswap (.dim x) (.buffer x) (.stride x) (.buffer y) (.stride y))
         x))
@@ -61,7 +61,7 @@
     (CBLAS/snrm2 (.dim x) (.buffer x) (.stride x)))
   (asum [_ x]
     (CBLAS/sasum (.dim x) (.buffer x) (.stride x)))
-  (iamax [_]
+  (iamax [_ x]
     (CBLAS/isamax (.dim x) (.buffer x) (.stride x)))
   (rot [_ x y c s]
     (do (CBLAS/srot (.dim x) (.buffer x) (.stride x) (.buffer y) (.stride y) c s)
@@ -85,62 +85,59 @@
       (CBLAS/saxpy (.dim x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y))
       y)))
 
+(def sv-engine (SingleVectorEngine.))
+
 ;; ================= General Matrix Engines =====================================
 
 (deftype DoubleGeneralMatrixEngine []
-  RealBLAS
-  (swap [_ x y] ;;TODO move the do/return parts to core and real namespace
+  BLAS
+  (swap [_ a b] ;;TODO move the do/return parts to core and real namespace
     (do
-      (if (and (= order (.order b))
+      (if (and (= (.order a) (.order b))
                (= (if (column-major? a) (.mrows a) (.ncols a))
                   (.order a) (.order b)))
         (CBLAS/dswap (* (.mrows a) (.ncols a)) (.buffer a) 1 (.buffer b) 1)
         (if (column-major? a)
-          (dotimes [i n]
-            (swp (.col a i) (.col b i)))
-          (dotimes [i m]
-            (swp (.row a i) (.row b i)))))
-      a)
-    (do (CBLAS/dswap (.dim x) (.buffer x) (.stride x) (.buffer y) (.stride y))
-        x))
+          (dotimes [i (.ncols a)]
+            (.swap dv-engine (.col a i) (.col b i)))
+          (dotimes [i (.mrows a)]
+            (.swap dv-engine (.row a i) (.row b i)))))
+      a))
   (copy [_ a b]
     (do
-      (if (and (= order (.order b))
+      (if (and (= (.order a) (.order b))
                (= (if (column-major? a) (.mrows a) (.ncols a))
                   (.order a) (.order b)))
         (CBLAS/dcopy (* (.mrows a) (.ncols a)) (.buffer a) 1 (.buffer b) 1)
         (if (column-major? a)
-          (dotimes [i n]
-            (copy (.col a i) (.col b i)));;TODO enable raw in C
-          (dotimes [i m]
-            (copy (.row a i) (.row b i)))))
+          (dotimes [i (.ncols a)]
+            (.copy dv-engine (.col a i) (.col b i)));;TODO enable raw in C
+          (dotimes [i (.mrows a)]
+            (.copy dv-engine (.row a i) (.row b i)))))
       b))
-  (axpy [_ alpha x y]
+  (axpy [_ alpha a b]
     (do
-      (if (and (= order (.order b))
+      (if (and (= (.order a) (.order b))
                (= (if (column-major? a) (.mrows a) (.ncols a))
                   (.order a) (.order b)))
         (CBLAS/daxpy (* (.mrows a) (.ncols a)) alpha (.buffer a) 1 (.buffer b) 1)
         (if (column-major? a)
-          (dotimes [i n]
-            (axpy (.col a i) (.col b i)));;TODO enable raw in C
-          (dotimes [i m]
-            (axpy (.row a i) (.row b i)))))
-      b)
-    (do (CBLAS/daxpy (.dim x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y))
-        y))
-
+          (dotimes [i (.ncols a)]
+            (.axpy dv-engine (.col a i) (.col b i)));;TODO enable raw in C
+          (dotimes [i (.mrows a)]
+            (.axpy dv-engine (.row a i) (.row b i)))))
+      b))
   (mv [_ alpha a x beta y]
     (do
       (CBLAS/dgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS (.mrows a) (.ncols a)
                    alpha (.buffer a) (.stride a) (.buffer x) (.stride x)
                    beta (.buffer y) (.stride y))
       y))
-  (rank [_ a alpha x y]
+  (rank [_ alpha x y a]
     (do
       (CBLAS/dger (.order a) (.mrows a) (.ncols a)
                   alpha (.buffer x) (.stride x) (.buffer y) (.stride y)
-                  (.stride a))
+                  (.buffer a) (.stride a))
       a))
   (mm [_ alpha a b beta c]
     (do
@@ -156,49 +153,46 @@
                    beta (.buffer c) (.stride c))
       c)))
 
+(def dge-engine (DoubleGeneralMatrixEngine.))
+
 (deftype SingleGeneralMatrixEngine []
-  RealBLAS
-  (swap [_ x y] ;;TODO move the do/return parts to core and real namespace
+  BLAS
+  (swap [_ a b] ;;TODO move the do/return parts to core and real namespace
     (do
-      (if (and (= order (.order b))
+      (if (and (= (.order a) (.order b))
                (= (if (column-major? a) (.mrows a) (.ncols a))
                   (.order a) (.order b)))
         (CBLAS/sswap (* (.mrows a) (.ncols a)) (.buffer a) 1 (.buffer b) 1)
         (if (column-major? a)
-          (dotimes [i n]
-            (swp (.col a i) (.col b i)))
-          (dotimes [i m]
-            (swp (.row a i) (.row b i)))))
-      a)
-    (do (CBLAS/dswap (.dim x) (.buffer x) (.stride x) (.buffer y) (.stride y))
-        x))
+          (dotimes [i (.ncols a)]
+            (.swap sv-engine (.col a i) (.col b i)))
+          (dotimes [i (.mrows a)]
+            (.swap sv-engine (.row a i) (.row b i)))))
+      a))
   (copy [_ a b]
     (do
-      (if (and (= order (.order b))
+      (if (and (= (.order a) (.order b))
                (= (if (column-major? a) (.mrows a) (.ncols a))
                   (.order a) (.order b)))
         (CBLAS/scopy (* (.mrows a) (.ncols a)) (.buffer a) 1 (.buffer b) 1)
         (if (column-major? a)
-          (dotimes [i n]
-            (copy (.col a i) (.col b i)));;TODO enable raw in C
-          (dotimes [i m]
-            (copy (.row a i) (.row b i)))))
+          (dotimes [i (.ncols a)]
+            (.copy sv-engine (.col a i) (.col b i)));;TODO enable raw in C
+          (dotimes [i (.mrows a)]
+            (.copy sv-engine (.row a i) (.row b i)))))
       b))
-  (axpy [_ alpha x y]
+  (axpy [_ alpha a b]
     (do
-      (if (and (= order (.order b))
+      (if (and (= (.order a) (.order b))
                (= (if (column-major? a) (.mrows a) (.ncols a))
                   (.order a) (.order b)))
         (CBLAS/saxpy (* (.mrows a) (.ncols a)) alpha (.buffer a) 1 (.buffer b) 1)
         (if (column-major? a)
-          (dotimes [i n]
-            (axpy (.col a i) (.col b i)));;TODO enable raw in C
-          (dotimes [i m]
-            (axpy (.row a i) (.row b i)))))
-      b)
-    (do (CBLAS/daxpy (.dim x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y))
-        y))
-
+          (dotimes [i (.ncols a)]
+            (.axpy sv-engine (.col a i) (.col b i)));;TODO enable raw in C
+          (dotimes [i (.mrows a)]
+            (.axpy sv-engine (.row a i) (.row b i)))))
+      b))
   (mv [_ alpha a x beta y]
     (do
       (CBLAS/sgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS (.mrows a) (.ncols a)
@@ -209,7 +203,7 @@
     (do
       (CBLAS/sger (.order a) (.mrows a) (.ncols a)
                   alpha (.buffer x) (.stride x) (.buffer y) (.stride y)
-                  (.stride a))
+                  (.buffer a)(.stride a))
       a))
   (mm [_ alpha a b beta c]
     (do
@@ -224,3 +218,5 @@
                    alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                    beta (.buffer c) (.stride c))
       c)))
+
+(def sge-engine (SingleGeneralMatrixEngine.))

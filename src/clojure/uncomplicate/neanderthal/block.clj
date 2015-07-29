@@ -8,16 +8,11 @@
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
-           [uncomplicate.neanderthal.protocols
-            RealVector RealMatrix Vector Matrix RealChangeable GeneralBlock]))
+           [uncomplicate.neanderthal CBLAS]
+           [uncomplicate.neanderthal.protocols RealBufferAccessor
+            RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
 ;;TODO clean up
-(def ^:const DEFAULT_ORDER CBLAS/ORDER_COLUMN_MAJOR)
-
-(def ^:private INCOMPATIBLE_VECTOR_BLOCKS_MSG
-  "Operation is not permited on vectors with incompatible buffers.
-  x: dim:%d, stride:%d
-  y: dim:%d, stride:%d.")
 
 (def ^:private DIMENSIONS_MSG
   "Vector dimensions should be %d.")
@@ -30,6 +25,11 @@
 
 (defn ^:private hash* [^long h ^double x]
   (clojure.lang.Util/hashCombine h (Double/hashCode x)))
+
+(def ^:const DEFAULT_ORDER CBLAS/ORDER_COLUMN_MAJOR)
+
+(defn column-major? [^Block a]
+  (= CBLAS/ORDER_COLUMN_MAJOR (.order a)))
 
 (defn entry-eq [res ^double x ^double y]
   (= x y))
@@ -257,59 +257,54 @@
   (get [_ buf i]
     (.getFloat buf (* 4 i)))
   (set [_ buf i val]
-    (.putFloat buf (* 4 i) val))
-  (elementBytes [_]
-    4))
+    (.putFloat buf (* 4 i) val)))
 
 (def float-accessor (->FloatBufferAccessor))
 
 (deftype DoubleBufferAccessor []
   RealBufferAccessor
   (get [_ buf i]
-    (.getDouble buf (* 4 i)))
+    (.getDouble buf (* 8 i)))
   (set [_ buf i val]
-    (.putDouble buf (* 4 i) val))
-  (elementBytes [_]
-    8))
+    (.putDouble buf (* 8 i) val)))
 
 (def double-accessor (->DoubleBufferAccessor))
 
 ;; ============ Real Vector ====================================================
 
 (deftype RealBlockVector [^ByteBuffer buf ^RealBufferAccessor accessor
-                          ^long n ^long strd]
+                          elem-type ^long elem-width ^long n ^long strd]
   Object
   (hashCode [this]
     (freduce this
              (-> (hash :RealBlockVector)
-                 (hash-combine (.elementBytes accessor)) (hash-combine n))
+                 (hash-combine elem-width) (hash-combine n))
              hash*) )
   (equals [x y]
     (cond
      (nil? y) false
      (identical? x y) true
-     (instance? RealBlockVector y)
-     (and (.compatible x y) (freduce x true entry-eq y))
+     (and (.compatible x y) (= n (.dim ^Vector y)))
+     (freduce x true entry-eq y)
      :default false))
+  (toString [_]
+    (format "#<RealBlockVector| %s, n:%d, stride:%d>"
+            elem-type n strd))
   clojure.lang.Seqable
   (seq [_]
-    (wrap-byte-seq (case (.elementBytes accessor)
-                     8 float64
-                     4 float32)
-                   (* (.elementBytes accessor) strd) 0 (byte-seq buf)))
+    (wrap-byte-seq elem-type (* elem-width strd) 0 (byte-seq buf)))
   Group
   (zero [_]
-    (RealBlockVector. (direct-buffer (* (.elementBytes accessor) n))
-                      accessor n 1))
-  GeneralBlock
-  (compatible [_ y]
-    (and (= (.elementBytes accessor) (.elementBytes y))
-         (= n (.dim y))))
-  (elementBytes [_]
-    (.elementBytes accessor))
+    (RealBlockVector. (direct-buffer (* elem-width n)) accessor
+                      elem-type elem-width n 1))
+  Block
   (buffer [_]
     buf)
-  (stride strd)
+  (compatible [_ y]
+    (and (instance? RealBlockVector y)
+         (= elem-type (.elementType ^Block y))))
+  (stride [_]
+    strd)
   IFn$LD
   (invokePrim [x i]
     (.entry x i))
@@ -320,11 +315,11 @@
   (set [x val]
     (do
       (dotimes [i n]
-        (.put accessor buf (* strd i) val))
+        (.set accessor buf (* strd i) val))
       x))
   (set [x i val]
     (do
-      (.put accessor buf (* strd i) val)
+      (.set accessor buf (* strd i) val)
       x))
   (alter [x i f]
     (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
@@ -332,12 +327,11 @@
   (dim [_]
     n)
   (entry [_ i]
-    (.get accessor buf (* accessor strd i)))
+    (.get accessor buf (* elem-width strd i)))
   (subvector [_ k l]
     (RealBlockVector.
-     (slice-buffer buf (* (.elementBytes accessor) k strd)
-                   (* (.elemenBytes accessor) l strd))
-     accessor l strd)))
+     (slice-buffer buf (* elem-width k strd) (* elem-width l strd))
+     accessor elem-type elem-width l strd)))
 
 (extend RealBlockVector
   Functor
@@ -348,51 +342,43 @@
   {:freduce vector-freduce})
 
 (defmethod print-method RealBlockVector
-  [^VectorBlock x ^java.io.Writer w]
-  (.write w (format "#<%sBlockVector| n:%d, stride:%d, %s>"
-                    (case (.element-bytes x) 4 "Single" 8 "Double")
-                    (.dim x) (.stride x) (pr-str (take 100 (seq x))))))
+  [^Vector x ^java.io.Writer w]
+  (.write w (format "%s%s<>" (str x) (pr-str (take 100 (seq x))))))
 
 ;; =================== Real Matrix =============================================
 
-(defn column-major? [^GeneralBlock a]
-  (= CBLAS/ORDER_COLUMN_MAJOR (.order a)))
-
 (deftype RealGeneralMatrix [^ByteBuffer buf ^RealBufferAccessor accessor
+                            elem-type ^long elem-width
                             ^long m ^long n ^long ld ^long ord]
   Object
   (hashCode [this]
     (freduce this
-             (-> (hash :RealGeneralMatrix) (hash-combine (.elementBytes accessor))
+             (-> (hash :RealGeneralMatrix) (hash-combine elem-width)
                  (hash-combine m) (hash-combine n))
              hash*))
   (equals [x y]
     (cond
      (nil? y) false
      (identical? x y) true
-     (instance? RealGeneralMatrix y)
-     (and (= m (.mrows ^Matrix y))
-          (= n (.ncols ^Matrix y))
-          (freduce x true entry-eq y))
+     (and (.compatible x y) (= m (.mrows ^Matrix y)) (= n (.ncols ^Matrix y)))
+     (freduce x true entry-eq y)
      :default false))
+  (toString [_]
+    (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
+            elem-type (if (= CBLAS/ORDER_COLUMN_MAJOR ord) "COL" "ROW")
+            m n ld))
   Group
   (zero [_]
-    (RealGeneralMatrix. (direct-buffer (* (.elementBytes accessor) m n))
-                        accessor m n m ord))
-  GeneralBlock
+    (RealGeneralMatrix. (direct-buffer (* elem-width m n))
+                        accessor elem-type elem-width
+                        m n m ord))
+  Block
   (compatible [_ b]
-    (and (= (.elementBytes accessor) (.elementBytes b))
-         (= m (.mrows ^GeneralBlock b)) (= n (.ncols ^GeneralBlock b))))
-  (dim [_]
-    (cond
-      (= 1 m) n
-      (= 1 n) m
-      :default 0))
-  (elementBytes [_]
-    (.elementBytes accessor))
+    (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
+         (= elem-type (.elementType ^Block b))))
   (buffer [_]
     buf)
-  (stride
+  (stride [_]
     ld)
   (order [_]
     ord)
@@ -417,7 +403,7 @@
   (set [a val]
     (do (if (= ld (if (column-major? a) m n))
           (dotimes [i (* m n)]
-            (.put accessor buf i val))
+            (.set accessor buf i val))
           (if (column-major? a)
             (dotimes [i n]
               (.set ^RealChangeable (.col a i) val))
@@ -427,8 +413,8 @@
   (set [a i j val]
     (do
       (if (= CBLAS/ORDER_COLUMN_MAJOR ord)
-        (.put accessor buf (+ (* ld j) i) val)
-        (.put accessor buf (+ (* ld i) j) val))
+        (.set accessor buf (+ (* ld j) i) val)
+        (.set accessor buf (+ (* ld i) j) val))
       a))
   (alter [a i j f]
     (.set a i j (.invokePrim ^IFn$DD f (.entry a i j))))
@@ -442,41 +428,35 @@
       (.get accessor buf (+ (* ld j) i))
       (.get accessor buf (+ (* ld i) j))))
   (row [a i]
-    (let [elem-width (.elementBytes accessor)]
-      (if (column-major? a)
-        (RealBlockVector.
-         (slice-buffer buf (* elem-width i) (- (.capacity buf) (* elem-width i)))
-         accessor n ld)
-        (RealBlockVector.
-         (slice-buffer buf (* elem-width ld i) (* elem-width n))
-         accessor n 1))))
+    (if (column-major? a)
+      (RealBlockVector.
+       (slice-buffer buf (* elem-width i) (- (.capacity buf) (* elem-width i)))
+       accessor elem-type elem-width n ld)
+      (RealBlockVector.
+       (slice-buffer buf (* elem-width ld i) (* elem-width n))
+       accessor elem-type elem-width n 1)))
   (col [a j]
-    (let [elem-width (.elementBytes accessor)]
-      (if (column-major? a)
-        (RealBlockVector.
-         (slice-buffer buf (* elem-width ld j) (* elem-width m))
-         accessor m 1)
-        (RealBlockVector.
-         (slice-buffer buf (* elem-width j) (- (.capacity buf) (* elem-width j)))
-         accessor m ld))))
+    (if (column-major? a)
+      (RealBlockVector.
+       (slice-buffer buf (* elem-width ld j) (* elem-width m))
+       accessor elem-type elem-width m 1)
+      (RealBlockVector.
+       (slice-buffer buf (* elem-width j) (- (.capacity buf) (* elem-width j)))
+       accessor elem-type elem-width m ld)))
   (submatrix [a i j k l]
-    (let [elem-width (.elementBytes accessor)]
-      (RealGeneralMatrix.
-       (if (column-major? a)
-         (slice-buffer buf (+ (* elem-width ld j) (* elem-width i))
-                       (* elem-width ld l))
-         (slice-buffer buf (+ (* elem-width ld i) (* elem-width j))
-                       (* elem-width ld k)))
-       accessor k l ld ord)))
+    (RealGeneralMatrix.
+     (if (column-major? a)
+       (slice-buffer buf (+ (* elem-width ld j) (* elem-width i))
+                     (* elem-width ld l))
+       (slice-buffer buf (+ (* elem-width ld i) (* elem-width j))
+                     (* elem-width ld k)))
+     accessor elem-type elem-width k l ld ord))
   (transpose [a]
-    (RealGeneralMatrix. buf accessor n m ld
+    (RealGeneralMatrix. buf accessor elem-type elem-width n m ld
                         (if (column-major? a)
                           CBLAS/ORDER_ROW_MAJOR
                           CBLAS/ORDER_COLUMN_MAJOR))))
 
 (defmethod print-method RealGeneralMatrix
   [^RealGeneralMatrix a ^java.io.Writer w]
-  (.write w (format "#<%SGeneralMatrix| %s, mxn: %dx%d, ld:%d, %s>"
-                    (case (.elementBytes a) 4 "Single" 8 "Double")
-                    (if (= CBLAS/ORDER_COLUMN_MAJOR (.order a)) "COL" "ROW")
-                    (.mrows a) (.ncols a) (.ld a) (pr-str (seq a)))))
+  (.write w (format "%s%s<>" (str a) (pr-str (seq a)))))

@@ -24,7 +24,8 @@
     :jvm-opts ^:replace ["-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"];;also replaces lein's default JVM argument TieredStopAtLevel=1
     :aot [uncomplicate.neanderthal.protocols
           uncomplicate.neanderthal.cblas
-          uncomplicate.neanderthal.opencl]
+          ;;uncomplicate.neanderthal.opencl
+          ]
 
     :profiles {:dev {:plugins [[lein-midje "3.1.3"]
                                [bilus/lein-marginalia "0.8.8"]
