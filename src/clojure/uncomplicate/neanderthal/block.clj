@@ -1,14 +1,14 @@
 (ns uncomplicate.neanderthal.block
   (:require [vertigo
-             [bytes :refer [direct-buffer byte-seq
-                            slice-buffer cross-section]]
-             [structs :refer [float64 float32 wrap-byte-seq]]]
+             [core :refer [wrap marshal-seq]]
+             [bytes :refer [direct-buffer byte-seq slice-buffer cross-section]]
+             [structs :refer [float64 float32 wrap-byte-seq unwrap-byte-seq]]]
             [uncomplicate.neanderthal.protocols :refer :all])
   (:import [java.nio ByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
-           [uncomplicate.neanderthal CBLAS]
+           [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols RealBufferAccessor BLAS
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
@@ -26,10 +26,14 @@
 (defn ^:private hash* [^long h ^double x]
   (clojure.lang.Util/hashCombine h (Double/hashCode x)))
 
-(def ^:const DEFAULT_ORDER CBLAS/ORDER_COLUMN_MAJOR)
+(def ^:const ORDER_ROW_MAJOR 101)
+
+(def ^:const ORDER_COLUMN_MAJOR 102)
+
+(def ^:const DEFAULT_ORDER ORDER_COLUMN_MAJOR)
 
 (defn column-major? [^Block a]
-  (= CBLAS/ORDER_COLUMN_MAJOR (.order a)))
+  (= 102 (.order a)))
 
 (defn entry-eq [res ^double x ^double y]
   (= x y))
@@ -257,7 +261,13 @@
   (get [_ buf i]
     (.getFloat buf (* 4 i)))
   (set [_ buf i val]
-    (.putFloat buf (* 4 i) val)))
+    (.putFloat buf (* 4 i) val))
+  (toSeq [_ buf stride]
+    (wrap-byte-seq float32 (* 4 stride) 0 (byte-seq buf)))
+  (directBuffer [_ n]
+    (direct-buffer (* 4 n)))
+  (slice [_ buf k l]
+    (slice-buffer buf (* 4 k) (* 4 l))))
 
 (def float-accessor (->FloatBufferAccessor))
 
@@ -266,26 +276,33 @@
   (get [_ buf i]
     (.getDouble buf (* 8 i)))
   (set [_ buf i val]
-    (.putDouble buf (* 8 i) val)))
+    (.putDouble buf (* 8 i) val))
+  (toSeq [_ buf stride]
+    (wrap-byte-seq float64 (* 8 stride) 0 (byte-seq buf)))
+  (directBuffer [_ n]
+    (direct-buffer (* 8 n)))
+  (slice [_ buf k l]
+    (slice-buffer buf (* 8 k) (* 8 l))))
 
 (def double-accessor (->DoubleBufferAccessor))
 
+(declare ->RealGeneralMatrix)
+
 ;; ============ Real Vector ====================================================
 
-(deftype RealBlockVector [^ByteBuffer buf
-                          ^RealBufferAccessor accessor ^BLAS blas-engine
-                          elem-type ^long elem-width ^long n ^long strd]
+(deftype RealBlockVector [^ByteBuffer buf ^RealBufferAccessor accessor
+                          ^BLAS vector-engine ^BLAS matrix-engine
+                          elem-type ^long n ^long strd]
   Object
   (hashCode [this]
     (freduce this
-             (-> (hash :RealBlockVector)
-                 (hash-combine elem-width) (hash-combine n))
+             (-> (hash :RealBlockVector) (hash-combine n))
              hash*) )
   (equals [x y]
     (cond
      (nil? y) false
      (identical? x y) true
-     (and (.compatible x y) (= n (.dim ^Vector y)))
+     (and (compatible x y) (= n (.dim ^Vector y)))
      (freduce x true entry-eq y)
      :default false))
   (toString [_]
@@ -293,23 +310,32 @@
             elem-type n strd))
   clojure.lang.Seqable
   (seq [_]
-    (wrap-byte-seq elem-type (* elem-width strd) 0 (byte-seq buf)))
+    (.toSeq accessor buf strd))
   Group
   (zero [_]
-    (RealBlockVector. (direct-buffer (* elem-width n)) accessor blas-engine
-                      elem-type elem-width n 1))
+    (RealBlockVector. (.directBuffer accessor n) accessor
+                      vector-engine matrix-engine elem-type n 1))
+  EngineProvider
+  (engine [_]
+    vector-engine)
+  Memory
+  (compatible [_ y]
+    (and (instance? RealBlockVector y)
+         (= elem-type (.elementType ^Block y))))
+  BlockCreator
+  (create-matrix [_ m n]
+    (->RealGeneralMatrix (.directBuffer accessor (* (long m) (long n)))
+                         accessor vector-engine matrix-engine
+                         elem-type m n m DEFAULT_ORDER))
   Block
   (buffer [_]
     buf)
-  (engine [_]
-    blas-engine)
   (elementType [_]
     elem-type)
   (stride [_]
     strd)
-  (compatible [_ y]
-    (and (instance? RealBlockVector y)
-         (= elem-type (.elementType ^Block y))))
+  (count [_]
+    n)
   IFn$LD
   (invokePrim [x i]
     (.entry x i))
@@ -335,8 +361,8 @@
     (.get accessor buf (* strd i)))
   (subvector [_ k l]
     (RealBlockVector.
-     (slice-buffer buf (* elem-width k strd) (* elem-width l strd))
-     accessor blas-engine elem-type elem-width l strd)))
+     (.slice accessor buf (* k strd) (* l strd))
+     accessor vector-engine matrix-engine elem-type l strd)))
 
 (extend RealBlockVector
   Functor
@@ -353,45 +379,54 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGeneralMatrix [^ByteBuffer buf ^RealBufferAccessor accessor
-                            ^BLAS blas-engine ^BLAS vector-blas-engine
-                            elem-type ^long elem-width
+                            ^BLAS vector-engine ^BLAS matrix-engine
+                            elem-type
                             ^long m ^long n ^long ld ^long ord]
   Object
   (hashCode [this]
     (freduce this
-             (-> (hash :RealGeneralMatrix) (hash-combine elem-width)
+             (-> (hash :RealGeneralMatrix)
                  (hash-combine m) (hash-combine n))
              hash*))
   (equals [x y]
     (cond
      (nil? y) false
      (identical? x y) true
-     (and (.compatible x y) (= m (.mrows ^Matrix y)) (= n (.ncols ^Matrix y)))
+     (and (compatible x y) (= m (.mrows ^Matrix y)) (= n (.ncols ^Matrix y)))
      (freduce x true entry-eq y)
      :default false))
   (toString [_]
     (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
-            elem-type (if (= CBLAS/ORDER_COLUMN_MAJOR ord) "COL" "ROW")
+            elem-type (if (= ORDER_COLUMN_MAJOR ord) "COL" "ROW")
             m n ld))
   Group
   (zero [_]
-    (RealGeneralMatrix. (direct-buffer (* elem-width m n))
-                        accessor blas-engine vector-blas-engine elem-type elem-width
-                        m n m ord))
+    (RealGeneralMatrix. (.directBuffer accessor (* m n)) accessor
+                        vector-engine matrix-engine
+                        elem-type m n m ord))
+  EngineProvider
+  (engine [_]
+    matrix-engine)
+  Memory
+  (compatible [_ b]
+    (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
+         (= elem-type (.elementType ^Block b))))
+  BlockCreator
+  (create-matrix [_ m1 n1]
+    (->RealGeneralMatrix (.directBuffer accessor (* m1 n1))
+                         accessor vector-engine matrix-engine
+                         elem-type m1 n1 m1 DEFAULT_ORDER))
   Block
   (buffer [_]
     buf)
-  (engine [_]
-    blas-engine)
   (elementType [_]
     elem-type)
   (stride [_]
     ld)
   (order [_]
     ord)
-  (compatible [_ b]
-    (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
-         (= elem-type (.elementType ^Block b))))
+  (count [_]
+    (* m n))
   clojure.lang.Seqable
   (seq [a]
     (if (column-major? a)
@@ -422,7 +457,7 @@
         a))
   (set [a i j val]
     (do
-      (if (= CBLAS/ORDER_COLUMN_MAJOR ord)
+      (if (= ORDER_COLUMN_MAJOR ord)
         (.set accessor buf (+ (* ld j) i) val)
         (.set accessor buf (+ (* ld i) j) val))
       a))
@@ -434,39 +469,37 @@
   (ncols [_]
     n)
   (entry [_ i j]
-    (if (= CBLAS/ORDER_COLUMN_MAJOR ord)
+    (if (= ORDER_COLUMN_MAJOR ord)
       (.get accessor buf (+ (* ld j) i))
       (.get accessor buf (+ (* ld i) j))))
   (row [a i]
     (if (column-major? a)
       (RealBlockVector.
-       (slice-buffer buf (* elem-width i) (- (.capacity buf) (* elem-width i)))
-       accessor vector-blas-engine elem-type elem-width n ld)
+       (.slice accessor buf i (inc (* (dec n) ld)))
+       accessor vector-engine matrix-engine elem-type n ld)
       (RealBlockVector.
-       (slice-buffer buf (* elem-width ld i) (* elem-width n))
-       accessor vector-blas-engine elem-type elem-width n 1)))
+       (.slice accessor buf (* ld i) n)
+       accessor vector-engine matrix-engine elem-type n 1)))
   (col [a j]
     (if (column-major? a)
       (RealBlockVector.
-       (slice-buffer buf (* elem-width ld j) (* elem-width m))
-       accessor vector-blas-engine elem-type elem-width m 1)
+       (.slice accessor buf (* ld j) m)
+       accessor vector-engine matrix-engine elem-type m 1)
       (RealBlockVector.
-       (slice-buffer buf (* elem-width j) (- (.capacity buf) (* elem-width j)))
-       accessor vector-blas-engine elem-type elem-width m ld)))
+       (.slice accessor buf j (inc (* (dec m) ld)))
+       accessor vector-engine matrix-engine elem-type m ld)))
   (submatrix [a i j k l]
     (RealGeneralMatrix.
      (if (column-major? a)
-       (slice-buffer buf (+ (* elem-width ld j) (* elem-width i))
-                     (* elem-width ld l))
-       (slice-buffer buf (+ (* elem-width ld i) (* elem-width j))
-                     (* elem-width ld k)))
-     accessor blas-engine vector-blas-engine elem-type elem-width k l ld ord))
+       (.slice accessor buf (+ (* ld j) i) (* ld l))
+       (.slice accessor buf (+ (* ld i) j) (* ld k)))
+     accessor vector-engine matrix-engine elem-type k l ld ord))
   (transpose [a]
-    (RealGeneralMatrix. buf accessor blas-engine vector-blas-engine
-                        elem-type elem-width n m ld
+    (RealGeneralMatrix. buf accessor vector-engine matrix-engine
+                        elem-type n m ld
                         (if (column-major? a)
-                          CBLAS/ORDER_ROW_MAJOR
-                          CBLAS/ORDER_COLUMN_MAJOR))))
+                          ORDER_ROW_MAJOR
+                          ORDER_COLUMN_MAJOR))))
 
 (extend RealGeneralMatrix
   Functor
@@ -479,3 +512,56 @@
 (defmethod print-method RealGeneralMatrix
   [^RealGeneralMatrix a ^java.io.Writer w]
   (.write w (format "%s%s<>" (str a) (pr-str (seq a)))))
+
+;; ========================== Creators =========================================
+
+(defn to-buffer
+  ([type s]
+   (.buf ^ByteSeq (unwrap-byte-seq (marshal-seq type s))))
+  ([s]
+   (to-buffer float64 s)))
+
+(defn real-vector
+  ([^long bytesize source vector-engine matrix-engine]
+   (cond
+     (and (instance? ByteBuffer source)
+          (zero? (long (mod (.capacity ^ByteBuffer source) bytesize))))
+     (case bytesize
+       (->RealBlockVector source
+                          (case bytesize 8 double-accessor 4 float-accessor)
+                          vector-engine matrix-engine
+                          (case bytesize 8 float64 4 float32)
+                          (/ (.capacity ^ByteBuffer source) bytesize) 1))
+     (and (integer? source) (<= 0 (long source)))
+     (real-vector bytesize (direct-buffer (* bytesize (long source)))
+                  vector-engine matrix-engine)
+     (float? source) (real-vector bytesize [source] vector-engine matrix-engine)
+     (sequential? source) (real-vector bytesize (to-buffer (case bytesize 8 float64 4 float32) source)
+                                       vector-engine matrix-engine)
+     :default (throw (IllegalArgumentException.
+                      (format "I do not know how to create a vector from %s."
+                              (type source)))))))
+
+(defn real-matrix
+  ([bytesize m n source vector-engine matrix-engine]
+   (cond
+     (and (instance? ByteBuffer source)
+          (zero? (long (mod (.capacity ^ByteBuffer source) bytesize)))
+          (= (* m n) (quot (.capacity ^ByteBuffer source) bytesize)))
+     (if (= (* bytesize m n) (.capacity ^ByteBuffer source))
+       (->RealGeneralMatrix source
+                            (case bytesize 8 double-accessor 4 float-accessor)
+                            vector-engine matrix-engine
+                            (case bytesize 8 float64 4 float32)
+                            m n (max m 1) DEFAULT_ORDER)
+       (throw (IllegalArgumentException.
+               (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
+                       m n))))
+     (sequential? source) (real-matrix bytesize m n (to-buffer (case bytesize 8 float64 4 float32) source)
+                                       vector-engine matrix-engine)
+     :default (throw (IllegalArgumentException.
+                      (format "I do not know how to create a double matrix from %s ."
+                              (type source))))))
+  ([bytesize m n vector-engine matrix-engine]
+   (real-matrix bytesize m n (direct-buffer (* bytesize m n))
+                vector-engine matrix-engine)))

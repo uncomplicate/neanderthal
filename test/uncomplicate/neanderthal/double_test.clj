@@ -6,7 +6,8 @@
             [uncomplicate.neanderthal
              [core :refer :all]
              [real :refer :all]
-             [math :refer :all]]))
+             [math :refer :all]
+             [block :refer [to-buffer]]]))
 
 (facts "Create a double vector."
        (vect? (dv [1 2 3])) => true
@@ -121,17 +122,17 @@
        (axpy! 2 (dv 1 2 3) (dv 1 2 3) (dv 2 3 4) 4.0 (dv 5 6 7))
        => (dv 25 33 41)
        (axpy! 2 (dv 1 2 3) (dv 1 2 3) (dv 2 3 4) 4.0)
-       => (throws NullPointerException)
+       => (throws IllegalArgumentException)
        (axpy! (dv 1 2 3) (dv 1 2 3) (dv 1 2 3) (dv 1 2 3) (dv 1 2 3))
        => (axpy! 5 (dv 1 2 3) (dv 3))
        (axpy! 4 "af" (dv 1 2 3) 3 "b" "c")
-       => (throws ClassCastException)
+       => (throws IllegalArgumentException)
        (let [y (dv [1 2 3])]
          (axpy! 2 (dv 1 2 3) y (dv 2 3 4) 4.0 (dv 5 6 7)) => y))
 
 (facts "BLAS1 axpy"
        (let [y (dv [1 2 3])]
-         (axpy 2.0 (dv [10 20 30])) => (throws ClassCastException)
+         (axpy 2.0 (dv [10 20 30])) => (throws IllegalArgumentException)
          (identical? (axpy 3.0 (dv [1 2 3]) y) y) => false
          (axpy (dv 1 2 3) (dv 2 3 4) (dv 3 4 5) (dv 3)) => (dv 6 9 12)
          (axpy 2 (dv 1 2 3) (dv 2 3 4)) => (dv 4 7 10)))
@@ -233,8 +234,7 @@
        => (dge 2 2 [47 62 107 140])
 
        (mm! 2.0 (trans (dge 3 2 [1 3 5 2 4 6])) (trans (dge 2 3 [1 4 2 5 3 6]))
-            3.0  (dge 2 2 [1 2 3 4])
-)
+            3.0  (dge 2 2 [1 2 3 4]))
        => (dge 2 2 [47 62 107 140]))
 
 (facts "mm"

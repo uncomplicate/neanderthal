@@ -14,74 +14,19 @@
   (ns test
     (:require [uncomplicate.neanderthal core real]))
   "
-  (:require  [vertigo
-              [bytes :refer [direct-buffer]]
-              [core :refer [wrap marshal-seq]]
-              [structs :refer [float64 float32 unwrap-byte-seq]]]
-            [uncomplicate.neanderthal
+  (:require [uncomplicate.neanderthal
              [protocols :as p]
              [core :refer [mrows ncols rank! mm! INCOMPATIBLE_BLOCKS_MSG]]
              [block :refer [MAT_BOUNDS_MSG DEFAULT_ORDER
-                            double-accessor float-accessor
-                            ->RealBlockVector ->RealGeneralMatrix]]
+                            real-vector real-matrix]]
              [cblas :refer [dv-engine sv-engine dge-engine sge-engine]]])
   (:import [uncomplicate.neanderthal.protocols
-            Block RealVector RealMatrix BLAS RealChangeable]
-           [java.nio ByteBuffer]
-           [vertigo.bytes ByteSeq]))
+            Block RealVector RealMatrix RealChangeable]
+           [java.nio ByteBuffer]))
 
-;; ============ Creating double constructs  ==============
+;; ============ Creating real constructs  ==============
 
-(defn to-buffer
-  ([^long bytesize s]
-   (.buf ^ByteSeq (unwrap-byte-seq
-                   (marshal-seq (case bytesize
-                                  8 float64
-                                  4 float32)
-                                s))))
-  ([s]
-   (to-buffer Double/BYTES s)))
 
-(defn real-vector
-  ([^long bytesize source]
-   (cond
-     (and (instance? ByteBuffer source)
-          (zero? (long (mod (.capacity ^ByteBuffer source) bytesize))))
-     (->RealBlockVector source
-                        (case bytesize 8 double-accessor 4 float-accessor)
-                        (case bytesize 8 dv-engine 4 sv-engine)
-                        (case bytesize 8 float64 4 float32) bytesize
-                        (/ (.capacity ^ByteBuffer source) bytesize) 1)
-     (and (integer? source) (<= 0 (long source)))
-     (real-vector bytesize (direct-buffer (* bytesize (long source))))
-     (float? source) (real-vector bytesize [source])
-     (sequential? source) (real-vector bytesize (to-buffer bytesize source))
-     :default (throw (IllegalArgumentException.
-                      (format "I do not know how to create a vector from %s."
-                              (type source)))))))
-
-(defn real-matrix
-  ([^long bytesize ^long m ^long n source]
-   (cond
-     (and (instance? ByteBuffer source)
-          (zero? (long (mod (.capacity ^ByteBuffer source) bytesize)))
-          (= (* m n) (quot (.capacity ^ByteBuffer source) bytesize)))
-     (if (= (* bytesize m n) (.capacity ^ByteBuffer source))
-       (->RealGeneralMatrix source
-                            (case bytesize 8 double-accessor 4 float-accessor)
-                            (case bytesize 8 dge-engine 4 sge-engine)
-                            (case bytesize 8 dv-engine 4 sv-engine)
-                            (case bytesize 8 float64 4 float32) bytesize
-                            m n (max m 1) DEFAULT_ORDER)
-       (throw (IllegalArgumentException.
-               (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."
-                       m n))))
-     (sequential? source) (real-matrix bytesize m n (to-buffer bytesize source))
-     :default (throw (IllegalArgumentException.
-                      (format "I do not know how to create a double matrix from %s ."
-                              (type source))))))
-  ([^long bytesize ^long m ^long n]
-   (real-matrix bytesize m n (direct-buffer (* bytesize m n)))))
 
 (defn sv
   "Creates a native-backed float vector from source.
@@ -147,7 +92,7 @@
   => #<DoubleBlockVector| n:3, stride:1, (1.0 2.0 3.0)>
   "
   ([source]
-   (real-vector Double/BYTES source))
+   (real-vector Double/BYTES source dv-engine dge-engine))
   ([x & xs]
    (dv (cons x xs))))
 
@@ -174,9 +119,9 @@
   => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
   "
   ([^long m ^long n source]
-   (real-matrix Double/BYTES m n source))
+   (real-matrix Double/BYTES m n source dv-engine dge-engine))
   ([^long m ^long n]
-   (real-matrix Double/BYTES m n)))
+   (real-matrix Double/BYTES m n dv-engine dge-engine)))
 
 (defn sge
   "Creates a native-backed, dense, column-oriented
@@ -201,9 +146,9 @@
   => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
   "
   ([^long m ^long n source]
-   (real-matrix Float/BYTES m n source))
+   (real-matrix Float/BYTES m n source sv-engine sge-engine))
   ([^long m ^long n]
-   (real-matrix Float/BYTES m n)))
+   (real-matrix Float/BYTES m n sv-engine sge-engine)))
 
 ;; ============ Vector and Matrix access methods ===
 
@@ -233,25 +178,3 @@
 
 (defn alter! []
   (throw (UnsupportedOperationException.))) ;;TODO
-
-;; ================== BLAS 1 =======================
-
-(defn rank
-  "A pure version of rank! that returns the result
-  in a new matrix instance.
-  "
-  ([^double alpha ^RealVector x ^RealVector y]
-   ;;   (rank! (real-matrix (p/byte-size x) (.dim x) (.dim y)) alpha x y)
-   );;TODO
-  ([x y]
-   (rank 1.0 x y)))
-
-(defn mm
-  "A pure version of mm!, that returns the result
-  in a new matrix instance.
-  Computes alpha a * b"
-  ([alpha ^RealMatrix a ^RealMatrix b]
-   ;;(mm! (real-matrix (p/byte-size a) (.mrows a) (.ncols b)) alpha a b 0.0)
-   );;TODO
-  ([a b]
-   (mm 1.0 a b)))

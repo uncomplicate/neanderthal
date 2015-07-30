@@ -8,4 +8,10 @@ public interface RealBufferAccessor {
 
     void set (ByteBuffer buf, long index, double value);
 
+    Object toSeq (ByteBuffer buf, long stride);
+
+    ByteBuffer directBuffer (long n);
+
+    ByteBuffer slice (ByteBuffer buf, long k, long l);
+
 }

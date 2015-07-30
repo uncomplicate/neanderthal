@@ -1,7 +1,16 @@
 (ns uncomplicate.neanderthal.protocols)
 
 (defprotocol Group
-  (zero [_]))
+  (zero [this]))
+
+(defprotocol EngineProvider
+  (engine ^BLAS [this]))
+
+(defprotocol BlockCreator
+  (create-matrix [this m n]))
+
+(defprotocol Memory
+  (compatible [this other]))
 
 (defprotocol Functor
   (fmap! [x f] [x f y] [x f y z]
