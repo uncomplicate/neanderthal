@@ -9,7 +9,7 @@
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
            [uncomplicate.neanderthal CBLAS]
-           [uncomplicate.neanderthal.protocols RealBufferAccessor
+           [uncomplicate.neanderthal.protocols RealBufferAccessor BLAS
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
 ;;TODO clean up
@@ -34,7 +34,7 @@
 (defn entry-eq [res ^double x ^double y]
   (= x y))
 
-;; ================== map/reduce functions ================================
+;; ================== map/reduce functions =====================================
 
 (defn ^:private vector-fmap!
   ([^RealVector x f]
@@ -272,7 +272,8 @@
 
 ;; ============ Real Vector ====================================================
 
-(deftype RealBlockVector [^ByteBuffer buf ^RealBufferAccessor accessor
+(deftype RealBlockVector [^ByteBuffer buf
+                          ^RealBufferAccessor accessor ^BLAS blas-engine
                           elem-type ^long elem-width ^long n ^long strd]
   Object
   (hashCode [this]
@@ -295,16 +296,20 @@
     (wrap-byte-seq elem-type (* elem-width strd) 0 (byte-seq buf)))
   Group
   (zero [_]
-    (RealBlockVector. (direct-buffer (* elem-width n)) accessor
+    (RealBlockVector. (direct-buffer (* elem-width n)) accessor blas-engine
                       elem-type elem-width n 1))
   Block
   (buffer [_]
     buf)
+  (engine [_]
+    blas-engine)
+  (elementType [_]
+    elem-type)
+  (stride [_]
+    strd)
   (compatible [_ y]
     (and (instance? RealBlockVector y)
          (= elem-type (.elementType ^Block y))))
-  (stride [_]
-    strd)
   IFn$LD
   (invokePrim [x i]
     (.entry x i))
@@ -327,11 +332,11 @@
   (dim [_]
     n)
   (entry [_ i]
-    (.get accessor buf (* elem-width strd i)))
+    (.get accessor buf (* strd i)))
   (subvector [_ k l]
     (RealBlockVector.
      (slice-buffer buf (* elem-width k strd) (* elem-width l strd))
-     accessor elem-type elem-width l strd)))
+     accessor blas-engine elem-type elem-width l strd)))
 
 (extend RealBlockVector
   Functor
@@ -348,6 +353,7 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGeneralMatrix [^ByteBuffer buf ^RealBufferAccessor accessor
+                            ^BLAS blas-engine ^BLAS vector-blas-engine
                             elem-type ^long elem-width
                             ^long m ^long n ^long ld ^long ord]
   Object
@@ -370,18 +376,22 @@
   Group
   (zero [_]
     (RealGeneralMatrix. (direct-buffer (* elem-width m n))
-                        accessor elem-type elem-width
+                        accessor blas-engine vector-blas-engine elem-type elem-width
                         m n m ord))
   Block
-  (compatible [_ b]
-    (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
-         (= elem-type (.elementType ^Block b))))
   (buffer [_]
     buf)
+  (engine [_]
+    blas-engine)
+  (elementType [_]
+    elem-type)
   (stride [_]
     ld)
   (order [_]
     ord)
+  (compatible [_ b]
+    (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
+         (= elem-type (.elementType ^Block b))))
   clojure.lang.Seqable
   (seq [a]
     (if (column-major? a)
@@ -431,18 +441,18 @@
     (if (column-major? a)
       (RealBlockVector.
        (slice-buffer buf (* elem-width i) (- (.capacity buf) (* elem-width i)))
-       accessor elem-type elem-width n ld)
+       accessor vector-blas-engine elem-type elem-width n ld)
       (RealBlockVector.
        (slice-buffer buf (* elem-width ld i) (* elem-width n))
-       accessor elem-type elem-width n 1)))
+       accessor vector-blas-engine elem-type elem-width n 1)))
   (col [a j]
     (if (column-major? a)
       (RealBlockVector.
        (slice-buffer buf (* elem-width ld j) (* elem-width m))
-       accessor elem-type elem-width m 1)
+       accessor vector-blas-engine elem-type elem-width m 1)
       (RealBlockVector.
        (slice-buffer buf (* elem-width j) (- (.capacity buf) (* elem-width j)))
-       accessor elem-type elem-width m ld)))
+       accessor vector-blas-engine elem-type elem-width m ld)))
   (submatrix [a i j k l]
     (RealGeneralMatrix.
      (if (column-major? a)
@@ -450,12 +460,21 @@
                      (* elem-width ld l))
        (slice-buffer buf (+ (* elem-width ld i) (* elem-width j))
                      (* elem-width ld k)))
-     accessor elem-type elem-width k l ld ord))
+     accessor blas-engine vector-blas-engine elem-type elem-width k l ld ord))
   (transpose [a]
-    (RealGeneralMatrix. buf accessor elem-type elem-width n m ld
+    (RealGeneralMatrix. buf accessor blas-engine vector-blas-engine
+                        elem-type elem-width n m ld
                         (if (column-major? a)
                           CBLAS/ORDER_ROW_MAJOR
                           CBLAS/ORDER_COLUMN_MAJOR))))
+
+(extend RealGeneralMatrix
+  Functor
+  {:fmap! matrix-fmap!}
+  Foldable
+  {:fold matrix-fold}
+  Reducible
+  {:freduce matrix-freduce})
 
 (defmethod print-method RealGeneralMatrix
   [^RealGeneralMatrix a ^java.io.Writer w]

@@ -7,7 +7,7 @@ public interface Block {
     BLAS engine ();
 
     long elementBytes ();
-
+    // TODO one of these 2 may not be needed
     Object elementType ();
 
     long stride ();

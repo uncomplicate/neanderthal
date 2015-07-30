@@ -21,7 +21,10 @@
             [uncomplicate.neanderthal
              [protocols :as p]
              [core :refer [mrows ncols rank! mm! INCOMPATIBLE_BLOCKS_MSG]]
-             [block :refer [MAT_BOUNDS_MSG DEFAULT_ORDER ->RealBlockVector ->RealGeneralMatrix]]])
+             [block :refer [MAT_BOUNDS_MSG DEFAULT_ORDER
+                            double-accessor float-accessor
+                            ->RealBlockVector ->RealGeneralMatrix]]
+             [cblas :refer [dv-engine sv-engine dge-engine sge-engine]]])
   (:import [uncomplicate.neanderthal.protocols
             Block RealVector RealMatrix BLAS RealChangeable]
            [java.nio ByteBuffer]
@@ -44,7 +47,10 @@
    (cond
      (and (instance? ByteBuffer source)
           (zero? (long (mod (.capacity ^ByteBuffer source) bytesize))))
-     (->RealBlockVector source (case bytesize 8 float64 4 float32) bytesize
+     (->RealBlockVector source
+                        (case bytesize 8 double-accessor 4 float-accessor)
+                        (case bytesize 8 dv-engine 4 sv-engine)
+                        (case bytesize 8 float64 4 float32) bytesize
                         (/ (.capacity ^ByteBuffer source) bytesize) 1)
      (and (integer? source) (<= 0 (long source)))
      (real-vector bytesize (direct-buffer (* bytesize (long source))))
@@ -61,7 +67,11 @@
           (zero? (long (mod (.capacity ^ByteBuffer source) bytesize)))
           (= (* m n) (quot (.capacity ^ByteBuffer source) bytesize)))
      (if (= (* bytesize m n) (.capacity ^ByteBuffer source))
-       (->RealGeneralMatrix source (case bytesize 8 float64 4 float32) bytesize
+       (->RealGeneralMatrix source
+                            (case bytesize 8 double-accessor 4 float-accessor)
+                            (case bytesize 8 dge-engine 4 sge-engine)
+                            (case bytesize 8 dv-engine 4 sv-engine)
+                            (case bytesize 8 float64 4 float32) bytesize
                             m n (max m 1) DEFAULT_ORDER)
        (throw (IllegalArgumentException.
                (format "Matrix dimensions (%dx%d) are not compatible with the buffer capacity."

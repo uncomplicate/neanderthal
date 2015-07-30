@@ -6,25 +6,21 @@
             [uncomplicate.neanderthal
              [core :refer :all]
              [real :refer :all]
-             [math :refer :all]
-             [cblas :as cblas]])
-  (:import [uncomplicate.neanderthal.cblas
-            DoubleBlockVector DoubleGeneralMatrix]))
+             [math :refer :all]]))
 
 (facts "Create a double vector."
-       (let [x (DoubleBlockVector. (to-buffer [1 2 3]) 3 1)]
-         (dv [1 2 3]) => x
-         (dv 1 2 3) => (dv [1 2 3])
-         (dv 3) => (dv [0 0 0])
-         (dv (to-buffer [1 2 3])) => x
-         (dv nil) => (throws IllegalArgumentException)
-         (dv []) => (dv (to-buffer []))
-         (dv 3) => (zero x)
+       (vect? (dv [1 2 3])) => true
+       (dv 1 2 3) => (dv [1 2 3])
+       (dv 3) => (dv [0 0 0])
+       (dv (to-buffer [1 2 3])) => (dv [1 2 3])
+       (dv nil) => (throws IllegalArgumentException)
+       (dv []) => (dv (to-buffer []))
+       (dv 3) => (zero (dv [1 2 3]))
 ;;         (dv (long-array [1 3]))
          ;;=> (throws IllegalArgumentException)
          ;;(dv (object-array [1 3]))
          ;;=> (throws IllegalArgumentException)
-         ))
+         )
 
 (facts "General vector functions."
        (dim (dv [1 2 3])) => 3
@@ -40,9 +36,9 @@
 ;;================ BLAS functions =========================================
 (facts "BLAS 1 dot."
        (dot (dv [1 2 3]) (dv [10 30 -10])) => 40.0
-       (dot (dv [1 2 3]) nil) => (throws NullPointerException)
+       (dot (dv [1 2 3]) nil) => (throws IllegalArgumentException)
        (dot (dv []) (dv [])) => 0.0
-       (dot (dv [1]) (dge 3 3)) => (throws ClassCastException)
+       (dot (dv [1]) (dge 3 3)) => (throws IllegalArgumentException)
        (dot (dv [1 2]) (dv [1 2 3]))
        => (throws IllegalArgumentException))
 
@@ -88,7 +84,7 @@
 (facts "BLAS 1 swap!"
        (let [x (dv [1 2 3])]
          (swp! x (dv [10 20 30])) => (dv [10 20 30])
-         (swp! x nil) => (throws NullPointerException)
+         (swp! x nil) => (throws IllegalArgumentException)
          (identical? (swp! x (dv [10 20 30])) x) => true
          (swp! x (dv [10 20]))
          => (throws IllegalArgumentException))
@@ -106,7 +102,7 @@
 
 (facts "BLAS 1 copy!"
        (copy! (dv [10 20 30]) (dv [1 2 3])) => (dv [10 20 30])
-       (copy! (dv [1 2 3]) nil) => (throws NullPointerException)
+       (copy! (dv [1 2 3]) nil) => (throws IllegalArgumentException)
        (copy! (dv [10 20 30]) (dv [1]))
        => (throws IllegalArgumentException))
 
@@ -117,33 +113,32 @@
 
 (facts "BLAS 1 axpy!"
        (let [y (dv [1 2 3])]
-         (axpy! y 2.0 (dv [10 20 30])) => (dv [21 42 63])
-         (identical? (axpy! y 3.0 (dv [1 2 3])) y) => true
-         (axpy! y 2.0 (dv [1 2])) => (throws IllegalArgumentException)
-         (axpy! (dv [1 2 3]) (dv [10 20 30])) => (dv [11 22 33]))
+         (axpy! 2.0 (dv [10 20 30]) y) => (dv [21 42 63])
+         (identical? (axpy! 3.0 (dv [1 2 3]) y) y) => true
+         (axpy! 2.0 (dv [1 2]) y) => (throws IllegalArgumentException)
+         (axpy! (dv [10 20 30]) (dv [1 2 3])) => (dv [11 22 33]))
 
-       (axpy! (dv 1 2 3) 2 (dv 1 2 3) (dv 2 3 4) 4.0 (dv 5 6 7))
+       (axpy! 2 (dv 1 2 3) (dv 1 2 3) (dv 2 3 4) 4.0 (dv 5 6 7))
        => (dv 25 33 41)
-       (axpy! (dv 1 2 3) 2 (dv 1 2 3) (dv 2 3 4) 4.0)
+       (axpy! 2 (dv 1 2 3) (dv 1 2 3) (dv 2 3 4) 4.0)
        => (throws NullPointerException)
        (axpy! (dv 1 2 3) (dv 1 2 3) (dv 1 2 3) (dv 1 2 3) (dv 1 2 3))
-       => (axpy! (dv 3) 5 (dv 1 2 3))
-       (axpy! (dv 1 2 3) 4 "af" 3 "b" "c")
+       => (axpy! 5 (dv 1 2 3) (dv 3))
+       (axpy! 4 "af" (dv 1 2 3) 3 "b" "c")
        => (throws ClassCastException)
        (let [y (dv [1 2 3])]
-         (axpy! y 2 (dv 1 2 3) (dv 2 3 4) 4.0 (dv 5 6 7)) => y))
+         (axpy! 2 (dv 1 2 3) y (dv 2 3 4) 4.0 (dv 5 6 7)) => y))
 
 (facts "BLAS1 axpy"
        (let [y (dv [1 2 3])]
-         (axpy 2.0 (dv [10 20 30])) => (dv 20 40 60)
-         (identical? (axpy y 3.0 (dv [1 2 3])) y) => false
-         (axpy (dv 1 2 3) (dv 2 3 4) (dv 3 4 5)) => (dv 6 9 12)
+         (axpy 2.0 (dv [10 20 30])) => (throws ClassCastException)
+         (identical? (axpy 3.0 (dv [1 2 3]) y) y) => false
+         (axpy (dv 1 2 3) (dv 2 3 4) (dv 3 4 5) (dv 3)) => (dv 6 9 12)
          (axpy 2 (dv 1 2 3) (dv 2 3 4)) => (dv 4 7 10)))
 
 ;; ================= Real Matrix functions ===========================
 (facts "Create a double matrix."
-       (let [a (DoubleGeneralMatrix.
-                (to-buffer [1 2 3 4 5 6]) 2 3 2 cblas/DEFAULT_ORDER)]
+       (let [a (dge 2 3 [1 2 3 4 5 6])]
          (dge 2 3 [1 2 3 4 5 6]) => a
          (dge 2 3 (to-buffer [1 2 3 4 5 6])) => a
          (dge 2 3 nil) => (throws IllegalArgumentException)
@@ -187,62 +182,59 @@
 
 ;; ====================== BLAS 2 ===============================
 (facts "BLAS 2 mv!"
-       (mv! (dv [1 2 3 4]) 2.0 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2 3) 3)
+       (mv! 2.0 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2 3) 3 (dv [1 2 3 4]))
        => (throws IllegalArgumentException)
 
        (let [y (dv [1 2 3])]
-         (mv! y 2 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2) 3)
+         (mv! 2 (dge 3 2 [1 2 3 4 5 6]) (dv 1 2) 3 y)
          => y)
 
-       (mv! (dv 0 0) (dge 2 3 [1 10 2 20 3 30]) (dv 7 0 4))
+       (mv! (dge 2 3 [1 10 2 20 3 30]) (dv 7 0 4) (dv 0 0))
        => (dv 19 190)
 
-       (mv! (dv 1 2) 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3) 3.0)
+       (mv! 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3) 3.0 (dv 1 2))
        => (dv 47 62)
 
-       (mv! (dv 0 0) 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3) 0.0)
+       (mv! 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3) 0.0 (dv 0 0))
        => (mv 2.0 (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3))
 
-       (mv! (dv 0 0) (trans (dge 3 2 [1 3 5 2 4 6])) (dv 1 2 3))
-       => (mv! (dv 0 0) (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3)))
+       (mv! (trans (dge 3 2 [1 3 5 2 4 6])) (dv 1 2 3) (dv 0 0))
+       => (mv! (dge 2 3 [1 2 3 4 5 6]) (dv 1 2 3) (dv 0 0)))
 
 (facts "BLAS 2 rank!"
        (let [a (dge 2 3 [1 2 3 4 5 6])]
-         (rank! a 2.0 (dv 1 2) (dv 1 2 3)) => a)
+         (rank! 2.0 (dv 1 2) (dv 1 2 3) a) => a)
 
-       (rank! (dge 4 3 [1 2 3 4 2 2 2 2 3 4 2 1])
-              (dv 3 2 1 4) (dv 1 2 3))
+       (rank! (dv 3 2 1 4) (dv 1 2 3) (dge 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
        => (dge 4 3 [4 4 4 8 8 6 4 10 12 10 5 13])
 
-       (rank! (dge 2 2 [1 2 3 5])
-             (dv 1 2) (dv 1 2 3))
+       (rank! (dv 1 2) (dv 1 2 3) (dge 2 2 [1 2 3 5]))
        => (throws IllegalArgumentException)
 
-       (rank (dv 1 2) (dv 1 2 3)) => (dge 2 3 [1 2 2 4 3 6]))
+       ;;(rank (dv 1 2) (dv 1 2 3)) => (dge 2 3 [1 2 2 4 3 6])
+       )
 
 ;; ====================== BLAS 3 ================================
 (facts "BLAS 3 mm!"
-       (mm! (dge 3 2 [1 2 3 4 5 6])
-            2.0 (dge 3 2 [1 2 3 4 5 6]) (dge 3 2 [1 2 3 4 5 6]) 3.0)
+       (mm! 2.0 (dge 3 2 [1 2 3 4 5 6]) (dge 3 2 [1 2 3 4 5 6])
+            3.0 (dge 3 2 [1 2 3 4 5 6]))
        => (throws IllegalArgumentException)
 
-       (mm! (dge 3 2 [1 2 3 4 5 6])
-            2.0 (dge 3 2 [1 2 3 4 5 6]) (dge 2 3 [1 2 3 4 5 6]) 3.0)
+       (mm! 2.0 (dge 3 2 [1 2 3 4 5 6]) (dge 2 3 [1 2 3 4 5 6])
+            3.0 (dge 3 2 [1 2 3 4 5 6]))
        => (throws IllegalArgumentException)
 
       (let [c (dge 2 2 [1 2 3 4])]
-         (mm! c 2.0 (dge 2 3 [1 2 3 4 5 6])
-              (dge 3 2 [1 2 3 4 5 6]) 3.0)
-         => c)
+        (mm! 2.0 (dge 2 3 [1 2 3 4 5 6]) (dge 3 2 [1 2 3 4 5 6]) 3.0 c)
+        => c)
 
-       (mm! (dge 2 2 [1 2 3 4])
-            2.0 (dge 2 3 [1 2 3 4 5 6])
-            (dge 3 2 [1 2 3 4 5 6]) 3.0)
+      (mm! 2.0 (dge 2 3 [1 2 3 4 5 6]) (dge 3 2 [1 2 3 4 5 6])
+           3.0 (dge 2 2 [1 2 3 4]))
        => (dge 2 2 [47 62 107 140])
 
-       (mm! (dge 2 2 [1 2 3 4])
-            2.0 (trans (dge 3 2 [1 3 5 2 4 6]))
-            (trans (dge 2 3 [1 4 2 5 3 6])) 3.0)
+       (mm! 2.0 (trans (dge 3 2 [1 3 5 2 4 6])) (trans (dge 2 3 [1 4 2 5 3 6]))
+            3.0  (dge 2 2 [1 2 3 4])
+)
        => (dge 2 2 [47 62 107 140]))
 
 (facts "mm"

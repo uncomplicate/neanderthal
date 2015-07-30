@@ -56,8 +56,8 @@
    (apply p/fmap! x f y z w ws)))
 
 (defn fold
-  (^double [x] ;;TODO all categorical functions than can be primitive should be checked
-           (p/fold x))
+  ([x] ;;TODO all categorical functions than can be primitive should be checked
+   (p/fold x))
   ([f x]
    (p/fold x f))
   ([f id x]
@@ -242,7 +242,7 @@
   (if (and (.compatible x y) (= (.dim ^Vector x) (.dim y)))
     (.dot (.engine x) x y)
     (throw (IllegalArgumentException.
-            (format INCOMPATIBLE_BLOCKS_MSG (str x) (str y))))))
+            (format INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn nrm2
   "BLAS 1: Euclidean norm.
@@ -285,7 +285,9 @@
   => #<DoubleBlockVector| n:3, stride:1, (1.5 3.0 4.5)>
   "
   [alpha ^Block x]
-  (.scal (.engine x) alpha x))
+  (do
+    (.scal (.engine x) alpha x)
+    x))
 
 (defn rot!
   "BLAS 1: Apply plane rotation.
@@ -294,11 +296,13 @@
    (if (.compatible x y)
      (if (and (<= -1.0 c 1.0) (<= -1.0 c 1.0)
               (f= 1.0 (+ (pow c 2) (pow s 2))))
-       (.rot (.engine x) x y c s)
+       (do
+         (.rot (.engine x) x y c s)
+         x)
        (throw (IllegalArgumentException.
                "c and s must be sin and cos.")))
      (throw (IllegalArgumentException.
-             (format INCOMPATIBLE_BLOCKS_MSG (str x) (str y))))))
+             (format INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
@@ -335,7 +339,9 @@
   [^Block x]
   (if (= 4 (.dim ^Vector x))
     (if (= 1 (.stride x))
-      (.rotg (.engine x) x)
+      (do
+        (.rotg (.engine x) x)
+        x)
       (throw (IllegalArgumentException.
               (format STRIDE_MSG 1 (.stride x)))))
     (throw (IllegalArgumentException.
@@ -354,7 +360,9 @@
   (if (and (.compatible p args)
            (= 5 (.dim ^Vector p) (= 1 (.stride p)))
            (= 4 (.dim ^Vector args) (= 1 (.stride args))))
-    (.rotmg (.engine p) p args)
+    (do
+      (.rotmg (.engine p) p args)
+      p)
     (throw (IllegalArgumentException.
             (format ROTMG_COND_MSG (str p) (str args))))))
 
@@ -371,7 +379,9 @@
   [^Block x ^Vector y ^Block p]
   (if (and (.compatible x y) (= (.dim ^Vector x) (.dim y))
            (= 5 (.dim ^Vector p) (= 1 (.stride p))))
-    (.rotm (.engine x) x y p)
+    (do
+      (.rotm (.engine x) x y p)
+      x)
     (throw (IllegalArgumentException.
             (format ROTM_COND_MSG (str x) (str y) (str p))))))
 
@@ -391,15 +401,17 @@
   [^Block x ^Vector y]
   (if (.compatible x y)
     (if (= (.dim ^Vector x) (.dim y))
-      (.swap (.engine x) x y)
+      (do
+        (.swap (.engine x) x y)
+        x)
       (throw (IllegalArgumentException.
               (format DIMENSION_MSG (.dim ^Vector x) (.dim y)))))
     (throw (IllegalArgumentException.
-            (format INCOMPATIBLE_BLOCKS_MSG  (str x) (str y))))))
+            (format INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn copy!
   "BLAS 1: Copy vector.
-  Copies the entries of x into y. x and y must have
+  Copies the entries of x into y and returns x. x and y must have
   equal dimensions. y will be changed. Also works on
   matrices.
 
@@ -413,11 +425,13 @@
   [^Block x ^Vector y]
   (if (.compatible x y)
     (if (= (.dim ^Vector x) (.dim y))
-      (.copy (.engine x) x y)
+      (do
+        (.copy (.engine x) x y)
+        y)
       (throw (IllegalArgumentException.
               (format DIMENSION_MSG (.dim ^Vector x) (.dim y)))))
     (throw (IllegalArgumentException.
-            (format INCOMPATIBLE_BLOCKS_MSG (str x) (str y))))))
+            (format INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn copy
   "Returns a new vector and copies the entries from x.
@@ -427,7 +441,9 @@
   => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
   "
   [x]
-  (copy! x (p/zero x)))
+  (let [y (p/zero x)]
+    (copy! x y)
+    y))
 
 (defn axpy!
   "BLAS 1: Vector scale and add.
@@ -463,11 +479,13 @@
   (axpy! x y (dv 3 4 5) 2 (dv 1 2 3))
   => #<DoubleBlockVector| n:3, stride:1, (10.5 18.0 25.5)>
   "
-  ([alpha ^Block x ^Vector y]
-   (if (and (.compatible x y) (= (.dim ^Vector x) (.dim y)))
-     (.axpy (.engine x) alpha x y)
+  ([alpha ^Block x ^Block y]
+   (if (and (.compatible x y) (= (.dim ^Vector x) (.dim ^Vector y))) ;;TODO introducu dim in Block to support matrices
+     (do
+       (.axpy (.engine y) alpha x y)
+       y)
      (throw (IllegalArgumentException.
-             (format INCOMPATIBLE_BLOCKS_MSG (str x) (str y))))))
+             (format INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
    (axpy! 1.0 x y))
   ([x y z & zs]
@@ -489,8 +507,10 @@
    (axpy! 1.0 x (copy y)))
   ([alpha x y]
    (axpy! alpha x (copy y)))
-  ([alpha x y z & zs]
-   (apply axpy! alpha x (copy y) zs)))
+  ([x y z w & ws]
+   (if (number? x)
+     (apply axpy! x y (copy z) w ws)
+     (apply axpy! 1.0 x (copy y) z w ws))))
 
 (defn ax
   "Multiplies vector x by a scalar a.
@@ -542,18 +562,19 @@
    (if (and (.compatible a x) (.compatible a y)
             (= (.ncols ^Matrix a) (.dim x))
             (= (.mrows ^Matrix a) (.dim y)))
-       (.mv (.engine a) alpha a x beta y)
-       (throw (IllegalArgumentException.
-               (format INCOMPATIBLE_BLOCKS_MSG_3 (str a) (str x) (str y))))))
+     (do (.mv (.engine a) alpha a x beta y)
+         y)
+     (throw (IllegalArgumentException.
+               (format INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([alpha a x y]
      (mv! alpha a x 1.0 y))
-  ([y a x]
+  ([a x y]
      (mv! 1.0 a x 0.0 y)))
 
 (defn mv
   "A pure version of mv! that returns the result
   in a new vector instance. Computes alpha a * x."
-  ([^double alpha ^Matrix a x]
+  ([alpha ^Matrix a x]
    (mv! alpha a x 0.0 (p/zero (.col a 0))))
   ([a x]
    (mv 1.0 a x)))
@@ -561,7 +582,7 @@
 (defn rank!
   "BLAS 2: General rank-1 update.
 
-  Computes a = a + alpha * x * y'
+  Computes a = alpha * x * y' + a
   where:
 
   alpha is a scalar
@@ -578,11 +599,13 @@
    (if (and (.compatible a x) (.compatible a y)
             (= (.mrows ^Matrix a) (.dim x))
             (= (.ncols ^Matrix a) (.dim y)))
-     (.rank (.engine a) alpha x y a)
+     (do
+       (.rank (.engine a) alpha x y a)
+       a)
      (throw (IllegalArgumentException.
-             (format INCOMPATIBLE_BLOCKS_MSG_3 (str a) (str x) (str y))))))
-  ([a x y]
-   (rank! a 1.0 x y)))
+             (format INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
+  ([x y a]
+   (rank! 1.0 x y a)))
 
 ;; =========================== BLAS 3 ==========================================
 
@@ -616,18 +639,20 @@
   (mm! c a b)
   => #<DoubleGeneralMatrix| COL, mxn: 2x2, ld:2, ((22.0 31.0) (40.0 58.0))>
   "
-  ([alpha ^Block a ^Matrix b beta ^Matrix c]
-   (if (and (.compatible a b) (.compatible a c))
-     (if (and (= (.ncols ^Matrix a) (.mrows b))
-              (= (.mrows ^Matrix a) (.mrows c))
-              (= (.ncols b) (.ncols c)))
-       (.mm (.engine a) alpha a b beta c)
+  ([alpha ^Matrix a ^Matrix b beta ^Block c]
+   (if (and (.compatible c a) (.compatible c b))
+     (if (and (= (.ncols a) (.mrows b))
+              (= (.mrows a) (.mrows ^Matrix c))
+              (= (.ncols b) (.ncols ^Matrix c)))
+       (do
+         (.mm (.engine c) alpha a b beta c)
+         c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
-                       (.mrows c) (.ncols c)
-                       (.mrows ^Matrix a) (.ncols ^Matrix a)
+                       (.mrows ^Matrix c) (.ncols ^Matrix c)
+                       (.mrows a) (.ncols a)
                        (.mrows b) (.ncols b)))))
      (throw (IllegalArgumentException.
-             (format INCOMPATIBLE_BLOCKS_MSG_3 (str a) (str b) (str c))))))
+             (format INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
   ([a b c]
    (mm! 1.0 a b 1.0 c)));;TODO add varargs version
