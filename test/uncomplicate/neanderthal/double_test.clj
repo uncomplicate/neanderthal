@@ -1,13 +1,14 @@
 (ns uncomplicate.neanderthal.double-test
   (:require [midje.sweet :refer [facts throws =>]]
-            [vertigo
-             [core :refer [wrap]]
-             [structs :refer [float64]]]
             [uncomplicate.neanderthal
              [core :refer :all]
              [real :refer :all]
+             [native :refer :all]
              [math :refer :all]
-             [block :refer [to-buffer]]]))
+             [block :refer [double-accessor]]]))
+
+(defn to-buffer [s]
+  (.toBuffer double-accessor s))
 
 (facts "Create a double vector."
        (vect? (dv [1 2 3])) => true

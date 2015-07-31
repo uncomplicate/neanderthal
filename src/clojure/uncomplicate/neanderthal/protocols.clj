@@ -7,7 +7,7 @@
   (engine ^BLAS [this]))
 
 (defprotocol BlockCreator
-  (create-matrix [this m n]))
+  (create-block [this m n]))
 
 (defprotocol Memory
   (compatible [this other]))

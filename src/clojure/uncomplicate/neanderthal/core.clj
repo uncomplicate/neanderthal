@@ -616,7 +616,7 @@
   in a new matrix instance.
   "
   ([alpha x y]
-   (rank! (p/create-matrix x (dim x) (dim y)) alpha x y))
+   (rank! (p/create-block x (dim x) (dim y)) alpha x y))
   ([x y]
    (rank 1.0 x y)))
 
@@ -677,6 +677,6 @@
   in a new matrix instance.
   Computes alpha a * b"
   ([alpha a b]
-   (mm! alpha a b 0.0 (p/create-matrix a (mrows a) (ncols b))))
+   (mm! alpha a b 0.0 (p/create-block a (mrows a) (ncols b))))
   ([a b]
    (mm 1.0 a b)))
