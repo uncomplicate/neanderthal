@@ -13,8 +13,6 @@
             BLAS RealBufferAccessor BufferAccessor
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
-;;TODO clean up
-
 (def ^:private DIMENSIONS_MSG
   "Vector dimensions should be %d.")
 
