@@ -125,6 +125,6 @@
   => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
   "
   ([^long m ^long n source]
-   (create-matrix accessor sv-engine sge-engine m n source))
+   (create-matrix float-accessor sv-engine sge-engine m n source))
   ([^long m ^long n]
-   (create-matrix accessor sv-engine sge-engine m n)))
+   (create-matrix float-accessor sv-engine sge-engine m n)))

@@ -1,4 +1,5 @@
 (ns uncomplicate.neanderthal.block
+  (:refer-clojure :exclude [accessor])
   (:require [vertigo
              [core :refer [wrap marshal-seq]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
@@ -355,7 +356,6 @@
     (do
       (.set accessor buf (* strd i) val)
       x))
-  Changeable
   (setBoxed [x val]
     (.set x val))
   (setBoxed [x i val]
