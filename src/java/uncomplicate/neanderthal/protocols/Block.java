@@ -2,9 +2,9 @@ package uncomplicate.neanderthal.protocols;
 
 public interface Block {
 
-    Object buffer ();
+    Object entryType ();
 
-    Object elementType ();
+    Object buffer ();
 
     long stride ();
 

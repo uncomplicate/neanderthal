@@ -16,7 +16,7 @@
   "
   (:require [uncomplicate.neanderthal
              [core :refer [mrows ncols]]
-             [block :refer [MAT_BOUNDS_MSG]]])
+             [constants :refer [MAT_BOUNDS_MSG]]])
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix RealChangeable]))
 
@@ -45,6 +45,3 @@
      (.set m i j val)
      (throw (IndexOutOfBoundsException.
              (format MAT_BOUNDS_MSG i j (mrows m) (ncols m)))))))
-
-(defn alter! []
-  (throw (UnsupportedOperationException.))) ;;TODO

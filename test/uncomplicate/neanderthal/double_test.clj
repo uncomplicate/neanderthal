@@ -1,7 +1,7 @@
 (ns uncomplicate.neanderthal.double-test
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
-             [core :refer :all]
+             [core :refer :all :exclude [entry entry!]]
              [real :refer :all]
              [native :refer :all]
              [math :refer :all]

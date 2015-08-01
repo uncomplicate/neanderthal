@@ -17,14 +17,10 @@
   "
   (:require  [uncomplicate.neanderthal
               [protocols :as p]
+              [constants :refer :all]
               [math :refer [f= pow sqrt]]])
-  (:import [uncomplicate.neanderthal.protocols Vector Matrix Block BLAS]))
-
-(def  INCOMPATIBLE_BLOCKS_MSG
-  "Operation is not permited on vectors with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s")
+  (:import [uncomplicate.neanderthal.protocols Vector Matrix Block BLAS
+            Changeable]))
 
 (def ^:private INCOMPATIBLE_BLOCKS_MSG_3
   "Operation is not permited on vectors with incompatible buffers,
@@ -82,7 +78,6 @@
   [x]
   (p/zero x))
 
-;; ================= Vector ====================================================
 (defn vect?
   "Returns true if x implements uncomplicate.neanderthal.protocols.Vector.
 
@@ -100,6 +95,8 @@
   "
   [x]
   (instance? Matrix x))
+
+;; ================= Vector ====================================================
 
 (defn dim
   "Returns the dimension of a neanderthal vector x.
@@ -239,6 +236,35 @@
   "
   [^Matrix m]
   (.transpose m))
+
+;; ============ Vector and Matrix access methods ================================
+
+(defn entry
+  "Returns the i-th entry of vector x, or ij-th entry of matrix m."{}
+  ([^Vector x ^long i]
+   (.boxedEntry x i))
+  ([^Matrix m ^long i ^long j]
+   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
+     (.boxedEntry m i j)
+     (throw (IndexOutOfBoundsException.
+             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+
+(defn entry!
+  "Sets the i-th entry of vector x, or ij-th entry of matrix m,
+  or all entries if no index is provided,
+  to value val and returns the vector or matrix."
+  ([^Changeable c val]
+   (.setBoxed c val))
+  ([^Changeable v ^long i ^double val]
+   (.setBoxed v i val))
+  ([^Changeable m ^long i ^long j val]
+   (if (and (< -1 i (mrows m)) (< -1 j (ncols m)))
+     (.setBoxed m i j val)
+     (throw (IndexOutOfBoundsException.
+             (format MAT_BOUNDS_MSG i j (mrows m) (ncols m)))))))
+
+(defn alter! []
+  (throw (UnsupportedOperationException.))) ;;TODO
 
 ;;================== BLAS 1 =======================
 

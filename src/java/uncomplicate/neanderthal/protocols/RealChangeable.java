@@ -2,7 +2,7 @@ package uncomplicate.neanderthal.protocols;
 
 import clojure.lang.IFn;
 
-public interface RealChangeable {
+public interface RealChangeable extends Changeable {
 
     RealChangeable set (double val);
 
@@ -10,7 +10,4 @@ public interface RealChangeable {
 
     RealChangeable set (long i, double val);
 
-    RealChangeable alter (long i, IFn fn);
-
-    RealChangeable alter (long i, long j, IFn fn);
 }

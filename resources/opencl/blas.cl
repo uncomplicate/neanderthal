@@ -114,7 +114,6 @@ __kernel void nrm2_reduce (__global double* acc, __global const REAL* x) {
 }
 
 // ================ Max reduction ==============================================
-__attribute__((reqd_work_group_size(WGS, 1, 1)))
 inline void work_group_reduction_imax (__global uint* iacc,
                                        __global double* vacc,
                                        uint const ind, const double val) {

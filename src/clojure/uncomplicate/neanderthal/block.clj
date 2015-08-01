@@ -3,7 +3,9 @@
              [core :refer [wrap marshal-seq]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq unwrap-byte-seq]]]
-            [uncomplicate.neanderthal.protocols :refer :all])
+            [uncomplicate.neanderthal
+             [protocols :refer :all]
+             [constants :refer :all]])
   (:import [java.nio ByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
@@ -16,17 +18,8 @@
 (def ^:private DIMENSIONS_MSG
   "Vector dimensions should be %d.")
 
-(def MAT_BOUNDS_MSG
-  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
-
 (def ^:private PRIMITIVE_FN_MSG
   "I cannot accept function of this type as an argument.")
-
-(def ^:const ROW_MAJOR 101)
-
-(def ^:const COLUMN_MAJOR 102)
-
-(def ^:const DEFAULT_ORDER COLUMN_MAJOR)
 
 (defn column-major? [^Block a]
   (= 102 (.order a)))
@@ -303,7 +296,7 @@
 
 (deftype RealBlockVector [^RealBufferAccessor accessor
                           ^BLAS vector-engine ^BLAS matrix-engine
-                          ^ByteBuffer buf ^long n ^long strd]
+                          ^Class entry-type ^ByteBuffer buf ^long n ^long strd]
   Object
   (hashCode [this]
     (freduce this
@@ -317,14 +310,13 @@
      (freduce x true entry-eq y)
      :default false))
   (toString [_]
-    (format "#<RealBlockVector| %s, n:%d, stride:%d>"
-            (.entryType accessor) n strd))
+    (format "#<RealBlockVector| %s, n:%d, stride:%d>" entry-type n strd))
   clojure.lang.Seqable
   (seq [_]
     (.toSeq accessor buf strd))
   Group
   (zero [_]
-    (RealBlockVector. accessor vector-engine matrix-engine
+    (RealBlockVector. accessor vector-engine matrix-engine entry-type
                       (.directBuffer accessor n) n 1))
   EngineProvider
   (engine [_]
@@ -332,13 +324,15 @@
   Memory
   (compatible [_ y]
     (and (instance? RealBlockVector y)
-         (= accessor (.accessor ^RealBlockVector y))))
+         (= entry-type (.entryType ^Block y))))
   BlockCreator
   (create-block [_ m n]
-    (->RealGeneralMatrix accessor vector-engine matrix-engine
+    (->RealGeneralMatrix accessor vector-engine matrix-engine entry-type
                          (.directBuffer accessor (* (long m) (long n)))
                          m n m DEFAULT_ORDER))
   Block
+  (entryType [_]
+    entry-type)
   (buffer [_]
     buf)
   (stride [_]
@@ -361,6 +355,11 @@
     (do
       (.set accessor buf (* strd i) val)
       x))
+  Changeable
+  (setBoxed [x val]
+    (.set x val))
+  (setBoxed [x i val]
+    (.set x i val))
   (alter [x i f]
     (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
   RealVector
@@ -368,8 +367,10 @@
     n)
   (entry [_ i]
     (.get accessor buf (* strd i)))
+  (boxedEntry [x i]
+    (.entry x i))
   (subvector [_ k l]
-    (RealBlockVector. accessor vector-engine matrix-engine
+    (RealBlockVector. accessor vector-engine matrix-engine entry-type
                       (.slice accessor buf (* k strd) (* l strd)) l strd)))
 
 (extend RealBlockVector
@@ -388,6 +389,7 @@
 
 (deftype RealGeneralMatrix [^RealBufferAccessor accessor
                             ^BLAS vector-engine ^BLAS matrix-engine
+                            ^Class entry-type
                             ^ByteBuffer buf ^long m ^long n ^long ld ^long ord]
   Object
   (hashCode [this]
@@ -404,28 +406,27 @@
      :default false))
   (toString [_]
     (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
-            (.entryType accessor) (if (= COLUMN_MAJOR ord) "COL" "ROW")
+            entry-type (if (= COLUMN_MAJOR ord) "COL" "ROW")
             m n ld))
   Group
   (zero [_]
-    (RealGeneralMatrix. accessor vector-engine matrix-engine
+    (RealGeneralMatrix. accessor vector-engine matrix-engine entry-type
                         (.directBuffer accessor (* m n)) m n m ord))
   EngineProvider
   (engine [_]
     matrix-engine)
   Memory
   (compatible [_ b]
-    (or (and (instance? RealGeneralMatrix b)
-             (= accessor (.accessor ^RealGeneralMatrix b)))
-        (and (instance? RealBlockVector b)
-             (= (.entryType accessor)
-                (.entryType ^BufferAccessor (.accessor ^RealBlockVector b))))))
+    (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
+         (= entry-type (.entryType ^Block b))))
   BlockCreator
   (create-block [_ m1 n1]
-    (->RealGeneralMatrix accessor vector-engine matrix-engine
+    (->RealGeneralMatrix accessor vector-engine matrix-engine entry-type
                          (.directBuffer accessor (* (long m1) (long n1)))
                          m1 n1 (max (long m1) 1) DEFAULT_ORDER))
   Block
+  (entryType [_]
+    entry-type)
   (buffer [_]
     buf)
   (stride [_]
@@ -467,6 +468,10 @@
         (.set accessor buf (+ (* ld j) i) val)
         (.set accessor buf (+ (* ld i) j) val))
       a))
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
   (alter [a i j f]
     (.set a i j (.invokePrim ^IFn$DD f (.entry a i j))))
   RealMatrix
@@ -478,27 +483,29 @@
     (if (= COLUMN_MAJOR ord)
       (.get accessor buf (+ (* ld j) i))
       (.get accessor buf (+ (* ld i) j))))
+  (boxedEntry [this i j]
+    (.entry this i j))
   (row [a i]
     (if (column-major? a)
-      (RealBlockVector. accessor vector-engine matrix-engine
+      (RealBlockVector. accessor vector-engine matrix-engine entry-type
                         (.slice accessor buf i (inc (* (dec n) ld))) n ld)
-      (RealBlockVector. accessor vector-engine matrix-engine
+      (RealBlockVector. accessor vector-engine matrix-engine entry-type
                         (.slice accessor buf (* ld i) n) n 1)))
   (col [a j]
     (if (column-major? a)
-      (RealBlockVector. accessor vector-engine matrix-engine
+      (RealBlockVector. accessor vector-engine matrix-engine entry-type
                         (.slice accessor buf (* ld j) m) m 1)
-      (RealBlockVector. accessor vector-engine matrix-engine
+      (RealBlockVector. accessor vector-engine matrix-engine entry-type
                         (.slice accessor buf j (inc (* (dec m) ld))) m ld)))
   (submatrix [a i j k l]
-    (RealGeneralMatrix. accessor vector-engine matrix-engine
+    (RealGeneralMatrix. accessor vector-engine matrix-engine entry-type
                         (if (column-major? a)
                           (.slice accessor buf (+ (* ld j) i) (* ld l))
                           (.slice accessor buf (+ (* ld i) j) (* ld k)))
                         k l ld ord))
   (transpose [a]
-    (RealGeneralMatrix. accessor vector-engine matrix-engine buf n m ld
-                        (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
+    (RealGeneralMatrix. accessor vector-engine matrix-engine entry-type
+                        buf n m ld (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
 
 (extend RealGeneralMatrix
   Functor
@@ -519,6 +526,7 @@
    (cond
      (and (instance? ByteBuffer source))
      (->RealBlockVector accessor vector-engine matrix-engine
+                        (.entryType accessor)
                         source (.count accessor source) 1)
      (and (integer? source) (<= 0 (long source)))
      (create-vector accessor vector-engine matrix-engine
@@ -536,6 +544,7 @@
      (and (instance? ByteBuffer source)
           (= (* (long m) (long n)) (.count accessor source)))
      (->RealGeneralMatrix accessor vector-engine matrix-engine
+                          (.entryType accessor)
                           source m n (max (long m) 1) DEFAULT_ORDER)
      (sequential? source) (create-matrix accessor vector-engine matrix-engine
                                        m n (.toBuffer accessor source))

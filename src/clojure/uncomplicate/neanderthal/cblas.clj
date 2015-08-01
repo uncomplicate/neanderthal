@@ -83,7 +83,7 @@
 
 (def sv-engine (SingleVectorEngine.))
 
-;; ================= General Matrix Engines =====================================
+;; ================= General Matrix Engines ====================================
 
 (deftype DoubleGeneralMatrixEngine []
   BLAS
