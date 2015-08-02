@@ -521,25 +521,26 @@
 
 ;; ========================== Creators =========================================
 
-(defn create-vector
-  ([^BufferAccessor accessor vector-engine matrix-engine source]
-   (cond
-     (and (instance? ByteBuffer source))
-     (->RealBlockVector accessor vector-engine matrix-engine
-                        (.entryType accessor)
-                        source (.count accessor source) 1)
-     (and (integer? source) (<= 0 (long source)))
-     (create-vector accessor vector-engine matrix-engine
-                  (.directBuffer accessor source))
-     (float? source) (create-vector accessor vector-engine matrix-engine [source])
-     (sequential? source) (create-vector accessor vector-engine matrix-engine
-                                         (.toBuffer accessor source))
-     :default (throw (IllegalArgumentException.
-                      (format "I do not know how to create a vector from %s."
-                              (type source)))))))
+(defn create-vector ^RealBlockVector
+  [^BufferAccessor accessor vector-engine matrix-engine source]
+  (cond
+    (and (instance? ByteBuffer source))
+    (->RealBlockVector accessor vector-engine matrix-engine
+                       (.entryType accessor)
+                       source (.count accessor source) 1)
+    (and (integer? source) (<= 0 (long source)))
+    (create-vector accessor vector-engine matrix-engine
+                   (.directBuffer accessor source))
+    (float? source) (create-vector accessor vector-engine matrix-engine [source])
+    (sequential? source) (create-vector accessor vector-engine matrix-engine
+                                        (.toBuffer accessor source))
+    :default (throw (IllegalArgumentException.
+                     (format "I do not know how to create a vector from %s."
+                             (type source))))))
 
 (defn create-matrix
-  ([^BufferAccessor accessor vector-engine matrix-engine m n source]
+  (^RealGeneralMatrix
+   [^BufferAccessor accessor vector-engine matrix-engine m n source]
    (cond
      (and (instance? ByteBuffer source)
           (= (* (long m) (long n)) (.count accessor source)))
@@ -547,10 +548,10 @@
                           (.entryType accessor)
                           source m n (max (long m) 1) DEFAULT_ORDER)
      (sequential? source) (create-matrix accessor vector-engine matrix-engine
-                                       m n (.toBuffer accessor source))
+                                         m n (.toBuffer accessor source))
      :default (throw (IllegalArgumentException.
                       (format "I do not know how to create a %dx%d matrix from %s."
                               m n (type source))))))
-  ([^BufferAccessor accessor vector-engine matrix-engine m n]
+  (^RealGeneralMatrix [^BufferAccessor accessor vector-engine matrix-engine m n]
    (create-matrix accessor vector-engine matrix-engine m n
                   (.directBuffer accessor (* (long m) (long n))))))

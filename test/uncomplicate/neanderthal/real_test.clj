@@ -8,8 +8,8 @@
   (:import [uncomplicate.neanderthal.protocols BufferAccessor]))
 
 
-(defn to-buffer [accessorf s]
-  (.toBuffer ^BufferAccessor accessorf s))
+(defn to-buffer [^BufferAccessor accessorf s]
+  (.toBuffer accessorf s))
 
 (defmacro test-vector-constructor [accessorf vc]
   `(facts "Create a real vector."
@@ -100,18 +100,23 @@
   `(facts "BLAS 1 rotmg!"
           "TODO: Leave this for later since I am lacking good examples right now."))
 
-(defmacro test-swap [vc]
-  `(facts "BLAS 1 swap!"
+(defmacro test-swap [ge vc]
+  `(facts "BLAS 1 swap! vectors"
           (let [x# (~vc [1 2 3])]
+            (swp! x# (~vc 3)) => x#
             (swp! x# (~vc [10 20 30])) => (~vc [10 20 30])
             (swp! x# nil) => (throws IllegalArgumentException)
             (identical? (swp! x# (~vc [10 20 30])) x#) => true
-            (swp! x# (~vc [10 20])) => (throws IllegalArgumentException))
+            (swp! x# (~vc [10 20])) => (throws IllegalArgumentException)))
 
-          (let [y# (~vc [0 0 0])]
-            (swp! (~vc [1 2 3]) y#)
-            y#)
-          => (~vc [1 2 3])))
+  `(facts
+    "BLAS 1 swap! matrices"
+    (let [a# (~ge 2 3 [1 2 3 4 5 6])]
+      (swp! a# (~ge 2 3)) => a#
+      (swp! a# (~ge 2 3 [10 20 30 40 50 60])) => (~ge 2 3 [10 20 30 40 50 60])
+      (swp! a# nil) => (throws IllegalArgumentException)
+      (identical? (swp! a# (~ge 2 3 [10 20 30 40 50 60])) a#) => true
+      (swp! a# (~ge 1 2 [10 20])) => (throws IllegalArgumentException))))
 
 (defmacro test-scal [vc]
   `(facts "BLAS 1 scal!"
@@ -122,6 +127,10 @@
 
 (defmacro test-copy [vc]
   `(facts "BLAS 1 copy!"
+          (let [y# (~vc 3)]
+            (copy! (~vc [1 2 3]) y#) => y#
+            (copy (~vc [1 2 3]) => y#))
+
           (copy! (~vc [10 20 30]) (~vc [1 2 3])) => (~vc [10 20 30])
           (copy! (~vc [1 2 3]) nil) => (throws IllegalArgumentException)
           (copy! (~vc [10 20 30]) (~vc [1])) => (throws IllegalArgumentException))
@@ -263,7 +272,7 @@
        (test-rotg ~vc)
        (test-rotm ~vc)
        (test-rotmg ~vc)
-       (test-swap ~vc)
+       (test-swap ~ge ~vc)
        (test-scal ~vc)
        (test-copy ~vc)
        (test-axpy ~vc)
