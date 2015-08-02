@@ -43,6 +43,7 @@
     (aget res 0)))
 
 (deftype GCNVectorEngine [^long WGS
+                          claccessor
                           queue
                           cl-buf
                           n
@@ -111,11 +112,11 @@
             "TODO.")))
   (scal [_ alpha _]
     (do
-      (set-arg! scal-kernel 0 (float-array [alpha]))
+      (set-arg! scal-kernel 0 (array claccessor [alpha]))
       (enq-nd! queue scal-kernel linear-work-size)))
-  (axpy [_ alpha _ y]
+  (axpy [_ alpha x y]
     (do
-      (set-arg! axpy-kernel 0 (float-array [alpha]))
+      (set-arg! axpy-kernel 0 (array claccessor [alpha]))
       (set-arg! axpy-kernel 2 (.buffer y))
       (enq-nd! queue axpy-kernel linear-work-size))))
 
@@ -124,41 +125,47 @@
 (deftype GCNMatrixEngine [^long WGSn
                           ^long TS
                           ^long WPT
+                          claccessor
                           queue
                           m n
                           reduce-acc
                           linear-work-size
-                          xpby-kernel
+                          axpby-kernel
                           sum-reduction-horizontal-kernel
                           gemv-reduce-kernel
-                          gemm-tiled-kernel]
+                          gemm-tiled-kernel
+                          gemm-tiled-fit-kernel]
   Releaseable
   (release [_]
     (and
      (release reduce-acc)
-     (release xpby-kernel)
+     (release axpby-kernel)
      (release sum-reduction-horizontal-kernel)
      (release gemv-reduce-kernel)
-     (release gemm-tiled-kernel)))
+     (release gemm-tiled-kernel)
+     (release gemm-tiled-fit-kernel)))
   BLAS
   (mv [_ alpha _ x beta y]
     (do
-      (set-arg! gemv-reduce-kernel 1 (float-array [alpha]))
+      (set-arg! gemv-reduce-kernel 1 (array claccessor [alpha]))
       (set-arg! gemv-reduce-kernel 3 (.buffer x))
       (enq-reduce-horizontal queue gemv-reduce-kernel
                              sum-reduction-horizontal-kernel
                              WGSn m n)
-      (set-args! xpby-kernel 1 (float-array [beta]) (.buffer y))
-      (enq-nd! queue xpby-kernel linear-work-size)))
+      (set-args! axpby-kernel 2 (array claccessor [beta]) (.buffer y))
+      (enq-nd! queue axpby-kernel linear-work-size)))
   (mm [_ alpha a b beta c]
-    (do
-      (set-arg! gemm-tiled-kernel 0 (float-array [alpha]))
-      (set-args! gemm-tiled-kernel 2
-                 (.buffer b) (float-array [beta]) (.buffer c)
+    (let [cn (/ (.ncols ^Matrix b) WPT)
+          gemm-kernel (if (= 0 (mod m TS) (mod cn TS))
+                        gemm-tiled-fit-kernel
+                        gemm-tiled-kernel)]
+      (set-arg! gemm-kernel 0 (array claccessor [alpha]))
+      (set-args! gemm-kernel 2
+                 (.buffer b) (array claccessor [beta]) (.buffer c)
                  (int-array [m]) (int-array [n]) (int-array [(.ncols ^Matrix b)]))
-      (enq-nd! queue gemm-tiled-kernel
+      (enq-nd! queue gemm-kernel
                (work-size [(* TS (count-work-groups TS m))
-                           (* TS (count-work-groups TS (/ (.ncols ^Matrix b) WPT)))])))))
+                           (* TS (count-work-groups TS cn))])))))
 
 (deftype GCNEngineFactory [claccessor ctx queue prog ^long WGS WGSn TS WPT]
   Releaseable
@@ -173,6 +180,7 @@
           cl-acc (cl-buffer ctx acc-size :read-write)
           cl-iacc (cl-buffer ctx iacc-size :read-write)]
       (->GCNVectorEngine WGS
+                         claccessor
                          queue
                          cl-buf
                          n
@@ -198,17 +206,21 @@
     (let [acc-size (* (long (width claccessor)) (long m) (count-work-groups WGSn n))
           cl-acc (cl-buffer ctx acc-size :read-write)]
       (->GCNMatrixEngine WGSn TS WPT
+                         claccessor
                          queue
                          m n
                          cl-acc
                          (work-size [m])
-                         (doto (kernel prog "xpby") (set-arg! 0 cl-acc))
+                         (doto (kernel prog "axpby")
+                           (set-args! 0 (array claccessor [1]) cl-acc))
                          (doto (kernel prog "sum_reduction_horizontal")
                            (set-arg! 0 cl-acc))
                          (doto (kernel prog "gemv_reduce")
                            (set-arg! 0 cl-acc)
                            (set-arg! 2 cl-buf))
                          (doto (kernel prog "gemm_tiled")
+                           (set-arg! 1 cl-buf))
+                         (doto (kernel prog "gemm_tiled_fit")
                            (set-arg! 1 cl-buf))))))
 
 (defn gcn-engine-factory

@@ -510,9 +510,9 @@
   => #<DoubleBlockVector| n:3, stride:1, (10.5 18.0 25.5)>
   "
   ([alpha x y]
-   (if (and (p/compatible y x) (= (ecount x) (ecount y)))
+   (if (and (p/compatible x y) (= (ecount x) (ecount y)))
      (do
-       (.axpy (p/engine y) alpha x y)
+       (.axpy (p/engine x) alpha x y)
        y)
      (throw (IllegalArgumentException.
              (format INCOMPATIBLE_BLOCKS_MSG x y)))))

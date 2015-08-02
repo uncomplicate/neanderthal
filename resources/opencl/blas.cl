@@ -15,7 +15,7 @@
 #endif
 
 #ifndef TS
-    #define TS 32
+   #define TS 32
 #endif
 
 #ifndef WPT
@@ -36,23 +36,23 @@ __kernel void swp (__global REAL* x, __global REAL* y) {
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void scal (__private const REAL alpha, __global REAL* x) {
+__kernel void scal (const REAL alpha, __global REAL* x) {
     uint gid = get_global_id(0);
     x[gid] = alpha * x[gid];
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void axpy (__private const REAL alpha, __global const REAL* x,
-                     __global REAL* y) {
+__kernel void axpy (const REAL alpha, __global const REAL* x,
+                    __global REAL* y) {
     uint gid = get_global_id(0);
     y[gid] = alpha * x[gid] + y[gid];
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void xpby (__global const REAL* x,
-                    const REAL beta, __global REAL* y) {
+__kernel void axpby (const REAL alpha, __global const REAL* x,
+                     const REAL beta, __global REAL* y) {
     uint gid = get_global_id(0);
-    y[gid] = x[gid] + beta * y[gid];
+    y[gid] = alpha * x[gid] + beta * y[gid];
 }
 
 // ================= Sum reduction =============================================
@@ -370,13 +370,13 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
 
 }
 
-// Squared version
-/*
+// Simpler version that requires dimensions that fit tiles
+
 __attribute__((reqd_work_group_size(TS, TS/WPT, 1)))
-__kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
-                          __global const REAL* b,
-                          const REAL beta, __global REAL* c,
-                          const uint m, const uint k, const uint n) {
+__kernel void gemm_tiled_fit (const REAL alpha, __global const REAL* a,
+                              __global const REAL* b,
+                              const REAL beta, __global REAL* c,
+                              const uint m, const uint k, const uint n) {
 
     const uint row = get_local_id(0);
     const uint col = get_local_id(1);
@@ -394,7 +394,6 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
         acc[w] = 0.0f;
     }
 
-
     // Compute full k-tiles
     const uint tc = k / TS;
     for (uint t = 0; t < tc; t++) {
@@ -403,7 +402,6 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
             const uint tile_col = TS * t + col;
             a_tile[col + w * RTS][row] = a[(tile_col + w * RTS) * m + c_row];
             b_tile[col + w * RTS][row] = b[(c_col + w * RTS) * k + tile_row];
-
         }
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
@@ -426,5 +424,4 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
         c[c_id] = alpha * acc[w] + beta * c[c_id];
     }
 
-
-    }*/
+}

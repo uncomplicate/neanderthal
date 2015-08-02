@@ -43,8 +43,7 @@
 
        (read! (axpy! 2 cl-x cl-y) (sv cnt))
        => (axpy! 2 host-x host-y)
-       )))
- )
+       ))))
 
 
 (facts
@@ -96,9 +95,9 @@
 
 (facts
  "BLAS 3"
- (let [m-cnt 4096
-       k-cnt 4096
-       n-cnt 4096
+ (let [m-cnt 4097
+       k-cnt 4097
+       n-cnt 4097
        host-a (sge m-cnt k-cnt (range (* m-cnt k-cnt)))
        host-b (sge k-cnt n-cnt (map (partial * 2) (range (* m-cnt k-cnt))))
        host-c (sge m-cnt n-cnt (map (partial * 2) (range (* m-cnt n-cnt))))]
