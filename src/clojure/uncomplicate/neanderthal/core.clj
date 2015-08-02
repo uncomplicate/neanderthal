@@ -684,7 +684,7 @@
               (= (mrows a) (mrows c))
               (= (ncols b) (ncols c)))
        (do
-         (.mm (p/engine c) alpha a b beta c)
+         (.mm (p/engine a) alpha a b beta c)
          c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."

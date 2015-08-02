@@ -96,11 +96,11 @@
 (facts
  "BLAS 3"
  (let [m-cnt 4097
-       k-cnt 4097
-       n-cnt 4097
-       host-a (sge m-cnt k-cnt (range (* m-cnt k-cnt)))
-       host-b (sge k-cnt n-cnt (map (partial * 2) (range (* m-cnt k-cnt))))
-       host-c (sge m-cnt n-cnt (map (partial * 2) (range (* m-cnt n-cnt))))]
+       k-cnt 4093
+       n-cnt 4099
+       host-a (sge m-cnt k-cnt (repeatedly (* m-cnt k-cnt) rand))
+       host-b (sge k-cnt n-cnt (map (partial * 2) (repeatedly (* k-cnt n-cnt) rand)))
+       host-c (sge m-cnt n-cnt (map (partial * 2) (repeatedly (* m-cnt n-cnt) rand)))]
    (with-default
      (with-release [engine (gcn-single *context* *command-queue*)
                     cl-a (clge engine m-cnt k-cnt)
@@ -111,6 +111,12 @@
        (write! cl-b host-b)
        (write! cl-c host-c)
 
-       (time (do (mm! 10 cl-a cl-b 100 cl-c) (finish! *command-queue*)))
-       ;;=> (time (mm! 10 host-a host-b 100 host-c))
+       (asum (sv (.buffer (axpy! -1 (read! (mm! 10 cl-a cl-b 100 cl-c)
+                                             (sge m-cnt n-cnt))
+                                   (mm! 10 host-a host-b 100 host-c)))))
+
+
+       => (roughly (* 2 m-cnt n-cnt k-cnt 1e-2)))
+       ;;(time (do (mm! 10 cl-a cl-b 100 cl-c) (finish! *command-queue*)))
+       ;;(time (mm! 10 host-a host-b 100 host-c))
        ))))
