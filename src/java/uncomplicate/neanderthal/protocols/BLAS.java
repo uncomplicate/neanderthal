@@ -20,7 +20,7 @@ public interface BLAS {
 
     Object asum (Block x);
 
-    void rot (Block x, Block y, Object c, Object s);
+    void rot (Block x, Block y, double c, double s);
 
     void scal (Object alpha, Block x);
 
@@ -33,4 +33,3 @@ public interface BLAS {
     void mm (Object alpha, Block a, Block b, Object beta, Block c);
 
 }
-//TODO matrix can be processed with vector operations if I add offset to CBLAS C code?

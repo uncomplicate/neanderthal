@@ -2,7 +2,7 @@
   (:require [uncomplicate.neanderthal.block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
-           [uncomplicate.neanderthal.protocols BLAS Vector Matrix]))
+           [uncomplicate.neanderthal.protocols BLAS BLASPlus Vector Matrix RealVector]))
 
 (def ^:private STRIDE_MSG
   "I cannot use vectors with stride other than %d: stride: %d.")
@@ -42,7 +42,14 @@
   (scal [_ alpha x]
     (CBLAS/dscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
-    (CBLAS/daxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y))))
+    (CBLAS/daxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y)))
+  BLASPlus
+  (sum [_ x] ;;TODO implement in C
+    (loop [i 0 res 0.0]
+      (if (< i (.dim ^Vector x))
+        (recur (inc i)
+               (+ res (.entry ^RealVector x i)))
+        res))))
 
 (def dv-engine (DoubleVectorEngine.))
 
@@ -79,7 +86,14 @@
   (scal [_ alpha x]
     (CBLAS/sscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
-    (CBLAS/saxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y))))
+    (CBLAS/saxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y)))
+  BLASPlus
+  (sum [_ x] ;;TODO implement in C
+    (loop [i 0 res 0.0]
+      (if (< i (.dim ^Vector x))
+        (recur (inc i)
+               (+ res (.entry ^RealVector x i)))
+        res))))
 
 (def sv-engine (SingleVectorEngine.))
 

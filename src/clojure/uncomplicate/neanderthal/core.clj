@@ -19,8 +19,8 @@
               [protocols :as p]
               [constants :refer :all]
               [math :refer [f= pow sqrt]]])
-  (:import [uncomplicate.neanderthal.protocols Vector Matrix Block BLAS
-            Changeable]))
+  (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
+            BLAS BLASPlus Changeable]))
 
 (def ^:private INCOMPATIBLE_BLOCKS_MSG_3
   "Operation is not permited on vectors with incompatible buffers,
@@ -255,7 +255,7 @@
   to value val and returns the vector or matrix."
   ([^Changeable c val]
    (.setBoxed c val))
-  ([^Changeable v ^long i ^double val]
+  ([^Changeable v ^long i val]
    (.setBoxed v i val))
   ([^Changeable m ^long i ^long j val]
    (if (and (< -1 i (mrows m)) (< -1 j (ncols m)))
@@ -706,3 +706,13 @@
    (mm! alpha a b 0.0 (p/create-block a (mrows a) (ncols b))))
   ([a b]
    (mm 1.0 a b)))
+
+;; ============================== BLAS Plus ====================================
+
+(defn sum
+  "Sums absolute values of entries of x.
+
+  (sum (dv -1 2 -3)) => -2.0
+  "
+  [x]
+  (.sum ^BLASPlus (p/engine x) x))

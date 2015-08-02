@@ -1,5 +1,5 @@
-(ns uncomplicate.neanderthal.cblas-test
-  (:require [midje.sweet :refer :all]
+(ns uncomplicate.neanderthal.block-test
+  (:require [midje.sweet :refer [facts throws =>]]
             [vertigo
              [core :refer [wrap]]
              [structs :refer [float64]]]

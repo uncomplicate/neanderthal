@@ -5,7 +5,7 @@
              [math :refer [sqrt]]]
             [uncomplicate.clojurecl.core :refer :all])
   (:import [uncomplicate.clojurecl.core WorkSize]
-           [uncomplicate.neanderthal.protocols BLAS Block Matrix]))
+           [uncomplicate.neanderthal.protocols BLAS BLASPlus Block Matrix]))
 
 (defn ^:private count-work-groups ^long [^long max-local-size ^long n]
   (if (< max-local-size n)
@@ -58,7 +58,8 @@
                           dot-reduce-kernel
                           nrm2-reduce-kernel
                           asum-reduce-kernel
-                          iamax-reduce-kernel]
+                          iamax-reduce-kernel
+                          sum-reduce-kernel]
 
   Releaseable
   (release [_]
@@ -73,7 +74,8 @@
      (release dot-reduce-kernel)
      (release nrm2-reduce-kernel)
      (release asum-reduce-kernel)
-     (release iamax-reduce-kernel)))
+     (release iamax-reduce-kernel)
+     (release sum-reduce-kernel)))
   BLAS
   (swap [_ _ y]
     (do
@@ -118,7 +120,12 @@
     (do
       (set-arg! axpy-kernel 0 (array claccessor [alpha]))
       (set-arg! axpy-kernel 2 (.buffer y))
-      (enq-nd! queue axpy-kernel linear-work-size))))
+      (enq-nd! queue axpy-kernel linear-work-size)))
+  BLASPlus
+  (sum [_ x]
+    (do
+      (enq-reduce queue sum-reduce-kernel sum-reduction-kernel WGS n)
+      (enq-read-double queue reduce-acc))))
 
 ;; ======================= Dense Matrix ========================================
 
@@ -201,7 +208,9 @@
                          (doto (kernel prog "asum_reduce")
                            (set-args! cl-acc cl-buf))
                          (doto (kernel prog "iamax_reduce")
-                           (set-args! cl-iacc cl-acc cl-buf)))))
+                           (set-args! cl-iacc cl-acc cl-buf))
+                         (doto (kernel prog "sum_reduce")
+                           (set-args! cl-acc cl-buf)))))
   (matrix-engine [_ cl-buf m n]
     (let [acc-size (* (long (width claccessor)) (long m) (count-work-groups WGSn n))
           cl-acc (cl-buffer ctx acc-size :read-write)]

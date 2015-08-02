@@ -27,13 +27,16 @@
 
        (entry! cl-x x-magic)
        (entry! cl-y y-magic)
-       (entry! host-x 6 100000.0)
+       (entry! host-x 6 -100000.0)
        (write! cl-x host-x)
 
        (float (dot cl-x cl-y)) => (float (dot host-x host-y))
 
        (float (asum cl-x))
        => (float (+ 100000 (* (double x-magic) (double cnt))))
+
+       (float (sum cl-x))
+       => (float (+ -100000 (* (double x-magic) (double cnt))))
 
        (nrm2 cl-x) => (roughly (nrm2 host-x))
 
@@ -111,12 +114,10 @@
        (write! cl-b host-b)
        (write! cl-c host-c)
 
-       (asum (sv (.buffer (axpy! -1 (read! (mm! 10 cl-a cl-b 100 cl-c)
-                                             (sge m-cnt n-cnt))
-                                   (mm! 10 host-a host-b 100 host-c)))))
-
-
-       => (roughly (* 2 m-cnt n-cnt k-cnt 1e-2)))
+       (asum (sv (.buffer (axpy! -1 (mm! 10 host-a host-b 100 host-c)
+                                 (read! (mm! 10 cl-a cl-b 100 cl-c)
+                                        (sge m-cnt n-cnt))))))
+       => (roughly (* 2 m-cnt n-cnt k-cnt 1e-8)))
        ;;(time (do (mm! 10 cl-a cl-b 100 cl-c) (finish! *command-queue*)))
        ;;(time (mm! 10 host-a host-b 100 host-c))
-       ))))
+       )))

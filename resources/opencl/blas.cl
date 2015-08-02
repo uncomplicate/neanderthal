@@ -106,6 +106,12 @@ __kernel void asum_reduce (__global double* acc, __global const REAL* x) {
     work_group_reduction_sum(acc, (double)fabs(x[get_global_id(0)]));
 }
 
+// ================== sum =====================================================
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void sum_reduce (__global double* acc, __global const REAL* x) {
+    work_group_reduction_sum(acc, (double)x[get_global_id(0)]);
+}
+
 // ================== nrm2 =====================================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
