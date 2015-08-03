@@ -1,8 +1,8 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.native
-  (:require [uncomplicate.neanderthal
-             [block :refer [create-vector create-matrix
-                            double-accessor float-accessor]]
+  (:require [uncomplicate.neanderthal.impl
+             [buffer-block :refer [create-vector create-matrix
+                                   double-accessor float-accessor]]
              [cblas :refer [dv-engine sv-engine dge-engine sge-engine]]]))
 
 ;; ============ Creating real constructs  ==============

@@ -1,12 +1,10 @@
-(ns uncomplicate.neanderthal.block
+(ns uncomplicate.neanderthal.impl.buffer-block
   (:refer-clojure :exclude [accessor])
   (:require [vertigo
              [core :refer [wrap marshal-seq]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq unwrap-byte-seq]]]
-            [uncomplicate.neanderthal
-             [protocols :refer :all]
-             [constants :refer :all]])
+            [uncomplicate.neanderthal [protocols :refer :all]])
   (:import [java.nio ByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
@@ -15,6 +13,21 @@
            [uncomplicate.neanderthal.protocols
             BLAS RealBufferAccessor BufferAccessor
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
+
+(def ^:const ROW_MAJOR 101)
+
+(def ^:const COLUMN_MAJOR 102)
+
+(def ^:const DEFAULT_ORDER COLUMN_MAJOR)
+
+(def MAT_BOUNDS_MSG
+  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
+
+(def INCOMPATIBLE_BLOCKS_MSG
+  "Operation is not permited on vectors with incompatible buffers,
+  or dimensions that are incompatible in the context of the operation.
+  1: %s
+  2: %s")
 
 (def ^:private DIMENSIONS_MSG
   "Vector dimensions should be %d.")

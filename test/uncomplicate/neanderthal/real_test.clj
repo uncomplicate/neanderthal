@@ -2,9 +2,7 @@
   (:require [midje.sweet :refer [facts throws => roughly]]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [native :refer :all]
-             [math :refer :all]
-             [block :refer [double-accessor float-accessor]]])
+             [math :refer :all]])
   (:import [uncomplicate.neanderthal.protocols BufferAccessor]))
 
 
@@ -34,12 +32,12 @@
 
 ;;================ BLAS functions =========================================
 
-(defmacro test-dot [vc]
+(defmacro test-dot [ge vc]
   `(facts "BLAS 1 dot."
           (dot (~vc [1 2 3]) (~vc [10 30 -10])) => 40.0
           (dot (~vc [1 2 3]) nil) => (throws IllegalArgumentException)
           (dot (~vc []) (~vc [])) => 0.0
-          (dot (~vc [1]) (dge 3 3)) => (throws IllegalArgumentException)
+          (dot (~vc [1]) (~ge 3 3)) => (throws IllegalArgumentException)
           (dot (~vc [1 2]) (~vc [1 2 3])) => (throws IllegalArgumentException)))
 
 (defmacro test-nrm2 [vc]
@@ -263,7 +261,7 @@
 (defmacro test-all [accessorf ge vc]
   `(do (test-vector-constructor ~accessorf ~vc)
        (test-vector ~vc)
-       (test-dot ~vc)
+       (test-dot ~ge ~vc)
        (test-nrm2 ~vc)
        (test-asum ~vc)
        (test-sum ~vc)

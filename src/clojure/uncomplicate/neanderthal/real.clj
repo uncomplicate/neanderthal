@@ -15,8 +15,7 @@
     (:require [uncomplicate.neanderthal core real]))
   "
   (:require [uncomplicate.neanderthal
-             [core :refer [mrows ncols]]
-             [constants :refer [MAT_BOUNDS_MSG]]])
+             [core :refer [mrows ncols MAT_BOUNDS_MSG]]])
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix RealChangeable]))
 

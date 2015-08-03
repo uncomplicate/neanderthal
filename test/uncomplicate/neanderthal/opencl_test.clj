@@ -2,8 +2,8 @@
   (:require [midje.sweet :refer :all]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [math :refer [pow]]
-             [opencl :refer :all]]
+             [math :refer [pow]]]
+            [uncomplicate.neanderthal.opencl.clblock :refer :all]
             [uncomplicate.clojurecl
              [core :refer [with-default with-release *context* *command-queue*]]])
   (:import [uncomplicate.neanderthal.protocols Block]))

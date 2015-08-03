@@ -1,5 +1,5 @@
-(ns uncomplicate.neanderthal.cblas
-  (:require [uncomplicate.neanderthal.block :refer :all])
+(ns uncomplicate.neanderthal.impl.cblas
+  (:require [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
            [uncomplicate.neanderthal.protocols BLAS BLASPlus Vector Matrix RealVector]))

@@ -21,26 +21,26 @@
                       uncomplicate.neanderthal.protocols]
             :output-dir "docs/codox"}
 
-    :jvm-opts ^:replace ["-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"];;also replaces lein's default JVM argument TieredStopAtLevel=1
+    :jvm-opts ^:replace ["-XX:+UseLargePages"];;also replaces lein's default JVM argument TieredStopAtLevel=1
     :aot [uncomplicate.neanderthal.protocols
-          uncomplicate.neanderthal.block
-          uncomplicate.neanderthal.cblas
-          uncomplicate.neanderthal.opencl
-          uncomplicate.neanderthal.opencl-amd-gcn]
+          uncomplicate.neanderthal.impl.buffer-block
+          uncomplicate.neanderthal.impl.cblas
+          uncomplicate.neanderthal.opencl.clblock
+          uncomplicate.neanderthal.opencl.amd-gcn]
 
     :profiles {:dev {:plugins [[lein-midje "3.1.3"]
                                [bilus/lein-marginalia "0.8.8"]
                                [codox "0.8.12"]]
                      :global-vars {*warn-on-reflection* true
-                                   *assert* true
+                                   *assert* false
                                    *unchecked-math* :warn-on-boxed
                                    *print-length* 128}
                      :dependencies [[uncomplicate/neanderthal-atlas ~atlas-version
                                      :classifier ~nar-classifier]
-                                    [midje "1.7.0-beta1"]
+                                    [midje "1.7.0"]
                                     [criterium "0.4.3"]]}}
 
     :javac-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]
-    :source-paths ["src/clojure"]
+    :source-paths ["src/clojure" "src/opencl"]
     :java-source-paths ["src/java"]
     :test-paths ["test" "test/clojure"]))

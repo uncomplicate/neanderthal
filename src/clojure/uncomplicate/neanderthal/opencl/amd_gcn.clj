@@ -1,9 +1,8 @@
 (ns ^{:author "Dragan Djuric"}
-  uncomplicate.neanderthal.opencl-amd-gcn
-  (:require [uncomplicate.neanderthal
-             [opencl :refer :all]
-             [math :refer [sqrt]]]
-            [uncomplicate.clojurecl.core :refer :all])
+  uncomplicate.neanderthal.opencl.amd-gcn
+  (:require [uncomplicate.clojurecl.core :refer :all]
+            [uncomplicate.neanderthal.math :refer [sqrt]]
+            [uncomplicate.neanderthal.opencl.clblock :refer :all]);;TODO need this?
   (:import [uncomplicate.clojurecl.core WorkSize]
            [uncomplicate.neanderthal.protocols BLAS BLASPlus Block Matrix]))
 
@@ -239,7 +238,8 @@
       accessor ctx queue
       (build-program!
        (program-with-source
-        ctx [(slurp "resources/opencl/blas.cl")])
+        ctx [(slurp (clojure.java.io/resource
+                     "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))])
        (format "-cl-std=CL2.0 -DREAL=%s -DWGS=%d -DWGSn=%d -DTS=%d -DWPT=%d"
                (entryType accessor) wgs wgsn ts wpt)
        nil)

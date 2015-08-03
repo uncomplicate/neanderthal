@@ -1,10 +1,11 @@
 (ns ^{:author "Dragan Djuric"}
-  uncomplicate.neanderthal.opencl
+  uncomplicate.neanderthal.opencl.clblock
   (:require [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.neanderthal.constants :refer :all])
+            [uncomplicate.neanderthal.core
+             :refer [INCOMPATIBLE_BLOCKS_MSG COLUMN_MAJOR]])
   (:import [uncomplicate.neanderthal.protocols BLAS
-            Block Group Memory BlockCreator EngineProvider
-            Vector Matrix Changeable]))
+            Vector Matrix Changeable Block
+            Group Memory BlockCreator EngineProvider]))
 
 (defprotocol Mappable
   (read! [this host])

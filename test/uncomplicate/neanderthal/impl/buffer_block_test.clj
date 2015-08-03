@@ -1,12 +1,11 @@
-(ns uncomplicate.neanderthal.block-test
+(ns uncomplicate.neanderthal.impl.buffer-block-test
   (:require [midje.sweet :refer [facts throws =>]]
-            [uncomplicate.neanderthal
-             [protocols :refer :all]
-             [block :refer :all]
-             [constants :refer :all]])
+            [uncomplicate.neanderthal.protocols :refer :all]
+            [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [clojure.lang IFn$LLD IFn$LD IFn$DD]
-   [uncomplicate.neanderthal.protocols RealBufferAccessor]
-           [uncomplicate.neanderthal.block RealBlockVector RealGeneralMatrix]))
+           [uncomplicate.neanderthal.protocols RealBufferAccessor]
+           [uncomplicate.neanderthal.impl.buffer_block
+            RealBlockVector RealGeneralMatrix]))
 
 (def accessorf double-accessor)
 
