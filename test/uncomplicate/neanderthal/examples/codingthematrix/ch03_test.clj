@@ -2,7 +2,7 @@
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [real :refer :all]]))
+             [native :refer [dv dge]]]))
 
 (facts
  "3.1 Linear combination"

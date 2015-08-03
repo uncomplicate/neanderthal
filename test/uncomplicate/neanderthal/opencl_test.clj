@@ -5,7 +5,7 @@
              [math :refer [pow]]
              [opencl :refer :all]]
             [uncomplicate.clojurecl
-             [core :refer [with-default with-release]]])
+             [core :refer [with-default with-release *context* *command-queue*]]])
   (:import [uncomplicate.neanderthal.protocols Block]))
 
 (defmacro test-blas1 [engine-factory rv]

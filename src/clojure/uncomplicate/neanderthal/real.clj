@@ -40,8 +40,8 @@
    (.set c val))
   ([^RealChangeable v ^long i ^double val]
    (.set v i val))
-  ([^RealChangeable m ^long i ^long j ^double val]
-   (if (and (< -1 i (mrows m)) (< -1 j (ncols m)))
-     (.set m i j val)
+  ([^RealMatrix m ^long i ^long j ^double val]
+   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
+     (.set ^RealChangeable m i j val)
      (throw (IndexOutOfBoundsException.
-             (format MAT_BOUNDS_MSG i j (mrows m) (ncols m)))))))
+             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))

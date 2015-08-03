@@ -2,9 +2,10 @@
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [real :refer :all]]))
+             [native :refer [dv dge]]]))
 
-(set! *warn-on-reflection* true)
+(def unchecked *unchecked-math*)
+(set! *unchecked-math* false)
 
 (facts
  "2.1 What is a Vector?"
@@ -18,27 +19,24 @@
    (v 2) => (entry v 2)
    (v 3) => (entry v 3)))
 
-;; Some sections, such as 2.2 and 2.2.1 are not
-;; applicable for this library, since they are
-;; not numeric in nature.
-;; Many examples from the book directly apply to
-;; Clojure maps, which makes sense, but is not of
-;; interest for numeric computations.
-;; Such discussions have been skipped here.
+;; Some sections, such as 2.2 and 2.2.1 are not applicable for this library,
+;; since they are not numeric in nature. Many examples from the book directly
+;; apply to Clojure maps, which makes sense, but is not of interest for numerical
+;; computations. Such discussions have been skipped here.
 
 (facts
  "2.4 Vector addition; 2.4.1. Translation and vector addition."
 
  (let [trans-vector (dv [1 2])
-       translate (fn [x] (axpy! x trans-vector))]
+       translate (fn [x] (axpy! trans-vector x))]
 
    (translate (dv 4 4)) => (dv 5 6)
    (translate (dv -4 -4)) => (dv -3 -2)
 
    (dv 2) => (dv 0 0)
 
-   (axpy! (dv 4 4) (dv 2)) => (dv 4 4)
-   (axpy! (dv 4 4) (zero (dv 4 4))) => (dv 4 4)))
+   (axpy! (dv 2) (dv 4 4)) => (dv 4 4)
+   (axpy! (zero (dv 4 4)) (dv 4 4)) => (dv 4 4)))
 
 (facts
  "2.4.2 Vector addition is associative and commutative"
@@ -87,7 +85,7 @@
  "and vector subtraction"
  (let [w (dv 3 4)
        f (fn [v] (xpy v w))
-       g (fn [v] (axpy! (copy v) -1 w))]
+       g (fn [v] (axpy! -1 w (copy v)))]
    ((comp f g) (dv 2 3)) => (dv 2 3)))
 
 (facts
@@ -117,4 +115,6 @@
 
 (facts "2.10.4 Printing vectors"
        (pr-str (dv 2 3 4))
-       => "#<DoubleBlockVector| n:3, stride:1, (2.0 3.0 4.0)>")
+       => "#<RealBlockVector| double, n:3, stride:1>(2.0 3.0 4.0)<>")
+
+(set! *unchecked-math* unchecked)

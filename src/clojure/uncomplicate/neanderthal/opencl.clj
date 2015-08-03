@@ -34,7 +34,7 @@
   CLAccessor
   (get-queue [_]
     queue)
-n  (entryType [_]
+  (entryType [_]
     et)
   (width [_]
     w)
@@ -81,7 +81,7 @@ n  (entryType [_]
   (engine [_]
     eng)
   Memory
- n (compatible [_ y]
+  (compatible [_ y]
     (and (instance? CLBlockVector y)
          (= entry-type (.entryType ^Block y))))
   BlockCreator
