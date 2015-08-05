@@ -1,10 +1,13 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.amd-gcn
-  (:require [uncomplicate.clojurecl.core :refer :all]
+  (:refer-clojure :exclude [accessor])
+  (:require [uncomplicate.clojurecl.core :refer :all];; TODO need this?
+            [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.math :refer [sqrt]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all]);;TODO need this?
   (:import [uncomplicate.clojurecl.core WorkSize]
-           [uncomplicate.neanderthal.protocols BLAS BLASPlus Block Matrix]))
+           [uncomplicate.neanderthal.protocols
+            BLAS BLASPlus Block Matrix DataAccessor]))
 
 (defn ^:private count-work-groups ^long [^long max-local-size ^long n]
   (if (< max-local-size n)
@@ -178,7 +181,7 @@
   (release [_]
     (release prog))
   EngineFactory
-  (cl-accessor [_]
+  (data-accessor [_]
     claccessor)
   (vector-engine [_ cl-buf n]
     (let [iacc-size (* Integer/BYTES (count-work-groups WGS n))
@@ -211,7 +214,8 @@
                          (doto (kernel prog "sum_reduce")
                            (set-args! cl-acc cl-buf)))))
   (matrix-engine [_ cl-buf m n]
-    (let [acc-size (* (long (width claccessor)) (long m) (count-work-groups WGSn n))
+    (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
+                      (long m) (count-work-groups WGSn n))
           cl-acc (cl-buffer ctx acc-size :read-write)]
       (->GCNMatrixEngine WGSn TS WPT
                          claccessor
@@ -241,7 +245,7 @@
         ctx [(slurp (clojure.java.io/resource
                      "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))])
        (format "-cl-std=CL2.0 -DREAL=%s -DWGS=%d -DWGSn=%d -DTS=%d -DWPT=%d"
-               (entryType accessor) wgs wgsn ts wpt)
+               (.entryType ^DataAccessor accessor) wgs wgsn ts wpt)
        nil)
       wgs wgsn ts wpt)))
   ([create-accessor ctx queue]

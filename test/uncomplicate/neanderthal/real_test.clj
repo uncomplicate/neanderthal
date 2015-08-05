@@ -63,7 +63,7 @@
 
 (defmacro test-rot [vc]
   `(facts "BLAS 1 rot!"
-          (let [x# (~vc [1 2 3 4 5])
+n          (let [x# (~vc [1 2 3 4 5])
                 y# (~vc [-1 -2 -3 -4 -5])]
             (do (rot! x# y# 1 0) [x# y#]) => [(~vc 1 2 3 4 5) (~vc -1 -2 -3 -4 -5)]
 

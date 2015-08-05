@@ -21,12 +21,6 @@
   (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
             BLAS BLASPlus Changeable]))
 
-(def ^:const ROW_MAJOR 101)
-
-(def ^:const COLUMN_MAJOR 102)
-
-(def ^:const DEFAULT_ORDER COLUMN_MAJOR)
-
 (def MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")
 
@@ -602,9 +596,9 @@
        y)
      (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([alpha a x y]
-     (mv! alpha a x 1.0 y))
+   (mv! alpha a x 1.0 y))
   ([a x y]
-     (mv! 1.0 a x 0.0 y)))
+   (mv! 1.0 a x 0.0 y)))
 
 (defn mv
   "A pure version of mv! that returns the result

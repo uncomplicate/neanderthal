@@ -40,7 +40,7 @@
                                     [midje "1.7.0"]
                                     [criterium "0.4.3"]]}}
 
-    :javac-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]
+    :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
     :source-paths ["src/clojure" "src/opencl"]
     :java-source-paths ["src/java"]
     :test-paths ["test" "test/clojure"]))

@@ -1,9 +1,8 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.native
   (:require [uncomplicate.neanderthal.impl
-             [buffer-block :refer [create-vector create-matrix
-                                   double-accessor float-accessor]]
-             [cblas :refer [dv-engine sv-engine dge-engine sge-engine]]]))
+             [buffer-block :refer [create-vector create-ge-matrix]]
+             [cblas :refer [cblas-single cblas-double]]]))
 
 ;; ============ Creating real constructs  ==============
 
@@ -37,7 +36,7 @@
   => #<FloatBlockVector| n:3, stride:1, (1.0 2.0 3.0)>
   "
   ([source]
-   (create-vector float-accessor sv-engine sge-engine source))
+   (create-vector cblas-single source))
   ([x & xs]
    (sv (cons x xs))))
 
@@ -71,7 +70,7 @@
   => #<DoubleBlockVector| n:3, stride:1, (1.0 2.0 3.0)>
   "
   ([source]
-   (create-vector double-accessor dv-engine dge-engine source))
+   (create-vector cblas-double source))
   ([x & xs]
    (dv (cons x xs))))
 
@@ -98,9 +97,9 @@
   => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
   "
   ([^long m ^long n source]
-   (create-matrix double-accessor dv-engine dge-engine m n source))
+   (create-ge-matrix cblas-double m n source))
   ([^long m ^long n]
-   (create-matrix double-accessor dv-engine dge-engine m n)))
+   (create-ge-matrix cblas-double m n)))
 
 (defn sge
   "Creates a native-backed, dense, column-oriented
@@ -125,6 +124,6 @@
   => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3 ((0.0 0.0 0.0) (0.0 0.0 0.0))>
   "
   ([^long m ^long n source]
-   (create-matrix float-accessor sv-engine sge-engine m n source))
+   (create-ge-matrix cblas-single m n source))
   ([^long m ^long n]
-   (create-matrix float-accessor sv-engine sge-engine m n)))
+   (create-ge-matrix cblas-single m n)))

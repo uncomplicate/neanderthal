@@ -1,8 +1,10 @@
 (ns uncomplicate.neanderthal.impl.cblas
-  (:require [uncomplicate.neanderthal.impl.buffer-block :refer :all])
+  (:require [uncomplicate.neanderthal.protocols :refer :all]
+            [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
-           [uncomplicate.neanderthal.protocols BLAS BLASPlus Vector Matrix RealVector]))
+           [uncomplicate.neanderthal.protocols
+            BLAS BLASPlus Vector Matrix RealVector]))
 
 (def ^:private STRIDE_MSG
   "I cannot use vectors with stride other than %d: stride: %d.")
@@ -51,8 +53,6 @@
                (+ res (.entry ^RealVector x i)))
         res))))
 
-(def dv-engine (DoubleVectorEngine.))
-
 (deftype SingleVectorEngine []
   BLAS
   (swap [_ x y]
@@ -95,11 +95,9 @@
                (+ res (.entry ^RealVector x i)))
         res))))
 
-(def sv-engine (SingleVectorEngine.))
-
 ;; ================= General Matrix Engines ====================================
 
-(deftype DoubleGeneralMatrixEngine []
+(deftype DoubleGeneralMatrixEngine [^BLAS dv-engine]
   BLAS
   (swap [_ a b]
     (if (and (= (.order a) (.order b))
@@ -109,9 +107,9 @@
                    (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.swap ^BLAS dv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
+          (.swap dv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
         (dotimes [i (.mrows ^Matrix a)]
-          (.swap ^BLAS dv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+          (.swap dv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
   (copy [_ a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
@@ -120,9 +118,9 @@
                    (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.copy ^BLAS dv-engine (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.copy dv-engine (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
         (dotimes [i (.mrows ^Matrix a)]
-          (.copy ^BLAS dv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+          (.copy dv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
   (axpy [_ alpha a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
@@ -131,9 +129,9 @@
                    alpha (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.axpy ^BLAS dv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.axpy dv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
         (dotimes [i (.mrows ^Matrix a)]
-          (.axpy ^BLAS dv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
+          (.axpy dv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
   (mv [_ alpha a x beta y]
     (CBLAS/dgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
@@ -155,9 +153,7 @@
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
 
-(def dge-engine (DoubleGeneralMatrixEngine.))
-
-(deftype SingleGeneralMatrixEngine []
+(deftype SingleGeneralMatrixEngine [^BLAS sv-engine]
   BLAS
   (swap [_ a b]
     (if (and (= (.order a) (.order b))
@@ -167,9 +163,9 @@
                    (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.swap ^BLAS sv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
+          (.swap sv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
         (dotimes [i (.mrows ^Matrix a)]
-          (.swap ^BLAS sv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+          (.swap sv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
   (copy [_ a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
@@ -178,9 +174,9 @@
                    (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.copy ^BLAS sv-engine (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.copy sv-engine (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
         (dotimes [i (.mrows ^Matrix a)]
-          (.copy ^BLAS sv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+          (.copy sv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
   (axpy [_ alpha a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
@@ -189,9 +185,9 @@
                    alpha (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.axpy ^BLAS sv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.axpy sv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
         (dotimes [i (.mrows ^Matrix a)]
-          (.axpy ^BLAS sv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
+          (.axpy sv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
   (mv [_ alpha a x beta y]
     (CBLAS/sgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
@@ -213,4 +209,22 @@
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
 
-(def sge-engine (SingleGeneralMatrixEngine.))
+
+(deftype CblasEngineFactory [acc ^BLAS vector-eng ^BLAS matrix-eng]
+  EngineFactory
+  (data-accessor [_]
+    acc)
+  (vector-engine [_ buf n]
+    vector-eng)
+  (matrix-engine [_ buf m n]
+    matrix-eng))
+
+(def cblas-single (let [vect-eng (->SingleVectorEngine)]
+                    (->CblasEngineFactory (->FloatBufferAccessor)
+                                          vect-eng
+                                          (->SingleGeneralMatrixEngine vect-eng))))
+
+(def cblas-double (let [vect-eng (->DoubleVectorEngine)]
+                    (->CblasEngineFactory (->DoubleBufferAccessor)
+                                          vect-eng
+                                          (->DoubleGeneralMatrixEngine vect-eng))))

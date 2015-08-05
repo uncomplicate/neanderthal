@@ -4,7 +4,7 @@
              [core :refer [wrap marshal-seq]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq unwrap-byte-seq]]]
-            [uncomplicate.neanderthal [protocols :refer :all]])
+            [uncomplicate.neanderthal.protocols :refer :all])
   (:import [java.nio ByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
@@ -222,21 +222,21 @@
            "Primitive functions support max 4 args."))))
 
 (defn ^:private matrix-fold
- ([^RealMatrix x]
-  (loop [j 0 res 0.0]
-    (if (< j (.ncols x))
-      (recur (inc j)
-             (double
-              (loop [i 0 res res]
-                (if (< i (.mrows x))
-                  (recur (inc i)
-                         (+ res (.entry x i j)))
-                  res))))
-      res)))
- ([x f]
-  (fold f 0.0))
- ([x f id]
-  (freduce x id f)))
+  ([^RealMatrix x]
+   (loop [j 0 res 0.0]
+     (if (< j (.ncols x))
+       (recur (inc j)
+              (double
+               (loop [i 0 res res]
+                 (if (< i (.mrows x))
+                   (recur (inc i)
+                          (+ res (.entry x i j)))
+                   res))))
+       res)))
+  ([x f]
+   (fold f 0.0))
+  ([x f id]
+   (freduce x id f)))
 
 (defn ^:private matrix-freduce
   ([x f]
@@ -266,20 +266,22 @@
   RealBufferAccessor
   (entryType [_]
     Float/TYPE)
+  (entryWidth [_]
+    Float/BYTES)
   (toBuffer [_ s]
     (.buf ^ByteSeq (unwrap-byte-seq (marshal-seq float32 s))))
   (toSeq [_ buf stride]
-    (wrap-byte-seq float32 (* 4 stride) 0 (byte-seq buf)))
+    (wrap-byte-seq float32 (* Float/BYTES stride) 0 (byte-seq buf)))
   (directBuffer [_ n]
-    (direct-buffer (* 4 n)))
+    (direct-buffer (* Float/BYTES n)))
   (slice [_ buf k l]
-    (slice-buffer buf (* 4 k) (* 4 l)))
+    (slice-buffer buf (* Float/BYTES k) (* Float/BYTES l)))
   (count [_ b]
-    (quot (.capacity b) 4))
+    (quot (.capacity b) Float/BYTES))
   (get [_ buf i]
-    (.getFloat buf (* 4 i)))
+    (.getFloat buf (* Float/BYTES i)))
   (set [_ buf i val]
-    (.putFloat buf (* 4 i) val)))
+    (.putFloat buf (* Float/BYTES i) val)))
 
 (def float-accessor (->FloatBufferAccessor))
 
@@ -287,30 +289,35 @@
   RealBufferAccessor
   (entryType [_]
     Double/TYPE)
+  (entryWidth [_]
+    Float/BYTES)
   (toBuffer [_ s]
     (.buf ^ByteSeq (unwrap-byte-seq (marshal-seq float64 s))))
   (toSeq [_ buf stride]
-    (wrap-byte-seq float64 (* 8 stride) 0 (byte-seq buf)))
+    (wrap-byte-seq float64 (* Double/BYTES stride) 0 (byte-seq buf)))
   (directBuffer [_ n]
-    (direct-buffer (* 8 n)))
+    (direct-buffer (* Double/BYTES n)))
   (slice [_ buf k l]
-    (slice-buffer buf (* 8 k) (* 8 l)))
+    (slice-buffer buf (* Double/BYTES k) (* Double/BYTES l)))
   (count [_ b]
-    (quot (.capacity b) 8))
+    (quot (.capacity b) Double/BYTES))
   (get [_ buf i]
-    (.getDouble buf (* 8 i)))
+    (.getDouble buf (* Double/BYTES i)))
   (set [_ buf i val]
-    (.putDouble buf (* 8 i) val)))
+    (.putDouble buf (* Double/BYTES i) val)))
 
 (def double-accessor (->DoubleBufferAccessor))
 
 (declare ->RealGeneralMatrix)
 
+(declare create-vector)
+(declare create-ge-matrix)
+
 ;; ============ Real Vector ====================================================
 
-(deftype RealBlockVector [^RealBufferAccessor accessor
-                          ^BLAS vector-engine ^BLAS matrix-engine
-                          ^Class entry-type ^ByteBuffer buf ^long n ^long strd]
+(deftype RealBlockVector [engine-factory ^RealBufferAccessor accessor
+                          ^BLAS eng ^Class entry-type
+                          ^ByteBuffer buf ^long n ^long strd]
   Object
   (hashCode [this]
     (freduce this
@@ -318,11 +325,11 @@
              hash*) )
   (equals [x y]
     (cond
-     (nil? y) false
-     (identical? x y) true
-     (and (compatible x y) (= n (.dim ^Vector y)))
-     (freduce x true entry-eq y)
-     :default false))
+      (nil? y) false
+      (identical? x y) true
+      (and (compatible x y) (= n (.dim ^Vector y)))
+      (freduce x true entry-eq y)
+      :default false))
   (toString [_]
     (format "#<RealBlockVector| %s, n:%d, stride:%d>" entry-type n strd))
   clojure.lang.Seqable
@@ -330,20 +337,17 @@
     (.toSeq accessor buf strd))
   Group
   (zero [_]
-    (RealBlockVector. accessor vector-engine matrix-engine entry-type
-                      (.directBuffer accessor n) n 1))
+    (create-vector engine-factory (.directBuffer accessor n)))
   EngineProvider
   (engine [_]
-    vector-engine)
+    eng)
   Memory
   (compatible [_ y]
     (and (instance? RealBlockVector y)
          (= entry-type (.entryType ^Block y))))
   BlockCreator
   (create-block [_ m n]
-    (->RealGeneralMatrix accessor vector-engine matrix-engine entry-type
-                         (.directBuffer accessor (* (long m) (long n)))
-                         m n m DEFAULT_ORDER))
+    (create-ge-matrix engine-factory m n))
   Block
   (entryType [_]
     entry-type)
@@ -383,8 +387,9 @@
   (boxedEntry [x i]
     (.entry x i))
   (subvector [_ k l]
-    (RealBlockVector. accessor vector-engine matrix-engine entry-type
-                      (.slice accessor buf (* k strd) (* l strd)) l strd)))
+    (let [b (.slice accessor buf (* k strd) (* l strd))]
+      (RealBlockVector. engine-factory accessor (vector-engine engine-factory b l)
+                        entry-type b l strd))))
 
 (extend RealBlockVector
   Functor
@@ -400,9 +405,8 @@
 
 ;; =================== Real Matrix =============================================
 
-(deftype RealGeneralMatrix [^RealBufferAccessor accessor
-                            ^BLAS vector-engine ^BLAS matrix-engine
-                            ^Class entry-type
+(deftype RealGeneralMatrix [engine-factory ^RealBufferAccessor accessor
+                            ^BLAS eng ^Class entry-type
                             ^ByteBuffer buf ^long m ^long n ^long ld ^long ord]
   Object
   (hashCode [this]
@@ -412,31 +416,28 @@
              hash*))
   (equals [x y]
     (cond
-     (nil? y) false
-     (identical? x y) true
-     (and (compatible x y) (= m (.mrows ^Matrix y)) (= n (.ncols ^Matrix y)))
-     (freduce x true entry-eq y)
-     :default false))
+      (nil? y) false
+      (identical? x y) true
+      (and (compatible x y) (= m (.mrows ^Matrix y)) (= n (.ncols ^Matrix y)))
+      (freduce x true entry-eq y)
+      :default false))
   (toString [_]
     (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
             entry-type (if (= COLUMN_MAJOR ord) "COL" "ROW")
             m n ld))
   Group
   (zero [_]
-    (RealGeneralMatrix. accessor vector-engine matrix-engine entry-type
-                        (.directBuffer accessor (* m n)) m n m ord))
+    (create-ge-matrix engine-factory m n (.directBuffer accessor (* m n)) ord))
   EngineProvider
   (engine [_]
-    matrix-engine)
+    eng)
   Memory
   (compatible [_ b]
     (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
          (= entry-type (.entryType ^Block b))))
   BlockCreator
   (create-block [_ m1 n1]
-    (->RealGeneralMatrix accessor vector-engine matrix-engine entry-type
-                         (.directBuffer accessor (* (long m1) (long n1)))
-                         m1 n1 (max (long m1) 1) DEFAULT_ORDER))
+    (create-ge-matrix engine-factory m1 n1))
   Block
   (entryType [_]
     entry-type)
@@ -500,25 +501,32 @@
     (.entry this i j))
   (row [a i]
     (if (column-major? a)
-      (RealBlockVector. accessor vector-engine matrix-engine entry-type
-                        (.slice accessor buf i (inc (* (dec n) ld))) n ld)
-      (RealBlockVector. accessor vector-engine matrix-engine entry-type
-                        (.slice accessor buf (* ld i) n) n 1)))
+      (let [b (.slice accessor buf i (inc (* (dec n) ld)))]
+        (RealBlockVector. engine-factory accessor
+                          (vector-engine engine-factory b n) entry-type b n ld))
+      (let [b (.slice accessor buf (* ld i) n)]
+        (RealBlockVector. engine-factory accessor
+                          (vector-engine engine-factory b n) entry-type b n 1))))
   (col [a j]
     (if (column-major? a)
-      (RealBlockVector. accessor vector-engine matrix-engine entry-type
-                        (.slice accessor buf (* ld j) m) m 1)
-      (RealBlockVector. accessor vector-engine matrix-engine entry-type
-                        (.slice accessor buf j (inc (* (dec m) ld))) m ld)))
+      (let [b (.slice accessor buf (* ld j) m)]
+        (RealBlockVector. engine-factory accessor
+                          (vector-engine engine-factory b m) entry-type b m 1))
+      (let [b (.slice accessor buf j (inc (* (dec m) ld)))]
+        (RealBlockVector. engine-factory accessor
+                          (vector-engine engine-factory b m) entry-type b m ld))))
   (submatrix [a i j k l]
-    (RealGeneralMatrix. accessor vector-engine matrix-engine entry-type
-                        (if (column-major? a)
-                          (.slice accessor buf (+ (* ld j) i) (* ld l))
-                          (.slice accessor buf (+ (* ld i) j) (* ld k)))
-                        k l ld ord))
+    (let [b (if (column-major? a)
+              (.slice accessor buf (+ (* ld j) i) (* ld l))
+              (.slice accessor buf (+ (* ld i) j) (* ld k)))]
+      (RealGeneralMatrix. engine-factory accessor
+                          (matrix-engine engine-factory b k l) entry-type
+                          b k l ld ord)))
   (transpose [a]
-    (RealGeneralMatrix. accessor vector-engine matrix-engine entry-type
-                        buf n m ld (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
+    (RealGeneralMatrix. engine-factory accessor
+                        (matrix-engine engine-factory buf n m) entry-type
+                        buf n m ld
+                        (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
 
 (extend RealGeneralMatrix
   Functor
@@ -534,37 +542,42 @@
 
 ;; ========================== Creators =========================================
 
-(defn create-vector ^RealBlockVector
-  [^BufferAccessor accessor vector-engine matrix-engine source]
-  (cond
-    (and (instance? ByteBuffer source))
-    (->RealBlockVector accessor vector-engine matrix-engine
-                       (.entryType accessor)
-                       source (.count accessor source) 1)
-    (and (integer? source) (<= 0 (long source)))
-    (create-vector accessor vector-engine matrix-engine
-                   (.directBuffer accessor source))
-    (float? source) (create-vector accessor vector-engine matrix-engine [source])
-    (sequential? source) (create-vector accessor vector-engine matrix-engine
-                                        (.toBuffer accessor source))
-    :default (throw (IllegalArgumentException.
-                     (format "I do not know how to create a vector from %s."
-                             (type source))))))
+(defn create-vector
+  [engine-factory source]
+  (let [acc ^RealBufferAccessor (data-accessor engine-factory)]
+    (cond
+      (and (instance? ByteBuffer source))
+      (->RealBlockVector engine-factory acc
+                         (vector-engine engine-factory source (.count acc source))
+                         (.entryType acc) source (.count acc source) 1)
+      (and (integer? source) (<= 0 (long source)))
+      (create-vector engine-factory (.directBuffer acc source))
+      (float? source) (create-vector engine-factory [source])
+      (sequential? source) (create-vector engine-factory (.toBuffer acc source))
+      :default (throw (IllegalArgumentException.
+                       (format "I do not know how to create a vector from %s."
+                               (type source)))))))
 
-(defn create-matrix
-  (^RealGeneralMatrix
-   [^BufferAccessor accessor vector-engine matrix-engine m n source]
-   (cond
-     (and (instance? ByteBuffer source)
-          (= (* (long m) (long n)) (.count accessor source)))
-     (->RealGeneralMatrix accessor vector-engine matrix-engine
-                          (.entryType accessor)
-                          source m n (max (long m) 1) DEFAULT_ORDER)
-     (sequential? source) (create-matrix accessor vector-engine matrix-engine
-                                         m n (.toBuffer accessor source))
-     :default (throw (IllegalArgumentException.
-                      (format "I do not know how to create a %dx%d matrix from %s."
-                              m n (type source))))))
-  (^RealGeneralMatrix [^BufferAccessor accessor vector-engine matrix-engine m n]
-   (create-matrix accessor vector-engine matrix-engine m n
-                  (.directBuffer accessor (* (long m) (long n))))))
+(defn create-ge-matrix
+  ([engine-factory m n source order]
+   (let [acc ^RealBufferAccessor (data-accessor engine-factory)]
+     (cond
+       (and (instance? ByteBuffer source)
+            (= (* (long m) (long n)) (.count acc source)))
+       (->RealGeneralMatrix engine-factory acc
+                            (matrix-engine engine-factory source m n)
+                            (.entryType acc) source m n
+                            (max (long (if (= COLUMN_MAJOR order) m n)) 1)
+                            order)
+       (sequential? source) (create-ge-matrix engine-factory m n
+                                              (.toBuffer acc source))
+       :default
+       (throw (IllegalArgumentException.
+               (format "I do not know how to create a %dx%d matrix from %s."
+                                m n (type source)))))))
+  ([engine-factory m n source]
+   (create-ge-matrix engine-factory m n source DEFAULT_ORDER))
+  ([engine-factory m n]
+   (create-ge-matrix engine-factory m n
+                     (.directBuffer ^BufferAccessor (data-accessor engine-factory)
+                                    (* (long m) (long n))))))

@@ -16,8 +16,8 @@ overhead.
 Functions for creating the appropriate primitive vectors or matrices are
 in the `uncomplicate.neanderthal.native` namespace. Additional implementations
 are available in appropriate namespaces; for example,
-`uncomplicate.neanderthal.opencl-amd-gcn` activates a GPU accelerated
-implementation optimized for AMD GCN (the current generation) graphic cards.
+`uncomplicate.neanderthal.opencl` activates a GPU accelerated
+implementation.
 
 Import the appropriate namespaces: `core` for computation functions,
 and `native` for constructors.

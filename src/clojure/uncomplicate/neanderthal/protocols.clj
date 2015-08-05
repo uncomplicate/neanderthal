@@ -3,6 +3,11 @@
 (defprotocol Group
   (zero [this]))
 
+(defprotocol EngineFactory
+  (data-accessor [this])
+  (vector-engine [this buf n])
+  (matrix-engine [this buf m n]))
+
 (defprotocol EngineProvider
   (engine ^BLAS [this]))
 
@@ -11,6 +16,12 @@
 
 (defprotocol Memory
   (compatible [this other]))
+
+(defprotocol Mappable
+  (read! [this host])
+  (write! [this host])
+  (map-host [this])
+  (unmap [this]))
 
 (defprotocol Functor
   (fmap! [x f] [x f y] [x f y z]

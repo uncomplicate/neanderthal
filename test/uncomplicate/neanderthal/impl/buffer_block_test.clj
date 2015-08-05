@@ -9,12 +9,21 @@
 
 (def accessorf double-accessor)
 
+(deftype DummyEngineFactory []
+  EngineFactory
+  (data-accessor [_]
+    double-accessor)
+  (vector-engine [_ _ _]
+    nil)
+  (matrix-engine [_ _ _ _]
+    nil))
+
 (defn rbv ^RealBlockVector [^RealBufferAccessor access s ^long n ^long strd]
-  (->RealBlockVector access nil nil (.entryType access)
+  (->RealBlockVector (->DummyEngineFactory) access nil (.entryType access)
                      (.toBuffer ^RealBufferAccessor accessorf s) n strd))
 
 (defn rgm ^RealGeneralMatrix [^RealBufferAccessor access s m n ld ord]
-  (->RealGeneralMatrix access nil nil (.entryType access)
+  (->RealGeneralMatrix (->DummyEngineFactory) access nil (.entryType access)
                      (.toBuffer ^RealBufferAccessor accessorf s) m n ld ord))
 
 (facts "Equality and hash code."

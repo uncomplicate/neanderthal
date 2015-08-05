@@ -1,48 +1,37 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.clblock
   (:require [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.neanderthal.core
-             :refer [INCOMPATIBLE_BLOCKS_MSG COLUMN_MAJOR]])
-  (:import [uncomplicate.neanderthal.protocols BLAS
-            Vector Matrix Changeable Block
-            Group Memory BlockCreator EngineProvider]))
+            [uncomplicate.neanderthal.protocols :refer :all]
+            [uncomplicate.neanderthal.impl.buffer-block :refer [COLUMN_MAJOR]])
+  (:import [uncomplicate.neanderthal.protocols
+            BLAS Vector Matrix Changeable Block DataAccessor]))
 
-(defprotocol Mappable
-  (read! [this host])
-  (write! [this host])
-  (map-host [this])
-  (unmap [this]))
-
-(defprotocol EngineFactory
-  (cl-accessor [this])
-  (vector-engine [this buf n])
-  (matrix-engine [this cl-buf m n]))
+(def ^:private INCOMPATIBLE_BLOCKS_MSG
+  "Operation is not permited on vectors with incompatible buffers,
+  or dimensions that are incompatible in the context of the operation.
+  1: %s
+  2: %s")
 
 ;; ================== Accessors ================================================
 
 (defprotocol CLAccessor
   (get-queue [this])
-  (entryType [this])
-  (width [this])
   (create-buffer [this n])
   (fill-buffer [this cl-buf val])
   (array [this s])
   (slice [this cl-buf k l]))
 
-(set! *unchecked-math* false)
-
-(deftype TypedAccessor [ctx queue et ^long w array-fn]
+(deftype TypedCLAccessor [ctx queue et ^long w array-fn]
+  DataAccessor
+  (entryType [_]
+    et)
+  (entryWidth [_]
+    w)
   CLAccessor
   (get-queue [_]
     queue)
-  (entryType [_]
-    et)
-  (width [_]
-    w)
   (create-buffer [_ n]
-    (let [res (cl-buffer ctx (* w n) :read-write)]
-      (enq-fill! queue res (array-fn 1))
-      res))
+    (cl-buffer ctx (* w (long n)) :read-write))
   (fill-buffer [_ cl-buf v]
     (do
       (enq-fill! queue cl-buf (array-fn v))
@@ -50,20 +39,18 @@
   (array [_ s]
     (array-fn s))
   (slice [_ cl-buf k l]
-    (cl-sub-buffer cl-buf (* w k) (* w l))))
-
-(set! *unchecked-math* :warn-on-boxed)
+    (cl-sub-buffer cl-buf (* w (long k)) (* w (long l)))))
 
 (defn float-accessor [ctx queue]
-  (->TypedAccessor ctx queue Float/TYPE 4 float-array))
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array))
 
 (defn double-accessor [ctx queue]
-  (->TypedAccessor ctx queue Double/TYPE 8 double-array))
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array))
 
 ;; =============================================================================
 
-(declare clv)
-(declare clge)
+(declare create-vector)
+(declare create-ge-matrix)
 
 (deftype CLBlockVector [engine-factory claccessor eng entry-type
                         cl-buf ^long n ^long strd]
@@ -77,7 +64,7 @@
      (release eng)))
   Group
   (zero [_]
-    (clv engine-factory n))
+    (create-vector engine-factory n))
   EngineProvider
   (engine [_]
     eng)
@@ -87,7 +74,7 @@
          (= entry-type (.entryType ^Block y))))
   BlockCreator
   (create-block [_ m n]
-    (clge engine-factory m n))
+    (create-ge-matrix engine-factory m n))
   Block
   (entryType [_]
     entry-type)
@@ -134,7 +121,7 @@
                           cl-buf ^long m ^long n ^long ld]
   Object
   (toString [_]
-    (format "#<GeneralMatrixCL| %s, %s, mxn: %dx%d, ld:%d>"
+    (format "#<CLGeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
             entry-type "COL" m n ld))
   Releaseable
   (release [_]
@@ -148,9 +135,12 @@
   (compatible [_ y]
     (and (or (instance? CLGeneralMatrix y) (instance? CLBlockVector y))
          (= entry-type (.entryType ^Block y))))
+  Group
+  (zero [_]
+    (create-ge-matrix engine-factory m n))
   BlockCreator
-  (create-block [_ m n]
-    (clge engine-factory m n))
+  (create-block [_ m1 n1]
+    (create-ge-matrix engine-factory m1 n1))
   Block
   (entryType [_]
     entry-type)
@@ -192,19 +182,25 @@
   [x ^java.io.Writer w]
   (.write w (str x)))
 
-(defn clv
+(defn create-vector
   ([engine-factory ^long n cl-buf]
-   (let [claccessor (cl-accessor engine-factory)]
-     (->CLBlockVector engine-factory claccessor (vector-engine engine-factory cl-buf n)
-                      (entryType claccessor) cl-buf n 1)))
+   (let [claccessor (data-accessor engine-factory)]
+     (->CLBlockVector engine-factory claccessor
+                      (vector-engine engine-factory cl-buf n)
+                      (.entryType ^DataAccessor claccessor) cl-buf n 1)))
   ([engine-factory ^long n]
-   (clv engine-factory n (create-buffer (cl-accessor engine-factory) n))))
+   (let [claccessor (data-accessor engine-factory)]
+     (create-vector engine-factory n
+                    (fill-buffer claccessor (create-buffer claccessor n) 1)))))
 
-(defn clge
+(defn create-ge-matrix
   ([engine-factory ^long m ^long n cl-buf]
-   (let [claccessor (cl-accessor engine-factory)]
-     (->CLGeneralMatrix engine-factory claccessor (matrix-engine engine-factory cl-buf m n)
-                        (entryType claccessor) cl-buf m n m)))
+   (let [claccessor (data-accessor engine-factory)]
+     (->CLGeneralMatrix engine-factory claccessor
+                        (matrix-engine engine-factory cl-buf m n)
+                        (.entryType ^DataAccessor claccessor) cl-buf m n m)))
 
   ([engine-factory ^long m ^long n]
-   (clge engine-factory m n (create-buffer (cl-accessor engine-factory) (* m n)))))
+   (let [claccessor (data-accessor engine-factory)]
+     (create-ge-matrix engine-factory m n
+                       (fill-buffer claccessor (create-buffer claccessor (* m n)) 1)))))

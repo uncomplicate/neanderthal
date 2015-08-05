@@ -3,33 +3,33 @@
 
 (defn f=
   ([^double x ^double y ^double nepsilons]
-     (Precision/equals x y (* Precision/EPSILON nepsilons)))
+   (Precision/equals x y (* Precision/EPSILON nepsilons)))
   ([^double x ^double y]
    (Precision/equals x y Precision/EPSILON)))
 
 (defn f<
   ([^double x ^double y ^double nepsilons]
-     (< (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
+   (< (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-     (< (Precision/compareTo x y Precision/EPSILON))))
+   (< (Precision/compareTo x y Precision/EPSILON))))
 
 (defn f<=
   ([^double x ^double y ^double nepsilons]
-     (<= (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
+   (<= (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-     (<= (Precision/compareTo x y Precision/EPSILON))))
+   (<= (Precision/compareTo x y Precision/EPSILON))))
 
 (defn f>
   ([^double x ^double y ^double nepsilons]
-     (> (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
+   (> (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-     (> (Precision/compareTo x y Precision/EPSILON))))
+   (> (Precision/compareTo x y Precision/EPSILON))))
 
 (defn f>=
   ([^double x ^double y ^double nepsilons]
-     (>= (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
+   (>= (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-     (>= (Precision/compareTo x y Precision/EPSILON))))
+   (>= (Precision/compareTo x y Precision/EPSILON))))
 
 (defn power-of-2? [^long n]
   (= 0 (bit-and n (- n 1))))

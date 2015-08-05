@@ -2,9 +2,7 @@ package uncomplicate.neanderthal.protocols;
 
 import java.nio.ByteBuffer;
 
-public interface BufferAccessor {
-
-    Object entryType ();
+public interface BufferAccessor extends DataAccessor {
 
     ByteBuffer toBuffer (Object source);
 
