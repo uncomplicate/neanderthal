@@ -1,7 +1,8 @@
 (ns benchmarks.core
   (:require [uncomplicate.neanderthal
-             [core :refer :all]
-             [real :refer :all]
+             [core :refer :all :exclude [entry! entry]]
+             [real :refer [entry! entry]]
+             [native :refer :all]
              [math :refer :all]]
             [clojure.core.matrix :as cm]
             [clojure.core.matrix.operators :as cmop]
@@ -17,7 +18,7 @@
   (let [as (map #(fmap! rnd (dge (pow 2 %) (pow 2 %))) (range 1 n))
         bs (map #(fmap! rnd (dge (pow 2 %) (pow 2 %))) (range 1 n))
         cs (map #(dge (pow 2 %) (pow 2 %)) (range 1 n))]
-    (map #((:sample-mean (criterium/quick-benchmark (mm! %1 1.0 %2 %3 0.0) {})) 0) cs as bs)))
+    (map #((:sample-mean (criterium/quick-benchmark (mm! 1.0 %1 %2 0.0 %3) {})) 0) as bs cs)))
 
 (defn benchmark-array-sum [n]
   (let [arrays (map #(double-array (* (pow 2 %) (* (pow 2 %)))) (range 1 n))

@@ -9,11 +9,14 @@
           :url "https://github.com/uncomplicate/neanderthal"}
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
-    :dependencies [[org.clojure/clojure "1.7.0"]
+    :dependencies [[org.clojure/clojure "1.8.0-alpha4"]
                    [uncomplicate/clojurecl "0.1.3-SNAPSHOT"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.3"]
-                   [vertigo "0.1.3"]]
+                   [vertigo "0.1.3"]
+                   [potemkin "0.4.1"] ;; temporary fix for vertigo
+                   [clj-tuple "0.2.2"] ;; temporary fix for potemkin
+                   ]
 
     :codox {:src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"
             :src-linenum-anchor-prefix "L"
@@ -21,7 +24,9 @@
                       uncomplicate.neanderthal.protocols]
             :output-dir "docs/codox"}
 
-    :jvm-opts ^:replace ["-XX:+UseLargePages"];;also replaces lein's default JVM argument TieredStopAtLevel=1
+    ;;also replaces lein's default JVM argument TieredStopAtLevel=1
+    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                         "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
     :aot [uncomplicate.neanderthal.protocols
           uncomplicate.neanderthal.impl.buffer-block
           uncomplicate.neanderthal.impl.cblas

@@ -4,8 +4,9 @@
              [core :refer [wrap marshal-seq]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq unwrap-byte-seq]]]
-            [uncomplicate.neanderthal.protocols :refer :all])
-  (:import [java.nio ByteBuffer]
+            [uncomplicate.neanderthal.protocols :refer :all]
+            [uncomplicate.clojurecl.core :refer [Releaseable]])
+  (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
@@ -260,6 +261,16 @@
    (throw (UnsupportedOperationException.
            "Primitive functions support max 4 args."))))
 
+;; ============ Realeaseable ===================================================
+(defn clean-buffer [^ByteBuffer buffer]
+  (do
+    (if (.isDirect buffer)
+      (.clean (.cleaner ^DirectByteBuffer buffer)))
+    true))
+
+(defn release-block [^Block block]
+  (clean-buffer (.buffer block)))
+
 ;; ============ Real Buffer ====================================================
 
 (deftype FloatBufferAccessor []
@@ -392,6 +403,8 @@
                         entry-type b l strd))))
 
 (extend RealBlockVector
+  Releaseable
+  {:release release-block}
   Functor
   {:fmap! vector-fmap!}
   Foldable
@@ -529,6 +542,8 @@
                         (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
 
 (extend RealGeneralMatrix
+  Releaseable
+  {:release release-block}
   Functor
   {:fmap! matrix-fmap!}
   Foldable

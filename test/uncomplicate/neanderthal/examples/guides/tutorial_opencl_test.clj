@@ -1,6 +1,6 @@
 "$text
 
-# Tutorial - Matrix Computations on The GPU in Clojure with OpenCL at the TFLOPS Speed
+# Tutorial - Matrix Computations on GPU in Clojure at the Speed of a Couple of TFLOPS
 
 So, you've installed Neanderthal and learned how to work with vectors and
 matrices on the CPU at roughly 10x speed of pure Java libs. It is fast, running
@@ -193,7 +193,7 @@ $code"
 When measuring very fast code, the `time` function gives wildly imprecise results
 - replace the calls to `time` with calls for criterium `quick-bench` and it will
 show much faster and precise measurements. Anyway we can see that CPU is much faster:
-67 nanoseconds vs 58 microseconds. This is because calling GPU takes some time
+28 nanoseconds vs 58 microseconds. This is because calling GPU takes some time
 (on the order of magnitude of 20-30 microseconds per kernel enqueue, depending
 on the device), and when the device starts computing most of its many
 computing units are idling because we have loaded it with only 3 numbers
@@ -341,7 +341,7 @@ demanding enough."
 CPU: 17678 ms
 GPU: 721 ms
 
-That's 24.5 times faster than the CPU! But, still, shouldn't it be even faster?
+That's 25 times faster than the CPU! But, still, shouldn't it be even faster?
 You've probably seen those benchmarks with 1000x speed improvements!
 
 Let's consider matrix multiplication. It is a complex operation - O(n^3), but at
@@ -355,7 +355,7 @@ hugely, but it still has unused computation power.
 
 This is a very important point. Remember, here we've compared Neanderthal's GPU
 speed to Neanderthal's highly optimized native ATLAS BLAS engine, which is
-a speed demon in its own right! And we got more than 24x speedup.
+a speed demon in its own right! And we got a 25x speedup.
 
 How it stands to pure Java? Check the [Neanderthal Benchmarks page](../benchmarks.html).
 For a 8192x8192 matrices, an optimized and decently fast pure Java library Vectorz,
@@ -384,7 +384,7 @@ need to change at all.
 
 However, be aware that the first implementation available today is OpenCL 2.0 only
 and optimized for AMD's GCN architecture (R9 Radeons, newer FirePro). I am running this
-tutorial on AMD Radeon R9 290X. It should run on Intel hardware, but I doubt
+tutorial on AMD Radeon R9 290X. It should work on Intel hardware, but I doubt
 that the performance would be even remotely close. Nvidia currently supports
 only OpenCL 1.2. Providing optimized Neanderthal engines for Nvidia and Intel is
 planned, but will not be immediate. If you would like to do superfast numerical

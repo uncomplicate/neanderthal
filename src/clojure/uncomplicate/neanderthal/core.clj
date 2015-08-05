@@ -2,18 +2,29 @@
   uncomplicate.neanderthal.core
   "Contains type-agnostic linear algebraic functions. Typically,
   you would want to require this namespace regardless of the actual type
-  (real, complex etc.) of the vectors and matrices that you use.
-  Aditionally, you need to require a namespace specific to the
-  type of primitive data you use (real, complex, etc.)
+  (real, complex, CPU, GPU, pure Java etc.) of the vectors and matrices that
+  you use.
+
+  In cases when you need to repeatedly call a function from this namespace
+  that accesses individual entries, and the entries are primitive, it
+  is better to use a primitive version of the function from
+  uncomplicate.neanderthal.core namespace.
+  Additionally, constructor functions for different kinds of vectors
+  (native, GPU, pure java) are in respective specialized namespaces.
 
   You need to take care to only use vectors and matrices
   of the same type in the same function call. These functions do not support
-  arguments of mixed real types. For example, you can not call the
-  dot function with one double vector (dv) and one float vector (fv).
+  arguments of mixed types. For example, you can not call the
+  dot function with one double vector (dv) and one float vector (fv),
+  or for one vector in the CPU memory and one in the GPU memory.
 
-  ----- Example
+  ## Examples
+
   (ns test
-    (:require [uncomplicate.neanderthal core real]))
+    (:require [uncomplicate.neanderthal core native]))
+
+  (ns test
+    (:require [uncomplicate.neanderthal core native opencl]))
   "
   (:require  [uncomplicate.neanderthal
               [protocols :as p]
@@ -21,17 +32,17 @@
   (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
             BLAS BLASPlus Changeable]))
 
-(def MAT_BOUNDS_MSG
+(def ^:const MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")
 
-(def INCOMPATIBLE_BLOCKS_MSG
-  "Operation is not permited on vectors with incompatible buffers,
+(def ^:const INCOMPATIBLE_BLOCKS_MSG
+  "Operation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
   1: %s
   2: %s")
 
 (def ^:private INCOMPATIBLE_BLOCKS_MSG_3
-  "Operation is not permited on vectors with incompatible buffers,
+  "Operation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
   1: %s
   2: %s
@@ -41,12 +52,13 @@
   "Required %s %d is higher than the row count %d.")
 
 (def ^:private DIMENSION_MSG
-  "Incompatible dimension - expected:%d, actual:%d.")
+  "Incompatible dimensions - expected:%d, actual:%d.")
 
 (def ^:private STRIDE_MSG
   "Incompatible stride - expected:%d, actual:%d.")
 
 ;; ================== Category functions  ==============
+
 (defn fmap!
   ([f x]
    (p/fmap! x f))
@@ -107,18 +119,19 @@
 ;; ================= Vector ====================================================
 
 (defn dim
-  "Returns the dimension of a neanderthal vector x.
+  "Returns the dimension of the vector x.
+
   (dim (dv 1 2 3) => 3)
   "
   ^long [^Vector x]
   (.dim x))
 
 (defn ecount
-  "Returns the total number of elements in all dimensions of a block
+  "Returns the total number of elements in all dimensions of a block x
   of (possibly strided) memory.
 
-  (ecount (dv 1 2 3) => 3)
-  (ecount (dge 2 3) => 6)
+  (ecount (dv 1 2 3)) => 3
+  (ecount (dge 2 3)) => 6
   "
   ^long [^Block x]
   (.count x))
@@ -132,10 +145,10 @@
   the vector data.
   If you wish to disconnect the subvector from the parent
   vector, make a copy of the subvector (copy subx) prior
-  to any changing operation.
+  to any destructive operation.
 
   (subvector (dv 1 2 3 4 5 6) 2 3)
-  => #<DoubleBlockVector| n:3, stride:1 (3.0 4.0 5.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(3.0 4.0 5.0)<>
   "
   [^Vector x ^long k ^long l]
   (.subvector x k l))
@@ -144,6 +157,7 @@
 
 (defn mrows
   "Returns the number of rows of the matrix m.
+
   (mrows (dge 3 2 [1 2 3 4 5 6])) => 3
   "
   ^long [^Matrix m]
@@ -167,7 +181,7 @@
   to any changing operation.
 
   (row (dge 3 2 [1 2 3 4 5 6]) 1)
-  => #<DoubleBlockVector| n:2, stride:3 (2.0 5.0)>
+  => #<RealBlockVector| double, n:2, stride:3>(2.0 5.0)<>
   "
   [^Matrix m ^long i]
   (if (< -1 i (.mrows m))
@@ -176,7 +190,7 @@
             (format ROW_COL_MSG "row" i (.mrows m))))))
 
 (defn col
-  "Returns the i-th column of the matrix m as a vector.
+  "Returns the j-th column of the matrix m as a vector.
 
   The resulting vector has a live connection to the
   matrix data. Any change to the vector data will affect
@@ -186,7 +200,7 @@
   to any changing operation.
 
   (col (dge 3 2 [1 2 3 4 5 6]) 0)
-  #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [^Matrix m ^long j]
   (if (< -1 j (.ncols m))
@@ -197,7 +211,7 @@
 (defn cols
   "Returns a lazy sequence of vectors that represent
   columns of the matrix m.
-  The vectors have a live connection to the matrix data.
+  These vectors have a live connection to the matrix data.
   "
   [^Matrix m]
   (map #(.col m %) (range (.ncols m))))
@@ -205,7 +219,7 @@
 (defn rows
   "Returns a lazy sequence of vectors that represent
   rows of the matrix m.
-  The vectors have a live connection to the matrix data.
+  These vectors have a live connection to the matrix data.
   "
   [^Matrix m]
   (map #(.row m %) (range (.mrows m))))
@@ -222,7 +236,7 @@
   to any changing operation.
 
   (submatrix (dge 4 3 (range 12)) 1 1 2 1)
-  => #<DoubleGeneralMatrix| COL, mxn: 2x1, ld:4 ((5.0 6.0))>
+  => #<GeneralMatrix| double, COL, mxn: 2x1, ld:4>((5.0 6.0))<>
   "
   ([^Matrix a i j k l]
    (if (and (<= 0 (long i) (+ (long i) (long k)) (.mrows a))
@@ -240,15 +254,21 @@
   The resulting matrix has a live connection to m's data.
 
   (trans (dge 3 2 [1 2 3 4 5 6]))
-  => #<DoubleGeneralMatrix| ROW, mxn: 2x3, ld:3 ((1.0 2.0 3.0) (4.0 5.0 6.0))>
+  => #<GeneralMatrix| double, ROW, mxn: 2x3, ld:3>((1.0 2.0 3.0) (4.0 5.0 6.0))<>
   "
   [^Matrix m]
   (.transpose m))
 
-;; ============ Vector and Matrix access methods ================================
+;; ============ Vector and Matrix access methods ===============================
 
 (defn entry
-  "Returns the i-th entry of vector x, or ij-th entry of matrix m."{}
+  "Returns the BOXED i-th entry of vector x, or ij-th entry of matrix m.
+  In case  your container holds primitive elements, or the element have
+  a specific structure, it is much better to use the equivalent methods from
+  function from uncomplicate.neanderthal.real.
+
+  (entry (dv 1 2 3) 1) => 2.0
+  "
   ([^Vector x ^long i]
    (.boxedEntry x i))
   ([^Matrix m ^long i ^long j]
@@ -259,8 +279,15 @@
 
 (defn entry!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
-  or all entries if no index is provided,
-  to value val and returns the vector or matrix."
+  or all entries if no index is provided, to BOXED value val and returns
+  the updated container.
+  In case  your container holds primitive elements, or the element have
+  a specific structure, it is much better to use the equivalent methods from
+  function from uncomplicate.neanderthal.real.
+
+  (entry! (dv 1 2 3) 2 -5)
+  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 -5.0)<>
+  "
   ([^Changeable c val]
    (.setBoxed c val))
   ([^Changeable v ^long i val]
@@ -271,8 +298,25 @@
      (throw (IndexOutOfBoundsException.
              (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
-(defn alter! []
-  (throw (UnsupportedOperationException.))) ;;TODO
+(defn alter!
+  "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result
+  of applying a function f to the old value at that position, and returns the
+  updated container.
+
+  In case  your container holds primitive elements, the function f
+  must accept appropriate primitive unboxed arguments, and it will work faster
+  if it also returns unboxed result.
+
+  (alter! (dv 1 2 3) 2 (fn ^double [^double x] (inc x)))
+  #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 4.0)<>
+  "
+  ([^Changeable v ^long i f]
+   (.alter v i f))
+  ([^Matrix m ^long i ^long j f]
+   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
+     (.alter ^Changeable m i j f)
+     (throw (IndexOutOfBoundsException.
+             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 ;;================== BLAS 1 =======================
 
@@ -306,8 +350,9 @@
   (.asum (p/engine x) x))
 
 (defn iamax
-  "BLAS 1: Index of maximum absolute value.
-  The index of a first entry that has the maximum value.
+  "BLAS 1: The index of the largest absolute value.
+  The index of the first entry that has the maximum value.
+
   (iamax (dv 1 3 2)) => 1
   "
   ^long [x]
@@ -325,7 +370,7 @@
   After scal!, x will be changed.
 
   (scal! 1.5  (dv 1 2 3))
-  => #<DoubleBlockVector| n:3, stride:1, (1.5 3.0 4.5)>
+  => #<RealBlockVector| double, n:3, stride:1>(1.5 3.0 4.5)<>
   "
   [alpha x]
   (do
@@ -392,6 +437,8 @@
 
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
+  - p must be a vector of exactly 5 entries
+  - args must be a vector of exactly 4 entries
   "
   [p args]
   (if (and (p/compatible p args) (= 5 (dim p)) (= 4 (dim args)))
@@ -418,17 +465,20 @@
     (throw (IllegalArgumentException. (format ROTM_COND_MSG x y p)))))
 
 (defn swp!
-  "BLAS 1: Swap vectors.
-  Swaps the entries of vectors x and y. x and y must have
+  "BLAS 1: Swap vectors or matrices.
+  Swaps the entries of containers x and y. x and y must have
   equal dimensions. Both x and y will be changed.
-  Also works on matrices.
+  Works on both vectors and matrices.
+
+  If the dimensions of x and y are not compatible,
+  throws IllegalArgumentException.
 
   (def x (dv 1 2 3))
   (def y (dv 3 4 5))
   (swp! x y)
-  => #<DoubleBlockVector| n:3, stride:1 (3.0 4.0 5.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(3.0 4.0 5.0)<>
   y
-  => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [x y]
   (if (p/compatible x y)
@@ -441,17 +491,20 @@
     (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn copy!
-  "BLAS 1: Copy vector.
+  "BLAS 1: Copy a vector or a matrice.
   Copies the entries of x into y and returns x. x and y must have
   equal dimensions. y will be changed. Also works on
   matrices.
 
+  If the dimensions of x and y are not compatible,
+  throws IllegalArgumentException.
+
   (def x (dv 1 2 3))
   (def y (dv 3 4 5))
   (copy! x y)
-  => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   y
-  => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [x y]
   (if (p/compatible x y)
@@ -464,11 +517,11 @@
     (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn copy
-  "Returns a new vector and copies the entries from x.
+  "Returns a new copy the entries from container x.
   Changes to the resulting vectors do not affect x.
 
   (copy (dv 1 2 3))
-  => #<DoubleBlockVector| n:3, stride:1 (1.0 2.0 3.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [x]
   (let [y (p/zero x)]
@@ -476,11 +529,11 @@
     y))
 
 (defn axpy!
-  "BLAS 1: Vector scale and add.
+  "BLAS 1: Vector scale and add. Also works on matrices.
 
   Computes y = ax + y.
   where:
-  x and y are vectors,
+  x and y are vectors, or matrices
   a is a scalar.
 
   Multiplies vector x by scalar alpha and adds it to
@@ -499,15 +552,15 @@
   (def x (dv 1 2 3))
   (def y (dv 2 3 4))
   (axpy! 1.5 x y)
-  => #<DoubleBlockVector| n:3, stride:1, (3.5 6.0 8.5)>
+  => #<RealBlockVector| double, n:3, stride:1>(3.5 6.0 8.5)<>
 
-  y => #<DoubleBlockVector| n:3, stride:1, (3.5 6.0 8.5)>
+  y => #<RealBlockVector| double, n:3, stride:1>(3.5 6.0 8.5)<>
 
   (axpy! x y)
-  => #<DoubleBlockVector| n:3, stride:1, (4.5 8.0 11.5)>
+  => #<RealBlockVector| double, n:3, stride:1>(4.5 8.0 11.5)<>
 
   (axpy! x y (dv 3 4 5) 2 (dv 1 2 3))
-  => #<DoubleBlockVector| n:3, stride:1, (10.5 18.0 25.5)>
+  => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
   "
   ([alpha x y]
    (if (and (p/compatible x y) (= (ecount x) (ecount y)))
@@ -529,8 +582,8 @@
          res)))))
 
 (defn axpy
-  "A pure variant of axpy! that does not change
-  any of the arguments. The result is a new vector instance.
+  "A pure variant of axpy! that does not change any of the arguments.
+  The result is a new instance.
   "
   ([x y]
    (axpy! 1.0 x (copy y)))
@@ -542,14 +595,14 @@
      (apply axpy! x y (zero y) z w ws))))
 
 (defn ax
-  "Multiplies vector x by a scalar a.
+  "Multiplies container x by a scalar a.
   Similar to scal!, but does not change x. The result
   is a new vector instance."
   [alpha x]
   (axpy! alpha x (p/zero x)))
 
 (defn xpy
-  "Sums vectors x, y, & zs. The result is a new vector instance."
+  "Sums containers x, y & zs. The result is a new vector instance."
   ([x y]
    (axpy! 1.0 x (copy y)))
   ([x y & zs]
@@ -569,10 +622,10 @@
   x and y are vectors,
   alpha and beta are scalars.
 
-  Multiplies matrix a by scalar alpha and then multiplies
-  the the resulting matrix by vector x. Adds the resulting
-  vector to vector y previously scaled by scalar beta.
-  Returns vector y, which contains the result and is changed by
+  Multiplies the matrix a by the scalar alpha and then multiplies
+  the resulting matrix by the vector x. Adds the resulting
+  vector to the vector y, previously scaled by the scalar beta.
+  Returns the vector y, which contains the result and is changed by
   the operation.
 
   If alpha and beta are not provided, uses identity value as their values.
@@ -585,7 +638,7 @@
   (def y (dv 2 3 4))
 
   (mv! 2.0 a x 1.5 y)
-  => #<DoubleBlockVector| n:3, stride:1, (15.0 22.5 30.0)>
+  => #<RealBlockVector| double, n:3, stride:1>(15.0 22.5 30.0)<>
   "
   ([alpha a x beta y]
    (if (and (p/compatible a x) (p/compatible a y)
@@ -622,7 +675,7 @@
 
   (def a (dge 3 2 [1 1 1 1 1 1]))
   (rank! 1.5 (dv 1 2 3) (dv 4 5) a)
-  => #<DoubleGeneralMatrix| COL, mxn: 3x2, ld:3, ((7.0 13.0 19.0) (8.5 16.0 23.5))>
+  => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
   ([alpha x y a]
    (if (and (p/compatible a x) (p/compatible a y)
@@ -666,15 +719,15 @@
   throws IllegalArgumentException.
 
   (def a (dge 2 3 (range 6)))
-  (def a (dge 3 2 (range 2 8)))
+  (def b (dge 3 2 (range 2 8)))
   (def c (dge 2 2 [1 1 1 1]))
 
-  (mm! c 1.5 a b 2.5)
-  => #<DoubleGeneralMatrix| COL, mxn: 2x2, ld:2, ((35.5 49.0) (62.5 89.5))>
+  (mm! 1.5 a b 2.5 c)
+  => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((35.5 49.0) (62.5 89.5))<>
 
   (def c (dge 2 2))
-  (mm! c a b)
-  => #<DoubleGeneralMatrix| COL, mxn: 2x2, ld:2, ((22.0 31.0) (40.0 58.0))>
+  (mm! a b c)
+  => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
   ([alpha a b beta c]
    (if (and (p/compatible c a) (p/compatible c b))
@@ -708,7 +761,7 @@
 ;; ============================== BLAS Plus ====================================
 
 (defn sum
-  "Sums absolute values of entries of x.
+  "Sums values of entries of x.
 
   (sum (dv -1 2 -3)) => -2.0
   "
