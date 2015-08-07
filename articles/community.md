@@ -5,6 +5,8 @@ layout: article
 
 ## Mailing List
 
+[I hang around at Slack Clojurians Uncomplicate](https://clojurians.slack.com/messages/uncomplicate/details/)
+
 [Neanderthal has a mailing list](https://groups.google.com/forum/#!forum/uncomplicate). Feel free to join it and ask any questions you may have.
 
 ## News & Announcements on Twitter
@@ -15,6 +17,7 @@ To subscribe for announcements of releases, important changes and so on, please 
 
 A collection of Clojure libraries, currently containing:
 
+* [ClojureCL](http://clojurecl.uncomplicate.org) - a Clojure library for parallell computations with OpenCL
 * [Neanderthal](http://neanderthal.uncomplicate.org) - you are reading about it.
 * [Fluokitten](http://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure.
 
@@ -25,7 +28,7 @@ Here are some ways in which you can help:
 
 ## Help with the Technical Writing
 
-* If you are a native English speaker, i would really appreciate if you can help with correcting the English on the Neanderthal site and in the  documentation.
+* If you are a native English speaker, i would really appreciate if you can help with correcting the English on the Neanderthal site and in the documentation.
 * Contribute your example code to be added to Neanderthal tests.
 * Contribute articles and tutorials.
 

@@ -8,9 +8,11 @@ layout: default
   </div>
   <div class='clear' style=''></div>
   <p style=''>
-      Fast native matrix and linear algebra in Clojure
+      Fast <span class="text-success">native-speed</span> matrix and linear algebra in Clojure
   </p>
-  <p>Handcrafted JNI bindings for machine-optimized <a href="http://math-atlas.sourceforge.net/">ATLAS</a> BLAS and LAPACK, lots of additional Clojure goodies
+  <p>Optimized <strong class="text-success">GPU</strong> engine <a href="/articles/tutorial_opencl.html">500x faster</a> for large matrices than the fastest Java libraries
+  </p>
+  <p>Handcrafted JNI bindings for machine-optimized <a href="http://math-atlas.sourceforge.net/">ATLAS</a> BLAS, <a href="/benchmarks.html">10x faster</a> than optimized Java libraries on the CPU
   </p>
   <a class='btn btn-primary btn-lg' href='/articles/getting_started.html'>Get Started! »</a>
   <a class="btn btn-danger btn-lg" href="/articles/benchmarks.html">Check the benchmarks »</a>
@@ -20,29 +22,34 @@ layout: default
 <div class='row'>
   <div class='col-md-4'>
     <h2>Very Fast</h2>
-    <p>Handcrafted JNI calls, with almost no overhead, call the machine-optimized
-        native <a href="http://netlib.org/blas/">BLAS</a> and
-        <a href="http://www.netlib.org/lapack/">LAPACK</a> provided by
-        <a href="http://math-atlas.sourceforge.net/">ATLAS</a>.</p>
-    <p>Considerably faster than JBlas, and even faster than core.matrix vectorz for small matrices:
+    <p>Handcrafted JNI calls, with almost no overhead, call the machine-optimized native
+        <a href="http://netlib.org/blas/">BLAS</a>  provided by
+        <a href="http://math-atlas.sourceforge.net/">ATLAS</a>.
+    <p class="text-success"><strong class="text-success">Seamless support for GPU computing.</strong> Many times faster than any code running on the CPU.</p>
+    </p>
+    <p>Considerably faster than JBlas, and faster than pure Java core.matrix vectorz even for small matrices:
         see the <a href="/articles/benchmarks.html">benchmarks and comparisons</a>.</p>
   </div>
   <div class='col-md-4'>
     <h2>Optimized for Clojure</h2>
-    <p>Built with Clojure in mind. Sane interface and functions that fit into functional style
-        while still respecting the reality of number crunching.</p>
-    <p>Comes with fast primitive versions of map and reduce.
+    <p>Built in with Clojure in mind, and implemented in Clojure.</p>
+    <p>Sane interface and functions that fit into functional style while still respecting the reality
+        of number crunching.</p>
+    <p>Comes with fast primitive versions of map and reduce.</p>
+    <p>Pluggable engine implementations - even a pure Java one might be available for the cases when speed is not the priority.</p>
   </div>
   <div class='col-md-4'>
     <h2>Reusable literature.</h2>
     <p>The code and theory from existing books, articles and tutorials for numeric linear algebra
         computations is BLAS and LAPACK centered and can be used with Neanderthal.</p>
+    <p>Comes with a <a href="/codox">fully documented API</a>, and a set of
+        <a href="/articles/guides.html">tutorials</a>.</p>
   </div>
 </div>
 <div class='row'>
   <div class='col-md-4'>
     <h2>BLAS and LAPACK</h2>
-    <p>Does not try to poorly reinvent the wheel. Respects decades of BLAS and LAPACK standardization. Does the number crunching part with BLAS and LAPACK, but provides a tiny Clojure layer for sanity. Win-win :)</p>
+    <p>Does not try to poorly reinvent the wheel. Respects decades of BLAS and LAPACK standardization. Does the number crunching part with native BLAS and/or GPU, but provides a tiny Clojure layer for sanity. Win-win :)</p>
   </div>
   <div class='col-md-4'>
     <h2>Free and Open Source</h2>
@@ -50,10 +57,9 @@ layout: default
   </div>
   <div class='col-md-4'>
       <h2>Latest News</h2>
-           <div class="alert">
-               <button type="button" class="close" data-dismiss="alert">&times;</button>
-               <strong>LATEST VERSION 0.2.0</strong>
-           </div>
-           <p>Follow the news on the <a href="https://groups.google.com/forum/#!forum/uncomplicate">Uncomplicate mailing list</a> or <a href="https://twitter.com/#!/uncomplicateorg">@Uncomplicateorg</a> Twitter account.</p>
+      <p class="lead text-success">Latest version 0.3.0</p>
+      <p class="lead text-success">GPU computing support</p>
+      <a href="https://clojurians.slack.com/messages/uncomplicate/details/">I hang around at Uncomplicate group at Slack's Clojurians</a>
+      <p>Follow the news on the <a href="https://groups.google.com/forum/#!forum/uncomplicate">Uncomplicate mailing list</a> or <a href="https://twitter.com/#!/uncomplicateorg">@Uncomplicateorg</a> Twitter account.</p>
   </div>
 </div>
