@@ -11,7 +11,7 @@ layout: article
 
 ## News & Announcements on Twitter
 
-To subscribe for announcements of releases, important changes and so on, please follow [@Uncomplicateorg](https://twitter.com/#!/uncomplicateorg) on Twitter.
+To subscribe for announcements of releases, important changes, and so on, please follow [@Uncomplicateorg](https://twitter.com/#!/uncomplicateorg) on Twitter.
 
 ## What is Uncomplicate?
 
@@ -23,12 +23,12 @@ A collection of Clojure libraries, currently containing:
 
 ## Get Involved
 
-I welcome anyone who is willing to contribute, no mather the level of experience. Please contact me through the [Uncomplicate mailing list](https://groups.google.com/forum/#!forum/uncomplicate).
+I welcome anyone who is willing to contribute, no matter what their level of experience is. Please contact me through the [Uncomplicate mailing list](https://groups.google.com/forum/#!forum/uncomplicate).
 Here are some ways in which you can help:
 
 ## Help with the Technical Writing
 
-* If you are a native English speaker, i would really appreciate if you can help with correcting the English on the Neanderthal site and in the documentation.
+* If you are a native English speaker, I would really appreciate if you can help with correcting the English on the Neanderthal site and in the documentation.
 * Contribute your example code to be added to Neanderthal tests.
 * Contribute articles and tutorials.
 
@@ -37,7 +37,7 @@ The source code of the site is [here](https://github.com/uncomplicate/neandertha
 ## Report Issues
 
 * Do code review of the Neanderthal code and suggest improvements.
-* If you find a bug, poor default, missing feature or find any part of the API inconvenient, please [file an issue](https://github.com/uncomplicate/neanderthal/issues) on Github.
+* If you find a bug, poor defaults, missing features or find any part of the API inconvenient, please [file an issue](https://github.com/uncomplicate/neanderthal/issues) on Github.
 If possible, try to explain what behavior you expected and why. Bonus points for contributing failing test cases.
 
 ## Contribute Code
