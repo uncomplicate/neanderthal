@@ -364,7 +364,7 @@ hugely, but it still has unused computation power.
 speed to Neanderthal's highly optimized native ATLAS BLAS engine, which is
 a speed demon in its own right! And we got a 25x speedup.**
 
-**How it stands to pure Java? Check out the [Neanderthal Benchmarks page](benchmarks.html).
+**How does Neanderthal compare to pure Java? Check out the [Neanderthal Benchmarks page](benchmarks.html).
 For 8192x8192 matrices, an optimized and decently fast pure Java library Vectorz
 (which is the core.matrix flagship implementation)
 working with primitives and optimizing cache use, needs 6.14 minutes to compute.
