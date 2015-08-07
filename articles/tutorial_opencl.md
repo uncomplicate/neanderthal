@@ -30,22 +30,23 @@ that you'd write yourself.**
 
 ## What You Need to Know About GPU Programming Before We Begin
 
-The most important thing when working with parallel accellerators (GPUs and others)
-is to be aware that a large part of your code will run on a physically separate
-device, which also has its own working memory. It can not access data from the
-main memory, such as your objects, arrays, primitives and such. It also can not
-run your arbitrary program code (Java, C, R). Even if/when it could (Aparapi)
-it sucks at it big time, because it is made of thousans of very dumb processors that
-are excellent at one thing only - raw computations - and suck at everything else,
-including logic.
+When working with parallel accelerators (GPUs and others), it is important to
+keep in mind that a large part of your code will run on a physically separate
+device that has its own working memory. It can not access data from the main
+memory, such as shared objects, arrays, primitives and such. Neither can it run
+arbitrary program code (Java, C, R) in a reasonable way. Other projects, such
+as [Aparapi](https://code.google.com/p/aparapi/), try to to solve this
+limitation (with limited success). After all, the GPU is made out of thousands
+of very dumb processors that are excellent at one thing only: raw computations.
+They aren't really good at anything else, such as logic.
 
 So, a typical approach is that your program consists of two parts: host and device.
 Host is a typical Clojure (Java) program that do the usual things Clojure programs
 do: talks to the web, formats and extracts data, does the database dance,
-recursively compute factorials, and perform other logic-heavy tasks.
+recursively computes factorials, and performs other logic-heavy tasks.
 Then, when it has collected the data and stuffed it in a
-big raw chunk of bazillion primitive floating point numbers it sends it to the
-device memory and tells the device to run the kernel programs and compute the data.
+big raw chunk of bazillion primitive floating point numbers, it sends it to the
+device memory and instructs the device to run the kernel programs and compute the data.
 When the main program wants to see the results, it has to transfer them from the
 device memory to the main host memory.
 
@@ -60,9 +61,10 @@ So, the moral of this story is: avoid copying data to and from the device unless
 it is absolutely necessary. Even avoid the communication with the device unless
 it is absolutely necessary.
 
-The typical workflow woud be: prepare the input data in your Clojure program and
-send it to the device. Then, call many Neanderthal and ClojureCL functions that
-work with that data without transferring it back. Only transfer the final result.
+The typical workflow would look like the following: prepare the input data in
+your Clojure program and send it to the device. Then, call many Neanderthal and
+ClojureCL functions that work with that data without transferring it back. Only
+transfer the final result.
 
 You'll still write your algorithms in Clojure as any normal Clojure code,
 you just have to be aware that the data is actually on the device, and that the
