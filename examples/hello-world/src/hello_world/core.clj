@@ -1,6 +1,6 @@
 (ns hello-world.core
   (:require [uncomplicate.neanderthal.core :refer :all]
-            [uncomplicate.neanderthal.real :refer :all]))
+            [uncomplicate.neanderthal.native :refer :all]))
 
 ;; We create two matrices...
 (def a (dge 2 3 [1 2 3 4 5 6]))
@@ -9,5 +9,5 @@
 (mm a b)
 
 ;; If you see something like this:
-;; #<DoubleGeneralMatrix| COL, mxn: 2x2, ld:2, ((35.0 44.0) (89.0 116.0))>
+;; #<RealGeneralMatrix| (double) COL, mxn: 2x2, ld:2, ((35.0 44.0) (89.0 116.0))>
 ;; It means that everything is set up and you can enjoy programming with Neanderthal :)

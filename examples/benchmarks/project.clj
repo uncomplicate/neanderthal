@@ -12,7 +12,7 @@
                    [net.mikera/core.matrix "0.36.1"]
                    [net.mikera/vectorz-clj "0.31.0"]
                    [org.jblas/jblas "1.2.3"]
-                   [uncomplicate/neanderthal "0.3.0-SNAPSHOT"]
+                   [uncomplicate/neanderthal "0.3.0"]
                    [uncomplicate/neanderthal-atlas "0.1.0" :classifier ~nar-classifier]]
 
     :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"

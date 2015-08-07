@@ -1,10 +1,10 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.amd-gcn
   (:refer-clojure :exclude [accessor])
-  (:require [uncomplicate.clojurecl.core :refer :all];; TODO need this?
+  (:require [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.math :refer [sqrt]]
-            [uncomplicate.neanderthal.opencl.clblock :refer :all]);;TODO need this?
+            [uncomplicate.neanderthal.opencl.clblock :refer :all])
   (:import [uncomplicate.clojurecl.core WorkSize]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Block Matrix DataAccessor]))

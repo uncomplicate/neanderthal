@@ -32,10 +32,10 @@
   (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
             BLAS BLASPlus Changeable]))
 
-(def ^:const MAT_BOUNDS_MSG
+(def ^{:no-doc true :const true} MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")
 
-(def ^:const INCOMPATIBLE_BLOCKS_MSG
+(def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG
   "Operation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
   1: %s

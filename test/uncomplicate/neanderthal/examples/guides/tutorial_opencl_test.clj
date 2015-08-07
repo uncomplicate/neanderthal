@@ -1,13 +1,19 @@
-"$text
+"
+---
+title: 'Tutorial - Matrix Computations on GPU in Clojure (in TFLOPS!)'
+Author: Dragan Djuric
+layout: article
+---
 
-# Tutorial - Matrix Computations on GPU in Clojure at the Speed of a Couple of TFLOPS
+# Matrix Computations on GPU in Clojure at the Speed of a Couple of TFLOPS
 
-So, you've installed Neanderthal and learned how to work with vectors and
-matrices on the CPU at roughly 10x speed of pure Java libs. It is fast, running
-at tens of GFLOPS, but you've read that nowadays the computations on GPUs are
-what all the hipster geeks do, so you wonder whether there is something to it.
-If only you could connect to CUBLAS, your algorithms would speed up thousandfold
-with almost no sweat, as in commercials...
+So, you've [installed Neanderthal](getting_started.html) and [learned
+how to work](tutorial_native.html) with vectors and matrices on the CPU at
+roughly 10x speed of pure Java libs. It is fast, running at tens of GFLOPS,
+but you've read that nowadays the computations on GPUs are what all the hipster
+geeks do, so you wonder whether there is something to it. If only you could
+connect to [CUBLAS](https://developer.nvidia.com/cuBLAS), your algorithms would
+speed up thousandfold with almost no sweat, as in commercials...
 
 I have some news for you:
 
@@ -15,13 +21,13 @@ I have some news for you:
 parallel architectures, and you'd need to learn quite a few new tricks to collect
 the benefits you see on NVIDIA and AMD websites.
 
-* The good: Neanderthal implements BLAS algorithms and abstract most of that
+* The good: Neanderthal implements BLAS algorithms and abstracts most of that
 complexity for vector and matrix computations away, behind a frendly Clojure API.
 
-** TL/DR Multiplication of large matrices is more than 500x faster with Neanderthal
+**TL/DR: Multiplication of large matrices is more than 500x faster with Neanderthal
 than with optimized pure Java libraries, 25x faster than Neanderthal native engine
-and more thousands times faster than the nested looping code with primitives
-that you'd write yourself. **
+and some thousands times faster than the nested looping code with primitives
+that you'd write yourself.**
 
 ## What You Need to Know About GPU Programming Before We Begin
 
@@ -30,7 +36,7 @@ is to be aware that a large part of your code will run on a physically separate
 device, which also has its own working memory. It can not access data from the
 main memory, such as your objects, arrays, primitives and such. It also can not
 run your arbitrary program code (Java, C, R). Even if/when it could (Aparapi)
-it sucks at it big time, because it is made of thousans of very dumb cores that
+it sucks at it big time, because it is made of thousans of very dumb processorss that
 are excellent at one thing only - raw computations - and suck at everything else,
 including logic.
 
@@ -52,8 +58,8 @@ a nanosecond; in the same way as you should not call a REST service each time
 you need to add two numbers.
 
 So, the moral of this story is: avoid copying data to and from the device unless
-it is absolutely necessarry. Even avoid communicating with the device unless
-it is absolutely necessarry.
+it is absolutely necessary. Even avoid the communication with the device unless
+it is absolutely necessary.
 
 The typical workflow woud be: prepare the input data in your Clojure program and
 send it to the device. Then, call many Neanderthal and ClojureCL functions that
@@ -64,7 +70,7 @@ you just have to be aware that the data is actually on the device, and that the
 Neanderthal functions you call run the kernels (supplied by Neanderthal) that
 are on the device.
 
-## Requing the Right Namespaces and Setting up the Context
+## Require the Right Namespaces and Set up the Context
 
 Functions for creating the appropriate OpenCL (that means GPU but also other
 accellerators) vectors or matrices are in the `uncomplicate.neanderthal.opencl`
@@ -79,7 +85,7 @@ And, to be sure that this code is always in the proper working condition,
 I'll write it as a bunch of midje test facts and include it in the test suite,
 therefore do not mind these `facts` and `=>`s, they're not part of Neanderthal.
 
-$code"
+$code
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
@@ -90,10 +96,10 @@ $code"
              [native :refer [sv sge]]
              [opencl :refer [with-default-engine sclv sclge write!]]]))
 
-"$text
+\"$text
 
 To be able to communicate with the GPU, we need to connect to the device drivers
-via the ClojureCL library and create appropriate contexts and queues through we
+via the ClojureCL library and create appropriate contexts and queues through which we
 can fine tune the computation executions. Neanderthal can also work with the
 default setting, which we'll do here because we do not need all the ClojureCL
 knobs for the beginning.
@@ -104,7 +110,7 @@ OpenCL platform. On my machine, that would activate the fastest GPU (the first
 of the three Radeons I have) using the AMD's OpenCL drivers. Your setup would probably
 be more or less different.
 
-$code"
+$code\""
 
 (with-default
   (with-default-engine
@@ -155,7 +161,7 @@ FirePro and Tesla. Neanderthal supports doubles just the same.
 needs to travel from Java to raw memory and from raw memory, over PCIe bus,
 to the GPU memory. That is a lot of steps, and Neanderthal does all these with
 only one physical copying, but anyway, that data needs to travel and it takes
-some precious time, so you should do this as little as possible.
+some precious time, so should you do this as little as possible.
 
 3. Very important: hold the reference to that GPU vector and release it once
 you do not need it. Neanderthal can do that bookkeeping for you if you use
@@ -164,13 +170,13 @@ but keeps in mind to release the memory on the device when the code reaches
 the end or if any exception happens to be thrown. Neanderthal would work without
 this, but your GPU memory will fill up after some time, and refuse to work further.
 
-4. The happy stuff: ** call Neanderthal core functions in the same way you'd do
-for the plain CPU Neanderthal vectors and matrices. ** Yes, it is that easy.
+4. The happy stuff: **call Neanderthal core functions in the same way you'd do
+for the plain CPU Neanderthal vectors and matrices.** _Yes, it is that easy_.
 
 ## Measure the Performance
 
 So, what speedups you should expect over native optimized CBLAS that is Neanderthal's
-default? Let's measure it. I'm running this on Intel i7 4990k CPU and AMD
+default? Let's measure it. I'm running this on Intel i7 4790k CPU and AMD
 Radeon R9 290x GPU. Your hardware will give different numbers.
 
 $code"
@@ -180,22 +186,22 @@ $code"
     (with-default-engine
       (facts
        "Compare the speed of computing small vectors on CPU and GPU"
-       (let [host-x (sv 1 -2 3)]
-         (with-release [gpu-x (write! (sclv 3) host-x)]
+       (with-release [host-x (sv 1 -2 3)
+                      gpu-x (write! (sclv 3) host-x)]
 
-           (println "CPU:")
-           (time (asum host-x)) => 6.0
-           (println "GPU:")
-           (time (asum gpu-x)) => 6.0))))))
+         (println "CPU:")
+         (time (asum host-x)) => 6.0
+         (println "GPU:")
+         (time (asum gpu-x)) => 6.0)))))
 
 "$text
 
 When measuring very fast code, the `time` function gives wildly imprecise results
 - replace the calls to `time` with calls for criterium `quick-bench` and it will
-show much faster and precise measurements. Anyway we can see that CPU is much faster:
+show much faster and precise measurements. Anyway, we can see that CPU is much faster:
 28 nanoseconds vs 58 microseconds. This is because calling GPU takes some time
 (on the order of magnitude of 20-30 microseconds per kernel enqueue, depending
-on the device), and when the device starts computing most of its many
+on the device), and when the device starts computing, most of its many
 computing units are idling because we have loaded it with only 3 numbers
 to compute, which it does instantly.
 
@@ -208,9 +214,9 @@ $code"
     (with-default-engine
       (facts
        "Let's try with 2^20. That's more than a million."
-       (let [cnt (long (Math/pow 2 20))
-             host-x (sv (range cnt))]
-         (with-release [gpu-x (write! (sclv cnt) host-x)]
+       (let [cnt (long (Math/pow 2 20))]
+         (with-release [host-x (sv (range cnt))
+                        gpu-x (write! (sclv cnt) host-x)]
 
            (println "CPU:")
            (time (asum host-x)) => (float 5.49754798E11)
@@ -233,16 +239,20 @@ $code"
       (facts
        "Let's try with 2^29. That's 2GB, the maximum that Java buffers can
 currently handle. Java 9 would hopefully increase that."
-       (let [cnt (long (dec (Math/pow 2 29)))
-             host-x (sv (range cnt))]
-         (with-release [gpu-x (write! (sclv cnt) host-x)]
+       (let [cnt (long (dec (Math/pow 2 29)))]
+         (with-release [host-x (sv (range cnt))
+                        gpu-x (write! (sclv cnt) host-x)]
 
            (println "CPU:")
+           ;; note the wrong result in the CPU vector. That's because single precision floats
+           are not enough for so many accumulations. In real life, you must use doubles where needed.
            (time (asum host-x)) => (float 1.08086391E17)
            (println "GPU:")
+           ;; GPU engine uses doubles for this accumulation, so the result is more precise.
            (time (asum gpu-x)) => 1.44115187270549504E17))))))
 
-"
+"$text
+
 CPU: 92 milliseconds
 GPU: 27 milliseconds
 
@@ -262,10 +272,10 @@ $code"
        "Let's try with a more parallel linear operation: adding two vectors.
 I'll set them to 1GB each because my GPU does not have enough memory to
 hold 4GB of data (it has 4GB total memory)."
-       (let [cnt (long (dec (Math/pow 2 28)))
-             host-x (sv (range cnt))
-             host-y (sv (range cnt))]
-         (with-release [gpu-x (write! (sclv cnt) host-x)
+       (let [cnt (long (Math/pow 2 28))]
+         (with-release [host-x (sv (range cnt))
+                        host-y (sv (range cnt))
+                        gpu-x (write! (sclv cnt) host-x)
                         gpu-y (write! (sclv cnt) host-y)]
 
            (println "CPU:")
@@ -278,11 +288,11 @@ hold 4GB of data (it has 4GB total memory)."
 CPU: 159 ms
 GPU: 41 ms
 
-Still a difference of only 3-4x. Linear 1D operations are simply so
-easy on computation that GPU can not show it's power. They are still useful. If
+Still a difference of only 4x. Linear 1D operations are simply so
+easy on computation that GPU can not show it's power. They are still useful, though. If
 your vector data is already on the GPU, where it participates in some complex
 computations that GPU shines at, then it is easier to compute it on the GPU
-than to transfer it back and forth on the CPU.
+than to transfer it back and forth to the CPU.
 
 Let's try with some BLAS 2 operation. Their quadratic complexity should matter.
 We'll do a matrix - vector multiplication.
@@ -295,11 +305,11 @@ $code"
       (facts
        "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
-       (let [cnt 8192
-             host-a (sge cnt cnt (range (* cnt cnt)))
-             host-x (sv (range cnt))
-             host-y (sv (range cnt))]
-         (with-release [gpu-a (write! (sclge cnt cnt) host-a)
+       (let [cnt 8192]
+         (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
+                        host-x (sv (range cnt))
+                        host-y (sv (range cnt))
+                        gpu-a (write! (sclge cnt cnt) host-a)
                         gpu-x (write! (sclv cnt) host-x)
                         gpu-y (write! (sclv cnt) host-y)]
 
@@ -311,9 +321,10 @@ demanding enough."
 "$text
 
 CPU: 15.4 ms
-GPU: 2.77
+GPU: 2.77 ms
 
-That's a 5.5x win for the GPU. Let's try matrix multiplication and see how that goes.
+That's a 5.5x win for the GPU. Nothing too much, but still ok. Let's try matrix
+multiplication and see how that goes.
 
 $code"
 
@@ -323,11 +334,11 @@ $code"
       (facts
        "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
-       (let [cnt 8192
-             host-a (sge cnt cnt (range (* cnt cnt)))
-             host-b (sge cnt cnt (range (* cnt cnt)))
-             host-c (sge cnt cnt (range (* cnt cnt)))]
-         (with-release [gpu-a (write! (sclge cnt cnt) host-a)
+       (let [cnt 8192]
+         (with-release [ host-a (sge cnt cnt (range (* cnt cnt)))
+                        host-b (sge cnt cnt (range (* cnt cnt)))
+                        host-c (sge cnt cnt (range (* cnt cnt)))
+                        gpu-a (write! (sclge cnt cnt) host-a)
                         gpu-b (write! (sclge cnt cnt) host-a)
                         gpu-c (write! (sclge cnt cnt) host-a)]
 
@@ -351,29 +362,30 @@ hugely, but it still has unused computation power.
 
 ## Thinking About the Results
 
-** Where do 1000x numbers come from then? That depends on what you compare to.
+**Where do those 1000x numbers come from then? That depends on what you compare to.**
 
-This is a very important point. Remember, here we've compared Neanderthal's GPU
+**This is a very important issue. Remember, here we've compared Neanderthal's GPU
 speed to Neanderthal's highly optimized native ATLAS BLAS engine, which is
-a speed demon in its own right! And we got a 25x speedup.
+a speed demon in its own right! And we got a 25x speedup.**
 
-How it stands to pure Java? Check the [Neanderthal Benchmarks page](../benchmarks.html).
-For a 8192x8192 matrices, an optimized and decently fast pure Java library Vectorz,
-which is the core.matrix flagship implementation, needs 6.14 minutes to compute.
+**How it stands to pure Java? Check out the [Neanderthal Benchmarks page](benchmarks.html).
+For 8192x8192 matrices, an optimized and decently fast pure Java library Vectorz
+(which is the core.matrix flagship implementation)
+working with primitives and optimizing cache use, needs 6.14 minutes to compute.
 That's 368400 milliseconds. Neanderthal GPU is 510x faster than that! And, there
-are several GPUs on the market that are considerably faster than my Radeon 290X.
+are several GPUs on the market that are considerably faster than my Radeon 290X.**
 
-Of course, if you try to write your own nested loops to compute these matrices,
+**Of course, if you try to write your own nested loops to compute these matrices,
 even pure Java libraries will run circles around your operations, and Neanderthal
 will be a thousand or even several thousands times faster, even when you write
-tight Java loops with primitives.
+tight Java loops with primitives.**
 
-Matrix algebra is only a start. The real benefit is when you use Neanderthal as
+**Matrix algebra is only a start. The real benefit is when you use Neanderthal as
 a gate and a foundation to write your own ClojureCL numerical computation kernels
 for your own number crunching algorithms. If they are computationally intensive
-enough and parallel, THEN you can hope for real thousandfold improvements. **
+enough and parallel, THEN you can hope for real thousandfold improvements.**
 
-## Can You Run It On Your Own Machine?
+## Can You Run This On Your Own Machine?
 
 At the time of writing of this text, Neanderthal builds its accelerator support
 on ClojureCL, which is a Clojure library for programming with OpenCL, which is in
