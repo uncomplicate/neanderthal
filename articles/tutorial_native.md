@@ -14,7 +14,7 @@ computations on.
 
 Neanderthal supports any pluggable infrastructure ([GPU computation is already
 available!](tutorial_opencl.html)), and the default is to use vectors
-and matrices backed by direct byte buffers, that can be sent to native libraries
+and matrices backed by direct byte buffers that can be sent to native libraries
 via JNI without copying overhead.
 
 ### Creating Vectors and Matrices
@@ -85,23 +85,23 @@ sequences) is suitable only as a convenience for smallish data and test code.
 Be careful about the performance when working with large data, though
 - sequences are slow and contain boxed numbers!
 
-It is awkward and cumbersome to work with buffers directly. You should take care
-of endianess: java uses BIG_ENDIAN, while Intel processors and most native
-platform natively support LITTLE_ENDIAN. If you pre-load your data in buffers,
+It is awkward and cumbersome to work with buffers directly. You should watch out
+for endianess: Java uses BIG_ENDIAN, while Intel processors and most native
+platforms natively support LITTLE_ENDIAN. If you pre-load your data in buffers,
 you, or the library you use, have to take care of using the proper native
 endianess. Also take care to revert the buffer position to 0. Vertigo library
 might help with this, and Neanderthal does not care how you prepare the buffers
 as long data is prepared well. You can use some of the existing libraries that
-work with native buffers (Vertigo, etc.), check out Neanderthal API to see what
+work with native buffers (Vertigo, etc.); check out the Neanderthal API to see what
 utilities are currently available, or roll your own.
 
-Matrix data is also kept in one-dimensional byte buffer, and NOT in a object
+Matrix data is also kept in one-dimensional byte buffer, NOT in a object
 buffer or array that holds raw buffers, for performance reasons. By default,
 when used in 2D matrices, Neanderthal treats a 1D buffer as a sequence of columns.
 Column-oriented order is commonly used in numerical software, contrary to
 row-oriented order used by the C language. Java uses neither; 2D arrays are
 arrays of array references, and this difference has a huge performance impact.
-Neanderthal abstract all these performance optimizations away, and you do not
+Neanderthal abstracts all these performance optimizations away, and you do not
 need to care about this, unless you write a pluggable Neanderthal implementation.
 
 The same ByteBuffer can hold data for vectors as well as matrices.
@@ -158,14 +158,14 @@ BLAS standard."
  (sum (dv 1 2 -5)) => -2.0)
 
 (facts
- "BLAS 1 dot: Dot product is a sum of the scalar productsof respective entries
+ "BLAS 1 dot: Dot product is a sum of the scalar products of respective entries
 of two vectors."
  (dot (dv 1 2 3) (dv 1 3 5)) => 22.0)
 
 (facts
  "BLAS 1 copy: Here is how we copy the data from one vector to another. We may
 provide the destionation and change it, or copy the data into a new vector.
-And, it works with matrices, too."
+And it works with matrices, too."
  (let [x (dv 1 2 3)
        y (dv 3)
        a (dge 2 3 (range 6))
@@ -201,7 +201,7 @@ by a scalar value). Also works on matrices."
  "BLAS 1 axpy: SAXPY stands for Scalar a times x plus y. It scales a vector and
 adds it to another vector. It can help in acomplishing both the scaling of
 vectors, additions, or both. It also works on matrices.
-It have destructive and non-destructive variants, and accepts varargs:
+It has destructive and non-destructive variants and accepts varargs:
 ax - scaling
 xpy - vector addition
 axpy - scaling and addition
@@ -301,7 +301,7 @@ simpler and less useful operation."
 
 While BLAS functions are the meat of linear algebra computations, there is a bunch
 of other stuff that we would like to do with vectors and matrices. For example,
-we would like to see their structure, dimensions, to see specific entries, to get
+we would like to see their structure, dimensions, specific entries, to get
 subvectors or submatrices, to transpose matrices, etc. Neanderthal offers time
 and space efficient implementations of such operations.
 
@@ -343,15 +343,15 @@ and space efficient implementations of such operations.
 
 ```
 
-Neanderthal does all these things, and does them very fast, and usually without
+Neanderthal does all these things, and does them very fast, usually without
 memory copying. You have to be careful, though. Most of the time, when you
 extract a part of a matrix or a vector, you get a live connection to the
-original data. All changes that occur to the part, will also change the original.
+original data. All changes that occur to the part will also change the original.
 It is often useful for performance reasons, but sometimes you want to avoid it.
 In that case, avoid the destructive BANG functions, or copy the data to a fresh
 instance before using the BANG functions. The important thing is that you always
 have control and can explicitly choose what you need in particular case:
-purity or performance, or, sometimes, both.
+purity or performance, or sometimes both.
 
 ```Clojure
 

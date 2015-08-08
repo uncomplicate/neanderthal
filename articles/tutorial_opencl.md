@@ -4,7 +4,7 @@ Author: Dragan Djuric
 layout: article
 ---
 
-**First some explanations, the code is down there.** ([working midje tests on github](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_opencl_test.clj))
+**First some explanations; code comes later..** ([working midje tests on github](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_opencl_test.clj))
 
 So, you've [installed Neanderthal](getting_started.html) and [learned
 how to work](tutorial_native.html) with vectors and matrices on the CPU at
@@ -12,18 +12,18 @@ roughly [10x speed of pure Java libs](benchmarks.html). It is fast, running at t
 but you've read that nowadays the computations on GPUs are what all the hipster
 geeks do, so you wonder whether there is something to it. If only you could
 connect to [CUBLAS](https://developer.nvidia.com/cuBLAS), your algorithms would
-speed up thousandfold with almost no sweat, as in commercials...
+speed up thousandfold with almost no sweat, like in the commercials...
 
 I have news for you:
 
-* The bad: it is not that simple. Your algorithms probably suck on massively
+* The bad: it is not that simple. Your algorithms probably aren't performant on massively
 parallel architectures, and you'd need to learn quite a few new tricks to collect
 the benefits you see on NVIDIA and AMD websites.
 
 * The good: Neanderthal implements BLAS algorithms and abstracts most of that
-complexity for vector and matrix computations away, behind a frendly Clojure API.
+complexity for vector and matrix computations away behind a frendly Clojure API.
 
-**TL/DR: Multiplication of large matrices is more than 500x faster with Neanderthal
+**tl;dr: Multiplication of large matrices is more than 500x faster with Neanderthal
 than with optimized pure Java libraries, 25x faster than Neanderthal native engine
 and some thousands times faster than the nested looping code with primitives
 that you'd write yourself.**
@@ -32,19 +32,19 @@ that you'd write yourself.**
 
 The most important thing when working with parallel accellerators (GPUs and others)
 is to be aware that a large part of your code will run on a physically separate
-device, which also has its own working memory. It can not access data from the
-main memory, such as your objects, arrays, primitives and such. It also can not
+device, which also has its own working memory. It cannot access data from the
+main memory, such as your objects, arrays, primitives and such. It also cannot
 run your arbitrary program code (Java, C, R). Even if/when it could (Aparapi)
 it sucks at it big time, because it is made of thousans of very dumb processors that
 are excellent at one thing only - raw computations - and suck at everything else,
 including logic.
 
-So, a typical approach is that your program consists of two parts: host and device.
-Host is a typical Clojure (Java) program that do the usual things Clojure programs
-do: talks to the web, formats and extracts data, does the database dance,
+A typical approach is to have your program consist of two parts: host and device.
+The host is a typical Clojure (Java) program that do the usual things Clojure programs
+do: talk to the web, format and extract data, interface with the database,
 recursively compute factorials, and perform other logic-heavy tasks.
-Then, when it has collected the data and stuffed it in a
-big raw chunk of bazillion primitive floating point numbers it sends it to the
+Then once it has collected the data and stuffed it in a
+big raw chunk of bazillion primitive floating point numbers, it sends it to the
 device memory and tells the device to run the kernel programs and compute the data.
 When the main program wants to see the results, it has to transfer them from the
 device memory to the main host memory.
@@ -57,11 +57,11 @@ a nanosecond; in the same way as you should not call a REST service each time
 you need to add two numbers.
 
 So, the moral of this story is: avoid copying data to and from the device unless
-it is absolutely necessary. Even avoid the communication with the device unless
+it is absolutely necessary. Even avoid any communication with the device unless
 it is absolutely necessary.
 
 The typical workflow woud be: prepare the input data in your Clojure program and
-send it to the device. Then, call many Neanderthal and ClojureCL functions that
+send it to the device, then call many Neanderthal and ClojureCL functions that
 work with that data without transferring it back. Only transfer the final result.
 
 You'll still write your algorithms in Clojure as any normal Clojure code,
@@ -80,9 +80,9 @@ Import the appropriate namespaces: `core` for computation functions,
 We also need to discover and set up the device, so we need
 `uncomplicate.clojurecl.core`.
 
-And, to be sure that this code is always in the proper working condition,
+To be sure that this code is always in the proper working condition,
 I'll write it as a bunch of midje test facts and include it in the test suite,
-therefore do not mind these `facts` and `=>`s, they're not part of Neanderthal.
+therefore you can ignore these `facts` and `=>`s, they're not part of Neanderthal.
 
 ```Clojure
 
@@ -103,7 +103,7 @@ can fine tune the computation executions. Neanderthal can also work with the
 default setting, which we'll do here because we do not need all the ClojureCL
 knobs for the beginning.
 
-So, we will wrap all code we work with into `with-default` and `with-default-engine`.
+First, we will wrap all code we work with into `with-default` and `with-default-engine`.
 Our code will then be executed on the first available device on the first available
 OpenCL platform. On my machine, that would activate the fastest GPU (the first
 of the three Radeons I have) using the AMD's OpenCL drivers. Your setup would probably
@@ -140,7 +140,7 @@ and compute the sum of absolute values."
 
 And that is all you need to begin. That sum has just been computed on your GPU!
 
-I'll make a cup of coffee and spice it with some chocolate milk
+I'll make a cup of coffee and spice it up with some chocolate milk
 so I can drink it while I am explaining what we have just done here. In the
 meantime, you can study that code, and probably figure it out yourself.
 
@@ -167,14 +167,14 @@ you do not need it. Neanderthal can do that bookkeeping for you if you use
 ClojureCL's `with-release` macro which works just like Clojure's let form,
 but keeps in mind to release the memory on the device when the code reaches
 the end or if any exception happens to be thrown. Neanderthal would work without
-this, but your GPU memory will fill up after some time, and refuse to work further.
+this, but your GPU memory will fill up after some time and refuse to work further.
 
 4. The happy stuff: **call Neanderthal core functions in the same way you'd do
 for the plain CPU Neanderthal vectors and matrices.** _Yes, it is that easy_.
 
 ## Measure the Performance
 
-So, what speedups should you expect over native optimized CBLAS that is Neanderthal's
+So, what speedups should you expect over native-optimized CBLAS that is Neanderthal's
 default? Let's measure it. I'm running this on Intel i7 4790k CPU and AMD
 Radeon R9 290x GPU. Your hardware will give different numbers.
 
@@ -254,9 +254,9 @@ GPU: 27 milliseconds
 
 Underwhelming. Is that it? This GPU has 5632 GFLOPS, while the CPU has only 32 or so.
 That's 176x more muscle! Should the difference be much bigger? The point is: we
-should keep that muscle busy, and we can not, because the computing units
+should keep that muscle busy, and we cannot because the computing units
 are still idling most of the time waiting data to be transferred from the
-device memory to the device registers. Sum is a so simple operation
+device memory to the device registers. Sum is a so simple an operation
 that the main constraint is memory throughput, not computing power.
 
 ```Clojure
@@ -285,7 +285,7 @@ CPU: 159 ms
 GPU: 41 ms
 
 Still a difference of only 4x. Linear 1D operations are simply so
-easy on computation that GPU can not show it's power. They are still useful, though. If
+easy on computation that GPU cannot show its power. They are still useful, though. If
 your vector data is already on the GPU, where it participates in some complex
 computations that GPU shines at, then it is easier to compute it on the GPU
 than to transfer it back and forth to the CPU.

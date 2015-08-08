@@ -6,11 +6,11 @@ layout: article
 
 # Neanderthal Tutorials
 
-First, set up your environment, as described in the [Getting Started](getting_started.html) guide. [Hello world](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world) project can also help you with leiningen details.
+First, set up your environment, as described in the [Getting Started](getting_started.html) guide. The [Hello World](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world) project can also help you with Leiningen details.
 
 ## General and native engine tutorials
 
-Then, proceed to the native engine tutorial: [Fast, Native Speed, Vector Computations in Clojure](/articles/tutorial_native.html)
+Then proceed to the native engine tutorial: [Fast, Native Speed, Vector Computations in Clojure](/articles/tutorial_native.html)
 ([working code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_native_test.clj)).
 
 Of course, be sure to check out the [Neanderthal API](/codox).
@@ -29,15 +29,15 @@ book can be found at [Coding the Matrix in Neanderthal](https://github.com/uncom
 
 ## Internal details and edge cases
 
-A bit more details, but without explanations in prose, can be found in
+A few more details, but without written explanations, can be found in
 [Neanderthal Tests](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal).
 It might help when you are struggling with an edge case.
 
 # Making sense of legacy BLAS & LAPACK
 
 BLAS (Basic Linear Algebra Subroutines) and LAPACK are mature and de facto standards
-for numerical linear algebra. They might seem arcane at first glance,but with a
-little exprolation, it all have sense and reason.
+for numerical linear algebra. They might seem arcane at first glance, but with a
+little exploration, it will all make sense.
 
 ## Where to find legacy BLAS & LAPACK documentation
 
@@ -56,7 +56,7 @@ such details behind Neanderthal.
 
 ## Naming conventions (briefly)
 
-You see a procedure named `DGEMM` in the aforementioned docs and you are completely baffled. Here is how to decipher it:
+Maybe you saw a procedure named `DGEMM` in the aforementioned docs and you were completely baffled. Here is how to decipher it:
 
 * D is for Double precision, meaning the function works with doubles
 * GE is for GEneral dense matrix, meaning we store all these doubles and not using any clever tricks for special matrix structures like symmetric, triangular etc.

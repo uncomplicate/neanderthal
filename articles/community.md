@@ -17,9 +17,9 @@ To subscribe for announcements of releases, important changes, and so on, please
 
 A collection of Clojure libraries, currently containing:
 
-* [ClojureCL](http://clojurecl.uncomplicate.org) - a Clojure library for parallell computations with OpenCL
-* [Neanderthal](http://neanderthal.uncomplicate.org) - you are reading about it.
-* [Fluokitten](http://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure.
+* [ClojureCL](http://clojurecl.uncomplicate.org) - a Clojure library for parallel computations with OpenCL
+* [Neanderthal](http://neanderthal.uncomplicate.org) - what you're reading about right now!
+* [Fluokitten](http://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure
 
 ## Get Involved
 
@@ -28,11 +28,11 @@ Here are some ways in which you can help:
 
 ## Help with the Technical Writing
 
-* If you are a native English speaker, I would really appreciate if you can help with correcting the English on the Neanderthal site and in the documentation.
-* Contribute your example code to be added to Neanderthal tests.
+* If you are a native English speaker, I would really appreciate if you could help with correcting the English on the Neanderthal site and in the documentation.
+* Contribute example code to be added to Neanderthal tests.
 * Contribute articles and tutorials.
 
-The source code of the site is [here](https://github.com/uncomplicate/neanderthal/tree/gh-pages). Please fork it on GitHub, make your changes, and issue a pull request, or simply contact us through the mailing list to see what is your preferred means of sending the changes.
+The source code of the site is [here](https://github.com/uncomplicate/neanderthal/tree/gh-pages). Please fork it on GitHub, make your changes, and issue a pull request, or simply contact us through the mailing list.
 
 ## Report Issues
 
