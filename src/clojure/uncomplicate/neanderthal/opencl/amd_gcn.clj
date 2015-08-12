@@ -1,48 +1,17 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.amd-gcn
   (:refer-clojure :exclude [accessor])
-  (:require [uncomplicate.clojurecl.core :refer :all]
+  (:require [clojure.java.io :as io]
+            [uncomplicate.clojurecl.core :refer :all]
+            [uncomplicate.clojurecl.toolbox
+             :refer [count-work-groups enq-reduce enq-reduce-horizontal
+                     enq-read-int enq-read-double]]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.math :refer [sqrt]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
   (:import [uncomplicate.clojurecl.core WorkSize]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Block Matrix DataAccessor]))
-
-(defn ^:private count-work-groups ^long [^long max-local-size ^long n]
-  (if (< max-local-size n)
-    (quot (+ n (dec max-local-size)) max-local-size)
-    1))
-
-(defn ^:private enq-reduce
-  [queue main-kernel reduce-kernel max-local-size n]
-  (loop [queue (enq-nd! queue main-kernel (work-size [n]))
-         global-size (count-work-groups max-local-size n)]
-    (if (= 1 global-size)
-      queue
-      (recur
-       (enq-nd! queue reduce-kernel (work-size [global-size]))
-       (count-work-groups max-local-size global-size)))))
-
-(defn ^:private enq-reduce-horizontal
-  [queue main-kernel reduce-kernel max-local-size m n]
-  (loop [queue (enq-nd! queue main-kernel (work-size [m n]))
-         folded-n (count-work-groups max-local-size n)]
-    (if (= 1 folded-n)
-      queue
-      (recur
-       (enq-nd! queue reduce-kernel (work-size [m folded-n]))
-       (count-work-groups max-local-size folded-n)))))
-
-(defn ^:private enq-read-int ^long [queue cl-buf]
-  (let [res (int-array 1)]
-    (enq-read! queue cl-buf res)
-    (aget res 0)))
-
-(defn ^:private enq-read-double ^double [queue cl-buf]
-  (let [res (double-array 1)]
-    (enq-read! queue cl-buf res)
-    (aget res 0)))
 
 (deftype GCNVectorEngine [^long WGS
                           claccessor
@@ -242,9 +211,10 @@
       accessor ctx queue
       (build-program!
        (program-with-source
-        ctx [(slurp (clojure.java.io/resource
-                     "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))])
-       (format "-cl-std=CL2.0 -DREAL=%s -DWGS=%d -DWGSn=%d -DTS=%d -DWPT=%d"
+        ctx [(slurp (io/resource "uncomplicate/clojurecl/kernels/reduction.cl"))
+             (slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))])
+       (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSn=%d -DTS=%d -DWPT=%d"
+               (.entryType ^DataAccessor accessor) Double/TYPE
                (.entryType ^DataAccessor accessor) wgs wgsn ts wpt)
        nil)
       wgs wgsn ts wpt)))

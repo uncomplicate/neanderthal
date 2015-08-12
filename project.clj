@@ -2,7 +2,7 @@
                           (System/getProperty "os.name") "-gpp-jni")
 
       atlas-version "0.1.0"]
-  (defproject uncomplicate/neanderthal "0.3.0"
+  (defproject uncomplicate/neanderthal "0.4.0-SNAPSHOT"
     :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
     :url "https://github.com/uncomplicate/neanderthal"
     :scm {:name "git"
@@ -10,7 +10,7 @@
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
     :dependencies [[org.clojure/clojure "1.8.0-alpha4"]
-                   [uncomplicate/clojurecl "0.2.0"]
+                   [uncomplicate/clojurecl "0.3.0-SNAPSHOT"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.3"]
                    [vertigo "0.1.3"]
@@ -37,7 +37,6 @@
           uncomplicate.neanderthal.opencl.amd-gcn]
 
     :profiles {:dev {:plugins [[lein-midje "3.1.3"]
-                               [bilus/lein-marginalia "0.8.8"]
                                [codox "0.8.13"]]
                      :global-vars {*warn-on-reflection* true
                                    *assert* false

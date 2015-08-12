@@ -55,38 +55,6 @@ __kernel void axpby (const REAL alpha, __global const REAL* x,
     y[gid] = alpha * x[gid] + beta * y[gid];
 }
 
-// ================= Sum reduction =============================================
-
-inline void work_group_reduction_sum (__global double* acc, const double value) {
-
-    uint local_size = get_local_size(0);
-    uint local_id = get_local_id(0);
-
-    __local double lacc[WGS];
-    lacc[local_id] = value;
-
-    work_group_barrier(CLK_LOCAL_MEM_FENCE);
-
-    double pacc = value;
-    uint i = local_size;
-    while (i > 0) {
-        bool include_odd = (i > ((i >> 1) << 1)) && (local_id == ((i >> 1) - 1));
-        i >>= 1;
-        if (include_odd) {
-            pacc += lacc[local_id + i + 1];
-        }
-        if (local_id < i) {
-            pacc += lacc[local_id + i];
-            lacc[local_id] = pacc;
-        }
-        work_group_barrier(CLK_LOCAL_MEM_FENCE);
-    }
-
-    if(local_id == 0) {
-        acc[get_group_id(0)] = pacc;
-    }
-}
-
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void sum_reduction (__global double* acc) {
     work_group_reduction_sum(acc, acc[get_global_id(0)]);
