@@ -58,8 +58,8 @@
   `(with-engine gcn-engine-factory [*context* *command-queue*] ~@body))
 
 (defn read!
-  "Reads the data from the cl container in the device memory to the to the
-  appropriate container in the host memory.
+  "Reads the data from the cl container in the device memory to the appropriate
+  container in the host memory.
   See ClojureCL's documentation for enq-read!
   "
   [cl host]

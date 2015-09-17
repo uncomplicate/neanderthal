@@ -359,6 +359,8 @@
   BlockCreator
   (create-block [_ m n]
     (create-ge-matrix engine-factory m n))
+  (create-block [_ n]
+    (create-vector engine-factory n))
   Block
   (entryType [_]
     entry-type)
@@ -451,6 +453,8 @@
   BlockCreator
   (create-block [_ m1 n1]
     (create-ge-matrix engine-factory m1 n1))
+  (create-block [_ n1]
+    (create-vector engine-factory n1))
   Block
   (entryType [_]
     entry-type)

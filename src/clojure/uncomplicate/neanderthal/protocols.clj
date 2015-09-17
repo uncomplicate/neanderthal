@@ -12,7 +12,7 @@
   (engine ^BLAS [this]))
 
 (defprotocol BlockCreator
-  (create-block [this m n]))
+  (create-block [this n][this m n]))
 
 (defprotocol Memory
   (compatible [this other]))
