@@ -7,13 +7,24 @@
              [protocols :as p]
              [core :refer [vect? matrix?]]]
             [uncomplicate.neanderthal.opencl
-             [clblock :refer [create-vector create-ge-matrix create-buffer
-                              double-accessor float-accessor]]
-             [amd-gcn :refer [gcn-engine-factory gcn-single gcn-double]]])
+             [clblock :refer [create-vector create-ge-matrix ->TypedCLAccessor]]
+             [amd-gcn :refer [gcn-engine-factory]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
 
 (def ^:dynamic *double-engine-factory*)
 (def ^:dynamic *single-engine-factory*)
+
+(defn float-accessor [ctx queue]
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array))
+
+(defn double-accessor [ctx queue]
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array))
+
+(defn gcn-single [ctx queue]
+  (gcn-engine-factory float-accessor ctx queue))
+
+(defn gcn-double [ctx queue]
+  (gcn-engine-factory double-accessor ctx queue))
 
 (defmacro with-engine
   "Creates the required engine factories for the supported primitive types
@@ -87,7 +98,7 @@
           (= (.entryType ^DataAccessor (p/data-accessor engine-factory))
              (.entryType ^Block source)))
      (write! (create-vector engine-factory n
-                            (create-buffer (p/data-accessor engine-factory) n))
+                            (p/create-buffer (p/data-accessor engine-factory) n))
              source)
      (cl-buffer? source) (create-vector engine-factory n source)
      :default (throw (IllegalArgumentException.
@@ -129,7 +140,7 @@
              (.entryType ^Block source)))
      (write! (create-ge-matrix
               engine-factory m n
-              (create-buffer (p/data-accessor engine-factory) (* m n)))
+              (p/create-buffer (p/data-accessor engine-factory) (* m n)))
              source)
      (cl-buffer? source) (create-ge-matrix engine-factory m n source)
      :default (throw (IllegalArgumentException.

@@ -220,9 +220,3 @@
       wgs wgsn ts wpt)))
   ([create-accessor ctx queue]
    (gcn-engine-factory create-accessor ctx queue 256 16 32 4)))
-
-(defn gcn-single [ctx queue]
-  (gcn-engine-factory float-accessor ctx queue))
-
-(defn gcn-double [ctx queue]
-  (gcn-engine-factory double-accessor ctx queue))

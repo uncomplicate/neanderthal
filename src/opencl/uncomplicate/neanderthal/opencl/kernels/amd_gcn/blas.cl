@@ -57,7 +57,11 @@ __kernel void axpby (const REAL alpha, __global const REAL* x,
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void sum_reduction (__global double* acc) {
-    work_group_reduction_sum(acc, acc[get_global_id(0)]);
+    double sum = work_group_reduction_sum(acc[get_global_id(0)]);
+    if (get_local_id(0) == 0) {
+        acc[get_group_id(0)] = sum;
+    }
+
 }
 
 // ================== Dot product ==============================================
@@ -65,26 +69,38 @@ __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void dot_reduce (__global double* acc,
                           __global const REAL* x, __global const REAL* y) {
     uint gid = get_global_id(0);
-    work_group_reduction_sum(acc, (double)(x[gid] * y[gid]));
+    double sum = work_group_reduction_sum((double)(x[gid] * y[gid]));
+    if (get_local_id(0) == 0) {
+        acc[get_group_id(0)] = sum;
+    }
 }
 
 // ================== asum =====================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void asum_reduce (__global double* acc, __global const REAL* x) {
-    work_group_reduction_sum(acc, (double)fabs(x[get_global_id(0)]));
+    double sum = work_group_reduction_sum((double)fabs(x[get_global_id(0)]));
+    if (get_local_id(0) == 0) {
+        acc[get_group_id(0)] = sum;
+    }
 }
 
 // ================== sum =====================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void sum_reduce (__global double* acc, __global const REAL* x) {
-    work_group_reduction_sum(acc, (double)x[get_global_id(0)]);
+    double sum = work_group_reduction_sum((double)x[get_global_id(0)]);
+    if (get_local_id(0) == 0) {
+        acc[get_group_id(0)] = sum;
+    }
 }
 
 // ================== nrm2 =====================================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void nrm2_reduce (__global double* acc, __global const REAL* x) {
-    work_group_reduction_sum(acc, (double)pown(x[get_global_id(0)], 2));
+    double sum = work_group_reduction_sum((double)pown(x[get_global_id(0)], 2));
+    if (get_local_id(0) == 0) {
+        acc[get_group_id(0)] = sum;
+    }
 }
 
 // ================ Max reduction ==============================================

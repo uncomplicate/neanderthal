@@ -11,6 +11,13 @@
 (defprotocol EngineProvider
   (engine ^BLAS [this]))
 
+(defprotocol CLAccessor
+  (get-queue [this])
+  (create-buffer [this n])
+  (fill-buffer [this cl-buf val])
+  (array [this s])
+  (slice [this cl-buf k l]))
+
 (defprotocol BlockCreator
   (create-block [this n][this m n]))
 

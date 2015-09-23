@@ -13,14 +13,6 @@
   2: %s")
 
 ;; ================== Accessors ================================================
-
-(defprotocol CLAccessor
-  (get-queue [this])
-  (create-buffer [this n])
-  (fill-buffer [this cl-buf val])
-  (array [this s])
-  (slice [this cl-buf k l]))
-
 (deftype TypedCLAccessor [ctx queue et ^long w array-fn]
   DataAccessor
   (entryType [_]
@@ -40,12 +32,6 @@
     (array-fn s))
   (slice [_ cl-buf k l]
     (cl-sub-buffer cl-buf (* w (long k)) (* w (long l)))))
-
-(defn float-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array))
-
-(defn double-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array))
 
 ;; =============================================================================
 
