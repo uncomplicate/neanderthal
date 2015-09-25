@@ -44,7 +44,7 @@
                                    *print-length* 128}
                      :dependencies [[uncomplicate/neanderthal-atlas ~atlas-version
                                      :classifier ~nar-classifier]
-                                    [midje "1.7.0"]
+                                    [midje "1.8-alpha1"]
                                     [criterium "0.4.3"]]}}
 
     :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]

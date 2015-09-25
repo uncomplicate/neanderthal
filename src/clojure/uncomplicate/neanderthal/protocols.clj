@@ -1,8 +1,5 @@
 (ns uncomplicate.neanderthal.protocols)
 
-(defprotocol Group
-  (zero [this]))
-
 (defprotocol EngineFactory
   (data-accessor [this])
   (vector-engine [this buf n])
@@ -29,6 +26,9 @@
   (write! [this host])
   (map-host [this])
   (unmap [this]))
+
+(defprotocol Group
+  (zero [this]))
 
 (defprotocol Functor
   (fmap! [x f] [x f y] [x f y z]
