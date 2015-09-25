@@ -401,7 +401,7 @@
     (.entry x i))
   (subvector [_ k l]
     (let [b (.slice accessor buf (* k strd) (* l strd))]
-      (RealBlockVector. engine-factory accessor (vector-engine engine-factory b l)
+      (RealBlockVector. engine-factory accessor (vector-engine engine-factory b l strd)
                         entry-type b l strd))))
 
 (extend RealBlockVector
@@ -520,28 +520,28 @@
     (if (column-major? a)
       (let [b (.slice accessor buf i (inc (* (dec n) ld)))]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b n) entry-type b n ld))
+                          (vector-engine engine-factory b n ld) entry-type b n ld))
       (let [b (.slice accessor buf (* ld i) n)]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b n) entry-type b n 1))))
+                          (vector-engine engine-factory b n 1) entry-type b n 1))))
   (col [a j]
     (if (column-major? a)
       (let [b (.slice accessor buf (* ld j) m)]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b m) entry-type b m 1))
+                          (vector-engine engine-factory b m 1) entry-type b m 1))
       (let [b (.slice accessor buf j (inc (* (dec m) ld)))]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b m) entry-type b m ld))))
+                          (vector-engine engine-factory b m 1) entry-type b m ld))))
   (submatrix [a i j k l]
     (let [b (if (column-major? a)
               (.slice accessor buf (+ (* ld j) i) (* ld l))
               (.slice accessor buf (+ (* ld i) j) (* ld k)))]
       (RealGeneralMatrix. engine-factory accessor
-                          (matrix-engine engine-factory b k l) entry-type
+                          (matrix-engine engine-factory b k l ld) entry-type
                           b k l ld ord)))
   (transpose [a]
     (RealGeneralMatrix. engine-factory accessor
-                        (matrix-engine engine-factory buf n m) entry-type
+                        (matrix-engine engine-factory buf n m ld) entry-type
                         buf n m ld
                         (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
 
@@ -567,7 +567,7 @@
     (cond
       (and (instance? ByteBuffer source))
       (->RealBlockVector engine-factory acc
-                         (vector-engine engine-factory source (.count acc source))
+                         (vector-engine engine-factory source (.count acc source) 1)
                          (.entryType acc) source (.count acc source) 1)
       (and (integer? source) (<= 0 (long source)))
       (create-vector engine-factory (.directBuffer acc source))
@@ -579,15 +579,14 @@
 
 (defn create-ge-matrix
   ([engine-factory m n source order]
-   (let [acc ^RealBufferAccessor (data-accessor engine-factory)]
+   (let [acc ^RealBufferAccessor (data-accessor engine-factory)
+         ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
      (cond
        (and (instance? ByteBuffer source)
             (= (* (long m) (long n)) (.count acc source)))
        (->RealGeneralMatrix engine-factory acc
-                            (matrix-engine engine-factory source m n)
-                            (.entryType acc) source m n
-                            (max (long (if (= COLUMN_MAJOR order) m n)) 1)
-                            order)
+                            (matrix-engine engine-factory source m n ld)
+                            (.entryType acc) source m n ld order)
        (sequential? source) (create-ge-matrix engine-factory m n
                                               (.toBuffer acc source))
        :default

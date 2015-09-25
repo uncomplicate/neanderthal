@@ -8,7 +8,8 @@
              [core :refer [vect? matrix?]]]
             [uncomplicate.neanderthal.opencl
              [clblock :refer [create-vector create-ge-matrix ->TypedCLAccessor]]
-             [amd-gcn :refer [gcn-engine-factory]]])
+             [amd-gcn :refer [gcn-engine-factory]]
+             [dummy-engine :refer [dummy-engine-factory]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
 
 (def ^:dynamic *double-engine-factory*)
@@ -25,6 +26,12 @@
 
 (defn gcn-double [ctx queue]
   (gcn-engine-factory double-accessor ctx queue))
+
+(defn dummy-single [ctx queue]
+  (dummy-engine-factory float-accessor ctx queue))
+
+(defn dummy-double [ctx queue]
+  (dummy-engine-factory double-accessor ctx queue))
 
 (defmacro with-engine
   "Creates the required engine factories for the supported primitive types
@@ -47,8 +54,8 @@
               *single-engine-factory*
               (~engine-factory-fn float-accessor ~@params)]
       (try ~@body
-           (finally (do (release *double-engine-factory*)
-                        (release *single-engine-factory*)))))))
+           (finally (and (release *double-engine-factory*)
+                         (release *single-engine-factory*)))))))
 
 (defmacro with-gcn-engine
   "Creates appropriate engine factory optimized for AMD's GCN devices,

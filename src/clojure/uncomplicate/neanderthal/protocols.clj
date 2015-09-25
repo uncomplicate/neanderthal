@@ -2,8 +2,8 @@
 
 (defprotocol EngineFactory
   (data-accessor [this])
-  (vector-engine [this buf n])
-  (matrix-engine [this buf m n]))
+  (vector-engine [this buf n strd])
+  (matrix-engine [this buf m n ld]))
 
 (defprotocol EngineProvider
   (engine ^BLAS [this]))

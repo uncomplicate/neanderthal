@@ -13,9 +13,9 @@
   EngineFactory
   (data-accessor [_]
     double-accessor)
-  (vector-engine [_ _ _]
+  (vector-engine [_ _ _ _]
     nil)
-  (matrix-engine [_ _ _ _]
+  (matrix-engine [_ _ _ _ _]
     nil))
 
 (defn rbv ^RealBlockVector [^RealBufferAccessor access s ^long n ^long strd]

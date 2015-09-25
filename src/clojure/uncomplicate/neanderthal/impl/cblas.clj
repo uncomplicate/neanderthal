@@ -214,17 +214,19 @@
   EngineFactory
   (data-accessor [_]
     acc)
-  (vector-engine [_ buf n]
+  (vector-engine [_ buf n strd]
     vector-eng)
-  (matrix-engine [_ buf m n]
+  (matrix-engine [_ buf m n ld]
     matrix-eng))
 
-(def cblas-single (let [vect-eng (->SingleVectorEngine)]
-                    (->CblasEngineFactory (->FloatBufferAccessor)
-                                          vect-eng
-                                          (->SingleGeneralMatrixEngine vect-eng))))
+(def cblas-single
+  (let [vect-eng (->SingleVectorEngine)]
+    (->CblasEngineFactory (->FloatBufferAccessor)
+                          vect-eng
+                          (->SingleGeneralMatrixEngine vect-eng))))
 
-(def cblas-double (let [vect-eng (->DoubleVectorEngine)]
-                    (->CblasEngineFactory (->DoubleBufferAccessor)
-                                          vect-eng
-                                          (->DoubleGeneralMatrixEngine vect-eng))))
+(def cblas-double
+  (let [vect-eng (->DoubleVectorEngine)]
+    (->CblasEngineFactory (->DoubleBufferAccessor)
+                          vect-eng
+                          (->DoubleGeneralMatrixEngine vect-eng))))

@@ -36,6 +36,16 @@ __kernel void swp (__global REAL* x, __global REAL* y) {
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void copy (__global REAL* x, uint stridex,
+                    __global REAL* y, uint stridey) {
+    uint ix = get_global_id(0) * stridex;
+    uint iy = get_global_id(0) * stridey;
+    REAL temp = x[ix];
+    x[ix] = y[iy];
+    y[iy] = temp;
+}
+
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void scal (const REAL alpha, __global REAL* x) {
     uint gid = get_global_id(0);
     x[gid] = alpha * x[gid];

@@ -83,7 +83,7 @@
   (subvector [_ k l]
     (let [buf-slice (slice claccessor cl-buf (* k strd) (* l strd))]
       (CLBlockVector. engine-factory claccessor
-                      (vector-engine engine-factory buf-slice l)
+                      (vector-engine engine-factory buf-slice l strd)
                       entry-type buf-slice l strd)))
   Mappable
   (read! [this host]
@@ -176,7 +176,7 @@
   ([engine-factory ^long n cl-buf]
    (let [claccessor (data-accessor engine-factory)]
      (->CLBlockVector engine-factory claccessor
-                      (vector-engine engine-factory cl-buf n)
+                      (vector-engine engine-factory cl-buf n 1)
                       (.entryType ^DataAccessor claccessor) cl-buf n 1)))
   ([engine-factory ^long n]
    (let [claccessor (data-accessor engine-factory)]
@@ -187,7 +187,7 @@
   ([engine-factory ^long m ^long n cl-buf]
    (let [claccessor (data-accessor engine-factory)]
      (->CLGeneralMatrix engine-factory claccessor
-                        (matrix-engine engine-factory cl-buf m n)
+                        (matrix-engine engine-factory cl-buf m n 1)
                         (.entryType ^DataAccessor claccessor) cl-buf m n m)))
 
   ([engine-factory ^long m ^long n]

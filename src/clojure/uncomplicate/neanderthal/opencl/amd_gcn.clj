@@ -18,10 +18,12 @@
                           queue
                           cl-buf
                           n
+                          strd
                           reduce-acc
                           reduce-iacc
                           linear-work-size
                           swp-kernel
+                          copy-kernel
                           scal-kernel
                           axpy-kernel
                           sum-reduction-kernel
@@ -38,6 +40,7 @@
      (release reduce-acc)
      (release reduce-iacc)
      (release swp-kernel)
+     (release copy-kernel)
      (release scal-kernel)
      (release axpy-kernel)
      (release sum-reduction-kernel)
@@ -52,8 +55,12 @@
     (do
       (set-arg! swp-kernel 1 (.buffer y))
       (enq-nd! queue swp-kernel linear-work-size)))
-  (copy [_ _ y]
-    (enq-copy! cl-buf (.buffer ^Block y)))
+  (copy [_ x y]
+    (if (= 1 strd (.stride y))
+      (enq-copy! cl-buf (.buffer y))
+      (do
+        (set-args! copy-kernel 2 (.buffer y) (.stride y))
+        (enq-nd! queue copy-kernel linear-work-size))))
   (dot [_ _ y]
     (do
       (set-arg! dot-reduce-kernel 2 (.buffer y))
@@ -105,7 +112,7 @@
                           ^long WPT
                           claccessor
                           queue
-                          m n
+                          m n ld
                           reduce-acc
                           linear-work-size
                           axpby-kernel
@@ -152,7 +159,7 @@
   EngineFactory
   (data-accessor [_]
     claccessor)
-  (vector-engine [_ cl-buf n]
+  (vector-engine [_ cl-buf n strd]
     (let [iacc-size (* Integer/BYTES (count-work-groups WGS n))
           acc-size (* Double/BYTES (count-work-groups WGS n))
           cl-acc (cl-buffer ctx acc-size :read-write)
@@ -161,11 +168,13 @@
                          claccessor
                          queue
                          cl-buf
-                         n
+                         n strd
                          cl-acc
                          cl-iacc
                          (work-size [n])
                          (doto (kernel prog "swp") (set-arg! 0 cl-buf))
+                         (doto (kernel prog "copy")
+                           (set-args! 0 cl-buf (int-array [strd])))
                          (doto (kernel prog "scal") (set-arg! 1 cl-buf))
                          (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
                          (doto (kernel prog "sum_reduction")
@@ -182,14 +191,14 @@
                            (set-args! cl-iacc cl-acc cl-buf))
                          (doto (kernel prog "sum_reduce")
                            (set-args! cl-acc cl-buf)))))
-  (matrix-engine [_ cl-buf m n]
+  (matrix-engine [_ cl-buf m n ld]
     (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
                       (long m) (count-work-groups WGSn n))
           cl-acc (cl-buffer ctx acc-size :read-write)]
       (->GCNMatrixEngine WGSn TS WPT
                          claccessor
                          queue
-                         m n
+                         m n ld
                          cl-acc
                          (work-size [m])
                          (doto (kernel prog "axpby")
