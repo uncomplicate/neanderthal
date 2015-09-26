@@ -214,7 +214,7 @@
   EngineFactory
   (data-accessor [_]
     acc)
-  (vector-engine [_ buf n strd]
+  (vector-engine [_ buf n ofst strd]
     vector-eng)
   (matrix-engine [_ buf m n ld]
     matrix-eng))

@@ -38,11 +38,12 @@
 (declare create-vector)
 (declare create-ge-matrix)
 
-(deftype CLBlockVector [engine-factory claccessor eng entry-type
-                        cl-buf ^long n ^long strd]
+(deftype CLBlockVector [engine-factory ^DataAccessor claccessor eng entry-type
+                        cl-buf ^long n ^long ofst ^long strd]
   Object
   (toString [_]
-    (format "#<CLBlockVector| %s, n:%d, stride:%d>" entry-type n strd))
+    (format "#<CLBlockVector| %s, n:%d, offset:%d stride:%d>"
+            entry-type n ofst strd))
   Releaseable
   (release [_]
     (and
@@ -68,33 +69,37 @@
     entry-type)
   (buffer [_]
     cl-buf)
+  (offset [_]
+    ofst)
   (stride [_]
     strd)
   (count [_]
     n)
   Changeable
   (setBoxed [x val]
-    (do
+    (do;;TODO now when there are offset and stride, this must be a kernel
       (fill-buffer claccessor cl-buf [val])
       x))
   Vector
   (dim [_]
     n)
   (subvector [_ k l]
-    (let [buf-slice (slice claccessor cl-buf (* k strd) (* l strd))]
-      (CLBlockVector. engine-factory claccessor
-                      (vector-engine engine-factory buf-slice l strd)
-                      entry-type buf-slice l strd)))
+    (CLBlockVector. engine-factory claccessor
+                    (vector-engine engine-factory cl-buf l (+ ofst k) strd)
+                    entry-type cl-buf l (+ ofst k) strd))
   Mappable
   (read! [this host]
-    (if (and (instance? Vector host) (= entry-type (.entryType ^Block host)))
+    (if (and (instance? Vector host)
+             (= entry-type (.entryType ^Block host))
+             (= 1 strd) (= 0 ofst));;TODO use enq-map for this
       (do
-        (enq-read! (get-queue claccessor) cl-buf (.buffer ^Block host))
+        (enq-read! (get-queue claccessor) cl-buf (.buffer ^Block host)
+                   true (* ofst (.entryWidth claccessor)) nil nil)
         host)
       (throw (IllegalArgumentException.
               (format INCOMPATIBLE_BLOCKS_MSG this host)))))
   (write! [this host]
-    (if (and (instance? Vector host) (= entry-type (.entryType ^Block host)))
+    (if (and (instance? Vector host) (= entry-type (.entryType ^Block host)) (= 1 strd) (= 0 ofst));;TODO
       (do
         (enq-write! (get-queue claccessor) cl-buf (.buffer ^Block host))
         this)
@@ -145,18 +150,18 @@
   Changeable
   (setBoxed [x val]
     (do
-      (fill-buffer claccessor cl-buf [val])
+      (fill-buffer claccessor cl-buf [val]);;TODO offset and stride
       x))
   Mappable
   (read! [this host]
-    (if (and (instance? Matrix host) (= entry-type (.entryType ^Block host)))
+    (if (and (instance? Matrix host) (= entry-type (.entryType ^Block host)));;TODO
       (do
         (enq-read! (get-queue claccessor) cl-buf (.buffer ^Block host))
         host)
       (throw (IllegalArgumentException.
               (format INCOMPATIBLE_BLOCKS_MSG this host)))))
   (write! [this host]
-    (if (and (instance? Matrix host) (= entry-type (.entryType ^Block host)))
+    (if (and (instance? Matrix host) (= entry-type (.entryType ^Block host)));;TODO
       (do
         (enq-write! (get-queue claccessor) cl-buf (.buffer ^Block host))
         this)
@@ -176,8 +181,8 @@
   ([engine-factory ^long n cl-buf]
    (let [claccessor (data-accessor engine-factory)]
      (->CLBlockVector engine-factory claccessor
-                      (vector-engine engine-factory cl-buf n 1)
-                      (.entryType ^DataAccessor claccessor) cl-buf n 1)))
+                      (vector-engine engine-factory cl-buf n 0 1)
+                      (.entryType ^DataAccessor claccessor) cl-buf n 0 1)))
   ([engine-factory ^long n]
    (let [claccessor (data-accessor engine-factory)]
      (create-vector engine-factory n

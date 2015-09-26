@@ -5,7 +5,7 @@
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.clojurecl.toolbox
              :refer [count-work-groups enq-reduce enq-reduce-horizontal
-                     enq-read-int enq-read-double]]
+                     enq-read-int enq-read-double wrap-int]]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.math :refer [sqrt]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
@@ -17,8 +17,9 @@
                           claccessor
                           queue
                           cl-buf
-                          n
-                          strd
+                          ^long n
+                          ^long ofst
+                          ^long strd
                           reduce-acc
                           reduce-iacc
                           linear-work-size
@@ -53,17 +54,20 @@
   BLAS
   (swap [_ _ y]
     (do
-      (set-arg! swp-kernel 1 (.buffer y))
+      (set-args! swp-kernel 3 (.buffer y) (wrap-int (.offset y))
+                (wrap-int (.stride y)))
       (enq-nd! queue swp-kernel linear-work-size)))
   (copy [_ x y]
-    (if (= 1 strd (.stride y))
+    (if (and (= 0 strd) (= 1 strd (.stride y)))
       (enq-copy! cl-buf (.buffer y))
       (do
-        (set-args! copy-kernel 2 (.buffer y) (.stride y))
+        (set-args! copy-kernel 3 (.buffer y) (wrap-int (.offset y))
+                   (wrap-int (.stride y)))
         (enq-nd! queue copy-kernel linear-work-size))))
   (dot [_ _ y]
     (do
-      (set-arg! dot-reduce-kernel 2 (.buffer y))
+      (set-args! dot-reduce-kernel 4 (.buffer y) (wrap-int (.offset y))
+                (wrap-int (.stride y)))
       (enq-reduce queue dot-reduce-kernel sum-reduction-kernel WGS n)
       (enq-read-double queue reduce-acc)))
   (nrm2 [_ _]
@@ -92,12 +96,13 @@
             "TODO.")))
   (scal [_ alpha _]
     (do
-      (set-arg! scal-kernel 0 (array claccessor [alpha]))
+      (set-args! scal-kernel 0 (array claccessor [alpha]))
       (enq-nd! queue scal-kernel linear-work-size)))
   (axpy [_ alpha x y]
     (do
-      (set-arg! axpy-kernel 0 (array claccessor [alpha]))
-      (set-arg! axpy-kernel 2 (.buffer y))
+      (set-args! axpy-kernel 0 (array claccessor [alpha]))
+      (set-args! axpy-kernel 4 (.buffer y) (wrap-int (.offset y))
+                (wrap-int (.stride y)))
       (enq-nd! queue axpy-kernel linear-work-size)))
   BLASPlus
   (sum [_ x]
@@ -112,7 +117,7 @@
                           ^long WPT
                           claccessor
                           queue
-                          m n ld
+                          ^long m ^long n ^long ld
                           reduce-acc
                           linear-work-size
                           axpby-kernel
@@ -137,7 +142,8 @@
       (enq-reduce-horizontal queue gemv-reduce-kernel
                              sum-reduction-horizontal-kernel
                              WGSn m n)
-      (set-args! axpby-kernel 2 (array claccessor [beta]) (.buffer y))
+      (set-args! axpby-kernel 4 (array claccessor [beta]) (.buffer y)
+                 (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
   (mm [_ alpha a b beta c]
     (let [cn (/ (.ncols ^Matrix b) WPT)
@@ -159,38 +165,43 @@
   EngineFactory
   (data-accessor [_]
     claccessor)
-  (vector-engine [_ cl-buf n strd]
+  (vector-engine [_ cl-buf n ofst strd]
     (let [iacc-size (* Integer/BYTES (count-work-groups WGS n))
           acc-size (* Double/BYTES (count-work-groups WGS n))
           cl-acc (cl-buffer ctx acc-size :read-write)
-          cl-iacc (cl-buffer ctx iacc-size :read-write)]
+          cl-iacc (cl-buffer ctx iacc-size :read-write)
+          cl-ofst (wrap-int ofst)
+          cl-strd (wrap-int strd)]
       (->GCNVectorEngine WGS
                          claccessor
                          queue
                          cl-buf
-                         n strd
+                         n ofst strd
                          cl-acc
                          cl-iacc
                          (work-size [n])
-                         (doto (kernel prog "swp") (set-arg! 0 cl-buf))
+                         (doto (kernel prog "swp")
+                           (set-args! 0 cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "copy")
-                           (set-args! 0 cl-buf (int-array [strd])))
-                         (doto (kernel prog "scal") (set-arg! 1 cl-buf))
-                         (doto (kernel prog "axpy") (set-arg! 1 cl-buf))
+                           (set-args! 0 cl-buf cl-ofst cl-strd))
+                         (doto (kernel prog "scal")
+                           (set-args! 1 cl-buf cl-ofst cl-strd))
+                         (doto (kernel prog "axpy")
+                           (set-args! 1 cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "sum_reduction")
                            (set-args! cl-acc))
                          (doto (kernel prog "imax_reduction")
                            (set-args! cl-iacc cl-acc))
                          (doto (kernel prog "dot_reduce")
-                           (set-args! cl-acc cl-buf))
+                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "nrm2_reduce")
-                           (set-args! cl-acc cl-buf))
+                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "asum_reduce")
-                           (set-args! cl-acc cl-buf))
+                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "iamax_reduce")
-                           (set-args! cl-iacc cl-acc cl-buf))
+                           (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "sum_reduce")
-                           (set-args! cl-acc cl-buf)))))
+                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd)))))
   (matrix-engine [_ cl-buf m n ld]
     (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
                       (long m) (count-work-groups WGSn n))
@@ -202,7 +213,8 @@
                          cl-acc
                          (work-size [m])
                          (doto (kernel prog "axpby")
-                           (set-args! 0 (array claccessor [1]) cl-acc))
+                           (set-args! 0 (array claccessor [1]) cl-acc
+                                      (wrap-int 0) (wrap-int 1)))
                          (doto (kernel prog "sum_reduction_horizontal")
                            (set-arg! 0 cl-acc))
                          (doto (kernel prog "gemv_reduce")

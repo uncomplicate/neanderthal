@@ -28,58 +28,67 @@
 // ================ Embarassingly parallel kernels =============================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void swp (__global REAL* x, __global REAL* y) {
-    uint gid = get_global_id(0);
-    REAL temp = x[gid];
-    x[gid] = y[gid];
-    y[gid] = temp;
-}
-
-__attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void copy (__global REAL* x, uint stridex,
-                    __global REAL* y, uint stridey) {
-    uint ix = get_global_id(0) * stridex;
-    uint iy = get_global_id(0) * stridey;
+__kernel void swp (__global REAL* x, const uint offset_x, const uint stride_x,
+                   __global REAL* y, const uint offset_y, const uint stride_y) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    uint iy = offset_y + get_global_id(0) * stride_y;
     REAL temp = x[ix];
     x[ix] = y[iy];
     y[iy] = temp;
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void scal (const REAL alpha, __global REAL* x) {
-    uint gid = get_global_id(0);
-    x[gid] = alpha * x[gid];
+__kernel void copy (__global REAL* x, const uint offset_x, const uint stride_x,
+                    __global REAL* y, const uint offset_y, const uint stride_y) {
+    y[offset_y + get_global_id(0) * stride_y] =
+        x[offset_x + get_global_id(0) * stride_x];
+}
+
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void scal (const REAL alpha, __global REAL* x,
+                    const uint offset_x, const uint stride_x) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    x[ix] = alpha * x[ix];
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void axpy (const REAL alpha, __global const REAL* x,
-                    __global REAL* y) {
-    uint gid = get_global_id(0);
-    y[gid] = alpha * x[gid] + y[gid];
+                    const uint offset_x, const uint stride_x,
+                    __global REAL* y,
+                    const uint offset_y, const uint stride_y) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    uint iy = offset_y + get_global_id(0) * stride_y;
+    y[iy] = alpha * x[ix] + y[iy];
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void axpby (const REAL alpha, __global const REAL* x,
-                     const REAL beta, __global REAL* y) {
-    uint gid = get_global_id(0);
-    y[gid] = alpha * x[gid] + beta * y[gid];
+                     uint offset_x, const uint stride_x,
+                     const REAL beta, __global REAL* y,
+                     const uint offset_y, const uint stride_y) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    uint iy = offset_y + get_global_id(0) * stride_y;
+    y[iy] = alpha * x[ix] + beta * y[iy];
 }
 
+// ================= Reduction kernels ========================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void sum_reduction (__global double* acc) {
     double sum = work_group_reduction_sum(acc[get_global_id(0)]);
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
-
 }
 
 // ================== Dot product ==============================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void dot_reduce (__global double* acc,
-                          __global const REAL* x, __global const REAL* y) {
-    uint gid = get_global_id(0);
-    double sum = work_group_reduction_sum((double)(x[gid] * y[gid]));
+__kernel void dot_reduce (__global double* acc, __global const REAL* x,
+                          const uint offset_x, const uint stride_x,
+                          __global const REAL* y,
+                          const uint offset_y, const uint stride_y) {
+    REAL px = x[offset_x + get_global_id(0) * stride_x];
+    REAL py = y[offset_y + get_global_id(0) * stride_y];
+    double sum = work_group_reduction_sum((double)(px * py));
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -87,8 +96,10 @@ __kernel void dot_reduce (__global double* acc,
 
 // ================== asum =====================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void asum_reduce (__global double* acc, __global const REAL* x) {
-    double sum = work_group_reduction_sum((double)fabs(x[get_global_id(0)]));
+__kernel void asum_reduce (__global double* acc, __global const REAL* x,
+                           const uint offset_x, const uint stride_x) {
+    REAL px = x[offset_x + get_global_id(0) * stride_x];
+    double sum = work_group_reduction_sum((double)fabs(px));
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -96,8 +107,10 @@ __kernel void asum_reduce (__global double* acc, __global const REAL* x) {
 
 // ================== sum =====================================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void sum_reduce (__global double* acc, __global const REAL* x) {
-    double sum = work_group_reduction_sum((double)x[get_global_id(0)]);
+__kernel void sum_reduce (__global double* acc, __global const REAL* x,
+                          const uint offset_x, const uint stride_x) {
+    REAL px = x[offset_x + get_global_id(0) * stride_x];
+    double sum = work_group_reduction_sum((double)px);
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -106,8 +119,10 @@ __kernel void sum_reduce (__global double* acc, __global const REAL* x) {
 // ================== nrm2 =====================================================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void nrm2_reduce (__global double* acc, __global const REAL* x) {
-    double sum = work_group_reduction_sum((double)pown(x[get_global_id(0)], 2));
+__kernel void nrm2_reduce (__global double* acc, __global const REAL* x,
+                           const uint offset_x, const uint stride_x) {
+    REAL px = x[offset_x + get_global_id(0) * stride_x];
+    double sum = work_group_reduction_sum((double)(px * px));
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -174,9 +189,10 @@ __kernel void imax_reduction (__global uint* iacc, __global double* vacc) {
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void iamax_reduce (__global uint* iacc, __global double* vacc,
-                            __global const REAL* x) {
-    uint gid = get_global_id(0);
-    work_group_reduction_imax(iacc, vacc, gid, (double)(fabs(x[gid])));
+                            __global const REAL* x,
+                            const uint offset_x, const uint stride_x) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    work_group_reduction_imax(iacc, vacc, ix, (double)(fabs(x[ix])));
 }
 
 // ||||||||||||||||       BLAS 2      ||||||||||||||||||||||||||||||||||||||||||

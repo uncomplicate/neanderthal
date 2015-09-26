@@ -64,7 +64,7 @@
   EngineFactory
   (data-accessor [_]
     claccessor)
-  (vector-engine [_ cl-buf n strd]
+  (vector-engine [_ cl-buf n ofst strd]
     dummy-vector-engine)
   (matrix-engine [_ cl-buf m n ld]
     dummy-matrix-engine))

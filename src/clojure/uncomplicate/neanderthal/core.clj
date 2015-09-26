@@ -35,6 +35,9 @@
 (def ^{:no-doc true :const true} MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")
 
+(def ^{:no-doc true :const true} VECTOR_BOUNDS_MSG
+  "Requested dim %d is out of bounds of vector dim %d.")
+
 (def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG
   "Operation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
@@ -151,7 +154,10 @@
   => #<RealBlockVector| double, n:3, stride:1>(3.0 4.0 5.0)<>
   "
   [^Vector x ^long k ^long l]
-  (.subvector x k l))
+  (if (and (<= (+ k l) (dim x)))
+    (.subvector x k l)
+    (throw (IndexOutOfBoundsException.
+            (format VECTOR_BOUNDS_MSG (+ k l) (dim x))))))
 
 ;; ================= Matrix =======================
 

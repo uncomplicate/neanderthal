@@ -401,7 +401,7 @@
     (.entry x i))
   (subvector [_ k l]
     (let [b (.slice accessor buf (* k strd) (* l strd))]
-      (RealBlockVector. engine-factory accessor (vector-engine engine-factory b l strd)
+      (RealBlockVector. engine-factory accessor (vector-engine engine-factory b l 0 strd)
                         entry-type b l strd))))
 
 (extend RealBlockVector
@@ -520,18 +520,18 @@
     (if (column-major? a)
       (let [b (.slice accessor buf i (inc (* (dec n) ld)))]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b n ld) entry-type b n ld))
+                          (vector-engine engine-factory b n 0 ld) entry-type b n ld))
       (let [b (.slice accessor buf (* ld i) n)]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b n 1) entry-type b n 1))))
+                          (vector-engine engine-factory b n 0 1) entry-type b n 1))))
   (col [a j]
     (if (column-major? a)
       (let [b (.slice accessor buf (* ld j) m)]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b m 1) entry-type b m 1))
+                          (vector-engine engine-factory b m 0 1) entry-type b m 1))
       (let [b (.slice accessor buf j (inc (* (dec m) ld)))]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b m 1) entry-type b m ld))))
+                          (vector-engine engine-factory b m 0 1) entry-type b m ld))))
   (submatrix [a i j k l]
     (let [b (if (column-major? a)
               (.slice accessor buf (+ (* ld j) i) (* ld l))
@@ -567,7 +567,7 @@
     (cond
       (and (instance? ByteBuffer source))
       (->RealBlockVector engine-factory acc
-                         (vector-engine engine-factory source (.count acc source) 1)
+                         (vector-engine engine-factory source (.count acc source) 0 1)
                          (.entryType acc) source (.count acc source) 1)
       (and (integer? source) (<= 0 (long source)))
       (create-vector engine-factory (.directBuffer acc source))
