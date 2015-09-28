@@ -4,10 +4,48 @@
              [core :refer :all]
              [opencl :refer :all]
              [math :refer [pow]]]
-            [uncomplicate.neanderthal.protocols :refer [transfer!]]
             [uncomplicate.clojurecl
              [core :refer [with-default with-release *context* *command-queue*]]])
   (:import [uncomplicate.neanderthal.protocols Block]))
+
+(defmacro test-cl-block-vector [engine-factory rge rv]
+  `(facts
+    "OpenCL Vector methods"
+    (with-default
+      (let [cnt# (long (+ 1000 (pow 2 12)))
+            x-magic# 2
+            y-magic# 5
+            host-x# (doto (~rv cnt#) (entry! x-magic#))
+            host-y# (doto (~rv cnt#) (entry! y-magic#))]
+        (with-release [engine# (~engine-factory *context* *command-queue*)
+                       cl-x# (clv engine# cnt#)
+                       cl-y# (clv engine# cnt#)]
+
+          (dim cl-x#) => cnt#
+
+
+          (entry! cl-x# x-magic#)
+          (entry! cl-y# y-magic#)
+          (entry! host-x# 6 -100000.0)
+          (transfer! host-x# cl-x#)
+
+          (float (dot cl-x# cl-y#)) => (float (dot host-x# host-y#))
+
+          (float (asum cl-x#)) => (float (asum host-x#))
+
+          (float (sum cl-x#)) => (float (sum host-x#))
+
+          (nrm2 cl-x#) => (roughly (nrm2 host-x#))
+
+          (iamax cl-x#) => 6
+
+          (transfer! (scal! 2 cl-x#) (~rv cnt#)) => (scal! 2 host-x#)
+
+          (transfer! (axpy! 2 cl-x# cl-y#) (~rv cnt#)) => (axpy! 2 host-x# host-y#))
+
+
+
+        ))))
 
 (defmacro test-blas1 [engine-factory rv]
   `(facts

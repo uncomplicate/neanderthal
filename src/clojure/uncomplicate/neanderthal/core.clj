@@ -94,6 +94,9 @@
   ([f acc x y z & ws]
    (apply p/freduce x acc f y z ws)))
 
+
+(defmulti transfer! (fn [source destination] [(class source) (class destination)]))
+
 ;; ================= Group  ====================================================
 (defn zero
   "Returns an empty instance of the same type and dimension(s)
