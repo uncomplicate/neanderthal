@@ -6,7 +6,7 @@ public interface Block {
 
     Object buffer ();
 
-    Object offset ();
+    long offset ();
 
     long stride ();
 

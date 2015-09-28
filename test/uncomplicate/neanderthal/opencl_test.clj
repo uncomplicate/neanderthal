@@ -4,7 +4,7 @@
              [core :refer :all]
              [opencl :refer :all]
              [math :refer [pow]]]
-            [uncomplicate.neanderthal.opencl.clblock :refer :all] ;;TODO see to remove
+            [uncomplicate.neanderthal.protocols :refer [transfer!]]
             [uncomplicate.clojurecl
              [core :refer [with-default with-release *context* *command-queue*]]])
   (:import [uncomplicate.neanderthal.protocols Block]))
@@ -27,7 +27,7 @@
           (entry! cl-x# x-magic#)
           (entry! cl-y# y-magic#)
           (entry! host-x# 6 -100000.0)
-          (write! cl-x# host-x#)
+          (transfer! host-x# cl-x#)
 
           (float (dot cl-x# cl-y#)) => (float (dot host-x# host-y#))
 
@@ -39,10 +39,9 @@
 
           (iamax cl-x#) => 6
 
-          (read! (scal! 2 cl-x#) (~rv cnt#)) => (scal! 2 host-x#)
+          (transfer! (scal! 2 cl-x#) (~rv cnt#)) => (scal! 2 host-x#)
 
-          (read! (axpy! 2 cl-x# cl-y#) (~rv cnt#))
-          => (axpy! 2 host-x# host-y#)))
+          (transfer! (axpy! 2 cl-x# cl-y#) (~rv cnt#)) => (axpy! 2 host-x# host-y#)))
 
       (let [cnt# (long (+ 1000 (pow 2 12)))
             x-magic# 2
@@ -53,20 +52,20 @@
                        cl-x# (clv engine# cnt#)
                        cl-y# (clv engine# cnt#)]
 
-          (write! cl-x# host-x#) => cl-x#
-          (write! cl-y# host-y#) => cl-y#
+          (transfer! host-x# cl-x#) => cl-x#
+          (transfer! host-y# cl-y#) => cl-y#
 
           (with-release [cl-zero# (zero cl-x#)]
-            (read! cl-zero# (~rv cnt#))) => (~rv cnt#)
+            (transfer! cl-zero# (~rv cnt#))) => (~rv cnt#)
 
             (swp! cl-x# cl-y#) => cl-x#
             (swp! cl-x# cl-y#) => cl-x#
 
-            (read! cl-x# (~rv cnt#)) => host-x#
+            (transfer! cl-x# (~rv cnt#)) => host-x#
 
             (copy! cl-x# cl-y#) => cl-y#
 
-            (read! cl-y# host-y#) => host-x#)))))
+            (transfer! cl-y# host-y#) => host-x#)))))
 
 (defmacro test-blas2 [engine-factory rge rv]
   `(facts
@@ -89,7 +88,7 @@
           (entry! cl-x# x-magic#)
           (entry! cl-y# y-magic#)
 
-          (read! (mv! 10 cl-a# cl-x# 100 cl-y#) (~rv m-cnt#))
+          (transfer! (mv! 10 cl-a# cl-x# 100 cl-y#) (~rv m-cnt#))
           => (mv! 10 host-a# host-x# 100 host-y#))))))
 
 (defn buffer [^Block b]

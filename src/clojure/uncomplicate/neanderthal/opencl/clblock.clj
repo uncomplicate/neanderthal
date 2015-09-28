@@ -3,8 +3,11 @@
   (:require [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.impl.buffer-block :refer [COLUMN_MAJOR]])
+  (:import [uncomplicate.neanderthal CBLAS])
   (:import [uncomplicate.neanderthal.protocols
-            BLAS Vector Matrix Changeable Block DataAccessor]))
+            BLAS Vector Matrix Changeable Block DataAccessor])
+  (:import [uncomplicate.neanderthal.impl.buffer_block
+            RealBlockVector]))
 
 (def ^:private INCOMPATIBLE_BLOCKS_MSG
   "Operation is not permited on vectors with incompatible buffers,
@@ -89,17 +92,14 @@
                     entry-type cl-buf l (+ ofst k) strd))
   Mappable
   (read! [this host]
-    (if (and (instance? Vector host)
-             (= entry-type (.entryType ^Block host))
-             (= 1 strd) (= 0 ofst));;TODO use enq-map for this
+    (if (and (instance? Vector host) (= entry-type (.entryType ^Block host)))
       (do
-        (enq-read! (get-queue claccessor) cl-buf (.buffer ^Block host)
-                   true (* ofst (.entryWidth claccessor)) nil nil)
+        (enq-read! (get-queue claccessor) cl-buf (.buffer ^Block host))
         host)
       (throw (IllegalArgumentException.
               (format INCOMPATIBLE_BLOCKS_MSG this host)))))
   (write! [this host]
-    (if (and (instance? Vector host) (= entry-type (.entryType ^Block host)) (= 1 strd) (= 0 ofst));;TODO
+    (if (and (instance? Vector host) (= entry-type (.entryType ^Block host)))
       (do
         (enq-write! (get-queue claccessor) cl-buf (.buffer ^Block host))
         this)
@@ -109,6 +109,47 @@
 (defmethod print-method CLBlockVector
   [x ^java.io.Writer w]
   (.write w (str x)))
+
+(defmethod transfer! [CLBlockVector RealBlockVector]
+  [^CLBlockVector source ^RealBlockVector destination]
+  (let [claccessor ^DataAccessor (.claccessor source)
+        queue (get-queue claccessor)
+        buf (enq-map-buffer! queue (.buffer source) true
+                             (* (.offset source) (.entryWidth claccessor))
+                             (* (.stride source) (.dim source) (.entryWidth claccessor))
+                             :read nil nil)]
+    (try
+      (do
+        (cond
+          (= Double/TYPE (.entryType claccessor))
+          (CBLAS/dcopy (.dim source) buf (.stride source)
+                       (.buffer destination) (.stride destination))
+          (= Float/TYPE (.entryType claccessor))
+          (CBLAS/scopy (.dim source) buf (.stride source)
+                       (.buffer destination) (.stride destination)))
+        destination)
+      (finally (enq-unmap! queue (.buffer source) buf)))))
+
+(defmethod transfer! [RealBlockVector CLBlockVector]
+  [^RealBlockVector source ^CLBlockVector destination]
+  (let [claccessor ^DataAccessor (.claccessor destination)
+        queue (get-queue claccessor)
+        buf (enq-map-buffer! queue (.buffer destination) true
+                             (* (.offset destination) (.entryWidth claccessor))
+                             (* (.stride destination) (.dim destination)
+                                (.entryWidth claccessor))
+                             :write-invalidate-region nil nil)]
+    (try
+      (do
+        (cond
+          (= Double/TYPE (.entryType claccessor))
+          (CBLAS/dcopy (.dim source) (.buffer source) (.stride source)
+                       buf (.stride destination))
+          (= Float/TYPE (.entryType claccessor))
+          (CBLAS/scopy (.dim source) (.buffer source) (.stride source)
+                       buf (.stride destination)))
+        destination)
+      (finally (enq-unmap! queue (.buffer destination) buf)))))
 
 (deftype CLGeneralMatrix [engine-factory claccessor eng entry-type
                           cl-buf ^long m ^long n ^long ld]

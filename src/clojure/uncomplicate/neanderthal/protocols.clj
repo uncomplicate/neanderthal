@@ -40,3 +40,5 @@
 (defprotocol Reducible
   (freduce [x f] [x acc f] [x acc f y]
     [x acc f y z] [x acc f y z ws]))
+
+(defmulti transfer! (fn [source destination] [(class source) (class destination)]))
