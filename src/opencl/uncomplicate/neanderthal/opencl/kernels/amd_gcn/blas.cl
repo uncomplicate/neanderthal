@@ -23,6 +23,23 @@
 #endif
 
 #define RTS (TS/WPT)
+
+//||||||||||||||||| CLBuffer |||||||||||||||||||||||||||||||||||||||||||||||||||
+
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void equals_vector (__global uint* eq_flag,
+                             __global REAL* x, const uint offset_x,
+                             const uint stride_x,
+                             __global REAL* y, const uint offset_y,
+                             const uint stride_y) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    uint iy = offset_y + get_global_id(0) * stride_y;
+    if ((x[ix] != y[iy])){
+        eq_flag[0]++;
+    }
+}
+
+
 //|||||||||||||||||       BLAS 1       |||||||||||||||||||||||||||||||||||||||||
 
 // ================ Embarassingly parallel kernels =============================

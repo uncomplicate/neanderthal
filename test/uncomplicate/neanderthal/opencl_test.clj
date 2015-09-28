@@ -21,31 +21,11 @@
                        cl-x# (clv engine# cnt#)
                        cl-y# (clv engine# cnt#)]
 
-          (dim cl-x#) => cnt#
+          (transfer! host-x# cl-x#) => (transfer! host-x# cl-y#)
+          (transfer! host-y# cl-y#) =not=> cl-x#
 
 
-          (entry! cl-x# x-magic#)
-          (entry! cl-y# y-magic#)
-          (entry! host-x# 6 -100000.0)
-          (transfer! host-x# cl-x#)
-
-          (float (dot cl-x# cl-y#)) => (float (dot host-x# host-y#))
-
-          (float (asum cl-x#)) => (float (asum host-x#))
-
-          (float (sum cl-x#)) => (float (sum host-x#))
-
-          (nrm2 cl-x#) => (roughly (nrm2 host-x#))
-
-          (iamax cl-x#) => 6
-
-          (transfer! (scal! 2 cl-x#) (~rv cnt#)) => (scal! 2 host-x#)
-
-          (transfer! (axpy! 2 cl-x# cl-y#) (~rv cnt#)) => (axpy! 2 host-x# host-y#))
-
-
-
-        ))))
+        )))))
 
 (defmacro test-blas1 [engine-factory rv]
   `(facts
@@ -158,6 +138,7 @@
 
 (defmacro test-all [engine-factory rge rv]
   `(do
+     (test-cl-block-vector ~engine-factory ~rge ~rv)
      (test-blas1 ~engine-factory ~rv)
      (test-blas2 ~engine-factory ~rge ~rv)
      (test-blas3 ~engine-factory ~rge ~rv)))

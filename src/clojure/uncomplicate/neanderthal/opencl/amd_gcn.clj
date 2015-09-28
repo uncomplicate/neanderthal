@@ -20,9 +20,11 @@
                           ^long n
                           ^long ofst
                           ^long strd
+                          eq-flag
                           reduce-acc
                           reduce-iacc
                           linear-work-size
+                          equals-vector-kernel
                           swp-kernel
                           copy-kernel
                           scal-kernel
@@ -38,8 +40,10 @@
   Releaseable
   (release [_]
     (and
+     (release eq-flag)
      (release reduce-acc)
      (release reduce-iacc)
+     (release equals-vector-kernel)
      (release swp-kernel)
      (release copy-kernel)
      (release scal-kernel)
@@ -51,11 +55,21 @@
      (release asum-reduce-kernel)
      (release iamax-reduce-kernel)
      (release sum-reduce-kernel)))
+  BlockEngine
+  (equals-vector [_ x y]
+    (let [res (wrap-int 0)]
+      (set-args! equals-vector-kernel 4 (.buffer y) (wrap-int (.offset y))
+                 (wrap-int (.stride y)))
+      (enq-fill! queue eq-flag res)
+      (set-arg! equals-vector-kernel 0 eq-flag)
+      (enq-nd! queue equals-vector-kernel linear-work-size)
+      (enq-read! queue eq-flag res)
+      (= 0 (aget res 0))))
   BLAS
   (swap [_ _ y]
     (do
       (set-args! swp-kernel 3 (.buffer y) (wrap-int (.offset y))
-                (wrap-int (.stride y)))
+                 (wrap-int (.stride y)))
       (enq-nd! queue swp-kernel linear-work-size)))
   (copy [_ x y]
     (if (and (= 0 strd) (= 1 strd (.stride y)))
@@ -170,6 +184,7 @@
           acc-size (* Double/BYTES (count-work-groups WGS n))
           cl-acc (cl-buffer ctx acc-size :read-write)
           cl-iacc (cl-buffer ctx iacc-size :read-write)
+          cl-eq-flag (cl-buffer ctx Integer/BYTES :read-write)
           cl-ofst (wrap-int ofst)
           cl-strd (wrap-int strd)]
       (->GCNVectorEngine WGS
@@ -177,9 +192,12 @@
                          queue
                          cl-buf
                          n ofst strd
+                         cl-eq-flag
                          cl-acc
                          cl-iacc
                          (work-size [n])
+                         (doto (kernel prog "equals_vector")
+                           (set-args! 1 cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "swp")
                            (set-args! 0 cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "copy")

@@ -5,7 +5,7 @@
             [uncomplicate.neanderthal.core :refer [transfer!]]
             [uncomplicate.neanderthal.impl.buffer-block :refer
              [COLUMN_MAJOR float-accessor double-accessor
-              ->RealBlockVector ->RealGeneralMatrix]]
+              ->RealBlockVector ->RealGeneralMatrix column-major?]]
             [uncomplicate.neanderthal.impl.cblas :refer
              [cblas-single cblas-double]])
   (:import [uncomplicate.neanderthal CBLAS])
@@ -41,6 +41,10 @@
   (slice [_ cl-buf k l]
     (cl-sub-buffer cl-buf (* w (long k)) (* w (long l)))))
 
+;; ================== Non-blas kernels =========================================
+(defprotocol BlockEngine
+  (equals-vector [_ cl-x cl-y]))
+
 ;; =============================================================================
 
 (declare create-vector)
@@ -52,6 +56,13 @@
   (toString [_]
     (format "#<CLBlockVector| %s, n:%d, offset:%d stride:%d>"
             entry-type n ofst strd))
+  (equals [x y]
+    (cond
+      (nil? y) false
+      (identical? x y) true
+      (and (compatible x y) (= n (.dim ^Vector y)))
+      (equals-vector eng x y)
+      :default false))
   Releaseable
   (release [_]
     (and
@@ -194,7 +205,23 @@
   (mrows [_]
     m)
   (ncols [_]
-    n))
+    n)
+  (row [a i]
+    (if (column-major? a)
+      (CLBlockVector. engine-factory claccessor
+                      (vector-engine engine-factory cl-buf n i ld)
+                      entry-type cl-buf n i ld)
+      (CLBlockVector. engine-factory claccessor
+                      (vector-engine engine-factory cl-buf n (* ld i) 1)
+                      entry-type cl-buf n (* ld i) 1)))
+  (col [a j]
+    (if (column-major? a)
+      (CLBlockVector. engine-factory claccessor
+                      (vector-engine engine-factory cl-buf m (* ld j) 1)
+                      entry-type cl-buf m (* ld j) 1)
+      (CLBlockVector. engine-factory claccessor
+                      (vector-engine engine-factory cl-buf m j ld)
+                      entry-type cl-buf m j ld))))
 
 (defmethod print-method CLGeneralMatrix
   [x ^java.io.Writer w]
