@@ -50,8 +50,9 @@
 (declare create-vector)
 (declare create-ge-matrix)
 
-(deftype CLBlockVector [engine-factory ^DataAccessor claccessor ^BLAS eng entry-type
-                        cl-buf ^long n ^long ofst ^long strd]
+(deftype CLBlockVector [engine-factory ^DataAccessor claccessor ^BLAS eng
+                        entry-type master cl-buf
+                        ^long n ^long ofst ^long strd]
   Object
   (hashCode [this]
     (-> (hash :CLBlockVector) (hash-combine n)
@@ -69,7 +70,7 @@
   Releaseable
   (release [_]
     (and
-     (release cl-buf)
+     (if master (release cl-buf) true)
      (release eng)))
   Group
   (zero [_]
@@ -103,7 +104,7 @@
   (subvector [_ k l]
     (CLBlockVector. engine-factory claccessor
                     (vector-engine engine-factory cl-buf l (+ ofst k) strd)
-                    entry-type cl-buf l (+ ofst k) strd))
+                    entry-type false cl-buf l (+ ofst k) strd))
   Mappable
   (map-memory [_ flags]
     (let [host-engine-factory (cond (= Float/TYPE entry-type) cblas-single
@@ -117,7 +118,7 @@
       (try
         (->RealBlockVector host-engine-factory acc
                            (vector-engine host-engine-factory mapped-buf n 0 strd)
-                           entry-type mapped-buf n strd)
+                           entry-type true mapped-buf n strd)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -149,8 +150,8 @@
       (finally (unmap destination mapped-host)))))
 
 (deftype CLGeneralMatrix [engine-factory ^DataAccessor claccessor
-                          eng entry-type
-                          cl-buf ^long m ^long n ^long ld]
+                          eng entry-type master cl-buf
+                          ^long m ^long n ^long ld]
   Object
   (toString [_]
     (format "#<CLGeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
@@ -158,7 +159,7 @@
   Releaseable
   (release [_]
     (and
-     (release cl-buf)
+     (if master (release cl-buf) true)
      (release eng)))
   EngineProvider
   (engine [_]
@@ -195,18 +196,18 @@
     (if (column-major? a)
       (CLBlockVector. engine-factory claccessor
                       (vector-engine engine-factory cl-buf n i ld)
-                      entry-type cl-buf n i ld)
+                      entry-type false cl-buf n i ld)
       (CLBlockVector. engine-factory claccessor
                       (vector-engine engine-factory cl-buf n (* ld i) 1)
-                      entry-type cl-buf n (* ld i) 1)))
+                      entry-type false cl-buf n (* ld i) 1)))
   (col [a j]
     (if (column-major? a)
       (CLBlockVector. engine-factory claccessor
                       (vector-engine engine-factory cl-buf m (* ld j) 1)
-                      entry-type cl-buf m (* ld j) 1)
+                      entry-type false cl-buf m (* ld j) 1)
       (CLBlockVector. engine-factory claccessor
                       (vector-engine engine-factory cl-buf m j ld)
-                      entry-type cl-buf m j ld)))
+                      entry-type false cl-buf m j ld)))
   Mappable
   (map-memory [this flags]
     (let [host-engine-factory (cond (= Float/TYPE entry-type) cblas-single
@@ -220,7 +221,7 @@
       (try
         (->RealGeneralMatrix host-engine-factory acc
                              (matrix-engine host-engine-factory mapped-buf m n ld)
-                             entry-type mapped-buf m n ld COLUMN_MAJOR);;TODO add order
+                             entry-type true mapped-buf m n ld COLUMN_MAJOR);;TODO add order
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -256,7 +257,7 @@
    (let [claccessor (data-accessor engine-factory)]
      (->CLBlockVector engine-factory claccessor
                       (vector-engine engine-factory cl-buf n 0 1)
-                      (.entryType ^DataAccessor claccessor) cl-buf n 0 1)))
+                      (.entryType ^DataAccessor claccessor) true cl-buf n 0 1)))
   ([engine-factory ^long n]
    (let [claccessor (data-accessor engine-factory)]
      (create-vector engine-factory n
@@ -267,7 +268,7 @@
    (let [claccessor (data-accessor engine-factory)]
      (->CLGeneralMatrix engine-factory claccessor
                         (matrix-engine engine-factory cl-buf m n 1)
-                        (.entryType ^DataAccessor claccessor) cl-buf m n m)))
+                        (.entryType ^DataAccessor claccessor) true cl-buf m n m)))
 
   ([engine-factory ^long m ^long n]
    (let [claccessor (data-accessor engine-factory)]

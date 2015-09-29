@@ -1,5 +1,6 @@
 (ns uncomplicate.neanderthal.impl.buffer-block-test
   (:require [midje.sweet :refer [facts throws =>]]
+            [uncomplicate.clojurecl.core :refer [release]]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [clojure.lang IFn$LLD IFn$LD IFn$DD]
@@ -19,11 +20,11 @@
     nil))
 
 (defn rbv ^RealBlockVector [^RealBufferAccessor access s ^long n ^long strd]
-  (->RealBlockVector (->DummyEngineFactory) access nil (.entryType access)
+  (->RealBlockVector (->DummyEngineFactory) access nil (.entryType access) true
                      (.toBuffer ^RealBufferAccessor accessorf s) n strd))
 
 (defn rgm ^RealGeneralMatrix [^RealBufferAccessor access s m n ld ord]
-  (->RealGeneralMatrix (->DummyEngineFactory) access nil (.entryType access)
+  (->RealGeneralMatrix (->DummyEngineFactory) access nil (.entryType access) true
                      (.toBuffer ^RealBufferAccessor accessorf s) m n ld ord))
 
 (facts "Equality and hash code."
@@ -203,3 +204,14 @@
 
          (freduce x 1.0 + y y [y])
          => (throws UnsupportedOperationException)))
+
+(let [a (rgm accessorf [1 2 3 4 5 6] 2 3 4 DEFAULT_ORDER)
+      col-a (.col a 0)
+      sub-a (.submatrix a 0 0 1 1)]
+  (facts "RealBlockVector and RealBlockMatrix release."
+         (release col-a) => true
+         (release col-a) => true
+         (release sub-a) => true
+         (release sub-a) => true
+         (release a) => true
+         (release a) => true))

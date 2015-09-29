@@ -9,23 +9,30 @@
   (:import [uncomplicate.neanderthal.protocols Block]))
 
 (defmacro test-cl-block-vector [engine-factory rge rv]
-  `(facts
-    "OpenCL Vector methods"
-    (with-default
-      (let [cnt# (long (+ 1000 (pow 2 12)))
-            x-magic# 2
-            y-magic# 5
-            host-x# (doto (~rv cnt#) (entry! x-magic#))
-            host-y# (doto (~rv cnt#) (entry! y-magic#))]
-        (with-release [engine# (~engine-factory *context* *command-queue*)
-                       cl-x# (clv engine# cnt#)
-                       cl-y# (clv engine# cnt#)]
-
+  `(with-default
+     (let [m# 33
+           n# (long (+ 1000 (pow 2 12)))
+           cnt# n#
+           x-magic# 2
+           y-magic# 5]
+       (with-release [host-a# (doto (~rge m# n#) (entry! x-magic#))
+                      host-x# (doto (~rv cnt#) (entry! x-magic#))
+                      host-y# (doto (~rv cnt#) (entry! y-magic#))
+                      engine# (~engine-factory *context* *command-queue*)
+                      cl-a# (transfer! host-a# (clge engine# m# n#))
+                      cl-x# (clv engine# cnt#)
+                      cl-y# (clv engine# cnt#)
+                      cl-z# (clv engine# cnt#)]
+         (facts
+          "OpenCL Vector: Equality and hashCode."
+          (.equals cl-x# nil) => false
           (transfer! host-x# cl-x#) => (transfer! host-x# cl-y#)
+          (= cl-x# cl-z#) => false
           (transfer! host-y# cl-y#) =not=> cl-x#
+          (row cl-a# 3) =>  cl-x#
+          (row cl-a# 4) =not=> (col cl-a# 4)
 
-
-        )))))
+          )))))
 
 (defmacro test-blas1 [engine-factory rv]
   `(facts
@@ -33,10 +40,10 @@
     (with-default
       (let [cnt# (long (+ 1000 (pow 2 12)))
             x-magic# 2
-            y-magic# 5
-            host-x# (doto (~rv cnt#) (entry! x-magic#))
-            host-y# (doto (~rv cnt#) (entry! y-magic#))]
-        (with-release [engine# (~engine-factory *context* *command-queue*)
+            y-magic# 5]
+        (with-release [host-x# (doto (~rv cnt#) (entry! x-magic#))
+                       host-y# (doto (~rv cnt#) (entry! y-magic#))
+                       engine# (~engine-factory *context* *command-queue*)
                        cl-x# (clv engine# cnt#)
                        cl-y# (clv engine# cnt#)]
 
@@ -62,10 +69,10 @@
 
       (let [cnt# (long (+ 1000 (pow 2 12)))
             x-magic# 2
-            y-magic# 5
-            host-x# (doto (~rv cnt#) (entry! 3.5))
-            host-y# (doto (~rv cnt#) (entry! 1.1))]
-        (with-release [engine# (~engine-factory *context* *command-queue*)
+            y-magic# 5]
+        (with-release [ host-x# (doto (~rv cnt#) (entry! 3.5))
+                       host-y# (doto (~rv cnt#) (entry! 1.1))
+                       engine# (~engine-factory *context* *command-queue*)
                        cl-x# (clv engine# cnt#)
                        cl-y# (clv engine# cnt#)]
 
@@ -92,11 +99,11 @@
             n-cnt# 337
             a-magic# 3
             x-magic# 2
-            y-magic# 5
-            host-a# (doto (~rge m-cnt# n-cnt#) (entry! a-magic#))
-            host-x# (doto (~rv n-cnt#) (entry! x-magic#))
-            host-y# (doto (~rv m-cnt#) (entry! y-magic#))]
-        (with-release [engine# (~engine-factory *context* *command-queue*)
+            y-magic# 5]
+        (with-release [host-a# (doto (~rge m-cnt# n-cnt#) (entry! a-magic#))
+                       host-x# (doto (~rv n-cnt#) (entry! x-magic#))
+                       host-y# (doto (~rv m-cnt#) (entry! y-magic#))
+                       engine# (~engine-factory *context* *command-queue*)
                        cl-a# (transfer! host-a# (clge engine# m-cnt# n-cnt#))
                        cl-x# (transfer! host-x# (clv engine# n-cnt#))
                        cl-y# (transfer! host-y# (clv engine# m-cnt#))]
@@ -112,14 +119,14 @@
     "BLAS 3"
     (let [m-cnt# 123
           k-cnt# 456
-          n-cnt# 789
-          host-a# (~rge m-cnt# k-cnt# (repeatedly (* m-cnt# k-cnt#) rand))
-          host-b# (~rge k-cnt# n-cnt#
-                        (map (partial * 2) (repeatedly (* k-cnt# n-cnt#) rand)))
-          host-c# (~rge m-cnt# n-cnt#
-                        (map (partial * 2) (repeatedly (* m-cnt# n-cnt#) rand)))]
+          n-cnt# 789]
       (with-default
-        (with-release [engine# (~engine-factory *context* *command-queue*)
+        (with-release [host-a# (~rge m-cnt# k-cnt# (repeatedly (* m-cnt# k-cnt#) rand))
+                       host-b# (~rge k-cnt# n-cnt#
+                                     (map (partial * 2) (repeatedly (* k-cnt# n-cnt#) rand)))
+                       host-c# (~rge m-cnt# n-cnt#
+                                     (map (partial * 2) (repeatedly (* m-cnt# n-cnt#) rand)))
+                       engine# (~engine-factory *context* *command-queue*)
                        cl-a# (transfer! host-a# (clge engine# m-cnt# k-cnt#))
                        cl-b# (transfer! host-b# (clge engine# k-cnt# n-cnt#))
                        cl-c# (transfer! host-c# (clge engine# m-cnt# n-cnt#))]

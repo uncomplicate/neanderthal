@@ -270,9 +270,6 @@
       (.clean (.cleaner ^DirectByteBuffer buffer)))
     true))
 
-(defn release-block [^Block block]
-  (clean-buffer (.buffer block)))
-
 ;; ============ Real Buffer ====================================================
 
 (deftype FloatBufferAccessor []
@@ -321,15 +318,13 @@
 
 (def double-accessor (->DoubleBufferAccessor))
 
-(declare ->RealGeneralMatrix)
-
 (declare create-vector)
 (declare create-ge-matrix)
 
 ;; ============ Real Vector ====================================================
 
 (deftype RealBlockVector [engine-factory ^RealBufferAccessor accessor
-                          ^BLAS eng ^Class entry-type
+                          ^BLAS eng ^Class entry-type master
                           ^ByteBuffer buf ^long n ^long strd]
   Object
   (hashCode [this]
@@ -345,6 +340,9 @@
       :default false))
   (toString [_]
     (format "#<RealBlockVector| %s, n:%d, stride:%d>" entry-type n strd))
+  Releaseable
+  (release [_]
+    (if master (clean-buffer buf) true))
   clojure.lang.Seqable
   (seq [_]
     (.toSeq accessor buf strd))
@@ -406,11 +404,9 @@
   (subvector [_ k l]
     (let [b (.slice accessor buf (* k strd) (* l strd))]
       (RealBlockVector. engine-factory accessor (vector-engine engine-factory b l 0 strd)
-                        entry-type b l strd))))
+                        entry-type false b l strd))))
 
 (extend RealBlockVector
-  Releaseable
-  {:release release-block}
   Functor
   {:fmap! vector-fmap!}
   Foldable
@@ -431,7 +427,7 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGeneralMatrix [engine-factory ^RealBufferAccessor accessor
-                            ^BLAS eng ^Class entry-type
+                            ^BLAS eng ^Class entry-type master
                             ^ByteBuffer buf ^long m ^long n ^long ld ^long ord]
   Object
   (hashCode [this]
@@ -449,6 +445,9 @@
     (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
             entry-type (if (= COLUMN_MAJOR ord) "COL" "ROW")
             m n ld))
+  Releaseable
+  (release [_]
+    (if master (clean-buffer buf) true))
   Group
   (zero [_]
     (create-ge-matrix engine-factory m n (.directBuffer accessor (* m n)) ord))
@@ -529,34 +528,36 @@
     (if (column-major? a)
       (let [b (.slice accessor buf i (inc (* (dec n) ld)))]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b n 0 ld) entry-type b n ld))
+                          (vector-engine engine-factory b n 0 ld)
+                          entry-type false b n ld))
       (let [b (.slice accessor buf (* ld i) n)]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b n 0 1) entry-type b n 1))))
+                          (vector-engine engine-factory b n 0 1)
+                          entry-type false b n 1))))
   (col [a j]
     (if (column-major? a)
       (let [b (.slice accessor buf (* ld j) m)]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b m 0 1) entry-type b m 1))
+                          (vector-engine engine-factory b m 0 1)
+                          entry-type false b m 1))
       (let [b (.slice accessor buf j (inc (* (dec m) ld)))]
         (RealBlockVector. engine-factory accessor
-                          (vector-engine engine-factory b m 0 ld) entry-type b m ld))))
+                          (vector-engine engine-factory b m 0 ld)
+                          entry-type false b m ld))))
   (submatrix [a i j k l]
     (let [b (if (column-major? a)
               (.slice accessor buf (+ (* ld j) i) (* ld l))
               (.slice accessor buf (+ (* ld i) j) (* ld k)))]
       (RealGeneralMatrix. engine-factory accessor
-                          (matrix-engine engine-factory b k l ld) entry-type
-                          b k l ld ord)))
+                          (matrix-engine engine-factory b k l ld)
+                          entry-type false b k l ld ord)))
   (transpose [a]
     (RealGeneralMatrix. engine-factory accessor
-                        (matrix-engine engine-factory buf n m ld) entry-type
-                        buf n m ld
+                        (matrix-engine engine-factory buf n m ld)
+                        entry-type false buf n m ld
                         (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
 
 (extend RealGeneralMatrix
-  Releaseable
-  {:release release-block}
   Functor
   {:fmap! matrix-fmap!}
   Foldable
@@ -577,7 +578,7 @@
       (and (instance? ByteBuffer source))
       (->RealBlockVector engine-factory acc
                          (vector-engine engine-factory source (.count acc source) 0 1)
-                         (.entryType acc) source (.count acc source) 1)
+                         (.entryType acc) true source (.count acc source) 1)
       (and (integer? source) (<= 0 (long source)))
       (create-vector engine-factory (.directBuffer acc source))
       (float? source) (create-vector engine-factory [source])
@@ -595,7 +596,7 @@
             (= (* (long m) (long n)) (.count acc source)))
        (->RealGeneralMatrix engine-factory acc
                             (matrix-engine engine-factory source m n ld)
-                            (.entryType acc) source m n ld order)
+                            (.entryType acc) true source m n ld order)
        (sequential? source) (create-ge-matrix engine-factory m n
                                               (.toBuffer acc source))
        :default
