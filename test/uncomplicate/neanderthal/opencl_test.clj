@@ -42,10 +42,9 @@
 
           (dim cl-x#) => cnt#
 
-          (entry! cl-x# x-magic#)
-          (entry! cl-y# y-magic#)
           (entry! host-x# 6 -100000.0)
           (transfer! host-x# cl-x#)
+          (transfer! host-y# cl-y#)
 
           (float (dot cl-x# cl-y#)) => (float (dot host-x# host-y#))
 
@@ -98,13 +97,9 @@
             host-x# (doto (~rv n-cnt#) (entry! x-magic#))
             host-y# (doto (~rv m-cnt#) (entry! y-magic#))]
         (with-release [engine# (~engine-factory *context* *command-queue*)
-                       cl-a# (clge engine# m-cnt# n-cnt#)
-                       cl-x# (clv engine# n-cnt#)
-                       cl-y# (clv engine# m-cnt#)]
-
-          (entry! cl-a# a-magic#)
-          (entry! cl-x# x-magic#)
-          (entry! cl-y# y-magic#)
+                       cl-a# (transfer! host-a# (clge engine# m-cnt# n-cnt#))
+                       cl-x# (transfer! host-x# (clv engine# n-cnt#))
+                       cl-y# (transfer! host-y# (clv engine# m-cnt#))]
 
           (transfer! (mv! 10 cl-a# cl-x# 100 cl-y#) (~rv m-cnt#))
           => (mv! 10 host-a# host-x# 100 host-y#))))))
@@ -119,21 +114,20 @@
           k-cnt# 456
           n-cnt# 789
           host-a# (~rge m-cnt# k-cnt# (repeatedly (* m-cnt# k-cnt#) rand))
-          host-b# (~rge k-cnt# n-cnt# (map (partial * 2) (repeatedly (* k-cnt# n-cnt#) rand)))
-          host-c# (~rge m-cnt# n-cnt# (map (partial * 2) (repeatedly (* m-cnt# n-cnt#) rand)))]
+          host-b# (~rge k-cnt# n-cnt#
+                        (map (partial * 2) (repeatedly (* k-cnt# n-cnt#) rand)))
+          host-c# (~rge m-cnt# n-cnt#
+                        (map (partial * 2) (repeatedly (* m-cnt# n-cnt#) rand)))]
       (with-default
         (with-release [engine# (~engine-factory *context* *command-queue*)
-                       cl-a# (clge engine# m-cnt# k-cnt#)
-                       cl-b# (clge engine# k-cnt# n-cnt#)
-                       cl-c# (clge engine# m-cnt# n-cnt#)]
+                       cl-a# (transfer! host-a# (clge engine# m-cnt# k-cnt#))
+                       cl-b# (transfer! host-b# (clge engine# k-cnt# n-cnt#))
+                       cl-c# (transfer! host-c# (clge engine# m-cnt# n-cnt#))]
 
-          (write! cl-a# host-a#)
-          (write! cl-b# host-b#)
-          (write! cl-c# host-c#)
-
-          (< (double (nrm2 (~rv (buffer (axpy! -1 (mm! 10 host-a# host-b# 100 host-c#)
-                                               (read! (mm! 10 cl-a# cl-b# 100 cl-c#)
-                                                      (~rge m-cnt# n-cnt#)))))))
+          (< (double
+              (nrm2 (~rv (buffer (axpy! -1 (mm! 10 host-a# host-b# 100 host-c#)
+                                        (transfer! (mm! 10 cl-a# cl-b# 100 cl-c#)
+                                                   (~rge m-cnt# n-cnt#)))))))
              (* 2 m-cnt# n-cnt# k-cnt# 1e-8)) => true)))))
 
 (defmacro test-all [engine-factory rge rv]

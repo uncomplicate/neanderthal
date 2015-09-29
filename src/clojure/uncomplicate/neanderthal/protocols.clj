@@ -25,7 +25,7 @@
   (read! [this host])
   (write! [this host])
   (map-memory [this] [this flags])
-  (unmap [this]))
+  (unmap [this mapped]))
 
 (defprotocol Group
   (zero [this]))

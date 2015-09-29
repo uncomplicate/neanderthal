@@ -4,7 +4,9 @@
              [core :refer [wrap marshal-seq]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq unwrap-byte-seq]]]
-            [uncomplicate.neanderthal.protocols :refer :all]
+            [uncomplicate.neanderthal
+             [protocols :refer :all]
+             [core :refer [transfer!]]]
             [uncomplicate.clojurecl.core :refer [Releaseable]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
@@ -37,7 +39,7 @@
   "I cannot accept function of this type as an argument.")
 
 (defn column-major? [^Block a]
-  (= 102 (.order a)))
+  (= COLUMN_MAJOR (.order a)))
 
 (defn ^:private hash* [^long h ^double x]
   (clojure.lang.Util/hashCombine h (Double/hashCode x)))
@@ -333,7 +335,7 @@
   (hashCode [this]
     (freduce this
              (-> (hash :RealBlockVector) (hash-combine n))
-             hash*) )
+             hash*))
   (equals [x y]
     (cond
       (nil? y) false
@@ -366,6 +368,8 @@
     entry-type)
   (buffer [_]
     buf)
+  (offset [_]
+    0)
   (stride [_]
     strd)
   (count [_]
@@ -414,6 +418,12 @@
   Reducible
   {:freduce vector-freduce})
 
+(defmethod transfer! [RealBlockVector RealBlockVector]
+  [^RealBlockVector source ^RealBlockVector destination]
+  (do
+    (.copy (engine source) source destination)
+    destination))
+
 (defmethod print-method RealBlockVector
   [^Vector x ^java.io.Writer w]
   (.write w (format "%s%s<>" (str x) (pr-str (take 100 (seq x))))))
@@ -426,8 +436,7 @@
   Object
   (hashCode [this]
     (freduce this
-             (-> (hash :RealGeneralMatrix)
-                 (hash-combine m) (hash-combine n))
+             (-> (hash :RealGeneralMatrix) (hash-combine m) (hash-combine n))
              hash*))
   (equals [x y]
     (cond

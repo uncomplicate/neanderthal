@@ -490,14 +490,16 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [x y]
-  (if (p/compatible x y)
-    (if (= (ecount x) (ecount y))
-      (do
-        (.swap (p/engine x) x y)
-        x)
-      (throw (IllegalArgumentException.
-              (format DIMENSION_MSG (ecount x) (ecount y)))))
-    (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y)))))
+  (if (not (identical? x y))
+    (if (p/compatible x y)
+      (if (= (ecount x) (ecount y))
+        (do
+          (.swap (p/engine x) x y)
+          x)
+        (throw (IllegalArgumentException.
+                (format DIMENSION_MSG (ecount x) (ecount y)))))
+      (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y))))
+    x))
 
 (defn copy!
   "BLAS 1: Copy a vector or a matrice.
@@ -516,14 +518,16 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [x y]
-  (if (p/compatible x y)
-    (if (= (ecount x) (ecount y))
-      (do
-        (.copy (p/engine x) x y)
-        y)
-      (throw (IllegalArgumentException.
-              (format DIMENSION_MSG (ecount x) (ecount y)))))
-    (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y)))))
+  (if (not (identical? x y))
+    (if (p/compatible x y)
+      (if (= (ecount x) (ecount y))
+        (do
+          (.copy (p/engine x) x y)
+          y)
+        (throw (IllegalArgumentException.
+                (format DIMENSION_MSG (ecount x) (ecount y)))))
+      (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y))))
+    y))
 
 (defn copy
   "Returns a new copy the entries from container x.

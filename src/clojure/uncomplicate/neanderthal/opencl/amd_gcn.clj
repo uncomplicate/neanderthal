@@ -56,10 +56,10 @@
      (release iamax-reduce-kernel)
      (release sum-reduce-kernel)))
   BlockEngine
-  (equals-vector [_ x y]
+  (equals-vector [_ _ y]
     (let [res (wrap-int 0)]
-      (set-args! equals-vector-kernel 4 (.buffer y) (wrap-int (.offset y))
-                 (wrap-int (.stride y)))
+      (set-args! equals-vector-kernel 4 (.buffer ^Block y)
+                 (wrap-int (.offset ^Block y)) (wrap-int (.stride ^Block y)))
       (enq-fill! queue eq-flag res)
       (set-arg! equals-vector-kernel 0 eq-flag)
       (enq-nd! queue equals-vector-kernel linear-work-size)
