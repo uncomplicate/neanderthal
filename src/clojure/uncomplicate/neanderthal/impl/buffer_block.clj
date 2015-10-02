@@ -324,7 +324,7 @@
 ;; ============ Real Vector ====================================================
 
 (deftype RealBlockVector [engine-factory ^RealBufferAccessor accessor
-                          ^BLAS eng ^Class entry-type master
+                          ^BLAS eng ^Class entry-type ^Boolean master
                           ^ByteBuffer buf ^long n ^long strd]
   Object
   (hashCode [this]
@@ -427,19 +427,19 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGeneralMatrix [engine-factory ^RealBufferAccessor accessor
-                            ^BLAS eng ^Class entry-type master
+                            ^BLAS eng ^Class entry-type ^Boolean master
                             ^ByteBuffer buf ^long m ^long n ^long ld ^long ord]
   Object
   (hashCode [this]
     (freduce this
              (-> (hash :RealGeneralMatrix) (hash-combine m) (hash-combine n))
              hash*))
-  (equals [x y]
+  (equals [a b]
     (cond
-      (nil? y) false
-      (identical? x y) true
-      (and (compatible x y) (= m (.mrows ^Matrix y)) (= n (.ncols ^Matrix y)))
-      (freduce x true entry-eq y)
+      (nil? b) false
+      (identical? a b) true
+      (and (compatible a b) (= m (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
+      (freduce a true entry-eq b)
       :default false))
   (toString [_]
     (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
@@ -468,6 +468,8 @@
     entry-type)
   (buffer [_]
     buf)
+  (offset [_]
+    0)
   (stride [_]
     ld)
   (order [_]
@@ -480,14 +482,14 @@
       (map #(seq (.col a %)) (range 0 n))
       (map #(seq (.row a %)) (range 0 m))))
   clojure.lang.IFn$LLD
-  (invokePrim [x i j]
+  (invokePrim [a i j]
     (if (and (< -1 i m) (< -1 j n))
-      (.entry x i j)
+      (.entry a i j)
       (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j m n)))))
   clojure.lang.IFn
-  (invoke [x i j]
+  (invoke [a i j]
     (if (and (< -1 (long i) m) (< -1 (long j) n))
-      (.entry x i j)
+      (.entry a i j)
       (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j m n)))))
   RealChangeable
   (set [a val]
@@ -549,11 +551,11 @@
               (.slice accessor buf (+ (* ld j) i) (* ld l))
               (.slice accessor buf (+ (* ld i) j) (* ld k)))]
       (RealGeneralMatrix. engine-factory accessor
-                          (matrix-engine engine-factory b k l ld)
+                          (matrix-engine engine-factory b k l 0 ld)
                           entry-type false b k l ld ord)))
   (transpose [a]
     (RealGeneralMatrix. engine-factory accessor
-                        (matrix-engine engine-factory buf n m ld)
+                        (matrix-engine engine-factory buf n m 0 ld)
                         entry-type false buf n m ld
                         (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
 
@@ -595,7 +597,7 @@
        (and (instance? ByteBuffer source)
             (= (* (long m) (long n)) (.count acc source)))
        (->RealGeneralMatrix engine-factory acc
-                            (matrix-engine engine-factory source m n ld)
+                            (matrix-engine engine-factory source m n 0 ld)
                             (.entryType acc) true source m n ld order)
        (sequential? source) (create-ge-matrix engine-factory m n
                                               (.toBuffer acc source))

@@ -14,12 +14,8 @@
             BLAS BLASPlus Block Matrix DataAccessor]))
 
 (deftype GCNVectorEngine [^long WGS
-                          claccessor
-                          queue
-                          cl-buf
-                          ^long n
-                          ^long ofst
-                          ^long strd
+                          claccessor queue cl-buf
+                          ^long n ^long ofst ^long strd
                           eq-flag
                           reduce-acc
                           reduce-iacc
@@ -56,7 +52,7 @@
      (release iamax-reduce-kernel)
      (release sum-reduce-kernel)))
   BlockEngine
-  (equals-vector [_ _ y]
+  (equals-block [_ _ y]
     (let [res (wrap-int 0)]
       (set-args! equals-vector-kernel 4 (.buffer ^Block y)
                  (wrap-int (.offset ^Block y)) (wrap-int (.stride ^Block y)))
@@ -126,14 +122,13 @@
 
 ;; ======================= Dense Matrix ========================================
 
-(deftype GCNMatrixEngine [^long WGSn
-                          ^long TS
-                          ^long WPT
-                          claccessor
-                          queue
-                          ^long m ^long n ^long ld
+(deftype GCNMatrixEngine [^long WGSn ^long TS ^long WPT
+                          claccessor queue
+                          ^long m ^long n ^long ofst ^long ld
+                          eq-flag
                           reduce-acc
                           linear-work-size
+                          equals-matrix-kernel
                           axpby-kernel
                           sum-reduction-horizontal-kernel
                           gemv-reduce-kernel
@@ -142,12 +137,24 @@
   Releaseable
   (release [_]
     (and
+     (release eq-flag)
      (release reduce-acc)
+     (release equals-matrix-kernel)
      (release axpby-kernel)
      (release sum-reduction-horizontal-kernel)
      (release gemv-reduce-kernel)
      (release gemm-tiled-kernel)
      (release gemm-tiled-fit-kernel)))
+  BlockEngine
+  (equals-block [_ _ b]
+    (let [res (wrap-int 0)]
+      (set-args! equals-matrix-kernel 4 (.buffer ^Block b)
+                 (wrap-int (.offset ^Block b)) (wrap-int (.stride ^Block b)))
+      (enq-fill! queue eq-flag res)
+      (set-arg! equals-matrix-kernel 0 eq-flag)
+      (enq-nd! queue equals-matrix-kernel (work-size [m n]))
+      (enq-read! queue eq-flag res)
+      (= 0 (aget res 0))))
   BLAS
   (mv [_ alpha _ x beta y]
     (do
@@ -160,7 +167,7 @@
                  (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
   (mm [_ alpha a b beta c]
-    (let [cn (/ (.ncols ^Matrix b) WPT)
+    (let [cn (/ (.ncols ^Matrix b) WPT);;TODO what if ncols b is not divisible with WPD?
           gemm-kernel (if (= 0 (mod m TS) (mod cn TS))
                         gemm-tiled-fit-kernel
                         gemm-tiled-kernel)]
@@ -220,16 +227,21 @@
                            (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "sum_reduce")
                            (set-args! 0 cl-acc cl-buf cl-ofst cl-strd)))))
-  (matrix-engine [_ cl-buf m n ld]
+  (matrix-engine [_ cl-buf m n ofst ld]
     (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
                       (long m) (count-work-groups WGSn n))
-          cl-acc (cl-buffer ctx acc-size :read-write)]
+          cl-acc (cl-buffer ctx acc-size :read-write)
+          cl-eq-flag (cl-buffer ctx Integer/BYTES :read-write)
+          cl-ofst (wrap-int ofst)
+          cl-ld (wrap-int ld)]
       (->GCNMatrixEngine WGSn TS WPT
-                         claccessor
-                         queue
-                         m n ld
+                         claccessor queue
+                         m n ofst ld
+                         cl-eq-flag
                          cl-acc
                          (work-size [m])
+                         (doto (kernel prog "equals_matrix")
+                           (set-args! 1 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "axpby")
                            (set-args! 0 (array claccessor [1]) cl-acc
                                       (wrap-int 0) (wrap-int 1)))

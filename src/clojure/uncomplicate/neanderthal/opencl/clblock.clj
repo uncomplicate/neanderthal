@@ -43,7 +43,7 @@
 
 ;; ================== Non-blas kernels =========================================
 (defprotocol BlockEngine
-  (equals-vector [_ ^Block cl-x ^Block cl-y]))
+  (equals-block [_ cl-x cl-y]))
 
 ;; =============================================================================
 
@@ -51,7 +51,7 @@
 (declare create-ge-matrix)
 
 (deftype CLBlockVector [engine-factory ^DataAccessor claccessor ^BLAS eng
-                        entry-type master cl-buf
+                        ^Class entry-type ^Boolean master cl-buf
                         ^long n ^long ofst ^long strd]
   Object
   (hashCode [this]
@@ -62,7 +62,7 @@
       (nil? y) false
       (identical? x y) true
       (and (compatible x y) (= n (.dim ^Vector y)))
-      (equals-vector eng x y)
+      (equals-block eng x y)
       :default false))
   (toString [_]
     (format "#<CLBlockVector| %s, n:%d, offset:%d stride:%d>"
@@ -149,10 +149,21 @@
         destination)
       (finally (unmap destination mapped-host)))))
 
+;; ================== CL Matrix ============================================
+
 (deftype CLGeneralMatrix [engine-factory ^DataAccessor claccessor
-                          eng entry-type master cl-buf
-                          ^long m ^long n ^long ld]
+                          eng ^Class entry-type ^Boolean master cl-buf
+                          ^long m ^long n ^long ofst ^long ld]
   Object
+  (hashCode [this]
+    (-> (hash :CLGeneralMatrix) (hash-combine m) (hash-combine n)))
+  (equals [a b]
+    (cond
+      (nil? b) false
+      (identical? a b) true
+      (and (compatible a b) (= m (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
+      (equals-block eng a b)
+      :default false))
   (toString [_]
     (format "#<CLGeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
             entry-type "COL" m n ld))
@@ -181,6 +192,8 @@
     entry-type)
   (buffer [_]
     cl-buf)
+  (offset [_]
+    ofst)
   (stride [_]
     ld)
   (order [_]
@@ -215,12 +228,12 @@
           acc ^RealBufferAccessor (data-accessor host-engine-factory)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
-                                      0;;TODO offset (* ofst (.entryWidth claccessor))
-                                      (* (.count ^Block this) (.entryWidth claccessor))
+                                      (* ofst (.entryWidth claccessor))
+                                      (* (* n ld) (.entryWidth claccessor))
                                       flags nil nil)]
       (try
         (->RealGeneralMatrix host-engine-factory acc
-                             (matrix-engine host-engine-factory mapped-buf m n ld)
+                             (matrix-engine host-engine-factory mapped-buf m n 0 ld)
                              entry-type true mapped-buf m n ld COLUMN_MAJOR);;TODO add order
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
@@ -267,8 +280,8 @@
   ([engine-factory ^long m ^long n cl-buf]
    (let [claccessor (data-accessor engine-factory)]
      (->CLGeneralMatrix engine-factory claccessor
-                        (matrix-engine engine-factory cl-buf m n 1)
-                        (.entryType ^DataAccessor claccessor) true cl-buf m n m)))
+                        (matrix-engine engine-factory cl-buf m n 0 1)
+                        (.entryType ^DataAccessor claccessor) true cl-buf m n 0 m)))
 
   ([engine-factory ^long m ^long n]
    (let [claccessor (data-accessor engine-factory)]

@@ -95,7 +95,15 @@
    (apply p/freduce x acc f y z ws)))
 
 
-(defmulti transfer! (fn [source destination] [(class source) (class destination)]))
+(defmulti transfer!
+  "Transfers the data from source in one type of memory, to the appropriate
+  destination in another type of memory. Typically you would use it when you want to
+  move data between the host memory and the OpenCL device memory. If you want to
+  simply move data from one container to another in the same memory space,
+  you should use copy.  If you call transfer in one memory space, it would simply
+  be copied.
+  "
+  (fn [source destination] [(class source) (class destination)]))
 
 ;; ================= Group  ====================================================
 (defn zero

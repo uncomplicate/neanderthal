@@ -8,31 +8,53 @@
              [core :refer [with-default with-release *context* *command-queue*]]])
   (:import [uncomplicate.neanderthal.protocols Block]))
 
-(defmacro test-cl-block-vector [engine-factory rge rv]
+(defmacro test-clblock [engine-factory rge rv]
   `(with-default
      (let [m# 33
            n# (long (+ 1000 (pow 2 12)))
            cnt# n#
            x-magic# 2
-           y-magic# 5]
+           y-magic# 5
+           magic# 17.0]
        (with-release [host-a# (doto (~rge m# n#) (entry! x-magic#))
+                      host-b# (doto (~rge m# n#) (entry! y-magic#))
                       host-x# (doto (~rv cnt#) (entry! x-magic#))
                       host-y# (doto (~rv cnt#) (entry! y-magic#))
                       engine# (~engine-factory *context* *command-queue*)
-                      cl-a# (transfer! host-a# (clge engine# m# n#))
+                      cl-a# (clge engine# m# n# host-a#)
+                      cl-b# (clge engine# m# n#)
                       cl-x# (clv engine# cnt#)
                       cl-y# (clv engine# cnt#)
-                      cl-z# (clv engine# cnt#)]
+                      cl-z# (clv engine# cnt#)
+                      row-a# (row cl-a# 3)
+                      subvector-x# (subvector cl-x# 3 (/ cnt# 2))]
          (facts
-          "OpenCL Vector: Equality and hashCode."
+          "OpenCL Vector: equality and hashCode."
           (.equals cl-x# nil) => false
+          cl-x# => cl-x#
           (transfer! host-x# cl-x#) => (transfer! host-x# cl-y#)
           (= cl-x# cl-z#) => false
           (transfer! host-y# cl-y#) =not=> cl-x#
-          (row cl-a# 3) =>  cl-x#
+          row-a# => cl-x#
           (row cl-a# 4) =not=> (col cl-a# 4)
+          )
 
-          )))))
+         (facts
+          "OpenCL Matrix: equality and hashCode."
+          cl-a# => cl-a#
+          (transfer! host-a# cl-b#) => cl-a#
+          (transfer! host-b# cl-b#) =not=> cl-a#
+          cl-a# =not=> cl-x#
+          )
+
+         (facts
+          "Matrix rows and columns."
+          (dim subvector-x#) => (/ cnt# 2)
+          (transfer! (entry! host-x# 3 magic#) cl-x#) => cl-x#
+          (entry (transfer! subvector-x# (~rv (/ cnt# 2))) 0) => magic#
+          (entry (transfer! (copy! (subvector cl-x# 3 (mrows cl-a#))
+                                   (copy (col cl-a# 6)))
+                            (~rv (mrows cl-a#))) 0) => magic#)))))
 
 (defmacro test-blas1 [engine-factory rv]
   `(facts
@@ -139,7 +161,7 @@
 
 (defmacro test-all [engine-factory rge rv]
   `(do
-     (test-cl-block-vector ~engine-factory ~rge ~rv)
+     (test-clblock ~engine-factory ~rge ~rv)
      (test-blas1 ~engine-factory ~rv)
      (test-blas2 ~engine-factory ~rge ~rv)
      (test-blas3 ~engine-factory ~rge ~rv)))

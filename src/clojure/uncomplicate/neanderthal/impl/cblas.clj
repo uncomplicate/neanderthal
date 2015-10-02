@@ -216,7 +216,7 @@
     acc)
   (vector-engine [_ buf n ofst strd]
     vector-eng)
-  (matrix-engine [_ buf m n ld]
+  (matrix-engine [_ buf m n ofst ld]
     matrix-eng))
 
 (def cblas-single

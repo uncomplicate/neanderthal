@@ -3,7 +3,7 @@
 (defprotocol EngineFactory
   (data-accessor [this])
   (vector-engine [this buf n ofst strd])
-  (matrix-engine [this buf m n ld]))
+  (matrix-engine [this buf m n ofst ld]))
 
 (defprotocol EngineProvider
   (engine ^BLAS [this]))
@@ -22,8 +22,6 @@
   (compatible [this other]))
 
 (defprotocol Mappable
-  (read! [this host])
-  (write! [this host])
   (map-memory [this] [this flags])
   (unmap [this mapped]))
 

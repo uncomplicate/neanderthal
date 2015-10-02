@@ -5,7 +5,7 @@
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal
              [protocols :as p]
-             [core :refer [vect? matrix?]]]
+             [core :refer [vect? matrix? transfer!]]]
             [uncomplicate.neanderthal.opencl
              [clblock :refer [create-vector create-ge-matrix ->TypedCLAccessor]]
              [amd-gcn :refer [gcn-engine-factory]]
@@ -75,22 +75,6 @@
   [& body]
   `(with-engine gcn-engine-factory [*context* *command-queue*] ~@body))
 
-(defn read!
-  "Reads the data from the cl container in the device memory to the appropriate
-  container in the host memory.
-  See ClojureCL's documentation for enq-read!
-  "
-  [cl host]
-  (p/read! cl host))
-
-(defn write!
-  "Writes the data from the container in the host memory, to the appropriate
-  cl container in the device memory.
-  See ClojureCL's documentation for enq-write!
-  "
-  [cl host]
-  (p/write! cl host))
-
 (defn clv
   "Creates an OpenCL-backed vector on the device, with dimension n and an
   optional CL buffer source. If source is not provided, creates a new
@@ -104,9 +88,9 @@
      (and (vect? source)
           (= (.entryType ^DataAccessor (p/data-accessor engine-factory))
              (.entryType ^Block source)))
-     (write! (create-vector engine-factory n
-                            (p/create-buffer (p/data-accessor engine-factory) n))
-             source)
+     (transfer! source
+                (create-vector engine-factory n
+                               (p/create-buffer (p/data-accessor engine-factory) n)))
      (cl-buffer? source) (create-vector engine-factory n source)
      :default (throw (IllegalArgumentException.
                       (format "I do not know how to create a cl vector from %s"
@@ -145,10 +129,10 @@
      (and (matrix? source)
           (= (.entryType ^DataAccessor (p/data-accessor engine-factory))
              (.entryType ^Block source)))
-     (write! (create-ge-matrix
-              engine-factory m n
-              (p/create-buffer (p/data-accessor engine-factory) (* m n)))
-             source)
+     (transfer! source
+                (create-ge-matrix
+                 engine-factory m n
+                 (p/create-buffer (p/data-accessor engine-factory) (* m n))))
      (cl-buffer? source) (create-ge-matrix engine-factory m n source)
      :default (throw (IllegalArgumentException.
                       (format "I do not know how to create a general cl matrix from %s"
