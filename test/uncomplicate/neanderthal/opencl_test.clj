@@ -36,8 +36,7 @@
           (= cl-x# cl-z#) => false
           (transfer! host-y# cl-y#) =not=> cl-x#
           row-a# => cl-x#
-          (row cl-a# 4) =not=> (col cl-a# 4)
-          )
+          (row cl-a# 4) =not=> (col cl-a# 4))
 
          (facts
           "OpenCL Matrix: equality and hashCode."

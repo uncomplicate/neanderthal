@@ -152,7 +152,7 @@
                  (wrap-int (.offset ^Block b)) (wrap-int (.stride ^Block b)))
       (enq-fill! queue eq-flag res)
       (set-arg! equals-matrix-kernel 0 eq-flag)
-      (enq-nd! queue equals-matrix-kernel (work-size [m n]))
+      (enq-nd! queue equals-matrix-kernel (work-size-2d m n))
       (enq-read! queue eq-flag res)
       (= 0 (aget res 0))))
   BLAS
@@ -176,8 +176,8 @@
                  (.buffer b) (array claccessor [beta]) (.buffer c)
                  (int-array [m]) (int-array [n]) (int-array [(.ncols ^Matrix b)]))
       (enq-nd! queue gemm-kernel
-               (work-size [(* TS (count-work-groups TS m))
-                           (* TS (count-work-groups TS cn))])))))
+               (work-size-2d (* TS (count-work-groups TS m))
+                             (* TS (count-work-groups TS cn)))))))
 
 (deftype GCNEngineFactory [claccessor ctx queue prog ^long WGS WGSn TS WPT]
   Releaseable
@@ -202,7 +202,7 @@
                          cl-eq-flag
                          cl-acc
                          cl-iacc
-                         (work-size [n])
+                         (work-size-1d n)
                          (doto (kernel prog "equals_vector")
                            (set-args! 1 cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "swp")
@@ -239,7 +239,7 @@
                          m n ofst ld
                          cl-eq-flag
                          cl-acc
-                         (work-size [m])
+                         (work-size-1d m)
                          (doto (kernel prog "equals_matrix")
                            (set-args! 1 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "axpby")
