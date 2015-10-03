@@ -12,5 +12,4 @@ public interface BufferAccessor extends DataAccessor {
 
     ByteBuffer slice (ByteBuffer buf, long k, long l);
 
-    long count (ByteBuffer buf);
 }

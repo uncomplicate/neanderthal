@@ -209,9 +209,15 @@
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
 
-
-(deftype CblasEngineFactory [acc ^BLAS vector-eng ^BLAS matrix-eng]
-  EngineFactory
+(deftype CblasFactory [acc ^BLAS vector-eng ^BLAS matrix-eng]
+  Factory
+  (create-vector1 [this n source]
+    (if (and (<= (long n) (.count acc source))
+             (instance? ByteBuffer source) (.isDirect ^ByteBuffer source))
+      (->RealBlockVector this acc vector-eng (.entryType acc) true source n 1)
+      (throw (IllegalArgumentException.
+              (format "I can not create an %d element vector from %d-element %s."
+                      n (.count acc source) (class source))))))
   (data-accessor [_]
     acc)
   (vector-engine [_ buf n ofst strd]
@@ -221,12 +227,10 @@
 
 (def cblas-single
   (let [vect-eng (->SingleVectorEngine)]
-    (->CblasEngineFactory (->FloatBufferAccessor)
-                          vect-eng
-                          (->SingleGeneralMatrixEngine vect-eng))))
+    (->CblasFactory (->FloatBufferAccessor) vect-eng
+                    (->SingleGeneralMatrixEngine vect-eng))))
 
 (def cblas-double
   (let [vect-eng (->DoubleVectorEngine)]
-    (->CblasEngineFactory (->DoubleBufferAccessor)
-                          vect-eng
-                          (->DoubleGeneralMatrixEngine vect-eng))))
+    (->CblasFactory (->DoubleBufferAccessor) vect-eng
+                    (->DoubleGeneralMatrixEngine vect-eng))))

@@ -8,4 +8,7 @@ public interface DataAccessor {
 
     long entryWidth ();
 
+    long count (Object buf);
+
+    Object createDataSource (long n);
 }

@@ -106,11 +106,11 @@
             "TODO.")))
   (scal [_ alpha _]
     (do
-      (set-args! scal-kernel 0 (array claccessor [alpha]))
+      (set-args! scal-kernel 0 (wrap-prim claccessor alpha))
       (enq-nd! queue scal-kernel linear-work-size)))
   (axpy [_ alpha x y]
     (do
-      (set-args! axpy-kernel 0 (array claccessor [alpha]))
+      (set-args! axpy-kernel 0 (wrap-prim claccessor alpha))
       (set-args! axpy-kernel 4 (.buffer y) (wrap-int (.offset y))
                 (wrap-int (.stride y)))
       (enq-nd! queue axpy-kernel linear-work-size)))
@@ -158,12 +158,12 @@
   BLAS
   (mv [_ alpha _ x beta y]
     (do
-      (set-arg! gemv-reduce-kernel 1 (array claccessor [alpha]))
+      (set-arg! gemv-reduce-kernel 1 (wrap-prim claccessor alpha))
       (set-arg! gemv-reduce-kernel 3 (.buffer x))
       (enq-reduce-horizontal queue gemv-reduce-kernel
                              sum-reduction-horizontal-kernel
                              WGSn m n)
-      (set-args! axpby-kernel 4 (array claccessor [beta]) (.buffer y)
+      (set-args! axpby-kernel 4 (wrap-prim claccessor beta) (.buffer y)
                  (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
   (mm [_ alpha a b beta c]
@@ -171,19 +171,19 @@
           gemm-kernel (if (= 0 (mod m TS) (mod cn TS))
                         gemm-tiled-fit-kernel
                         gemm-tiled-kernel)]
-      (set-arg! gemm-kernel 0 (array claccessor [alpha]))
+      (set-arg! gemm-kernel 0 (wrap-prim claccessor alpha))
       (set-args! gemm-kernel 2
-                 (.buffer b) (array claccessor [beta]) (.buffer c)
-                 (int-array [m]) (int-array [n]) (int-array [(.ncols ^Matrix b)]))
+                 (.buffer b) (wrap-prim claccessor beta) (.buffer c)
+                 (wrap-int m) (wrap-int n) (wrap-int (.ncols ^Matrix b)))
       (enq-nd! queue gemm-kernel
                (work-size-2d (* TS (count-work-groups TS m))
                              (* TS (count-work-groups TS cn)))))))
 
-(deftype GCNEngineFactory [claccessor ctx queue prog ^long WGS WGSn TS WPT]
+(deftype GCNFactory [claccessor ctx queue prog ^long WGS WGSn TS WPT]
   Releaseable
   (release [_]
     (release prog))
-  EngineFactory
+  Factory
   (data-accessor [_]
     claccessor)
   (vector-engine [_ cl-buf n ofst strd]
@@ -243,7 +243,7 @@
                          (doto (kernel prog "equals_matrix")
                            (set-args! 1 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "axpby")
-                           (set-args! 0 (array claccessor [1]) cl-acc
+                           (set-args! 0 (wrap-prim claccessor 1) cl-acc
                                       (wrap-int 0) (wrap-int 1)))
                          (doto (kernel prog "sum_reduction_horizontal")
                            (set-arg! 0 cl-acc))
@@ -255,10 +255,10 @@
                          (doto (kernel prog "gemm_tiled_fit")
                            (set-arg! 1 cl-buf))))))
 
-(defn gcn-engine-factory
+(defn gcn-factory
   ([create-accessor ctx queue wgs wgsn ts wpt]
    (let [accessor (create-accessor ctx queue)]
-     (->GCNEngineFactory
+     (->GCNFactory
       accessor ctx queue
       (build-program!
        (program-with-source
@@ -270,4 +270,4 @@
        nil)
       wgs wgsn ts wpt)))
   ([create-accessor ctx queue]
-   (gcn-engine-factory create-accessor ctx queue 256 16 32 4)))
+   (gcn-factory create-accessor ctx queue 256 16 32 4)))

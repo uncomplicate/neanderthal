@@ -2,36 +2,37 @@
   uncomplicate.neanderthal.opencl
   (:require [uncomplicate.clojurecl
              [core :refer [*context* *command-queue* cl-buffer? release]]
+             [toolbox :refer [wrap-float wrap-double]]
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal
              [protocols :as p]
              [core :refer [vect? matrix? transfer!]]]
             [uncomplicate.neanderthal.opencl
              [clblock :refer [create-vector create-ge-matrix ->TypedCLAccessor]]
-             [amd-gcn :refer [gcn-engine-factory]]
-             [dummy-engine :refer [dummy-engine-factory]]])
+             [amd-gcn :refer [gcn-factory]]
+             [dummy-engine :refer [dummy-factory]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
 
-(def ^:dynamic *double-engine-factory*)
-(def ^:dynamic *single-engine-factory*)
+(def ^:dynamic *double-factory*)
+(def ^:dynamic *single-factory*)
 
 (defn float-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array))
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float))
 
 (defn double-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array))
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double))
 
 (defn gcn-single [ctx queue]
-  (gcn-engine-factory float-accessor ctx queue))
+  (gcn-factory float-accessor ctx queue))
 
 (defn gcn-double [ctx queue]
-  (gcn-engine-factory double-accessor ctx queue))
+  (gcn-factory double-accessor ctx queue))
 
 (defn dummy-single [ctx queue]
-  (dummy-engine-factory float-accessor ctx queue))
+  (dummy-factory float-accessor ctx queue))
 
 (defn dummy-double [ctx queue]
-  (dummy-engine-factory double-accessor ctx queue))
+  (dummy-factory double-accessor ctx queue))
 
 (defmacro with-engine
   "Creates the required engine factories for the supported primitive types
@@ -45,17 +46,17 @@
 
   Example:
 
-      (with-engine my-engine-factory-constructor [ctx queue]
+      (with-engine my-factory-constructor [ctx queue]
         (do-opencl-stuff))
   "
-  ([engine-factory-fn params & body]
-   `(binding [*double-engine-factory*
-              (~engine-factory-fn double-accessor ~@params)
-              *single-engine-factory*
-              (~engine-factory-fn float-accessor ~@params)]
+  ([factory-fn params & body]
+   `(binding [*double-factory*
+              (~factory-fn double-accessor ~@params)
+              *single-factory*
+              (~factory-fn float-accessor ~@params)]
       (try ~@body
-           (finally (and (release *double-engine-factory*)
-                         (release *single-engine-factory*)))))))
+           (finally (and (release *double-factory*)
+                         (release *single-factory*)))))))
 
 (defmacro with-gcn-engine
   "Creates appropriate engine factory optimized for AMD's GCN devices,
@@ -64,7 +65,7 @@
   Evaluates the body with these bindings.
   "
   [queue & body]
-  `(with-engine gcn-engine-factory [(queue-context ~queue) ~queue] ~@body))
+  `(with-engine gcn-factory [(queue-context ~queue) ~queue] ~@body))
 
 (defmacro with-default-engine
   "Creates appropriate default engine factory (usually, that's the engine I use
@@ -73,30 +74,30 @@
   Evaluates the body with these bindings.
   "
   [& body]
-  `(with-engine gcn-engine-factory [*context* *command-queue*] ~@body))
+  `(with-engine gcn-factory [*context* *command-queue*] ~@body))
 
 (defn clv
   "Creates an OpenCL-backed vector on the device, with dimension n and an
   optional CL buffer source. If source is not provided, creates a new
-  buffer on the device. Uses the supplied engine-factory for the device-specific
+  buffer on the device. Uses the supplied factory for the device-specific
   work.
 
-  (clv my-float-engine-factory 100)
+  (clv my-float-factory 100)
   "
-  ([engine-factory ^long n source]
+  ([factory ^long n source]
    (cond
      (and (vect? source)
-          (= (.entryType ^DataAccessor (p/data-accessor engine-factory))
+          (= (.entryType ^DataAccessor (p/data-accessor factory))
              (.entryType ^Block source)))
      (transfer! source
-                (create-vector engine-factory n
-                               (p/create-buffer (p/data-accessor engine-factory) n)))
-     (cl-buffer? source) (create-vector engine-factory n source)
+                (create-vector factory n
+                               (.createDataSource ^DataAccessor (p/data-accessor factory) n)))
+     (cl-buffer? source) (create-vector factory n source)
      :default (throw (IllegalArgumentException.
                       (format "I do not know how to create a cl vector from %s"
                               (type source))))))
-  ([engine-factory ^long n]
-   (create-vector engine-factory n)))
+  ([factory ^long n]
+   (create-vector factory n)))
 
 (defn sclv
   "Creates an OpenCL-backed float vector on the device, with dimension n, using
@@ -105,7 +106,7 @@
   (sclv 3)
   "
   [^long n]
-  (clv *single-engine-factory* n))
+  (clv *single-factory* n))
 
 (defn dclv
   "Creates an OpenCL-backed double vector on the device, with dimension n, using
@@ -114,31 +115,32 @@
   (dclv 3)
   "
   [^long n]
-  (clv *double-engine-factory* n))
+  (clv *double-factory* n))
 
 (defn clge
   "Creates an OpenCL-backed vector on the device, with dimensions m x n and an
   optional CL buffer source. If source is not provided, creates a new
-  buffer on the device. Uses the supplied engine-factory for the device-specific
+  buffer on the device. Uses the supplied factory for the device-specific
   work.
 
-  (cge my-float-engine-factory 100 33)
+  (clge my-float-factory 100 33)
   "
-  ([engine-factory ^long m ^long n source]
+  ([factory ^long m ^long n source]
    (cond
      (and (matrix? source)
-          (= (.entryType ^DataAccessor (p/data-accessor engine-factory))
+          (= (.entryType ^DataAccessor (p/data-accessor factory))
              (.entryType ^Block source)))
      (transfer! source
                 (create-ge-matrix
-                 engine-factory m n
-                 (p/create-buffer (p/data-accessor engine-factory) (* m n))))
-     (cl-buffer? source) (create-ge-matrix engine-factory m n source)
+                 factory m n
+                 (.createDataSource ^DataAccessor
+                                    (p/data-accessor factory) (* m n))))
+     (cl-buffer? source) (create-ge-matrix factory m n source)
      :default (throw (IllegalArgumentException.
                       (format "I do not know how to create a general cl matrix from %s"
                               (type source))))))
-  ([engine-factory ^long m^long n]
-   (create-ge-matrix engine-factory m n)))
+  ([factory ^long m^long n]
+   (create-ge-matrix factory m n)))
 
 (defn sclge
   "Creates an OpenCL-backed float matrix on the device, with dimensions m x n,
@@ -147,7 +149,7 @@
   (sclge 2 3)
   "
   [^long m ^long n]
-  (clge *single-engine-factory* m n))
+  (clge *single-factory* m n))
 
 (defn dclge
   "Creates an OpenCL-backed double matrix on the device, with dimensions m x n,
@@ -156,4 +158,4 @@
   (dclge 2 3)
   "
   [^long m ^long n]
-  (clge *double-engine-factory* m n))
+  (clge *double-factory* m n))

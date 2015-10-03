@@ -58,10 +58,10 @@
 (def ^:private dummy-vector-engine (->DummyVectorEngine))
 (def ^:private dummy-matrix-engine (->DummyMatrixEngine))
 
-(deftype DummyEngineFactory [claccessor ctx queue]
+(deftype DummyFactory [claccessor ctx queue]
   Releaseable
   (release [_] true)
-  EngineFactory
+  Factory
   (data-accessor [_]
     claccessor)
   (vector-engine [_ _ _ _ _]
@@ -69,6 +69,6 @@
   (matrix-engine [_ _ _ _ _ _]
     dummy-matrix-engine))
 
-(defn dummy-engine-factory
+(defn dummy-factory
   ([create-accessor ctx queue]
-   (->DummyEngineFactory (create-accessor ctx queue) ctx queue)))
+   (->DummyFactory (create-accessor ctx queue) ctx queue)))

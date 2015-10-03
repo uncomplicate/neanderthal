@@ -1,6 +1,8 @@
 (ns uncomplicate.neanderthal.protocols)
 
-(defprotocol EngineFactory
+(defprotocol Factory
+  (create-vector1 [this n source])
+  (create-matrix [this m n source])
   (data-accessor [this])
   (vector-engine [this buf n ofst strd])
   (matrix-engine [this buf m n ofst ld]))
@@ -10,10 +12,9 @@
 
 (defprotocol CLAccessor
   (get-queue [this])
-  (create-buffer [this n])
   (fill-buffer [this cl-buf val])
-  (array [this s])
-  (slice [this cl-buf k l]))
+  (wrap-seq [this s])
+  (wrap-prim [this p]))
 
 (defprotocol BlockCreator
   (create-block [this n][this m n]))

@@ -10,8 +10,16 @@
 
 (def accessorf double-accessor)
 
-(deftype DummyEngineFactory []
-  EngineFactory
+(deftype DummyFactory []
+  Factory
+  (create-vector1 [this n source]
+    (if (and (<= (long n) (.count double-accessor source))
+             (instance? java.nio.ByteBuffer source) )
+      (->RealBlockVector this double-accessor nil (.entryType double-accessor)
+                         true source n 1)
+      (throw (IllegalArgumentException.
+              (format "I can not create an %d element vector from %d-element %s."
+                      n (.count double-accessor source) (class source))))))
   (data-accessor [_]
     double-accessor)
   (vector-engine [_ _ _ _ _]
@@ -20,11 +28,11 @@
     nil))
 
 (defn rbv ^RealBlockVector [^RealBufferAccessor access s ^long n ^long strd]
-  (->RealBlockVector (->DummyEngineFactory) access nil (.entryType access) true
+  (->RealBlockVector (->DummyFactory) access nil (.entryType access) true
                      (.toBuffer ^RealBufferAccessor accessorf s) n strd))
 
 (defn rgm ^RealGeneralMatrix [^RealBufferAccessor access s m n ld ord]
-  (->RealGeneralMatrix (->DummyEngineFactory) access nil (.entryType access) true
+  (->RealGeneralMatrix (->DummyFactory) access nil (.entryType access) true
                      (.toBuffer ^RealBufferAccessor accessorf s) m n ld ord))
 
 (facts "Equality and hash code."
