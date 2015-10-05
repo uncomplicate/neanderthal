@@ -1,23 +1,18 @@
-(ns uncomplicate.neanderthal.protocols)
+(ns uncomplicate.neanderthal.protocols
+  (:import [uncomplicate.neanderthal.protocols Block]))
 
 (defprotocol Factory
-  (create-vector1 [this n source])
-  (create-matrix [this m n source])
-  (data-accessor [this])
-  (vector-engine [this buf n ofst strd])
-  (matrix-engine [this buf m n ofst ld]))
+  (create-vector [this n source options])
+  (create-matrix [this m n source options])
+  (data-accessor ^DataAccessor [this])
+  (vector-engine [this options])
+  (matrix-engine [this options]))
 
 (defprotocol EngineProvider
   (engine ^BLAS [this]))
 
-(defprotocol CLAccessor
-  (get-queue [this])
-  (fill-buffer [this cl-buf val])
-  (wrap-seq [this s])
-  (wrap-prim [this p]))
-
-(defprotocol BlockCreator
-  (create-block [this n][this m n]))
+(defprotocol FactoryProvider
+  (factory [this]))
 
 (defprotocol Memory
   (compatible [this other]))
@@ -39,3 +34,12 @@
 (defprotocol Reducible
   (freduce [x f] [x acc f] [x acc f y]
     [x acc f y z] [x acc f y z ws]))
+
+(def ^:const ROW_MAJOR 101)
+
+(def ^:const COLUMN_MAJOR 102)
+
+(def ^:const DEFAULT_ORDER COLUMN_MAJOR)
+
+(defn column-major? [^Block a]
+  (= COLUMN_MAJOR (.order a)))

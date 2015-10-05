@@ -6,9 +6,12 @@
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal
              [protocols :as p]
-             [core :refer [vect? matrix? transfer!]]]
+             [core :refer [vect? matrix? transfer!
+                           create create-vector create-ge-matrix]]]
+            [uncomplicate.neanderthal.impl.cblas
+             :refer [cblas-single cblas-double]]
             [uncomplicate.neanderthal.opencl
-             [clblock :refer [create-vector create-ge-matrix ->TypedCLAccessor]]
+             [clblock :refer [->TypedCLAccessor]]
              [amd-gcn :refer [gcn-factory]]
              [dummy-engine :refer [dummy-factory]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
@@ -17,10 +20,12 @@
 (def ^:dynamic *single-factory*)
 
 (defn float-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float))
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
+                     float-array wrap-float cblas-single))
 
 (defn double-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double))
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
+                     double-array wrap-double cblas-double))
 
 (defn gcn-single [ctx queue]
   (gcn-factory float-accessor ctx queue))
@@ -76,86 +81,46 @@
   [& body]
   `(with-engine gcn-factory [*context* *command-queue*] ~@body))
 
-(defn clv
-  "Creates an OpenCL-backed vector on the device, with dimension n and an
-  optional CL buffer source. If source is not provided, creates a new
-  buffer on the device. Uses the supplied factory for the device-specific
-  work.
-
-  (clv my-float-factory 100)
-  "
-  ([factory ^long n source]
-   (cond
-     (and (vect? source)
-          (= (.entryType ^DataAccessor (p/data-accessor factory))
-             (.entryType ^Block source)))
-     (transfer! source
-                (create-vector factory n
-                               (.createDataSource ^DataAccessor (p/data-accessor factory) n)))
-     (cl-buffer? source) (create-vector factory n source)
-     :default (throw (IllegalArgumentException.
-                      (format "I do not know how to create a cl vector from %s"
-                              (type source))))))
-  ([factory ^long n]
-   (create-vector factory n)))
-
-(defn sclv
+(defn sv-cl
   "Creates an OpenCL-backed float vector on the device, with dimension n, using
   the default engine factory.
 
-  (sclv 3)
+  (sv-cl 3)
   "
-  [^long n]
-  (clv *single-factory* n))
+  ([source]
+   (create-vector *single-factory* source))
+  ([x & xs]
+   (sv-cl (cons x xs))))
 
-(defn dclv
+(defn dv-cl
   "Creates an OpenCL-backed double vector on the device, with dimension n, using
   the default engine factory.
 
   (dclv 3)
   "
-  [^long n]
-  (clv *double-factory* n))
+  ([source]
+   (create-vector *double-factory* source))
+  ([x & xs]
+   (dv-cl (cons x xs))))
 
-(defn clge
-  "Creates an OpenCL-backed vector on the device, with dimensions m x n and an
-  optional CL buffer source. If source is not provided, creates a new
-  buffer on the device. Uses the supplied factory for the device-specific
-  work.
-
-  (clge my-float-factory 100 33)
-  "
-  ([factory ^long m ^long n source]
-   (cond
-     (and (matrix? source)
-          (= (.entryType ^DataAccessor (p/data-accessor factory))
-             (.entryType ^Block source)))
-     (transfer! source
-                (create-ge-matrix
-                 factory m n
-                 (.createDataSource ^DataAccessor
-                                    (p/data-accessor factory) (* m n))))
-     (cl-buffer? source) (create-ge-matrix factory m n source)
-     :default (throw (IllegalArgumentException.
-                      (format "I do not know how to create a general cl matrix from %s"
-                              (type source))))))
-  ([factory ^long m^long n]
-   (create-ge-matrix factory m n)))
-
-(defn sclge
+(defn sge-cl
   "Creates an OpenCL-backed float matrix on the device, with dimensions m x n,
   using the default engine factory.
 
-  (sclge 2 3)
+  (sge-cl 2 3)
   "
-  [^long m ^long n]
-  (clge *single-factory* m n))
+  ([^long m ^long n source]
+   (create-ge-matrix *single-factory* m n source))
+  ([^long m ^long n]
+   (create *single-factory* m n)))
 
-(defn dclge
+(defn dge-cl
   "Creates an OpenCL-backed double matrix on the device, with dimensions m x n,
   using the default engine factory.
 
-  (dclge 2 3)
+  (dge-cl 2 3)
   "
-  [^long m ^long n]
-  (clge *double-factory* m n))
+  ([^long m ^long n source]
+   (create-ge-matrix *double-factory* m n source))
+  ([^long m ^long n]
+   (create *double-factory* m n)))

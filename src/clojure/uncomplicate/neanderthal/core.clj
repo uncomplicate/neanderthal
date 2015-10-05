@@ -30,7 +30,7 @@
               [protocols :as p]
               [math :refer [f= pow sqrt]]])
   (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
-            BLAS BLASPlus Changeable]))
+            BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
 (def ^{:no-doc true :const true} MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")
@@ -59,6 +59,9 @@
 
 (def ^:private STRIDE_MSG
   "Incompatible stride - expected:%d, actual:%d.")
+
+(def ^:private ILLEGAL_SOURCE_MSG
+  "%d is not a valid data source for %s.")
 
 ;; ================== Category functions  ==============
 
@@ -94,17 +97,6 @@
   ([f acc x y z & ws]
    (apply p/freduce x acc f y z ws)))
 
-
-(defmulti transfer!
-  "Transfers the data from source in one type of memory, to the appropriate
-  destination in another type of memory. Typically you would use it when you want to
-  move data between the host memory and the OpenCL device memory. If you want to
-  simply move data from one container to another in the same memory space,
-  you should use copy.  If you call transfer in one memory space, it would simply
-  be copied.
-  "
-  (fn [source destination] [(class source) (class destination)]))
-
 ;; ================= Group  ====================================================
 (defn zero
   "Returns an empty instance of the same type and dimension(s)
@@ -129,6 +121,71 @@
   "
   [x]
   (instance? Matrix x))
+
+(defmulti transfer!
+  "Transfers the data from source in one type of memory, to the appropriate
+  destination in another type of memory. Typically you would use it when you want to
+  move data between the host memory and the OpenCL device memory. If you want to
+  simply move data from one container to another in the same memory space,
+  you should use copy.  If you call transfer in one memory space, it would simply
+  be copied.
+
+  (transfer! (sv 1 2 3) device-vect)
+  (transfer! device-vect (sv 3))
+  "
+  (fn [source destination] [(class source) (class destination)]))
+
+(defn create
+  "Creates an uninitialized vector of the dimension n, or a  matrix m x n,
+  using the provided factory.
+  More specific methods are available in technology-specific namespaces.
+
+  See uncomplicate.neanderthal.native, uncomplicate.neanderthal.opencl, etc.
+
+  (create cblas-single 3)
+  (create cblas-double 35 12)"
+  ([factory ^long n]
+   (let [acc ^DataAccessor (p/data-accessor factory)]
+     (p/create-vector factory n
+                      (.initialize acc (.createDataSource acc n))
+                      nil)))
+  ([factory ^long m ^long n]
+   (let [acc ^DataAccessor (p/data-accessor factory)]
+     (p/create-matrix factory m n
+                      (.initialize acc (.createDataSource acc (* m n)))
+                      nil))))
+
+(defn create-vector
+  ([factory source];;TODO documentation
+   (let [acc ^DataAccessor (p/data-accessor factory)]
+     (cond
+       (integer? source) (create factory source)
+       (sequential? source) (transfer! source (create factory (count source)))
+       (vect? source) (transfer! source (create factory (.dim ^Vector source)))
+       (float? source) (.set ^RealChangeable (create factory 1) 0 source)
+       source (p/create-vector factory
+                               (.count ^DataAccessor (p/data-accessor factory)
+                                       source)
+                               source nil)
+       :default (throw (IllegalArgumentException.
+                        (format ILLEGAL_SOURCE_MSG (type source) "vectors"))))))
+  ([factory x & xs]
+   (create-vector factory (cons x xs))))
+
+(defn create-ge-matrix
+  ([factory m n source]
+   (let [acc ^DataAccessor (p/data-accessor factory)]
+     (cond
+       (sequential? source) (transfer! source (create factory m n))
+       (matrix? source) (transfer! source (create factory
+                                                  (.mrows ^Matrix source)
+                                                  (.ncols ^Matrix source)))
+       source (p/create-matrix factory m n source p/DEFAULT_ORDER)
+       :default (throw (IllegalArgumentException.
+                        (format ILLEGAL_SOURCE_MSG (type source)
+                                "general matrices"))))))
+  ([factory m n]
+   (create factory m n)))
 
 ;; ================= Vector ====================================================
 
@@ -714,7 +771,7 @@
   in a new matrix instance.
   "
   ([alpha x y]
-   (rank! alpha x y (p/create-block x (dim x) (dim y))))
+   (rank! alpha x y (create (p/factory x) (dim x) (dim y))))
   ([x y]
    (rank 1.0 x y)))
 
@@ -775,7 +832,7 @@
   in a new matrix instance.
   Computes alpha a * b"
   ([alpha a b]
-   (mm! alpha a b 0.0 (p/create-block a (mrows a) (ncols b))))
+   (mm! alpha a b 0.0 (create (p/factory a) (mrows a) (ncols b))))
   ([a b]
    (mm 1.0 a b)))
 

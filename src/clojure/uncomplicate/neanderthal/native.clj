@@ -1,8 +1,9 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.native
-  (:require [uncomplicate.neanderthal.impl
-             [buffer-block :refer [create-vector create-ge-matrix]]
-             [cblas :refer [cblas-single cblas-double]]]))
+  (:require [uncomplicate.neanderthal.core
+             :refer [create create-vector create-ge-matrix]]
+            [uncomplicate.neanderthal.impl.cblas
+             :refer [cblas-single cblas-double]]))
 
 ;; ============ Creating real constructs  ==============
 
@@ -97,7 +98,7 @@
   ([^long m ^long n source]
    (create-ge-matrix cblas-double m n source))
   ([^long m ^long n]
-   (create-ge-matrix cblas-double m n)))
+   (create cblas-double m n)))
 
 (defn sge
   "Creates a native-backed, dense, column-oriented float mxn matrix from source.
@@ -122,4 +123,4 @@
   ([^long m ^long n source]
    (create-ge-matrix cblas-single m n source))
   ([^long m ^long n]
-   (create-ge-matrix cblas-single m n)))
+   (create cblas-single m n)))

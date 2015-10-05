@@ -2,14 +2,15 @@
   uncomplicate.neanderthal.opencl.amd-gcn
   (:refer-clojure :exclude [accessor])
   (:require [clojure.java.io :as io]
-            [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.clojurecl.toolbox
-             :refer [count-work-groups enq-reduce enq-reduce-horizontal
-                     enq-read-int enq-read-double wrap-int]]
-            [uncomplicate.neanderthal.protocols :refer :all]
-            [uncomplicate.neanderthal.math :refer [sqrt]]
+            [uncomplicate.clojurecl
+             [core :refer :all]
+             [toolbox :refer [count-work-groups enq-reduce enq-reduce-horizontal
+                              enq-read-int enq-read-double wrap-int]]]
+            [uncomplicate.neanderthal
+             [protocols :refer :all]
+             [math :refer [sqrt]]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
-  (:import [uncomplicate.clojurecl.core WorkSize]
+  (:import [uncomplicate.clojurecl.core WorkSize CLBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Block Matrix DataAccessor]))
 
@@ -124,7 +125,7 @@
 
 (deftype GCNMatrixEngine [^long WGSn ^long TS ^long WPT
                           claccessor queue
-                          ^long m ^long n ^long ofst ^long ld
+                          ^long m ^long n ^long ofst ^long ld ^long ord
                           eq-flag
                           reduce-acc
                           linear-work-size
@@ -167,7 +168,7 @@
                  (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
   (mm [_ alpha a b beta c]
-    (let [cn (/ (.ncols ^Matrix b) WPT);;TODO what if ncols b is not divisible with WPD?
+    (let [cn (/ (.ncols ^Matrix b) WPT);;TODO what if ncols b is not divisible by WPD?
           gemm-kernel (if (= 0 (mod m TS) (mod cn TS))
                         gemm-tiled-fit-kernel
                         gemm-tiled-kernel)]
@@ -179,14 +180,36 @@
                (work-size-2d (* TS (count-work-groups TS m))
                              (* TS (count-work-groups TS cn)))))))
 
-(deftype GCNFactory [claccessor ctx queue prog ^long WGS WGSn TS WPT]
+(deftype GCNFactory [^DataAccessor claccessor ctx queue prog
+                     ^long WGS WGSn TS WPT]
   Releaseable
   (release [_]
     (release prog))
+  FactoryProvider
+  (factory [_]
+    (factory claccessor))
   Factory
+  (create-vector [this n buf _]
+    (if (and (<= 0 (long n) (.count claccessor buf)) (instance? CLBuffer buf))
+      (->CLBlockVector this claccessor (vector-engine this [buf n 0 1])
+                       (.entryType claccessor) true buf n 0 1)
+      (throw (IllegalArgumentException.
+              (format "I can not create an %d element vector from %d-element %s."
+                      n (.count claccessor buf) (class buf))))))
+  (create-matrix [this m n buf order]
+    (if (and (<= (* (long m) (long n)) (.count claccessor buf))
+             (instance? CLBuffer buf))
+      (let [order (or order DEFAULT_ORDER)
+            ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
+        (->CLGeneralMatrix this claccessor
+                           (matrix-engine this [buf m n 0 ld order])
+                           (.entryType claccessor) true buf m n 0 ld order))
+      (throw (IllegalArgumentException.
+              (format "I do not know how to create a %dx%d matrix from %s."
+                      m n (type buf))))))
   (data-accessor [_]
     claccessor)
-  (vector-engine [_ cl-buf n ofst strd]
+  (vector-engine [_ [cl-buf n ofst strd]]
     (let [iacc-size (* Integer/BYTES (count-work-groups WGS n))
           acc-size (* Double/BYTES (count-work-groups WGS n))
           cl-acc (cl-buffer ctx acc-size :read-write)
@@ -227,16 +250,17 @@
                            (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "sum_reduce")
                            (set-args! 0 cl-acc cl-buf cl-ofst cl-strd)))))
-  (matrix-engine [_ cl-buf m n ofst ld]
+  (matrix-engine [_ [cl-buf m n ofst ld ord]]
     (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
                       (long m) (count-work-groups WGSn n))
           cl-acc (cl-buffer ctx acc-size :read-write)
           cl-eq-flag (cl-buffer ctx Integer/BYTES :read-write)
           cl-ofst (wrap-int ofst)
-          cl-ld (wrap-int ld)]
+          cl-ld (wrap-int ld)
+          cl-ord (wrap-int ord)]
       (->GCNMatrixEngine WGSn TS WPT
                          claccessor queue
-                         m n ofst ld
+                         m n ofst ld ord
                          cl-eq-flag
                          cl-acc
                          (work-size-1d m)

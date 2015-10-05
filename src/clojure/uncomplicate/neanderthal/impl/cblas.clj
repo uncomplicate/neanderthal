@@ -4,7 +4,7 @@
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
            [uncomplicate.neanderthal.protocols
-            BLAS BLASPlus Vector Matrix RealVector]))
+            BLAS BLASPlus Vector Matrix RealVector DataAccessor]))
 
 (def ^:private STRIDE_MSG
   "I cannot use vectors with stride other than %d: stride: %d.")
@@ -209,20 +209,30 @@
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
 
-(deftype CblasFactory [acc ^BLAS vector-eng ^BLAS matrix-eng]
+(deftype CblasFactory [^DataAccessor acc ^BLAS vector-eng ^BLAS matrix-eng]
   Factory
-  (create-vector1 [this n source]
-    (if (and (<= (long n) (.count acc source))
-             (instance? ByteBuffer source) (.isDirect ^ByteBuffer source))
-      (->RealBlockVector this acc vector-eng (.entryType acc) true source n 1)
+  (create-vector [this n buf _]
+    (if (and (<= 0 (long n) (.count acc buf))
+             (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
+      (->RealBlockVector this acc vector-eng (.entryType acc) true buf n 1)
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
-                      n (.count acc source) (class source))))))
+                      n (.count acc buf) (class buf))))))
+  (create-matrix [this m n buf order]
+    (if (and (<= (* (long m) (long n)) (.count acc buf))
+             (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
+      (let [order (or order DEFAULT_ORDER)
+            ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
+        (->RealGeneralMatrix this acc matrix-eng (.entryType acc) true
+                             buf m n ld order))
+      (throw (IllegalArgumentException.
+              (format "I do not know how to create a %dx%d matrix from %s."
+                      m n (type buf))))))
   (data-accessor [_]
     acc)
-  (vector-engine [_ buf n ofst strd]
+  (vector-engine [_ _]
     vector-eng)
-  (matrix-engine [_ buf m n ofst ld]
+  (matrix-engine [_ _]
     matrix-eng))
 
 (def cblas-single

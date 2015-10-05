@@ -2,38 +2,31 @@
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.clojurecl.core :refer [release]]
             [uncomplicate.neanderthal.protocols :refer :all]
-            [uncomplicate.neanderthal.impl.buffer-block :refer :all])
-  (:import [clojure.lang IFn$LLD IFn$LD IFn$DD]
-           [uncomplicate.neanderthal.protocols RealBufferAccessor]
+            [uncomplicate.neanderthal.core :refer [create transfer!]]
+            [uncomplicate.neanderthal.impl
+             [buffer-block :refer :all]
+             [cblas :refer [cblas-double]]])
+  (:import [java.nio ByteBuffer]
+           [clojure.lang IFn$LLD IFn$LD IFn$DD]
+           [uncomplicate.neanderthal.protocols
+            DataAccessor RealBufferAccessor]
            [uncomplicate.neanderthal.impl.buffer_block
             RealBlockVector RealGeneralMatrix]))
 
 (def accessorf double-accessor)
 
-(deftype DummyFactory []
-  Factory
-  (create-vector1 [this n source]
-    (if (and (<= (long n) (.count double-accessor source))
-             (instance? java.nio.ByteBuffer source) )
-      (->RealBlockVector this double-accessor nil (.entryType double-accessor)
-                         true source n 1)
-      (throw (IllegalArgumentException.
-              (format "I can not create an %d element vector from %d-element %s."
-                      n (.count double-accessor source) (class source))))))
-  (data-accessor [_]
-    double-accessor)
-  (vector-engine [_ _ _ _ _]
-    nil)
-  (matrix-engine [_ _ _ _ _ _]
-    nil))
+(defn seq-to-buffer [^RealBufferAccessor acc s]
+  (let [b (.createDataSource acc (count s))]
+    (reduce (fn [i e] (do (.set acc b i e) (inc i))) 0 s)
+    b))
 
-(defn rbv ^RealBlockVector [^RealBufferAccessor access s ^long n ^long strd]
-  (->RealBlockVector (->DummyFactory) access nil (.entryType access) true
-                     (.toBuffer ^RealBufferAccessor accessorf s) n strd))
+(defn rbv ^RealBlockVector [^DataAccessor access s ^long n ^long strd]
+  (->RealBlockVector cblas-double access nil (.entryType access) true
+                     (seq-to-buffer access s) n strd))
 
-(defn rgm ^RealGeneralMatrix [^RealBufferAccessor access s m n ld ord]
-  (->RealGeneralMatrix (->DummyFactory) access nil (.entryType access) true
-                     (.toBuffer ^RealBufferAccessor accessorf s) m n ld ord))
+(defn rgm ^RealGeneralMatrix [^DataAccessor access s m n ld ord]
+  (->RealGeneralMatrix cblas-double access nil (.entryType access) true
+                       (seq-to-buffer access s) m n ld ord))
 
 (facts "Equality and hash code."
        (let [x1 (rbv accessorf [1 2 3 4] 4 1)

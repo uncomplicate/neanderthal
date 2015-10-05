@@ -1,6 +1,5 @@
 (let [nar-classifier (str (System/getProperty "os.arch") "-"
                           (System/getProperty "os.name") "-gpp-jni")
-
       atlas-version "0.1.0"]
   (defproject uncomplicate/neanderthal "0.4.0-SNAPSHOT"
     :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."

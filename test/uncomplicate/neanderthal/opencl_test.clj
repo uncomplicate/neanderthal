@@ -1,11 +1,11 @@
 (ns uncomplicate.neanderthal.opencl-test
   (:require [midje.sweet :refer :all]
+            [uncomplicate.clojurecl
+             [core :refer [with-default with-release *context* *command-queue*]]]
             [uncomplicate.neanderthal
              [core :refer :all]
              [opencl :refer :all]
-             [math :refer [pow]]]
-            [uncomplicate.clojurecl
-             [core :refer [with-default with-release *context* *command-queue*]]])
+             [math :refer [pow]]])
   (:import [uncomplicate.neanderthal.protocols Block]))
 
 (defmacro test-clblock [engine-factory rge rv]
@@ -21,11 +21,11 @@
                       host-x# (doto (~rv cnt#) (entry! x-magic#))
                       host-y# (doto (~rv cnt#) (entry! y-magic#))
                       engine# (~engine-factory *context* *command-queue*)
-                      cl-a# (clge engine# m# n# host-a#)
-                      cl-b# (clge engine# m# n#)
-                      cl-x# (clv engine# cnt#)
-                      cl-y# (clv engine# cnt#)
-                      cl-z# (clv engine# cnt#)
+                      cl-a# (create-ge-matrix engine# m# n# host-a#)
+                      cl-b# (create-ge-matrix engine# m# n#)
+                      cl-x# (create-vector engine# cnt#)
+                      cl-y# (create-vector engine# cnt#)
+                      cl-z# (create-vector engine# cnt#)
                       row-a# (row cl-a# 3)
                       subvector-x# (subvector cl-x# 3 (/ cnt# 2))]
          (facts
@@ -65,8 +65,8 @@
         (with-release [host-x# (doto (~rv cnt#) (entry! x-magic#))
                        host-y# (doto (~rv cnt#) (entry! y-magic#))
                        engine# (~engine-factory *context* *command-queue*)
-                       cl-x# (clv engine# cnt#)
-                       cl-y# (clv engine# cnt#)]
+                       cl-x# (create-vector engine# cnt#)
+                       cl-y# (create-vector engine# cnt#)]
 
           (dim cl-x#) => cnt#
 
@@ -94,8 +94,8 @@
         (with-release [ host-x# (doto (~rv cnt#) (entry! 3.5))
                        host-y# (doto (~rv cnt#) (entry! 1.1))
                        engine# (~engine-factory *context* *command-queue*)
-                       cl-x# (clv engine# cnt#)
-                       cl-y# (clv engine# cnt#)]
+                       cl-x# (create-vector engine# cnt#)
+                       cl-y# (create-vector engine# cnt#)]
 
           (transfer! host-x# cl-x#) => cl-x#
           (transfer! host-y# cl-y#) => cl-y#
@@ -125,9 +125,9 @@
                        host-x# (doto (~rv n-cnt#) (entry! x-magic#))
                        host-y# (doto (~rv m-cnt#) (entry! y-magic#))
                        engine# (~engine-factory *context* *command-queue*)
-                       cl-a# (transfer! host-a# (clge engine# m-cnt# n-cnt#))
-                       cl-x# (transfer! host-x# (clv engine# n-cnt#))
-                       cl-y# (transfer! host-y# (clv engine# m-cnt#))]
+                       cl-a# (transfer! host-a# (create-ge-matrix engine# m-cnt# n-cnt#))
+                       cl-x# (transfer! host-x# (create-vector engine# n-cnt#))
+                       cl-y# (transfer! host-y# (create-vector engine# m-cnt#))]
 
           (transfer! (mv! 10 cl-a# cl-x# 100 cl-y#) (~rv m-cnt#))
           => (mv! 10 host-a# host-x# 100 host-y#))))))
@@ -148,9 +148,9 @@
                        host-c# (~rge m-cnt# n-cnt#
                                      (map (partial * 2) (repeatedly (* m-cnt# n-cnt#) rand)))
                        engine# (~engine-factory *context* *command-queue*)
-                       cl-a# (transfer! host-a# (clge engine# m-cnt# k-cnt#))
-                       cl-b# (transfer! host-b# (clge engine# k-cnt# n-cnt#))
-                       cl-c# (transfer! host-c# (clge engine# m-cnt# n-cnt#))]
+                       cl-a# (transfer! host-a# (create-ge-matrix engine# m-cnt# k-cnt#))
+                       cl-b# (transfer! host-b# (create-ge-matrix engine# k-cnt# n-cnt#))
+                       cl-c# (transfer! host-c# (create-ge-matrix engine# m-cnt# n-cnt#))]
 
           (< (double
               (nrm2 (~rv (buffer (axpy! -1 (mm! 10 host-a# host-b# 100 host-c#)

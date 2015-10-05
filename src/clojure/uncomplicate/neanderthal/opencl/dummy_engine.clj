@@ -64,9 +64,9 @@
   Factory
   (data-accessor [_]
     claccessor)
-  (vector-engine [_ _ _ _ _]
+  (vector-engine [_ _]
     dummy-vector-engine)
-  (matrix-engine [_ _ _ _ _ _]
+  (matrix-engine [_ _]
     dummy-matrix-engine))
 
 (defn dummy-factory

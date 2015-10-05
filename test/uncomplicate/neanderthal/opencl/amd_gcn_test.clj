@@ -10,8 +10,8 @@
              :refer [cblas-single cblas-double]]
             [uncomplicate.neanderthal.opencl :refer [gcn-single gcn-double]]))
 
-#_(with-default-engine;;TODO currently throws an exception due to a bug in Clojure 1.8 that soon should be fixed
-  (rt/test-all (data-accessor cblas-single) sclge sclv)
-  (rt/test-all (data-accessor cblas-double) dclge dclv))
-(test-all gcn-single sge sv)
-(test-all gcn-double dge dv)
+;;(with-default-engine;;TODO currently throws an exception due to a bug in Clojure 1.8 that soon should be fixed
+  ;;(rt/test-all (data-accessor cblas-single) sclge sclv)
+  ;;(rt/test-all (data-accessor cblas-double) dclge dclv))
+#_(test-all gcn-single sge sv)
+#_(test-all gcn-double dge dv)

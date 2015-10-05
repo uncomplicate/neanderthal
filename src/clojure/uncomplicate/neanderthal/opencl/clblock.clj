@@ -2,10 +2,10 @@
   uncomplicate.neanderthal.opencl.clblock
   (:require [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal.protocols :refer :all]
-            [uncomplicate.neanderthal.core :refer [transfer! copy!]]
+            [uncomplicate.neanderthal.core :refer [transfer! copy! create]]
             [uncomplicate.neanderthal.impl.buffer-block :refer
-             [COLUMN_MAJOR float-accessor double-accessor
-              ->RealBlockVector ->RealGeneralMatrix column-major?]]
+             [float-accessor double-accessor
+              ->RealBlockVector ->RealGeneralMatrix]]
             [uncomplicate.neanderthal.impl.cblas :refer
              [cblas-single cblas-double]])
   (:import [uncomplicate.neanderthal CBLAS]
@@ -20,8 +20,13 @@
   1: %s
   2: %s")
 
+(defprotocol CLAccessor
+  (get-queue [this])
+  (wrap-seq [this s])
+  (wrap-prim [this p]))
+
 ;; ================== Accessors ================================================
-(deftype TypedCLAccessor [ctx queue et ^long w array-fn wrap-fn]
+(deftype TypedCLAccessor [ctx queue et ^long w array-fn wrap-fn host-fact]
   DataAccessor
   (entryType [_]
     et)
@@ -31,17 +36,20 @@
     (quot (size b) w))
   (createDataSource [_ n]
     (cl-buffer ctx (* w (long n)) :read-write))
+  (initialize [_ cl-buf]
+    (do
+      (enq-fill! queue cl-buf (wrap-fn 0))
+      cl-buf))
   CLAccessor
   (get-queue [_]
     queue)
-  (fill-buffer [_ cl-buf v]
-    (do
-      (enq-fill! queue cl-buf (array-fn v))
-      cl-buf))
   (wrap-seq [_ s]
     (array-fn s))
   (wrap-prim [_ s]
-    (wrap-fn s)))
+    (wrap-fn s))
+  FactoryProvider
+  (factory [_]
+    host-fact))
 
 ;; ================== Non-blas kernels =========================================
 (defprotocol BlockEngine
@@ -49,10 +57,8 @@
 
 ;; =============================================================================
 
-(declare create-vector)
-(declare create-ge-matrix)
-
-(deftype CLBlockVector [factory ^DataAccessor claccessor ^BLAS eng
+(deftype CLBlockVector [^uncomplicate.neanderthal.protocols.Factory fact
+                        ^DataAccessor claccessor ^BLAS eng
                         ^Class entry-type ^Boolean master
                         ^uncomplicate.clojurecl.core.CLBuffer cl-buf
                         ^long n ^long ofst ^long strd]
@@ -77,19 +83,16 @@
      (release eng)))
   Group
   (zero [_]
-    (create-vector factory n))
+    (create-vector fact n (.createDataSource claccessor n) nil))
   EngineProvider
   (engine [_]
     eng)
+  FactoryProvider
+  (factory [_]
+    fact)
   Memory
   (compatible [_ y]
-    (and (instance? CLBlockVector y)
-         (= entry-type (.entryType ^Block y))))
-  BlockCreator
-  (create-block [_ m n]
-    (create-ge-matrix factory m n))
-  (create-block [_ n]
-    (create-vector factory n))
+    (and (instance? CLBlockVector y) (= entry-type (.entryType ^Block y))))
   Block
   (entryType [_]
     entry-type)
@@ -105,23 +108,20 @@
   (dim [_]
     n)
   (subvector [_ k l]
-    (CLBlockVector. factory claccessor
-                    (vector-engine factory cl-buf l (+ ofst k) strd)
+    (CLBlockVector. fact claccessor
+                    (vector-engine fact [cl-buf l (+ ofst k) strd])
                     entry-type false cl-buf l (+ ofst k) strd))
   Mappable
   (map-memory [_ flags]
-    (let [host-factory (cond (= Float/TYPE entry-type) cblas-single
-                                    (= Double/TYPE entry-type) cblas-double)
-          acc ^RealBufferAccessor (data-accessor host-factory)
+    (let [host-fact (factory fact)
+          acc ^RealBufferAccessor (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
                                       (* ofst (.entryWidth claccessor))
                                       (* strd n (.entryWidth claccessor))
                                       flags nil nil)]
       (try
-        (->RealBlockVector host-factory acc
-                           (vector-engine host-factory mapped-buf n 0 strd)
-                           entry-type true mapped-buf n strd)
+        (create-vector host-fact n mapped-buf nil)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -152,12 +152,20 @@
         destination)
       (finally (unmap destination mapped-host)))))
 
+(defmethod transfer! [clojure.lang.Sequential CLBlockVector]
+  [source ^CLBlockVector destination]
+  (transfer!
+   (transfer! source (create (factory (factory destination))
+                             (.dim destination)))
+   destination))
+
 ;; ================== CL Matrix ============================================
 
-(deftype CLGeneralMatrix [factory ^DataAccessor claccessor
-                          eng ^Class entry-type ^Boolean master
+(deftype CLGeneralMatrix [^uncomplicate.neanderthal.protocols.Factory fact
+                          ^DataAccessor claccessor ^BLAS eng
+                          ^Class entry-type ^Boolean master
                           ^uncomplicate.clojurecl.core.CLBuffer cl-buf
-                          ^long m ^long n ^long ofst ^long ld]
+                          ^long m ^long n ^long ofst ^long ld ^long ord]
   Object
   (hashCode [this]
     (-> (hash :CLGeneralMatrix) (hash-combine m) (hash-combine n)))
@@ -179,18 +187,16 @@
   EngineProvider
   (engine [_]
     eng)
+  FactoryProvider
+  (factory [_]
+    fact)
   Memory
   (compatible [_ y]
     (and (or (instance? CLGeneralMatrix y) (instance? CLBlockVector y))
          (= entry-type (.entryType ^Block y))))
   Group
   (zero [_]
-    (create-ge-matrix factory m n))
-  BlockCreator
-  (create-block [_ m1 n1]
-    (create-ge-matrix factory m1 n1))
-  (create-block [_ n]
-    (create-vector factory n))
+    (create-matrix fact m n (.createDataSource claccessor (* m n)) ord))
   Block
   (entryType [_]
     entry-type)
@@ -201,7 +207,7 @@
   (stride [_]
     ld)
   (order [_]
-    COLUMN_MAJOR)
+    ord)
   (count [_]
     (* m n ))
   Matrix
@@ -211,34 +217,31 @@
     n)
   (row [a i]
     (if (column-major? a)
-      (CLBlockVector. factory claccessor
-                      (vector-engine factory cl-buf n i ld)
+      (CLBlockVector. fact claccessor
+                      (vector-engine fact [cl-buf n i ld])
                       entry-type false cl-buf n i ld)
-      (CLBlockVector. factory claccessor
-                      (vector-engine factory cl-buf n (* ld i) 1)
+      (CLBlockVector. fact claccessor
+                      (vector-engine fact [cl-buf n (* ld i) 1])
                       entry-type false cl-buf n (* ld i) 1)))
   (col [a j]
     (if (column-major? a)
-      (CLBlockVector. factory claccessor
-                      (vector-engine factory cl-buf m (* ld j) 1)
+      (CLBlockVector. fact claccessor
+                      (vector-engine fact [cl-buf m (* ld j) 1])
                       entry-type false cl-buf m (* ld j) 1)
-      (CLBlockVector. factory claccessor
-                      (vector-engine factory cl-buf m j ld)
+      (CLBlockVector. fact claccessor
+                      (vector-engine fact [cl-buf m j ld])
                       entry-type false cl-buf m j ld)))
   Mappable
   (map-memory [this flags]
-    (let [host-factory (cond (= Float/TYPE entry-type) cblas-single
-                                    (= Double/TYPE entry-type) cblas-double)
-          acc ^RealBufferAccessor (data-accessor host-factory)
+    (let [host-fact (factory fact)
+          acc ^RealBufferAccessor (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
                                       (* ofst (.entryWidth claccessor))
                                       (* (* n ld) (.entryWidth claccessor))
                                       flags nil nil)]
       (try
-        (->RealGeneralMatrix host-factory acc
-                             (matrix-engine host-factory mapped-buf m n 0 ld)
-                             entry-type true mapped-buf m n ld COLUMN_MAJOR);;TODO add order
+        (create-matrix host-fact m n mapped-buf ord)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -265,29 +268,14 @@
         destination)
       (finally (unmap destination mapped-host)))))
 
+(defmethod transfer! [clojure.lang.Sequential CLGeneralMatrix]
+  [source destination]
+  (transfer!
+   (transfer! source (create (factory (factory destination))
+                             (.mrows ^Matrix destination)
+                             (.ncols ^Matrix destination)))
+   destination))
+
 (defmethod print-method CLGeneralMatrix
   [x ^java.io.Writer w]
   (.write w (str x)))
-
-(defn create-vector
-  ([factory ^long n buf]
-   (let [acc ^DataAccessor (data-accessor factory)]
-     (->CLBlockVector factory acc
-                      (vector-engine factory buf n 0 1)
-                      (.entryType acc) true buf n 0 1)))
-  ([factory ^long n]
-   (let [acc ^DataAccessor (data-accessor factory)]
-     (create-vector factory n
-                    (fill-buffer acc (.createDataSource acc n) 1)))))
-
-(defn create-ge-matrix
-  ([factory ^long m ^long n buf]
-   (let [acc ^DataAccessor (data-accessor factory)]
-     (->CLGeneralMatrix factory acc
-                        (matrix-engine factory buf m n 0 1)
-                        (.entryType ^DataAccessor acc) true buf m n 0 m)))
-
-  ([factory ^long m ^long n]
-   (let [acc ^DataAccessor (data-accessor factory)]
-     (create-ge-matrix factory m n
-                       (fill-buffer acc (.createDataSource acc (* m n)) 1)))))
