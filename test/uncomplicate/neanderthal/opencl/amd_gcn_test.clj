@@ -1,17 +1,14 @@
 (ns uncomplicate.neanderthal.opencl.amd-gcn-test
   (:require [midje.sweet :refer :all]
+            [uncomplicate.clojurecl.core
+             :refer [with-default *command-queue*]]
             [uncomplicate.neanderthal
-             [protocols :refer [data-accessor]]
-             [native :refer :all]
-             [opencl :refer :all]
-             [real-test :as rt]
-             [opencl-test :refer :all]]
-            [uncomplicate.neanderthal.impl.cblas
-             :refer [cblas-single cblas-double]]
-            [uncomplicate.neanderthal.opencl :refer [gcn-single gcn-double]]))
+             [opencl :refer [with-gcn-engine *double-factory* *single-factory*]]
+             [real-test :as real-test]
+             [opencl-test :as opencl-test]]
+            [uncomplicate.neanderthal.opencl.amd-gcn :refer [gcn-factory]]))
 
-;;(with-default-engine;;TODO currently throws an exception due to a bug in Clojure 1.8 that soon should be fixed
-  ;;(rt/test-all (data-accessor cblas-single) sclge sclv)
-  ;;(rt/test-all (data-accessor cblas-double) dclge dclv))
-#_(test-all gcn-single sge sv)
-#_(test-all gcn-double dge dv)
+(with-default
+  (with-gcn-engine *command-queue*
+    (opencl-test/test-all *single-factory*)
+    (opencl-test/test-all *double-factory*)))

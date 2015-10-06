@@ -56,12 +56,12 @@
   "
   ([factory-fn params & body]
    `(binding [*double-factory*
-              (~factory-fn double-accessor ~@params)
-              *single-factory*
-              (~factory-fn float-accessor ~@params)]
-      (try ~@body
-           (finally (and (release *double-factory*)
-                         (release *single-factory*)))))))
+              (~factory-fn double-accessor ~@params)]
+      (try
+        (binding [*single-factory* (~factory-fn float-accessor ~@params)]
+          (try ~@body
+               (finally (release *single-factory*))))
+        (finally (release *double-factory*))))))
 
 (defmacro with-gcn-engine
   "Creates appropriate engine factory optimized for AMD's GCN devices,
