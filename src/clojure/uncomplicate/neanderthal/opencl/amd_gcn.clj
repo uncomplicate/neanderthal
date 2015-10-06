@@ -279,19 +279,19 @@
                          (doto (kernel prog "gemm_tiled_fit")
                            (set-arg! 1 cl-buf))))))
 
-(defn gcn-factory
-  ([create-accessor ctx queue wgs wgsn ts wpt]
-   (let [accessor (create-accessor ctx queue)]
-     (->GCNFactory
-      accessor ctx queue
-      (build-program!
-       (program-with-source
-        ctx [(slurp (io/resource "uncomplicate/clojurecl/kernels/reduction.cl"))
-             (slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))])
-       (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSn=%d -DTS=%d -DWPT=%d"
-               (.entryType ^DataAccessor accessor) Double/TYPE
-               (.entryType ^DataAccessor accessor) wgs wgsn ts wpt)
-       nil)
-      wgs wgsn ts wpt)))
-  ([create-accessor ctx queue]
-   (gcn-factory create-accessor ctx queue 256 16 32 4)))
+(let [src [(slurp (io/resource "uncomplicate/clojurecl/kernels/reduction.cl"))
+           (slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))]]
+  (defn gcn-factory
+    ([create-accessor ctx queue wgs wgsn ts wpt]
+     (let [accessor (create-accessor ctx queue)]
+       (->GCNFactory
+        accessor ctx queue
+        (build-program!
+         (program-with-source ctx src)
+         (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSn=%d -DTS=%d -DWPT=%d"
+                 (.entryType ^DataAccessor accessor) Double/TYPE
+                 (.entryType ^DataAccessor accessor) wgs wgsn ts wpt)
+         nil)
+        wgs wgsn ts wpt)))
+    ([create-accessor ctx queue]
+     (gcn-factory create-accessor ctx queue 256 16 32 4))))
