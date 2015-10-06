@@ -17,24 +17,8 @@
             BLAS RealBufferAccessor BufferAccessor DataAccessor
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
-(def MAT_BOUNDS_MSG
-  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
-
-(def INCOMPATIBLE_BLOCKS_MSG
-  "Operation is not permited on vectors with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s")
-
-(def ^:private DIMENSIONS_MSG
-  "Vector dimensions should be %d.")
-
-(def ^:private PRIMITIVE_FN_MSG
-  "I cannot accept function of this type as an argument.")
-
 (defn ^:private hash* [^long h ^double x]
   (clojure.lang.Util/hashCombine h (Double/hashCode x)))
-
 (defn entry-eq [res ^double x ^double y]
   (= x y))
 

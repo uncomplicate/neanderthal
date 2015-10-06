@@ -32,37 +32,6 @@
   (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
-(def ^{:no-doc true :const true} MAT_BOUNDS_MSG
-  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
-
-(def ^{:no-doc true :const true} VECTOR_BOUNDS_MSG
-  "Requested dim %d is out of bounds of vector dim %d.")
-
-(def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG
-  "Operation is not permited on objects with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s")
-
-(def ^:private INCOMPATIBLE_BLOCKS_MSG_3
-  "Operation is not permited on objects with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s
-  3: %s")
-
-(def ^:private ROW_COL_MSG
-  "Required %s %d is higher than the row count %d.")
-
-(def ^:private DIMENSION_MSG
-  "Incompatible dimensions - expected:%d, actual:%d.")
-
-(def ^:private STRIDE_MSG
-  "Incompatible stride - expected:%d, actual:%d.")
-
-(def ^:private ILLEGAL_SOURCE_MSG
-  "%d is not a valid data source for %s.")
-
 ;; ================== Category functions  ==============
 
 (defn fmap!
@@ -168,7 +137,7 @@
                                        source)
                                source nil)
        :default (throw (IllegalArgumentException.
-                        (format ILLEGAL_SOURCE_MSG (type source) "vectors"))))))
+                        (format p/ILLEGAL_SOURCE_MSG (type source) "vectors"))))))
   ([factory x & xs]
    (create-vector factory (cons x xs))))
 
@@ -182,7 +151,7 @@
                                                   (.ncols ^Matrix source)))
        source (p/create-matrix factory m n source p/DEFAULT_ORDER)
        :default (throw (IllegalArgumentException.
-                        (format ILLEGAL_SOURCE_MSG (type source)
+                        (format p/ILLEGAL_SOURCE_MSG (type source)
                                 "general matrices"))))))
   ([factory m n]
    (create factory m n)))
@@ -225,7 +194,7 @@
   (if (and (<= (+ k l) (dim x)))
     (.subvector x k l)
     (throw (IndexOutOfBoundsException.
-            (format VECTOR_BOUNDS_MSG (+ k l) (dim x))))))
+            (format p/VECTOR_BOUNDS_MSG (+ k l) (dim x))))))
 
 ;; ================= Matrix =======================
 
@@ -261,7 +230,7 @@
   (if (< -1 i (.mrows m))
     (.row m i)
     (throw (IndexOutOfBoundsException.
-            (format ROW_COL_MSG "row" i (.mrows m))))))
+            (format p/ROW_COL_MSG "row" i (.mrows m))))))
 
 (defn col
   "Returns the j-th column of the matrix m as a vector.
@@ -280,7 +249,7 @@
   (if (< -1 j (.ncols m))
     (.col m j)
     (throw (IndexOutOfBoundsException.
-            (format ROW_COL_MSG "col" j (.ncols m))))))
+            (format p/ROW_COL_MSG "col" j (.ncols m))))))
 
 (defn cols
   "Returns a lazy sequence of vectors that represent
@@ -349,7 +318,7 @@
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.boxedEntry m i j)
      (throw (IndexOutOfBoundsException.
-             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn entry!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
@@ -370,7 +339,7 @@
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.setBoxed ^Changeable m i j val)
      (throw (IndexOutOfBoundsException.
-             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn alter!
   "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result
@@ -390,7 +359,7 @@
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.alter ^Changeable m i j f)
      (throw (IndexOutOfBoundsException.
-             (format MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 ;;================== BLAS 1 =======================
 
@@ -403,7 +372,7 @@
   [x y]
   (if (and (p/compatible x y) (= (dim x) (dim y)))
     (.dot (p/engine x) x y)
-    (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y)))))
+    (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn nrm2
   "BLAS 1: Euclidean norm.
@@ -462,7 +431,7 @@
          (.rot (p/engine x) x y c s)
          x)
        (throw (IllegalArgumentException. "c and s must be sin and cos.")))
-     (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y)))))
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
@@ -501,13 +470,7 @@
     (do
       (.rotg (p/engine x) x)
       x)
-    (throw (IllegalArgumentException. (format DIMENSION_MSG 4 (dim x))))))
-
-(def ^:private ROTMG_COND_MSG
-  "Arguments p and args must be compatible.
-  p must have dimension 5 and args must have dimension 4.
-  p: %s;
-  args: %s ")
+    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (dim x))))))
 
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
@@ -519,14 +482,7 @@
     (do
       (.rotmg (p/engine p) p args)
       p)
-    (throw (IllegalArgumentException. (format ROTMG_COND_MSG p args)))))
-
-(def ^:private ROTM_COND_MSG
-  "Arguments x and y must be compatible and have the same dimensions.
-  argument p must have dimension 5.
-  x: %s;
-  y: %s;
-  p: %s")
+    (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG p args)))))
 
 (defn rotm!
   "BLAS 1: Apply modified plane rotation.
@@ -536,7 +492,7 @@
     (do
       (.rotm (p/engine x) x y p)
       x)
-    (throw (IllegalArgumentException. (format ROTM_COND_MSG x y p)))))
+    (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y p)))))
 
 (defn swp!
   "BLAS 1: Swap vectors or matrices.
@@ -562,8 +518,8 @@
           (.swap (p/engine x) x y)
           x)
         (throw (IllegalArgumentException.
-                (format DIMENSION_MSG (ecount x) (ecount y)))))
-      (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y))))
+                (format p/DIMENSION_MSG (ecount x) (ecount y)))))
+      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
     x))
 
 (defn copy!
@@ -590,8 +546,8 @@
           (.copy (p/engine x) x y)
           y)
         (throw (IllegalArgumentException.
-                (format DIMENSION_MSG (ecount x) (ecount y)))))
-      (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y))))
+                (format p/DIMENSION_MSG (ecount x) (ecount y)))))
+      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
     y))
 
 (defn copy
@@ -645,7 +601,7 @@
      (do
        (.axpy (p/engine x) alpha x y)
        y)
-     (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG x y)))))
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
    (axpy! 1.0 x y))
   ([x y z & zs]
@@ -725,7 +681,7 @@
      (do
        (.mv (p/engine a) alpha a x beta y)
        y)
-     (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([alpha a x y]
    (mv! alpha a x 1.0 y))
   ([a x y]
@@ -762,7 +718,7 @@
      (do
        (.rank (p/engine a) alpha x y a)
        a)
-     (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([x y a]
    (rank! 1.0 x y a)))
 
@@ -821,7 +777,7 @@
                        (mrows a) (ncols a)
                        (mrows b) (ncols b)))))
      (throw (IllegalArgumentException.
-             (format INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
+             (format p/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
   ([a b c]
    (mm! 1.0 a b 1.0 c))
   ([alpha a b c]

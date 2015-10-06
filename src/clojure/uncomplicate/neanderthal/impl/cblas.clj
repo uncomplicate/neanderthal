@@ -6,9 +6,6 @@
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Vector Matrix RealVector DataAccessor]))
 
-(def ^:private STRIDE_MSG
-  "I cannot use vectors with stride other than %d: stride: %d.")
-
 ;; ============ Real Vector Engines ============================================
 
 (deftype DoubleVectorEngine []

@@ -16,7 +16,9 @@
                [core :refer :all :exclude [entry entry! dot nrm2 asum sum]]
                [real :refer :all]]))
   "
-  (:require [uncomplicate.neanderthal [core :as core]])
+  (:require [uncomplicate.neanderthal
+             [protocols :as p]
+             [core :as core]])
   (:import [uncomplicate.neanderthal.protocols
             RealVector RealMatrix RealChangeable]))
 
@@ -33,7 +35,7 @@
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.entry m i j)
      (throw (IndexOutOfBoundsException.
-             (format core/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn entry!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
@@ -51,7 +53,7 @@
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.set ^RealChangeable m i j val)
      (throw (IndexOutOfBoundsException.
-             (format core/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn dot
   "Primitive wrapper for core dot function."
