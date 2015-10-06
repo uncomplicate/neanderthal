@@ -14,12 +14,6 @@
            [uncomplicate.neanderthal.impl.buffer_block
             RealBlockVector RealGeneralMatrix]))
 
-(def ^:private INCOMPATIBLE_BLOCKS_MSG
-  "Operation is not permited on vectors with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s")
-
 (defprotocol CLAccessor
   (get-queue [this])
   (wrap-seq [this s])
