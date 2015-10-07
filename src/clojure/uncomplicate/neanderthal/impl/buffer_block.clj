@@ -260,8 +260,10 @@
   (initialize [_ b]
     b)
   BufferAccessor
-  (toSeq [_ buf stride]
-    (wrap-byte-seq float32 (* Float/BYTES stride) 0 (byte-seq buf)))
+  (toSeq [this buf stride]
+    (if (< 0 (.count this buf))
+      (wrap-byte-seq float32 (* Float/BYTES stride) 0 (byte-seq buf))
+      (list)))
   (slice [_ buf k l]
     (slice-buffer buf (* Float/BYTES k) (* Float/BYTES l)))
   RealBufferAccessor
@@ -285,8 +287,10 @@
   (initialize [_ b]
     b)
   BufferAccessor
-  (toSeq [_ buf stride]
-    (wrap-byte-seq float64 (* Double/BYTES stride) 0 (byte-seq buf)))
+  (toSeq [this buf stride]
+    (if (< 0 (.count this buf))
+      (wrap-byte-seq float64 (* Double/BYTES stride) 0 (byte-seq buf))
+      (list)))
   (slice [_ buf k l]
     (slice-buffer buf (* Double/BYTES k) (* Double/BYTES l)))
   RealBufferAccessor

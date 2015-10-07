@@ -655,8 +655,10 @@
      (axpy! 1.0 x (copy y) z)))
   ([x y z w & ws]
    (if (number? x)
-     (apply axpy! x y (copy z) w ws)
-     (apply axpy! 1.0 x (copy y) z w ws))))
+     (if (number? z)
+       (apply axpy! x y (zero y) z w ws)
+       (apply axpy! x y (copy z) w ws))
+     (apply axpy 1.0 x y z w ws))))
 
 (defn ax
   "Multiplies container x by a scalar a.

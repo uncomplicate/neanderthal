@@ -46,8 +46,7 @@
          ;;(create-vector factory (seq-to-buffer (data-accessor factory) [1 2 3]))
          ;;=> (create-vector factory [1 2 3])
          (create-vector factory nil) => (throws IllegalArgumentException)
-         ;;(create-vector factory [])
-         ;;=> (create-vector factory (seq-to-buffer (data-accessor factory) []))
+         (dim (create-vector factory [])) => 0
          (create-vector factory 3) => (zero (create-vector factory [1 2 3]))))
 
 (defn test-vector [factory]
@@ -55,13 +54,15 @@
          (dim (create-vector factory [1 2 3])) => 3
          (dim (create-vector factory [])) => 0
 
-         (entry (create-vector factory [1 2 3]) 1) => 2.0
-         (entry (create-vector factory []) 0)
-         => (throws IndexOutOfBoundsException)
-
          (subvector (create-vector factory 1 2 3 4 5 6) 1 3)
          => (create-vector factory 2 3 4)
          (subvector (create-vector factory 1 2 3) 2 3)
+         => (throws IndexOutOfBoundsException)))
+
+(defn test-vector-entry [factory]
+  (facts "Vectory entry."
+         (entry (create-vector factory [1 2 3]) 1) => 2.0
+         (entry (create-vector factory []) 0)
          => (throws IndexOutOfBoundsException)))
 
 ;;================ BLAS functions =========================================
@@ -374,6 +375,7 @@
     (test-ge-matrix factory)
     (test-vector-constructor factory)
     (test-vector factory)
+    (test-vector-entry factory)
     (test-dot factory)
     (test-nrm2 factory)
     (test-asum factory)

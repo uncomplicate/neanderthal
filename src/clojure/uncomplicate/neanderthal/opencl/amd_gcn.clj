@@ -76,23 +76,31 @@
                    (wrap-int (.stride y)))
         (enq-nd! queue copy-kernel linear-work-size))))
   (dot [_ _ y]
-    (do
-      (set-args! dot-reduce-kernel 4 (.buffer y) (wrap-int (.offset y))
-                (wrap-int (.stride y)))
-      (enq-reduce queue dot-reduce-kernel sum-reduction-kernel WGS n)
-      (enq-read-double queue reduce-acc)))
+    (if (< 0 n)
+      (do
+        (set-args! dot-reduce-kernel 4 (.buffer y) (wrap-int (.offset y))
+                   (wrap-int (.stride y)))
+        (enq-reduce queue dot-reduce-kernel sum-reduction-kernel WGS n)
+        (enq-read-double queue reduce-acc))
+      0.0))
   (nrm2 [_ _]
-    (do
-      (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel WGS n)
-      (sqrt (enq-read-double queue reduce-acc))))
+    (if (< 0 n)
+      (do
+        (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel WGS n)
+        (sqrt (enq-read-double queue reduce-acc)))
+      0.0))
   (asum [_ _]
-    (do
-      (enq-reduce queue asum-reduce-kernel sum-reduction-kernel WGS n)
-      (enq-read-double queue reduce-acc)))
+    (if (< 0 n)
+      (do
+        (enq-reduce queue asum-reduce-kernel sum-reduction-kernel WGS n)
+        (enq-read-double queue reduce-acc))
+      0.0))
   (iamax [_ _]
-    (do
-      (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel WGS n)
-      (enq-read-int queue reduce-iacc)))
+    (if (< 0 n)
+      (do
+        (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel WGS n)
+        (enq-read-int queue reduce-iacc))
+      0.0))
   (rot [_ _ y c s]
     (throw (UnsupportedOperationException.
             "TODO.")))
@@ -105,7 +113,7 @@
   (rotmg [_ _ args]
     (throw (UnsupportedOperationException.
             "TODO.")))
-  (scal [_ alpha _]
+  (scal [_ alpha _];;TODO zero-length
     (do
       (set-args! scal-kernel 0 (wrap-prim claccessor alpha))
       (enq-nd! queue scal-kernel linear-work-size)))
@@ -117,9 +125,11 @@
       (enq-nd! queue axpy-kernel linear-work-size)))
   BLASPlus
   (sum [_ x]
-    (do
-      (enq-reduce queue sum-reduce-kernel sum-reduction-kernel WGS n)
-      (enq-read-double queue reduce-acc))))
+    (if (< 0 n)
+      (do
+        (enq-reduce queue sum-reduce-kernel sum-reduction-kernel WGS n)
+        (enq-read-double queue reduce-acc))
+      0.0)))
 
 ;; ======================= Dense Matrix ========================================
 
