@@ -320,9 +320,11 @@
   clojure.lang.Seqable
   (seq [_]
     (.toSeq accessor buf strd))
-  Group
-  (zero [_]
+  Container
+  (raw [_]
     (create-vector fact n (.createDataSource accessor n) nil))
+  (zero [this]
+    (raw this))
   EngineProvider
   (engine [_]
     eng)
@@ -393,12 +395,13 @@
 (defmethod transfer! [clojure.lang.Sequential RealBlockVector]
   [source ^RealBlockVector destination]
   (let [n (.dim destination)]
-    (loop [i 0 src source]
-      (if (and src (< i n))
-        (do
-          (.set destination i (first src))
-          (recur (inc i) (next src)))
-        destination))))
+    (do
+      (loop [i 0 src source]
+        (if (and src (< i n))
+          (do
+            (.set destination i (first src))
+            (recur (inc i) (next src)))
+          destination)))))
 
 (defmethod print-method RealBlockVector
   [^Vector x ^java.io.Writer w]
@@ -429,9 +432,11 @@
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
-  Group
-  (zero [_]
+  Container
+  (raw [_]
     (create-matrix fact m n (.createDataSource accessor (* m n)) ord))
+  (zero [this]
+    (raw this))
   EngineProvider
   (engine [_]
     eng)

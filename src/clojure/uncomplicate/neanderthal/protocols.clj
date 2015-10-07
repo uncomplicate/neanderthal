@@ -21,7 +21,8 @@
   (map-memory [this] [this flags])
   (unmap [this mapped]))
 
-(defprotocol Group
+(defprotocol Container
+  (raw [this])
   (zero [this]))
 
 (defprotocol Functor

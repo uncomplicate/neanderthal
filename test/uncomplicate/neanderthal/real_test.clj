@@ -43,11 +43,11 @@
          (vect? (create-vector factory [1 2 3])) => true
          (create-vector factory 1 2 3) => (create-vector factory [1 2 3])
          (create-vector factory 3) => (create-vector factory [0 0 0])
-         (create-vector factory (seq-to-buffer (data-accessor factory) [1 2 3]))
-         => (create-vector factory [1 2 3])
+         ;;(create-vector factory (seq-to-buffer (data-accessor factory) [1 2 3]))
+         ;;=> (create-vector factory [1 2 3])
          (create-vector factory nil) => (throws IllegalArgumentException)
-         (create-vector factory [])
-         => (create-vector factory (seq-to-buffer (data-accessor factory) []))
+         ;;(create-vector factory [])
+         ;;=> (create-vector factory (seq-to-buffer (data-accessor factory) []))
          (create-vector factory 3) => (zero (create-vector factory [1 2 3]))))
 
 (defn test-vector [factory]
@@ -244,12 +244,14 @@
   (facts "Create a matrix."
          (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
            (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) => a
-           (create-ge-matrix factory 2 3 (seq-to-buffer (data-accessor factory)
-                                                        [1 2 3 4 5 6]))
-           => a
+           ;;(create-ge-matrix factory 2 3 (seq-to-buffer (data-accessor factory)
+                                                        ;;[1 2 3 4 5 6]))
+           ;;=> a
            (create-ge-matrix factory 2 3 nil) => (throws IllegalArgumentException)
-           (create-ge-matrix factory 0 0 [])
-           => (create-ge-matrix factory 0 0 (seq-to-buffer (data-accessor factory) [])))))
+           ;;(create-ge-matrix factory 0 0 [])
+           ;;=> (create-ge-matrix factory 0 0 (seq-to-buffer (data-accessor factory) []))
+
+           )))
 
 (defn test-matrix [factory]
   (facts "General Matrix methods."

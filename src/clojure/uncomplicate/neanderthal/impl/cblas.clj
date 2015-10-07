@@ -216,7 +216,7 @@
               (format "I can not create an %d element vector from %d-element %s."
                       n (.count acc buf) (class buf))))))
   (create-matrix [this m n buf order]
-    (if (and (<= (* (long m) (long n)) (.count acc buf))
+    (if (and (<= 0 (* (long m) (long n)) (.count acc buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
       (let [order (or order DEFAULT_ORDER)
             ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]

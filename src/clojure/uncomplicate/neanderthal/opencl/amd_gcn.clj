@@ -197,7 +197,7 @@
               (format "I can not create an %d element vector from %d-element %s."
                       n (.count claccessor buf) (class buf))))))
   (create-matrix [this m n buf order]
-    (if (and (<= (* (long m) (long n)) (.count claccessor buf))
+    (if (and (<= 0 (* (long m) (long n)) (.count claccessor buf))
              (instance? CLBuffer buf))
       (let [order (or order DEFAULT_ORDER)
             ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]

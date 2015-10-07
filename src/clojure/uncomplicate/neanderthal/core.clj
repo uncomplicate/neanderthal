@@ -66,13 +66,6 @@
   ([f acc x y z & ws]
    (apply p/freduce x acc f y z ws)))
 
-;; ================= Group  ====================================================
-(defn zero
-  "Returns an empty instance of the same type and dimension(s)
-  as x, which can be vector, matrix or any other neanderthal object."
-  [x]
-  (p/zero x))
-
 (defn vect?
   "Returns true if x implements uncomplicate.neanderthal.protocols.Vector.
 
@@ -105,7 +98,7 @@
   (fn [source destination] [(class source) (class destination)]))
 
 (defn create
-  "Creates an uninitialized vector of the dimension n, or a  matrix m x n,
+  "Creates an initialized vector of the dimension n, or a  matrix m x n,
   using the provided factory.
   More specific methods are available in technology-specific namespaces.
 
@@ -123,6 +116,28 @@
      (p/create-matrix factory m n
                       (.initialize acc (.createDataSource acc (* m n)))
                       nil))))
+
+(defn create-raw
+  "Creates an uninitialized vector of the dimension n, or a  matrix m x n,
+  using the provided factory. It might or might not be initialized to zeroes,
+  depending of the underlying memory (DirectBytebuffer is zero-initialized,
+  OpenCL CLBuffer contains random junk). If you need to be sure that the
+  new object is filled with zeros, consider using the create function.
+
+  More specific methods are available in technology-specific namespaces.
+
+  See uncomplicate.neanderthal.native, uncomplicate.neanderthal.opencl, etc.
+
+  (create-init cblas-single 3)
+  (create-init cblas-double 35 12)"
+  ([factory ^long n]
+   (p/create-vector factory n
+                    (.createDataSource (p/data-accessor factory) n)
+                    nil))
+  ([factory ^long m ^long n]
+   (p/create-matrix factory m n
+                    (.createDataSource (p/data-accessor factory) (* m n))
+                    nil)))
 
 (defn create-vector
   ([factory source];;TODO documentation
@@ -155,6 +170,19 @@
                                 "general matrices"))))))
   ([factory m n]
    (create factory m n)))
+
+;; ================= Container  ====================================================
+(defn raw
+  "Returns an uninitialized instance of the same type and dimension(s)
+  as x, which can be neanderthal container."
+  [x]
+  (p/raw x))
+
+(defn zero
+  "Returns an instance of the same type and dimension(s) as the container x,
+  filled with 0."
+  [x]
+  (p/zero x))
 
 ;; ================= Vector ====================================================
 
@@ -558,7 +586,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [x]
-  (let [y (p/zero x)]
+  (let [y (p/raw x)]
     (copy! x y)
     y))
 
@@ -605,15 +633,15 @@
   ([x y]
    (axpy! 1.0 x y))
   ([x y z & zs]
-   (if (vect? x)
-     (apply axpy! 1.0 x y z zs)
+   (if (number? x)
      (loop [res (axpy! x y z) s zs]
        (if-let [v (first s)]
          (let [r (rest s)]
-           (if (vect? v)
-             (recur (axpy! 1.0 v res) r)
-             (recur (axpy! v (first r) res) (rest r))))
-         res)))))
+           (if (number? v)
+             (recur (axpy! v (first r) res) (rest r))
+             (recur (axpy! 1.0 v res) r)))
+         res))
+     (apply axpy! 1.0 x y z zs))))
 
 (defn axpy
   "A pure variant of axpy! that does not change any of the arguments.
@@ -621,12 +649,12 @@
   "
   ([x y]
    (axpy! 1.0 x (copy y)))
-  ([alpha x y]
-   (axpy! alpha x (copy y)))
+  ([x y z]
+   (if (number? x)
+     (axpy! x y (copy z))
+     (axpy! 1.0 x y z)))
   ([x y z w & ws]
-   (if (vect? x)
-     (apply axpy! 1.0 x (zero x) y z w ws)
-     (apply axpy! x y (zero y) z w ws))))
+   (apply axpy! x y (zero y) z w ws)))
 
 (defn ax
   "Multiplies container x by a scalar a.
@@ -727,7 +755,7 @@
   in a new matrix instance.
   "
   ([alpha x y]
-   (rank! alpha x y (create (p/factory x) (dim x) (dim y))))
+   (rank! alpha x y (create-raw (p/factory x) (dim x) (dim y))))
   ([x y]
    (rank 1.0 x y)))
 

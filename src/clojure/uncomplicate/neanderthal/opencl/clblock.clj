@@ -27,12 +27,12 @@
   (entryWidth [_]
     w)
   (count [_ b]
-    (quot (size b) w))
+    (quot (long (size b)) w))
   (createDataSource [_ n]
-    (cl-buffer ctx (* w (long n)) :read-write))
+    (cl-buffer ctx (* w (max 1 (long n))) :read-write))
   (initialize [_ cl-buf]
     (do
-      (enq-fill! queue cl-buf (wrap-fn 0))
+      (enq-fill! queue cl-buf (array-fn 1))
       cl-buf))
   CLAccessor
   (get-queue [_]
@@ -75,9 +75,13 @@
     (and
      (if master (release cl-buf) true)
      (release eng)))
-  Group
-  (zero [_]
+  Container
+  (raw [_]
     (create-vector fact n (.createDataSource claccessor n) nil))
+  (zero [this]
+    (let [r (raw this)]
+      (.initialize claccessor (.buffer ^Block r))
+      r))
   EngineProvider
   (engine [_]
     eng)
@@ -115,7 +119,7 @@
                                       (* strd n (.entryWidth claccessor))
                                       flags nil nil)]
       (try
-        (create-vector host-fact n mapped-buf nil)
+        (create-vector host-fact n mapped-buf nil);;TODO bug! if stride is > 1, the wrong region is mapped
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -188,9 +192,13 @@
   (compatible [_ y]
     (and (or (instance? CLGeneralMatrix y) (instance? CLBlockVector y))
          (= entry-type (.entryType ^Block y))))
-  Group
-  (zero [_]
+  Container
+  (raw [_]
     (create-matrix fact m n (.createDataSource claccessor (* m n)) ord))
+  (zero [this]
+    (let [r (raw this)]
+      (.initialize claccessor (.buffer ^Block r))
+      r))
   Block
   (entryType [_]
     entry-type)

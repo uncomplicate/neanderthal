@@ -11,4 +11,6 @@
 (with-default
   (with-gcn-engine *command-queue*
     (opencl-test/test-all *single-factory*)
-    (opencl-test/test-all *double-factory*)))
+    (opencl-test/test-all *double-factory*)
+    (real-test/test-all *single-factory*)
+    (real-test/test-all *double-factory*)))
