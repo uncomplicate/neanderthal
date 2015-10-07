@@ -144,9 +144,9 @@
    (let [acc ^DataAccessor (p/data-accessor factory)]
      (cond
        (integer? source) (create factory source)
-       (sequential? source) (transfer! source (create factory (count source)))
-       (vect? source) (transfer! source (create factory (.dim ^Vector source)))
-       (float? source) (.set ^RealChangeable (create factory 1) 0 source)
+       (sequential? source) (transfer! source (create-raw factory (count source)))
+       (vect? source) (transfer! source (create-raw factory (.dim ^Vector source)))
+       (float? source) (.set ^RealChangeable (create-raw factory 1) 0 source)
        source (p/create-vector factory
                                (.count ^DataAccessor (p/data-accessor factory)
                                        source)
@@ -160,10 +160,11 @@
   ([factory m n source]
    (let [acc ^DataAccessor (p/data-accessor factory)]
      (cond
-       (sequential? source) (transfer! source (create factory m n))
-       (matrix? source) (transfer! source (create factory
-                                                  (.mrows ^Matrix source)
-                                                  (.ncols ^Matrix source)))
+       (sequential? source) (transfer! source (create-raw factory m n))
+       (matrix? source)
+       (transfer! source (create-raw factory
+                                     (.mrows ^Matrix source)
+                                     (.ncols ^Matrix source)))
        source (p/create-matrix factory m n source p/DEFAULT_ORDER)
        :default (throw (IllegalArgumentException.
                         (format p/ILLEGAL_SOURCE_MSG (type source)

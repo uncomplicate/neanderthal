@@ -262,7 +262,7 @@
                            (set-args! 0 cl-acc cl-buf cl-ofst cl-strd)))))
   (matrix-engine [_ [cl-buf m n ofst ld ord]]
     (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
-                      (long m) (count-work-groups WGSn n))
+                      (max 1 (* (long m) (count-work-groups WGSn n))))
           cl-acc (cl-buffer ctx acc-size :read-write)
           cl-eq-flag (cl-buffer ctx Integer/BYTES :read-write)
           cl-ofst (wrap-int ofst)

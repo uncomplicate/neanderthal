@@ -262,14 +262,6 @@
          (mrows (create-ge-matrix factory 2 3)) => 2
          (mrows (create-ge-matrix factory 0 0)) => 0
 
-         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
-         (entry (create-ge-matrix factory 0 0) 0 0)
-         => (throws IndexOutOfBoundsException)
-         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) -1 2)
-         => (throws IndexOutOfBoundsException)
-         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 2 1)
-         => (throws IndexOutOfBoundsException)
-
          (row (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 1)
          => (create-vector factory 2 4 6)
          (row (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 4)
@@ -287,6 +279,16 @@
          (submatrix (create-ge-matrix factory 3 4 (range 12)) 3 4)
          => (create-ge-matrix factory 3 4 (range 12))
          (submatrix (create-ge-matrix factory 3 4 (range 12)) 1 1 3 3)
+         => (throws IndexOutOfBoundsException)))
+
+(defn test-matrix-entry [factory]
+  (facts "Matrix entry."
+         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
+         (entry (create-ge-matrix factory 0 0) 0 0)
+         => (throws IndexOutOfBoundsException)
+         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) -1 2)
+         => (throws IndexOutOfBoundsException)
+         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 2 1)
          => (throws IndexOutOfBoundsException)))
 
 ;; ====================== BLAS 2 ===============================
@@ -391,6 +393,7 @@
     (test-axpy factory)
     (test-matrix-constructor factory)
     (test-matrix factory)
+    (test-matrix-entry factory)
     (test-mv factory)
     (test-rank factory)
     (test-mm factory)))
