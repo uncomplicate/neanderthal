@@ -46,8 +46,8 @@ __kernel void equals_matrix (__global uint* eq_flag,
                              const uint ld_b) {
     uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
     uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
-    if ((a[ia] != b[ib])){
-        eq_flag[0]++;
+        if ((a[ia] != b[ib])){
+      eq_flag[0]++;
     }
 }
 

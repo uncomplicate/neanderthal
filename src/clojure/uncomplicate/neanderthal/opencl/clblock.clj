@@ -233,6 +233,11 @@
       (CLBlockVector. fact claccessor
                       (vector-engine fact [cl-buf m j ld])
                       entry-type false cl-buf m j ld)))
+  (submatrix [a i j k l]
+    (let [o (if (column-major? a) (+ ofst (* j ld) i) (+ ofst (* i ld) j))]
+      (CLGeneralMatrix. fact claccessor
+                        (matrix-engine fact [cl-buf k l o ld ord])
+                        entry-type false cl-buf k l o ld ord)))
   Mappable
   (map-memory [this flags]
     (let [host-fact (factory fact)
