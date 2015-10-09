@@ -1,25 +1,25 @@
 #ifndef REAL
-    #define REAL float
+#define REAL float
 #endif
 
 #ifndef WGS
-    #define WGS 256
+#define WGS 256
 #endif
 
 #ifndef WGSm
-    #define WGSm 16
+#define WGSm 16
 #endif
 
 #ifndef WGSn
-    #define WGSn 16
+#define WGSn 16
 #endif
 
 #ifndef TS
-   #define TS 32
+#define TS 32
 #endif
 
 #ifndef WPT
-    #define WPT 4
+#define WPT 4
 #endif
 
 #define RTS (TS/WPT)
@@ -46,8 +46,8 @@ __kernel void equals_matrix (__global uint* eq_flag,
                              const uint ld_b) {
     uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
     uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
-        if ((a[ia] != b[ib])){
-      eq_flag[0]++;
+    if ((a[ia] != b[ib])){
+        eq_flag[0]++;
     }
 }
 
@@ -57,8 +57,8 @@ __kernel void equals_matrix (__global uint* eq_flag,
 // ================ Embarassingly parallel kernels =============================
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void swp (__global REAL* x, const uint offset_x, const uint stride_x,
-                   __global REAL* y, const uint offset_y, const uint stride_y) {
+__kernel void swap (__global REAL* x, const uint offset_x, const uint stride_x,
+                    __global REAL* y, const uint offset_y, const uint stride_y) {
     uint ix = offset_x + get_global_id(0) * stride_x;
     uint iy = offset_y + get_global_id(0) * stride_y;
     REAL temp = x[ix];
@@ -71,6 +71,26 @@ __kernel void copy (__global REAL* x, const uint offset_x, const uint stride_x,
                     __global REAL* y, const uint offset_y, const uint stride_y) {
     y[offset_y + get_global_id(0) * stride_y] =
         x[offset_x + get_global_id(0) * stride_x];
+}
+
+__kernel void copy_matrix (__global REAL* a, const uint offset_a,
+                           const uint ld_a,
+                           __global REAL* b, const uint offset_b,
+                           const uint ld_b) {
+    uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
+    uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
+    b[ib] = a[ia];
+}
+
+__kernel void swap_matrix (__global REAL* a, const uint offset_a,
+                           const uint ld_a,
+                           __global REAL* b, const uint offset_b,
+                           const uint ld_b) {
+    uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
+    uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
+    REAL temp = a[ia];
+    a[ia] = b[ia];
+    b[ib] = temp;
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
@@ -342,7 +362,7 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
     const bool load_row = c_row < m;
     bool load_col[WPT];
 
-    #pragma unroll
+#pragma unroll
     for (uint w = 0; w < WPT; w++) {
         acc[w] = 0.0f;
         load_col[w] = c_col + w * RTS < n;
@@ -364,10 +384,10 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-        #pragma unroll
+#pragma unroll
         for(uint i = 0; i < TS; i++) {
 
-            #pragma unroll
+#pragma unroll
             for(uint w = 0; w < WPT; w++) {
                 acc[w] += a_tile[i][row] * b_tile[col + w * RTS][i];
             }
@@ -392,10 +412,10 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-        #pragma unroll
+#pragma unroll
         for(uint i = 0; i < rest_k; i++) {
 
-            #pragma unroll
+#pragma unroll
             for(uint w = 0; w < WPT; w++) {
                 acc[w] += a_tile[i][row] * b_tile[col + w * RTS][i];
             }
@@ -404,7 +424,7 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
     }
 
     //Only the elements that exist in partial c-tiles should be stored.
-    #pragma unroll
+#pragma unroll
     for (uint w = 0; w < WPT; w++) {
         const bool store = load_row && load_col[w];
         if (store) {

@@ -22,7 +22,7 @@
                           reduce-iacc
                           linear-work-size
                           equals-vector-kernel
-                          swp-kernel
+                          swap-kernel
                           copy-kernel
                           scal-kernel
                           axpy-kernel
@@ -41,7 +41,7 @@
      (release reduce-acc)
      (release reduce-iacc)
      (release equals-vector-kernel)
-     (release swp-kernel)
+     (release swap-kernel)
      (release copy-kernel)
      (release scal-kernel)
      (release axpy-kernel)
@@ -54,27 +54,31 @@
      (release sum-reduce-kernel)))
   BlockEngine
   (equals-block [_ _ y]
-    (let [res (wrap-int 0)]
-      (set-args! equals-vector-kernel 4 (.buffer ^Block y)
-                 (wrap-int (.offset ^Block y)) (wrap-int (.stride ^Block y)))
-      (enq-fill! queue eq-flag res)
-      (set-arg! equals-vector-kernel 0 eq-flag)
-      (enq-nd! queue equals-vector-kernel linear-work-size)
-      (enq-read! queue eq-flag res)
-      (= 0 (aget res 0))))
+    (if (< 0 n)
+      (let [res (wrap-int 0)]
+        (set-args! equals-vector-kernel 4 (.buffer ^Block y)
+                   (wrap-int (.offset ^Block y)) (wrap-int (.stride ^Block y)))
+        (enq-fill! queue eq-flag res)
+        (set-arg! equals-vector-kernel 0 eq-flag)
+        (enq-nd! queue equals-vector-kernel linear-work-size)
+        (enq-read! queue eq-flag res)
+        (= 0 (aget res 0)))
+      true))
   BLAS
   (swap [_ _ y]
-    (do
-      (set-args! swp-kernel 3 (.buffer y) (wrap-int (.offset y))
-                 (wrap-int (.stride y)))
-      (enq-nd! queue swp-kernel linear-work-size)))
+    (if (< 0 n)
+      (do
+        (set-args! swap-kernel 3 (.buffer y) (wrap-int (.offset y))
+                   (wrap-int (.stride y)))
+        (enq-nd! queue swap-kernel linear-work-size))
+      queue))
   (copy [_ x y]
-    (if (and (= 0 strd) (= 1 strd (.stride y)))
-      (enq-copy! cl-buf (.buffer y))
+    (if (< 0 n)
       (do
         (set-args! copy-kernel 3 (.buffer y) (wrap-int (.offset y))
                    (wrap-int (.stride y)))
-        (enq-nd! queue copy-kernel linear-work-size))))
+        (enq-nd! queue copy-kernel linear-work-size))
+      queue))
   (dot [_ _ y]
     (if (< 0 n)
       (do
@@ -113,16 +117,20 @@
   (rotmg [_ _ args]
     (throw (UnsupportedOperationException.
             "TODO.")))
-  (scal [_ alpha _];;TODO zero-length
-    (do
-      (set-args! scal-kernel 0 (wrap-prim claccessor alpha))
-      (enq-nd! queue scal-kernel linear-work-size)))
+  (scal [_ alpha _];;TODO zero-length, (< 0 n)
+    (if (< 0 n)
+      (do
+        (set-args! scal-kernel 0 (wrap-prim claccessor alpha))
+        (enq-nd! queue scal-kernel linear-work-size))
+      queue))
   (axpy [_ alpha x y]
-    (do
-      (set-args! axpy-kernel 0 (wrap-prim claccessor alpha))
-      (set-args! axpy-kernel 4 (.buffer y) (wrap-int (.offset y))
-                (wrap-int (.stride y)))
-      (enq-nd! queue axpy-kernel linear-work-size)))
+    (if (< 0 n)
+      (do
+        (set-args! axpy-kernel 0 (wrap-prim claccessor alpha))
+        (set-args! axpy-kernel 4 (.buffer y) (wrap-int (.offset y))
+                   (wrap-int (.stride y)))
+        (enq-nd! queue axpy-kernel linear-work-size))
+      queue))
   BLASPlus
   (sum [_ x]
     (if (< 0 n)
@@ -142,6 +150,8 @@
                           equals-matrix-kernel
                           axpby-kernel
                           sum-reduction-horizontal-kernel
+                          copy-matrix-kernel
+                          swap-matrix-kernel
                           gemv-reduce-kernel
                           gemm-tiled-kernel
                           gemm-tiled-fit-kernel]
@@ -153,6 +163,8 @@
      (release equals-matrix-kernel)
      (release axpby-kernel)
      (release sum-reduction-horizontal-kernel)
+     (release swap-matrix-kernel)
+     (release copy-matrix-kernel)
      (release gemv-reduce-kernel)
      (release gemm-tiled-kernel)
      (release gemm-tiled-fit-kernel)))
@@ -167,6 +179,20 @@
       (enq-read! queue eq-flag res)
       (= 0 (aget res 0))))
   BLAS
+  (copy [_ a b]
+    (if (< 0 (* m n))
+      (do
+        (set-args! copy-matrix-kernel 3 (.buffer b) (wrap-int (.offset b))
+                   (wrap-int (.stride b)))
+        (enq-nd! queue copy-matrix-kernel (work-size-2d m n)))
+      queue))
+  (swap [_ a b]
+    (if (< 0 (* m n))
+      (do
+        (set-args! swap-matrix-kernel 3 (.buffer b) (wrap-int (.offset b))
+                   (wrap-int (.stride b)))
+        (enq-nd! queue swap-matrix-kernel (work-size-2d m n)))
+      queue))
   (mv [_ alpha _ x beta y]
     (do
       (set-arg! gemv-reduce-kernel 1 (wrap-prim claccessor alpha))
@@ -238,7 +264,7 @@
                          (work-size-1d n)
                          (doto (kernel prog "equals_vector")
                            (set-args! 1 cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "swp")
+                         (doto (kernel prog "swap")
                            (set-args! 0 cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "copy")
                            (set-args! 0 cl-buf cl-ofst cl-strd))
@@ -281,6 +307,10 @@
                                       (wrap-int 0) (wrap-int 1)))
                          (doto (kernel prog "sum_reduction_horizontal")
                            (set-arg! 0 cl-acc))
+                         (doto (kernel prog "copy_matrix")
+                           (set-args! 0 cl-buf cl-ofst cl-ld))
+                         (doto (kernel prog "swap_matrix")
+                           (set-args! 0 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "gemv_reduce")
                            (set-arg! 0 cl-acc)
                            (set-arg! 2 cl-buf))

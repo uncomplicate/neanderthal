@@ -182,7 +182,7 @@
          (scal! 3 (create-vector factory []))
          => (create-vector factory [])))
 
-(defn test-copy [factory]
+(defn test-copy-vector [factory]
   (facts "BLAS 1 copy!"
          (let [y (create-vector factory 3)]
            (copy! (create-vector factory [1 2 3]) y) => y
@@ -194,11 +194,11 @@
          (copy! (create-vector factory [1 2 3]) nil)
          => (throws IllegalArgumentException)
          (copy! (create-vector factory [10 20 30]) (create-vector factory [1]))
-         => (throws IllegalArgumentException))
+         => (throws IllegalArgumentException)
 
-  (facts "BLAS 1 copy"
          (copy (create-vector factory 1 2)) => (create-vector factory 1 2)
-         (let [x (create-vector factory 1 2)] (identical? (copy x) x) => false)))
+         (let [x (create-vector factory 1 2)]
+           (identical? (copy x) x) => false)))
 
 (defn test-axpy [factory]
   (facts "BLAS 1 axpy!"
@@ -291,6 +291,24 @@
          (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 2 1)
          => (throws IndexOutOfBoundsException)))
 
+(defn test-copy-matrix [factory]
+  (facts "BLAS 1 copy! general matrix"
+         (let [a (create-ge-matrix factory 2 3)]
+           (copy! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) a) => a
+           (copy (create-ge-matrix factory 2 3 [1 2 3 4 5 6])) => a)
+
+         (copy! (create-ge-matrix factory 2 3 [10 20 30 40 50 60])
+                (create-ge-matrix factory 2 3 [1 2 3 4 5 6]))
+         => (create-ge-matrix factory 2 3 [10 20 30 40 50 60])
+         (copy! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) nil)
+         => (throws IllegalArgumentException)
+         (copy! (create-ge-matrix factory 2 3 [10 20 30 40 50 60])
+                (create-ge-matrix factory 2 2))
+         => (throws IllegalArgumentException)
+
+         (copy (create-vector factory 1 2)) => (create-vector factory 1 2)
+         (let [x (create-vector factory 1 2)]
+           (identical? (copy x) x) => false)))
 ;; ====================== BLAS 2 ===============================
 
 (defn test-mv [factory]
@@ -315,8 +333,10 @@
          (mv! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
               (create-vector factory 1 2 3) 0.0 (create-vector factory 0 0))
          => (mv 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-                (create-vector factory 1 2 3))
+                (create-vector factory 1 2 3))))
 
+(defn test-mv-transpose [factory]
+  (facts "BLAS 2 mv!"
          (mv! (trans (create-ge-matrix factory 3 2 [1 3 5 2 4 6]))
               (create-vector factory 1 2 3) (create-vector factory 0 0))
          => (mv! (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
@@ -389,11 +409,13 @@
     (test-rotmg factory)
     (test-swap factory)
     (test-scal factory)
-    (test-copy factory)
+    (test-copy-vector factory)
     (test-axpy factory)
     (test-matrix-constructor factory)
     (test-matrix factory)
     (test-matrix-entry factory)
+    (test-copy-matrix factory)
     (test-mv factory)
+    (test-mv-transpose factory)
     (test-rank factory)
     (test-mm factory)))
