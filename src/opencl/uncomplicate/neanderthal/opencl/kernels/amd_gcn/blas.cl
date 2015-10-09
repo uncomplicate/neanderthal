@@ -28,9 +28,9 @@
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void equals_vector (__global uint* eq_flag,
-                             __global REAL* x, const uint offset_x,
+                             __global const REAL* x, const uint offset_x,
                              const uint stride_x,
-                             __global REAL* y, const uint offset_y,
+                             __global const REAL* y, const uint offset_y,
                              const uint stride_y) {
     uint ix = offset_x + get_global_id(0) * stride_x;
     uint iy = offset_y + get_global_id(0) * stride_y;
@@ -40,9 +40,9 @@ __kernel void equals_vector (__global uint* eq_flag,
 }
 
 __kernel void equals_matrix (__global uint* eq_flag,
-                             __global REAL* a, const uint offset_a,
+                             __global const REAL* a, const uint offset_a,
                              const uint ld_a,
-                             __global REAL* b, const uint offset_b,
+                             __global const REAL* b, const uint offset_b,
                              const uint ld_b) {
     uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
     uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
@@ -67,13 +67,14 @@ __kernel void swap (__global REAL* x, const uint offset_x, const uint stride_x,
 }
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
-__kernel void copy (__global REAL* x, const uint offset_x, const uint stride_x,
+__kernel void copy (__global const REAL* x,
+                    const uint offset_x, const uint stride_x,
                     __global REAL* y, const uint offset_y, const uint stride_y) {
     y[offset_y + get_global_id(0) * stride_y] =
         x[offset_x + get_global_id(0) * stride_x];
 }
 
-__kernel void copy_matrix (__global REAL* a, const uint offset_a,
+__kernel void copy_matrix (__global const REAL* a, const uint offset_a,
                            const uint ld_a,
                            __global REAL* b, const uint offset_b,
                            const uint ld_b) {
@@ -324,6 +325,23 @@ __kernel void gemv_reduce (__global REAL* acc,
 
     work_group_reduction_sum_horizontal(acc, alpha * a[a_id] * x[x_id]);
 }
+
+// ========================== gerk =============================================
+
+
+__attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
+__kernel void gerk (const REAL alpha, __global const REAL* x,
+                    const uint offset_x, const uint stride_x,
+                    __global const REAL* y,
+                    const uint offset_y, const uint stride_y,
+                    __global REAL* a, const uint offset_a, const uint ld_a) {
+
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    uint iy = offset_y + get_global_id(1) * stride_y;
+    uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
+    a[ia] += alpha * x[ix] * y[iy];
+}
+
 
 // ||||||||||||||||       BLAS 3      ||||||||||||||||||||||||||||||||||||||||||
 

@@ -344,7 +344,7 @@
 
 (defn test-rank [factory]
   (facts "BLAS 2 rank!"
-         (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
+         (let [a (create-ge-matrix factory 2 3)]
            (rank! 2.0 (create-vector factory 1 2)
                   (create-vector factory 1 2 3) a)
            => a)

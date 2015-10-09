@@ -152,6 +152,7 @@
                           sum-reduction-horizontal-kernel
                           copy-matrix-kernel
                           swap-matrix-kernel
+                          gerk-kernel
                           gemv-reduce-kernel
                           gemm-tiled-kernel
                           gemm-tiled-fit-kernel]
@@ -165,6 +166,7 @@
      (release sum-reduction-horizontal-kernel)
      (release swap-matrix-kernel)
      (release copy-matrix-kernel)
+     (release gerk-kernel)
      (release gemv-reduce-kernel)
      (release gemm-tiled-kernel)
      (release gemm-tiled-fit-kernel)))
@@ -192,6 +194,14 @@
         (set-args! swap-matrix-kernel 3 (.buffer b) (wrap-int (.offset b))
                    (wrap-int (.stride b)))
         (enq-nd! queue swap-matrix-kernel (work-size-2d m n)))
+      queue))
+  (rank [_ alpha x y a]
+    (if (< 0 (* m n))
+      (do
+        (set-args! gerk-kernel 0 (wrap-prim claccessor alpha)
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+        (enq-nd! queue gerk-kernel (work-size-2d m n)))
       queue))
   (mv [_ alpha _ x beta y]
     (do
@@ -311,6 +321,8 @@
                            (set-args! 0 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "swap_matrix")
                            (set-args! 0 cl-buf cl-ofst cl-ld))
+                         (doto (kernel prog "gerk")
+                           (set-args! 7 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "gemv_reduce")
                            (set-arg! 0 cl-acc)
                            (set-arg! 2 cl-buf))
