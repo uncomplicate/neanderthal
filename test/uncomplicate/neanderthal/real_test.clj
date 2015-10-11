@@ -379,17 +379,19 @@
          (mm! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
               (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
               3.0 (create-ge-matrix factory 2 2 [1 2 3 4]))
-         => (create-ge-matrix factory 2 2 [47 62 107 140])
-
-         (mm! 2.0 (trans (create-ge-matrix factory 3 2 [1 3 5 2 4 6]))
-              (trans (create-ge-matrix factory 2 3 [1 4 2 5 3 6]))
-              3.0  (create-ge-matrix factory 2 2 [1 2 3 4]))
          => (create-ge-matrix factory 2 2 [47 62 107 140]))
 
   (facts "mm"
          (mm (create-ge-matrix factory 3 2 (range 6))
              (create-ge-matrix factory 2 3 (range 6)))
          => (create-ge-matrix factory 3 3 [3 4 5 9 14 19 15 24 33])))
+
+(defn test-mm-row-major [factory]
+  (facts "BLAS 3 mm!"
+         (mm! 2.0 (trans (create-ge-matrix factory 3 2 [1 3 5 2 4 6]))
+              (trans (create-ge-matrix factory 2 3 [1 4 2 5 3 6]))
+              3.0  (create-ge-matrix factory 2 2 [1 2 3 4]))
+         => (create-ge-matrix factory 2 2 [47 62 107 140])))
 
 (defn test-all [factory]
   (do
@@ -418,4 +420,5 @@
     (test-mv factory)
     (test-mv-transpose factory)
     (test-rank factory)
-    (test-mm factory)))
+    (test-mm factory)
+    (test-mm-row-major factory)))

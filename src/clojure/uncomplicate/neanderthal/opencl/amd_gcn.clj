@@ -214,7 +214,7 @@
                  (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
   (mm [_ alpha a b beta c]
-    (let [cn (/ (.ncols ^Matrix b) WPT);;TODO what if ncols b is not divisible by WPD?
+    (let [cn (inc (unchecked-divide-int (.ncols ^Matrix b) WPT))
           gemm-kernel (if (= 0 (mod m TS) (mod cn TS))
                         gemm-tiled-fit-kernel
                         gemm-tiled-kernel)]

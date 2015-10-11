@@ -28,7 +28,7 @@
     (real-test/test-copy-matrix factory)
     (real-test/test-mv factory)
     (real-test/test-rank factory)
-    #_(real-test/test-mm factory)))
+    (real-test/test-mm factory)))
 
 (with-default
   (with-gcn-engine *command-queue*

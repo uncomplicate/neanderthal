@@ -85,18 +85,18 @@ And, to be sure that this code is always in the proper working condition,
 I'll write it as a bunch of midje test facts and include it in the test suite,
 therefore do not mind these `facts` and `=>`s, they're not part of Neanderthal.
 
-$code
+$code"
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
             [uncomplicate.clojurecl.core
              :refer [with-default with-release finish! *command-queue*]]
             [uncomplicate.neanderthal
-             [core :refer [asum dot axpy! mv! mm!]]
+             [core :refer [asum dot axpy! mv! mm! transfer!]]
              [native :refer [sv sge]]
-             [opencl :refer [with-default-engine sclv sclge write!]]]))
+             [opencl :refer [with-default-engine sv-cl sge-cl]]]))
 
-\"$text
+"$text
 
 To be able to communicate with the GPU, we need to connect to the device drivers
 via the ClojureCL library and create appropriate contexts and queues through which we
@@ -133,7 +133,7 @@ $code"
      "Create a vector on the device, write into it the data from the host vector
 and compute the sum of absolute values."
 
-     (with-release [gpu-x (write! (sclv 3) (sv 1 -2 3))]
+     (with-release [gpu-x (transfer! (sv 1 -2 3) (sv-cl 3))]
 
        (asum gpu-x)) => 6.0)))
 
@@ -149,7 +149,7 @@ meantime, you can study that code, and probably figure it out yourself.
 
 Here are the important steps:
 
-1. Create the 3-element empty vector on the GPU device with `sclv`.
+1. Create the 3-element empty vector on the GPU device with `sv-cl`.
 That is short for 'single precision floating point CL vector'. We are using
 single precision because affordable consumer-grade GPU devices offer amazing
 performance with floats, and are much slower (Radeons 290X - 8x, GeForce 980 - 32x)
@@ -187,7 +187,7 @@ $code"
       (facts
        "Compare the speed of computing small vectors on CPU and GPU"
        (with-release [host-x (sv 1 -2 3)
-                      gpu-x (write! (sclv 3) host-x)]
+                      gpu-x (transfer! host-x (sv-cl 3))]
 
          (println "CPU:")
          (time (asum host-x)) => 6.0
@@ -216,7 +216,7 @@ $code"
        "Let's try with 2^20. That's more than a million."
        (let [cnt (long (Math/pow 2 20))]
          (with-release [host-x (sv (range cnt))
-                        gpu-x (write! (sclv cnt) host-x)]
+                        gpu-x (treansfer! host-x (sv-cl cnt))]
 
            (println "CPU:")
            (time (asum host-x)) => (float 5.49754798E11)
@@ -241,7 +241,7 @@ $code"
 currently handle. Java 9 would hopefully increase that."
        (let [cnt (long (dec (Math/pow 2 29)))]
          (with-release [host-x (sv (range cnt))
-                        gpu-x (write! (sclv cnt) host-x)]
+                        gpu-x (transfer! host-x (sv-cl cnt))]
 
            (println "CPU:")
            ;; note the wrong result in the CPU vector. That's because single precision floats
@@ -275,8 +275,8 @@ hold 4GB of data (it has 4GB total memory)."
        (let [cnt (long (Math/pow 2 28))]
          (with-release [host-x (sv (range cnt))
                         host-y (sv (range cnt))
-                        gpu-x (write! (sclv cnt) host-x)
-                        gpu-y (write! (sclv cnt) host-y)]
+                        gpu-x (transfer! host-x (sv-cl cnt))
+                        gpu-y (transfer! host-y (sv-cl cnt))]
 
            (println "CPU:")
            (time (axpy! 3 host-x host-y)) => host-y
@@ -309,9 +309,9 @@ demanding enough."
          (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-x (sv (range cnt))
                         host-y (sv (range cnt))
-                        gpu-a (write! (sclge cnt cnt) host-a)
-                        gpu-x (write! (sclv cnt) host-x)
-                        gpu-y (write! (sclv cnt) host-y)]
+                        gpu-a (transfer! host-a (sge-cl cnt cnt))
+                        gpu-x (transfer! host-x (sv-cl cnt))
+                        gpu-y (transfer! host-y (sv-cl cnt))]
 
            (println "CPU:")
            (time (mv! 3 host-a host-x 2 host-y)) => host-y
@@ -335,12 +335,12 @@ $code"
        "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
        (let [cnt 8192]
-         (with-release [ host-a (sge cnt cnt (range (* cnt cnt)))
+         (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-b (sge cnt cnt (range (* cnt cnt)))
                         host-c (sge cnt cnt (range (* cnt cnt)))
-                        gpu-a (write! (sclge cnt cnt) host-a)
-                        gpu-b (write! (sclge cnt cnt) host-a)
-                        gpu-c (write! (sclge cnt cnt) host-a)]
+                        gpu-a (transfer! host-a (sge-cl cnt cnt))
+                        gpu-b (transfer! host-a (sge-cl cnt cnt))
+                        gpu-c (transfer! host-a (sge-cl cnt cnt))]
 
            (println "CPU:")
            (time (mm! 3 host-a host-b 2 host-c)) => host-c

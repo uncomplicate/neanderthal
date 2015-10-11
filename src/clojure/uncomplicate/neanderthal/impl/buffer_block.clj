@@ -393,7 +393,7 @@
 (defmethod transfer! [RealBlockVector RealBlockVector]
   [source destination]
   (do
-    (copy! (engine source) source destination)
+    (copy! source destination)
     destination))
 
 (defmethod transfer! [clojure.lang.Sequential RealBlockVector]
@@ -556,7 +556,7 @@
 (defmethod transfer! [RealGeneralMatrix RealGeneralMatrix]
   [source destination]
   (do
-    (copy! (engine source) source destination)
+    (copy! source destination)
     destination))
 
 (defmethod transfer! [clojure.lang.Sequential RealGeneralMatrix]
