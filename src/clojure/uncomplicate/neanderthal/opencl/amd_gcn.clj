@@ -206,7 +206,8 @@
   (mv [_ alpha _ x beta y]
     (do
       (set-arg! gemv-reduce-kernel 1 (wrap-prim claccessor alpha))
-      (set-arg! gemv-reduce-kernel 3 (.buffer x))
+      (set-args! gemv-reduce-kernel 5 (.buffer x) (wrap-int (.offset x))
+                 (wrap-int (.stride x)))
       (enq-reduce-horizontal queue gemv-reduce-kernel
                              sum-reduction-horizontal-kernel
                              WGSn m n)
@@ -325,7 +326,7 @@
                            (set-args! 7 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "gemv_reduce")
                            (set-arg! 0 cl-acc)
-                           (set-arg! 2 cl-buf))
+                           (set-args! 2 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "gemm_tiled")
                            (set-arg! 1 cl-buf))
                          (doto (kernel prog "gemm_tiled_fit")

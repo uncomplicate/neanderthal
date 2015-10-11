@@ -252,12 +252,6 @@ __kernel void iamax_reduce (__global uint* iacc, __global double* vacc,
 inline void work_group_reduction_sum_horizontal
 (__global REAL* acc, const REAL value) {
 
-    uint global_size_m = get_global_size(0);
-    uint group_id_m = get_group_id(0);
-    uint group_id_n = get_group_id(1);
-
-    uint local_m = get_local_size(0);
-    uint local_n = get_local_size(1);
     uint local_row = get_local_id(0);
     uint local_col = get_local_id(1);
 
@@ -267,7 +261,7 @@ inline void work_group_reduction_sum_horizontal
     work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
     REAL pacc = value;
-    uint i = local_n;
+    uint i = get_local_size(1);
     while (i > 0) {
         bool include_odd = (i > ((i >> 1) << 1)) && (local_col == ((i >> 1) - 1));
         i >>= 1;
@@ -282,25 +276,14 @@ inline void work_group_reduction_sum_horizontal
     }
 
     if(local_col == 0) {
-        acc[(global_size_m * group_id_n)
-            + (group_id_m  * WGSm)
-            + (global_size_m * local_col) + local_row] = pacc;
+        acc[get_global_size(0) * get_group_id(1) + get_global_id(0)] = pacc;
     }
 }
 
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void sum_reduction_horizontal (__global REAL* acc) {
 
-    uint global_size_m = get_global_size(0);
-    uint group_id_m = get_group_id(0);
-    uint group_id_n = get_group_id(1);
-    uint local_row = get_local_id(0);
-    uint local_col = get_local_id(1);
-
-    uint a_id = (global_size_m * WGSn * group_id_n)
-        + (group_id_m  * WGSm)
-        + (global_size_m * local_col) + local_row;
-
+    uint a_id = get_global_size(0) * get_global_id(1) + get_global_id(0);
     work_group_reduction_sum_horizontal(acc, acc[a_id]);
 }
 
@@ -309,19 +292,12 @@ __kernel void sum_reduction_horizontal (__global REAL* acc) {
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void gemv_reduce (__global REAL* acc,
                            const REAL alpha, __global const REAL* a,
-                           __global const REAL* x) {
+                           const uint offset_a, const uint ld_a,
+                           __global const REAL* x, const uint offset_x,
+                           const uint stride_x) {
 
-    uint global_size_m = get_global_size(0);
-    uint group_id_m = get_group_id(0);
-    uint group_id_n = get_group_id(1);
-    uint local_row = get_local_id(0);
-    uint local_col = get_local_id(1);
-
-    uint a_id = (global_size_m * WGSn * group_id_n)
-        + (group_id_m  * WGSm)
-        + (global_size_m * local_col) + local_row;
-
-    uint x_id = WGSn * group_id_n + local_col;
+    uint a_id = offset_a + ld_a * get_global_id(1) + get_local_id(0);
+    uint x_id = offset_x + get_global_id(1) * stride_x;
 
     work_group_reduction_sum_horizontal(acc, alpha * a[a_id] * x[x_id]);
 }
