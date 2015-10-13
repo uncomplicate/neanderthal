@@ -215,17 +215,18 @@
                  (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
   (mm [_ alpha a b beta c]
-    (let [cn (inc (unchecked-divide-int (.ncols ^Matrix b) WPT))
-          gemm-kernel (if (= 0 (mod m TS) (mod cn TS))
+    (let [bn (.ncols ^Matrix b)
+          RTS (long( / TS WPT))
+          gemm-kernel (if (= 0 (mod m TS) (mod bn TS))
                         gemm-tiled-fit-kernel
                         gemm-tiled-kernel)]
       (set-arg! gemm-kernel 0 (wrap-prim claccessor alpha))
       (set-args! gemm-kernel 2
                  (.buffer b) (wrap-prim claccessor beta) (.buffer c)
-                 (wrap-int m) (wrap-int n) (wrap-int (.ncols ^Matrix b)))
+                 (wrap-int m) (wrap-int n) (wrap-int bn))
       (enq-nd! queue gemm-kernel
                (work-size-2d (* TS (count-work-groups TS m))
-                             (* TS (count-work-groups TS cn)))))))
+                             (* RTS (count-work-groups TS bn)))))))
 
 (deftype GCNFactory [^DataAccessor claccessor ctx queue prog
                      ^long WGS WGSn TS WPT]
