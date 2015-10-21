@@ -221,8 +221,10 @@
                         gemm-tiled-fit-kernel
                         gemm-tiled-kernel)]
       (set-arg! gemm-kernel 0 (wrap-prim claccessor alpha))
-      (set-args! gemm-kernel 2
-                 (.buffer b) (wrap-prim claccessor beta) (.buffer c)
+      (set-args! gemm-kernel 4
+                 (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
+                 (wrap-prim claccessor beta)
+                 (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c))
                  (wrap-int m) (wrap-int n) (wrap-int bn))
       (enq-nd! queue gemm-kernel
                (work-size-2d (* TS (count-work-groups TS m))
@@ -329,9 +331,9 @@
                            (set-arg! 0 cl-acc)
                            (set-args! 2 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "gemm_tiled")
-                           (set-arg! 1 cl-buf))
+                           (set-args! 1 cl-buf cl-ofst cl-ld))
                          (doto (kernel prog "gemm_tiled_fit")
-                           (set-arg! 1 cl-buf))))))
+                           (set-args! 1 cl-buf cl-ofst cl-ld))))))
 
 (let [src [(slurp (io/resource "uncomplicate/clojurecl/kernels/reduction.cl"))
            (slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))]]

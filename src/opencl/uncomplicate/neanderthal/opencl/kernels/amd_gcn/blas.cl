@@ -51,7 +51,6 @@ __kernel void equals_matrix (__global uint* eq_flag,
     }
 }
 
-
 //|||||||||||||||||       BLAS 1       |||||||||||||||||||||||||||||||||||||||||
 
 // ================ Embarassingly parallel kernels =============================
@@ -323,10 +322,6 @@ __kernel void gerk (const REAL alpha, __global const REAL* x,
 
 // ================== GEMM =====================================================
 
-inline uint index (const uint m, const uint row, const uint col) {
-    return m * col + row;
-}
-
 inline uint globalize (const uint tile_size, const uint tile_id,
                        const uint id){
     return tile_id * tile_size + id;
@@ -336,8 +331,11 @@ inline uint globalize (const uint tile_size, const uint tile_id,
 
 __attribute__((reqd_work_group_size(TS, RTS, 1)))
 __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
+                          const uint offset_a, const uint ld_a,
                           __global const REAL* b,
+                          const uint offset_b, const uint ld_b,
                           const REAL beta, __global REAL* c,
+                          const uint offset_c, const uint ld_c,
                           const uint m, const uint k, const uint n) {
 
     const uint row = get_local_id(0);
@@ -356,7 +354,7 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
     const bool load_row = c_row < m;
     bool load_col[WPT];
 
-#pragma unroll
+    #pragma unroll
     for (uint w = 0; w < WPT; w++) {
         acc[w] = 0.0f;
         load_col[w] = c_col + w * RTS < n;
@@ -370,18 +368,18 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
         const uint tile_col = TS * t + col;
 
         for (uint w = 0; w < WPT; w++) {
-            a_tile[col + w * RTS][row] = load_row ?
-                a[(tile_col + w * RTS) * m + c_row] : 0.0f;
-            b_tile[col + w * RTS][row] = load_col[w] ?
-                b[(c_col + w * RTS) * k + tile_row] : 0.0f;
+            const uint ia = offset_a + (tile_col + w * RTS) * ld_a + c_row;
+            const uint ib = offset_b + (c_col + w * RTS) * ld_b + tile_row;
+            a_tile[col + w * RTS][row] = load_row ? a[ia] : 0.0f;
+            b_tile[col + w * RTS][row] = load_col[w] ? b[ib] : 0.0f;
         }
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-#pragma unroll
+        #pragma unroll
         for(uint i = 0; i < TS; i++) {
 
-#pragma unroll
+            #pragma unroll
             for(uint w = 0; w < WPT; w++) {
                 acc[w] += a_tile[i][row] * b_tile[col + w * RTS][i];
             }
@@ -398,18 +396,18 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
         const uint tile_col = TS * tc + col;
 
         for (uint w = 0; w < WPT; w++) {
-            a_tile[col + w * RTS][row] = load_row ?
-                a[(tile_col + w * RTS) * m + c_row] : 0.0f;
-            b_tile[col + w * RTS][row] = load_col[w] ?
-                b[(c_col + w * RTS) * k + tile_row] : 0.0f;
+            const uint ia = offset_a + (tile_col + w * RTS) * ld_a + c_row;
+            const uint ib = offset_b + (c_col + w * RTS) * ld_b + tile_row;
+            a_tile[col + w * RTS][row] = load_row ? a[ia] : 0.0f;
+            b_tile[col + w * RTS][row] = load_col[w] ? b[ib] : 0.0f;
         }
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
 
-#pragma unroll
+        #pragma unroll
         for(uint i = 0; i < rest_k; i++) {
 
-#pragma unroll
+            #pragma unroll
             for(uint w = 0; w < WPT; w++) {
                 acc[w] += a_tile[i][row] * b_tile[col + w * RTS][i];
             }
@@ -422,8 +420,8 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
     for (uint w = 0; w < WPT; w++) {
         const bool store = load_row && load_col[w];
         if (store) {
-            const uint c_id = index(m, c_row, c_col + w * RTS);
-            c[c_id] = alpha * acc[w] + beta * c[c_id];
+            const uint ic = offset_c + (c_col + w * RTS) * ld_c + c_row;
+            c[ic] = alpha * acc[w] + beta * c[ic];
         }
     }
 
@@ -431,10 +429,13 @@ __kernel void gemm_tiled (const REAL alpha, __global const REAL* a,
 
 // Simpler version that requires dimensions that fit tiles
 
-__attribute__((reqd_work_group_size(TS, TS/WPT, 1)))
+__attribute__((reqd_work_group_size(TS, RTS, 1)))
 __kernel void gemm_tiled_fit (const REAL alpha, __global const REAL* a,
+                              const uint offset_a, const uint ld_a,
                               __global const REAL* b,
+                              const uint offset_b, const uint ld_b,
                               const REAL beta, __global REAL* c,
+                              const uint offset_c, const uint ld_c,
                               const uint m, const uint k, const uint n) {
 
     const uint row = get_local_id(0);
@@ -459,8 +460,10 @@ __kernel void gemm_tiled_fit (const REAL alpha, __global const REAL* a,
         for (uint w = 0; w < WPT; w++) {
             const uint tile_row = TS * t + row;
             const uint tile_col = TS * t + col;
-            a_tile[col + w * RTS][row] = a[(tile_col + w * RTS) * m + c_row];
-            b_tile[col + w * RTS][row] = b[(c_col + w * RTS) * k + tile_row];
+            const uint ia = offset_a + (tile_col + w * RTS) * ld_a + c_row;
+            const uint ib = offset_b + (c_col + w * RTS) * ld_b + tile_row;
+            a_tile[col + w * RTS][row] = a[ia];
+            b_tile[col + w * RTS][row] = b[ib];
         }
 
         work_group_barrier(CLK_LOCAL_MEM_FENCE);
@@ -479,8 +482,8 @@ __kernel void gemm_tiled_fit (const REAL alpha, __global const REAL* a,
 
     #pragma unroll
     for (uint w = 0; w < WPT; w++) {
-        const uint c_id = index(m, c_row, c_col + w * RTS);
-        c[c_id] = alpha * acc[w] + beta * c[c_id];
+        const uint ic = offset_c + (c_col + w * RTS) * ld_c + c_row;
+        c[ic] = alpha * acc[w] + beta * c[ic];
     }
 
 }
