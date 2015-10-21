@@ -282,8 +282,8 @@ inline void work_group_reduction_sum_horizontal
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void sum_reduction_horizontal (__global REAL* acc) {
 
-    uint a_id = get_global_size(0) * get_global_id(1) + get_global_id(0);
-    work_group_reduction_sum_horizontal(acc, acc[a_id]);
+    uint ia = get_global_size(0) * get_global_id(1) + get_global_id(0);
+    work_group_reduction_sum_horizontal(acc, acc[ia]);
 }
 
 // ========================= gemv ==============================================
@@ -295,14 +295,13 @@ __kernel void gemv_reduce (__global REAL* acc,
                            __global const REAL* x, const uint offset_x,
                            const uint stride_x) {
 
-    uint a_id = offset_a + ld_a * get_global_id(1) + get_local_id(0);
-    uint x_id = offset_x + get_global_id(1) * stride_x;
+    uint ia = offset_a + ld_a * get_global_id(1) + get_local_id(0);
+    uint ix = offset_x + get_global_id(1) * stride_x;
 
-    work_group_reduction_sum_horizontal(acc, alpha * a[a_id] * x[x_id]);
+    work_group_reduction_sum_horizontal(acc, alpha * a[ia] * x[ix]);
 }
 
 // ========================== gerk =============================================
-
 
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void gerk (const REAL alpha, __global const REAL* x,

@@ -161,9 +161,12 @@
                     host-c (create-ge-matrix (factory ocl-factory) m-cnt n-cnt
                                              (map (partial * 2)
                                                   (repeatedly (* m-cnt n-cnt) rand)))
-                    cl-a (transfer! host-a (create-ge-matrix ocl-factory m-cnt k-cnt))
-                    cl-b (transfer! host-b (create-ge-matrix ocl-factory k-cnt n-cnt))
-                    cl-c (transfer! host-c (create-ge-matrix ocl-factory m-cnt n-cnt))]
+                    cl-a-master (create-ge-matrix ocl-factory (* 2 m-cnt) (* 2 k-cnt))
+                    cl-b-master (create-ge-matrix ocl-factory (* 2 k-cnt) (* 2 n-cnt))
+                    cl-c-master (create-ge-matrix ocl-factory (* 2 m-cnt) (* 2 n-cnt))
+                    cl-a (transfer! host-a (submatrix cl-a-master m-cnt k-cnt m-cnt k-cnt))
+                    cl-b (transfer! host-b (submatrix cl-b-master k-cnt n-cnt k-cnt n-cnt))
+                    cl-c (transfer! host-c (submatrix cl-c-master m-cnt n-cnt m-cnt n-cnt))]
 
        (< (double
            (nrm2 (create-vector
