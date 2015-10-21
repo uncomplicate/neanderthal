@@ -333,7 +333,12 @@
          (mv! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
               (create-vector factory 1 2 3) 0.0 (create-vector factory 0 0))
          => (mv 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-                (create-vector factory 1 2 3))))
+                (create-vector factory 1 2 3))
+
+         (mv! 2.0 (submatrix (create-ge-matrix factory 4 6 (range 24)) 1 2 2 3)
+              (row (create-ge-matrix factory 2 3 (range 6)) 1)
+              3.0 (col (create-ge-matrix factory 2 3 (range 6)) 1))
+         => (create-vector factory 272 293)))
 
 (defn test-mv-transpose [factory]
   (facts "BLAS 2 mv!"

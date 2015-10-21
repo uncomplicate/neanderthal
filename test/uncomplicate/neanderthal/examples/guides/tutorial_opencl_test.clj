@@ -328,24 +328,24 @@ multiplication and see how that goes.
 
 $code"
 
-(comment)
-(with-default
-  (with-default-engine
-    (facts
-     "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
+(comment
+  (with-default
+    (with-default-engine
+      (facts
+       "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
-     (let [cnt 8192]
-       (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
-                      host-b (sge cnt cnt (range (* cnt cnt)))
-                      host-c (sge cnt cnt (range (* cnt cnt)))
-                      gpu-a (transfer! host-a (sge-cl cnt cnt))
-                      gpu-b (transfer! host-a (sge-cl cnt cnt))
-                      gpu-c (transfer! host-a (sge-cl cnt cnt))]
+       (let [cnt 8192]
+         (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
+                        host-b (sge cnt cnt (range (* cnt cnt)))
+                        host-c (sge cnt cnt (range (* cnt cnt)))
+                        gpu-a (transfer! host-a (sge-cl cnt cnt))
+                        gpu-b (transfer! host-a (sge-cl cnt cnt))
+                        gpu-c (transfer! host-a (sge-cl cnt cnt))]
 
-         (println "CPU:")
-         (time (mm! 3 host-a host-b 2 host-c)) => host-c
-         (println "GPU:")
-         (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))) => truthy)))))
+           (println "CPU:")
+           (time (mm! 3 host-a host-b 2 host-c)) => host-c
+           (println "GPU:")
+           (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))) => truthy))))))
 
 "$text
 

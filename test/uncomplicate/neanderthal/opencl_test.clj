@@ -134,10 +134,12 @@
                              (entry! x-magic))
                     host-y (doto (create-vector (factory ocl-factory) m-cnt)
                              (entry! y-magic))
-                    cl-a (transfer! host-a (create-ge-matrix ocl-factory m-cnt n-cnt))
-                    cl-x (transfer! host-x (create-vector ocl-factory n-cnt))
-                    cl-y (transfer! host-y (create-vector ocl-factory m-cnt))]
-
+                    cl-a-master (create-ge-matrix ocl-factory (* 3 m-cnt) (* 3 n-cnt))
+                    cl-a (transfer! host-a (submatrix cl-a-master m-cnt n-cnt m-cnt n-cnt))
+                    cl-x-master (create-ge-matrix ocl-factory m-cnt n-cnt)
+                    cl-y-master (create-ge-matrix ocl-factory n-cnt m-cnt)
+                    cl-x (transfer! host-x (row cl-x-master 1))
+                    cl-y (transfer! host-y (row cl-y-master 1))]
        (transfer! (mv! 10 cl-a cl-x 100 cl-y)
                   (create-vector (factory ocl-factory) m-cnt))
        => (mv! 10 host-a host-x 100 host-y)))))

@@ -112,14 +112,15 @@
   Mappable
   (map-memory [_ flags]
     (let [host-fact (factory fact)
-          acc ^RealBufferAccessor (data-accessor host-fact)
+          acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
                                       (* ofst (.entryWidth claccessor))
                                       (* strd n (.entryWidth claccessor))
                                       flags nil nil)]
       (try
-        (create-vector host-fact n mapped-buf nil);;TODO bug! if stride is > 1, the wrong region is mapped
+        (->RealBlockVector host-fact acc (vector-engine host-fact nil)
+                           (.entryType acc) true mapped-buf n strd)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -241,14 +242,15 @@
   Mappable
   (map-memory [this flags]
     (let [host-fact (factory fact)
-          acc ^RealBufferAccessor (data-accessor host-fact)
+          acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
                                       (* ofst (.entryWidth claccessor))
-                                      (* (* n ld) (.entryWidth claccessor))
+                                      (* n ld (.entryWidth claccessor))
                                       flags nil nil)]
       (try
-        (create-matrix host-fact m n mapped-buf ord)
+        (->RealGeneralMatrix host-fact acc (matrix-engine host-fact nil)
+                             (.entryType acc) true mapped-buf m n ld ord)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
