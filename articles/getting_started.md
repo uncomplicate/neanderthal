@@ -80,7 +80,7 @@ OpenCL platform software provided by the vendor of your graphic card ([as in the
 The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependencies to your `project.clj`, just like in [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj):
 
 ```clojure
-[uncomplicate/neanderthal "0.3.0"]
+[uncomplicate/neanderthal "0.4.0"]
 [uncomplicate/neanderthal-atlas "0.1.0" :classifier "amd64-Linux-gpp-jni"]
 ```
 
