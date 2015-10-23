@@ -1,5 +1,21 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.4.0
+
+New features:
+
+* Streamlined factory-based constructors in core.
+* OpenCL vectors and matrices now support equality comparisons, offsets, strides,
+subvectors, and submatrices. Matrices now can be swapped and copied.
+
+Changes:
+
+* OpenCL read! and write! replaced with generic transfer! multimethod that supports
+a much wider area of memory types to move data to and from.
+* A large number of internal implementation changes that should not affect end users
+(other than as removing bugs).
+* Several important bugfixes (see git commit history).
+
 ## 0.3.0
 
 New features:

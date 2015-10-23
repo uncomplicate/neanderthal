@@ -1,7 +1,7 @@
 (let [nar-classifier (str (System/getProperty "os.arch") "-"
                           (System/getProperty "os.name") "-gpp-jni")
       atlas-version "0.1.0"]
-  (defproject uncomplicate/neanderthal "0.4.0-SNAPSHOT"
+  (defproject uncomplicate/neanderthal "0.4.0"
     :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
     :url "https://github.com/uncomplicate/neanderthal"
     :scm {:name "git"
@@ -9,7 +9,7 @@
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
     :dependencies [[org.clojure/clojure "1.8.0-beta1"]
-                   [uncomplicate/clojurecl "0.3.0-SNAPSHOT"]
+                   [uncomplicate/clojurecl "0.3.0"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.3"]
                    [vertigo "0.1.3"]
@@ -19,12 +19,12 @@
 
     :codox {:src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"
             :src-linenum-anchor-prefix "L"
-            :exclude [uncomplicate.neanderthal.protocols
-                      uncomplicate.neanderthal.impl.buffer-block
-                      uncomplicate.neanderthal.impl.cblas
-                      uncomplicate.neanderthal.opencl.clblock
-                      uncomplicate.neanderthal.opencl.amd-gcn]
-            :output-dir "docs/codox"}
+            :namespaces [uncomplicate.neanderthal.core
+                         uncomplicate.neanderthal.native
+                         uncomplicate.neanderthal.opencl
+                         uncomplicate.neanderthal.math
+                         uncomplicate.neanderthal.real]
+            :output-path "docs/codox"}
 
     ;;also replaces lein's default JVM argument TieredStopAtLevel=1
     :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
@@ -36,17 +36,17 @@
           uncomplicate.neanderthal.opencl.amd-gcn]
 
     :profiles {:dev {:plugins [[lein-midje "3.1.3"]
-                               [codox "0.8.13"]]
+                               [lein-codox "0.9.0"]]
                      :global-vars {*warn-on-reflection* true
                                    *assert* false
                                    *unchecked-math* :warn-on-boxed
                                    *print-length* 128}
                      :dependencies [[uncomplicate/neanderthal-atlas ~atlas-version
                                      :classifier ~nar-classifier]
-                                    [midje "1.8-alpha1"]
+                                    [midje "1.8-beta1"]
                                     [criterium "0.4.3"]]}}
 
     :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
     :source-paths ["src/clojure" "src/opencl"]
     :java-source-paths ["src/java"]
-    :test-paths ["test" "test/clojure"]))
+    :test-paths ["test"]))
