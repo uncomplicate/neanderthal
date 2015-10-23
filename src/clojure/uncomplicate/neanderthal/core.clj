@@ -128,8 +128,8 @@
 
   See uncomplicate.neanderthal.native, uncomplicate.neanderthal.opencl, etc.
 
-  (create-init cblas-single 3)
-  (create-init cblas-double 35 12)"
+  (create-raw cblas-single 3)
+  (create-raw cblas-double 35 12)"
   ([factory ^long n]
    (p/create-vector factory n
                     (.createDataSource (p/data-accessor factory) n)
@@ -140,7 +140,23 @@
                     nil)))
 
 (defn create-vector
-  ([factory source];;TODO documentation
+  "Creates a vector from source using the provided factory.
+
+  Accepts the following source:
+  - java.nio.ByteBuffer with a capacity divisible by the element width,
+  . which will be used as-is for backing the vector.
+  - a positive integer, which will be used as a dimension
+  . of new vector with zeroes as entries.
+  - a floating point number, which will be the only entry
+  . in a one-dimensional vector.
+  - a clojure sequence, which will be copied into a
+  . direct ByteBuffer that backs the new vector.
+  - varargs will be treated as a clojure sequence.
+
+  (create-vector *double-factory* [1 2 3])
+  (create-vector *single-factory* 12)
+  "
+  ([factory source]
    (let [acc ^DataAccessor (p/data-accessor factory)]
      (cond
        (integer? source) (create factory source)
@@ -157,6 +173,18 @@
    (create-vector factory (cons x xs))))
 
 (defn create-ge-matrix
+  "Creates a dense, column-oriented mxn matrix from source.
+
+  If called with two arguments, creates a zero matrix with dimensions mxn.
+
+  Accepts the following sources:
+  - java.nio.ByteBuffer with a capacity = elementWidth * m * n,
+  . which will be used as-is for backing the matrix.
+  - a clojure sequence, which will be copied into a
+  . direct ByteBuffer that backs the new vector.
+
+  (create-ge-matrix *double-factory* 15 13)
+  "
   ([factory m n source]
    (let [acc ^DataAccessor (p/data-accessor factory)]
      (cond
