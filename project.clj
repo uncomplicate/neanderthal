@@ -1,15 +1,15 @@
 (let [nar-classifier (str (System/getProperty "os.arch") "-"
                           (System/getProperty "os.name") "-gpp-jni")
       atlas-version "0.1.0"]
-  (defproject uncomplicate/neanderthal "0.4.0"
+  (defproject uncomplicate/neanderthal "0.5.0-SNAPSHOT"
     :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
     :url "https://github.com/uncomplicate/neanderthal"
     :scm {:name "git"
           :url "https://github.com/uncomplicate/neanderthal"}
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
-    :dependencies [[org.clojure/clojure "1.8.0-beta1"]
-                   [uncomplicate/clojurecl "0.3.0"]
+    :dependencies [[org.clojure/clojure "1.8.0-RC2"]
+                   [uncomplicate/clojurecl "0.4.0-SNAPSHOT"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.3"]
                    [vertigo "0.1.3"]
@@ -43,7 +43,7 @@
                                    *print-length* 128}
                      :dependencies [[uncomplicate/neanderthal-atlas ~atlas-version
                                      :classifier ~nar-classifier]
-                                    [midje "1.8-beta1"]
+                                    [midje "1.8.2"]
                                     [criterium "0.4.3"]]}}
 
     :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
