@@ -8,10 +8,10 @@
           :url "https://github.com/uncomplicate/neanderthal"}
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
-    :dependencies [[org.clojure/clojure "1.8.0-RC4"]
+    :dependencies [[org.clojure/clojure "1.8.0-RC5"]
                    [uncomplicate/clojurecl "0.4.0-SNAPSHOT"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
-                   [org.apache.commons/commons-math3 "3.5"]
+                   [org.apache.commons/commons-math3 "3.6"]
                    [vertigo "0.1.4"]]
 
     :codox {:src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"
@@ -40,7 +40,7 @@
                                    *print-length* 128}
                      :dependencies [[uncomplicate/neanderthal-atlas ~atlas-version
                                      :classifier ~nar-classifier]
-                                    [midje "1.8.2"]
+                                    [midje "1.8.3"]
                                     [criterium "0.4.3"]]}}
 
     :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
