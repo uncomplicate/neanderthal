@@ -52,6 +52,9 @@
 (defn log ^double [^double x]
   (Math/log x))
 
+(defn log1p ^double [^double x]
+  (Math/log1p x))
+
 (defn sqrt ^double [^double x]
   (FastMath/sqrt x))
 
