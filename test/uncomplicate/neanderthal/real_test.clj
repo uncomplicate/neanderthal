@@ -100,6 +100,18 @@
          (iamax (create-vector factory [])) => 0
          (iamax (create-vector factory [4 6 7 3])) => 2))
 
+(defn test-imax [factory]
+  (facts "BLAS 1 imax"
+         (imax (create-vector factory [1 2 7 7 6 2 -10 10])) => 7
+         (imax (create-vector factory [])) => 0
+         (imax (create-vector factory [4 6 7 3])) => 2))
+
+(defn test-imin [factory]
+  (facts "BLAS 1 imin"
+         (imin (create-vector factory [1 2 7 7 6 2 -10 10])) => 6
+         (imin (create-vector factory [])) => 0
+         (imin (create-vector factory [4 6 7 3])) => 3))
+
 (defn test-rot [factory]
   (facts "BLAS 1 rot!"
          (let [x (create-vector factory [1 2 3 4 5])

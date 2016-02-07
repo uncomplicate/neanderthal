@@ -44,11 +44,30 @@
     (CBLAS/daxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y)))
   BLASPlus
   (sum [_ x] ;;TODO implement in C
-    (loop [i 0 res 0.0]
-      (if (< i (.dim ^Vector x))
-        (recur (inc i)
-               (+ res (.entry ^RealVector x i)))
-        res))))
+    (let [cnt (.dim ^Vector x)]
+      (loop [i 0 res 0.0]
+        (if (< i cnt)
+          (recur (inc i)
+                 (+ res (.entry ^RealVector x i)))
+          res))))
+  (imax [_ x] ;;TODO implement in C
+    (let [cnt (.dim ^Vector x)]
+      (loop [i 1 max-idx 0 max-val (.entry ^RealVector x 0)]
+        (if (< i cnt)
+          (let [v (.entry ^RealVector x i)]
+            (if (< max-val v)
+              (recur (inc i) i v)
+              (recur (inc i) max-idx max-val)))
+          max-idx))))
+  (imin [_ x] ;;TODO implement in C
+    (let [cnt (.dim ^Vector x)]
+      (loop [i 1 min-idx 0 min-val (.entry ^RealVector x 0)]
+        (if (< i cnt)
+          (let [v (.entry ^RealVector x i)]
+            (if (< v min-val)
+              (recur (inc i) i v)
+              (recur (inc i) min-idx min-val)))
+          min-idx)))))
 
 (deftype SingleVectorEngine []
   BLAS

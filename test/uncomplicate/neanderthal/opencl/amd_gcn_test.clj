@@ -19,6 +19,8 @@
     (real-test/test-asum factory)
     (real-test/test-sum factory)
     (real-test/test-iamax factory)
+    (real-test/test-imax factory)
+    (real-test/test-imin factory)
     (real-test/test-swap factory)
     (real-test/test-scal factory)
     (real-test/test-copy-vector factory)

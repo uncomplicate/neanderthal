@@ -453,10 +453,28 @@
   "BLAS 1: The index of the largest absolute value.
   The index of the first entry that has the maximum value.
 
-  (iamax (dv 1 3 2)) => 1
+  (iamax (dv 1 -3 2)) => 1
   "
   ^long [x]
   (.iamax (p/engine x) x))
+
+(defn imax
+  "BLAS 1+: The index of the largest value.
+  The index of the first entry that has the maximum value.
+
+  (imax (dv 1 -3 2)) => 2
+  "
+  ^long [x]
+  (.imax ^BLASPlus (p/engine x) x))
+
+(defn imin
+  "BLAS 1+: The index of the smallest value.
+  The index of the first entry that has the minimum value.
+
+  (imin (dv 1 -3 2)) => 2
+  "
+  ^long [x]
+  (.imin ^BLASPlus (p/engine x) x))
 
 (defn scal!
   "BLAS 1: Scale vector.

@@ -32,7 +32,9 @@
                           nrm2-reduce-kernel
                           asum-reduce-kernel
                           iamax-reduce-kernel
-                          sum-reduce-kernel]
+                          sum-reduce-kernel
+                          imax-reduce-kernel
+                          imin-reduce-kernel]
 
   Releaseable
   (release [_]
@@ -51,7 +53,9 @@
      (release nrm2-reduce-kernel)
      (release asum-reduce-kernel)
      (release iamax-reduce-kernel)
-     (release sum-reduce-kernel)))
+     (release sum-reduce-kernel)
+     (release imax-reduce-kernel)
+     (release imin-reduce-kernel)))
   BlockEngine
   (equals-block [_ _ y]
     (if (< 0 n)
@@ -104,7 +108,7 @@
       (do
         (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel WGS n)
         (enq-read-int queue reduce-iacc))
-      0.0))
+      0))
   (rot [_ _ y c s]
     (throw (UnsupportedOperationException.
             "TODO.")))
@@ -137,7 +141,19 @@
       (do
         (enq-reduce queue sum-reduce-kernel sum-reduction-kernel WGS n)
         (enq-read-double queue reduce-acc))
-      0.0)))
+      0.0))
+  (imax [_ x]
+    (if (< 0 n)
+      (do
+        (enq-reduce queue imax-reduce-kernel imax-reduction-kernel WGS n)
+        (enq-read-int queue reduce-iacc))
+      0))
+  (imin [_ x]
+    (if (< 0 n)
+      (do
+        (enq-reduce queue imin-reduce-kernel imax-reduction-kernel WGS n)
+        (enq-read-int queue reduce-iacc))
+      0)))
 
 ;; ======================= Dense Matrix ========================================
 
@@ -299,7 +315,11 @@
                          (doto (kernel prog "iamax_reduce")
                            (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd))
                          (doto (kernel prog "sum_reduce")
-                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd)))))
+                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
+                         (doto (kernel prog "imax_reduce")
+                           (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd))
+                         (doto (kernel prog "imin_reduce")
+                           (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd)))))
   (matrix-engine [_ [cl-buf m n ofst ld ord]]
     (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
                       (max 1 (* (long m) (count-work-groups WGSn n))))

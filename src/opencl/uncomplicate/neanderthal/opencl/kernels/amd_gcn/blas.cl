@@ -244,6 +244,28 @@ __kernel void iamax_reduce (__global uint* iacc, __global double* vacc,
     work_group_reduction_imax(iacc, vacc, ix, (double)(fabs(x[ix])));
 }
 
+// ================== imax reduce  ============================================
+
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void imax_reduce (__global uint* iacc, __global double* vacc,
+                           __global const REAL* x,
+                           const uint offset_x, const uint stride_x) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    work_group_reduction_imax(iacc, vacc, ix, (double)(x[ix]));
+}
+
+// ================== imin reduce  ============================================
+
+__attribute__((reqd_work_group_size(WGS, 1, 1)))
+__kernel void imin_reduce (__global uint* iacc, __global double* vacc,
+                           __global const REAL* x,
+                           const uint offset_x, const uint stride_x) {
+    uint ix = offset_x + get_global_id(0) * stride_x;
+    work_group_reduction_imax(iacc, vacc, ix, (double)(-x[ix]));
+}
+
+
+
 // ||||||||||||||||       BLAS 2      ||||||||||||||||||||||||||||||||||||||||||
 
 // ================== GEMV =====================================================
