@@ -35,7 +35,7 @@ is to be aware that a large part of your code will run on a physically separate
 device, which also has its own working memory. It can not access data from the
 main memory, such as your objects, arrays, primitives and such. It also can not
 run your arbitrary program code (Java, C, R). Even if/when it could (Aparapi)
-it sucks at it big time, because it is made of thousans of very dumb processors that
+it sucks at it big time, because it is made of thousands of very dumb processors that
 are excellent at one thing only - raw computations - and suck at everything else,
 including logic.
 
@@ -44,7 +44,7 @@ Host is a typical Clojure (Java) program that do the usual things Clojure progra
 do: talks to the web, formats and extracts data, does the database dance,
 recursively compute factorials, and perform other logic-heavy tasks.
 Then, when it has collected the data and stuffed it in a
-big raw chunk of bazillion primitive floating point numbers it sends it to the
+big raw chunk of a bazillion primitive floating point numbers it sends it to the
 device memory and tells the device to run the kernel programs and compute the data.
 When the main program wants to see the results, it has to transfer them from the
 device memory to the main host memory.
@@ -81,8 +81,8 @@ We also need to discover and set up the device, so we need
 `uncomplicate.clojurecl.core`.
 
 And, to be sure that this code is always in the proper working condition,
-I'll write it as a bunch of midje test facts and include it in the test suite,
-therefore do not mind these `facts` and `=>`s, they're not part of Neanderthal.
+I'll write a bunch of midje test facts and include them in the test suite.
+Therefore, do not mind these `facts` and `=>`s - they're not part of Neanderthal.
 
 ```Clojure
 
@@ -106,8 +106,7 @@ knobs for the beginning.
 So, we will wrap all code we work with into `with-default` and `with-default-engine`.
 Our code will then be executed on the first available device on the first available
 OpenCL platform. On my machine, that would activate the fastest GPU (the first
-of the three Radeons I have) using the AMD's OpenCL drivers. Your setup would probably
-be more or less different.
+of the three Radeons I have) using the AMD's OpenCL drivers. Your setup may be different.
 
 ```Clojure
 
