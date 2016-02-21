@@ -181,6 +181,8 @@
            (freduce + 1.0 x y y [y])
            => (throws UnsupportedOperationException))))
 
+
+
 (defn test-all [factory]
   (do
     (test-equality factory)

@@ -1,5 +1,5 @@
 (ns ^{:author "Dragan Djuric"}
-  uncomplicate.neanderthal.core
+    uncomplicate.neanderthal.core
   "Contains type-agnostic linear algebraic functions. Typically,
   you would want to require this namespace regardless of the actual type
   (real, complex, CPU, GPU, pure Java etc.) of the vectors and matrices that
@@ -26,9 +26,10 @@
   (ns test
     (:require [uncomplicate.neanderthal core native opencl]))
   "
-  (:require  [uncomplicate.neanderthal
-              [protocols :as p]
-              [math :refer [f= pow sqrt]]])
+  (:require [uncomplicate.clojurecl.core :refer [release]]
+            [uncomplicate.neanderthal
+             [protocols :as p]
+             [math :refer [f= pow sqrt]]])
   (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
@@ -200,7 +201,46 @@
   ([factory m n]
    (create factory m n)))
 
-;; ================= Container  ====================================================
+;; =========== TODO: move to fluokitten op
+;; === implementatiion: move to engines to avoid subvector creation?
+
+(defn vector-op
+  ([^Vector x ^Vector y]
+   (let [dim-x (.dim x)
+         dim-y (.dim y)
+         res ^Vector (create-raw (p/factory x) (+ dim-x dim-y))
+         eng (p/engine res)]
+     (try
+       (.copy eng x (.subvector res 0 dim-x))
+       (.copy eng y (.subvector res dim-x dim-y))
+       res
+       (catch Exception e
+         (do
+           (release res)
+           (throw e))))))
+  ([^Vector x ^Vector y & xs]
+   (let [res ^Vector (create-raw (p/factory x)
+                                 (loop [acc (.dim x) z y zs xs]
+                                   (if z
+                                     (recur (+ acc (.dim ^Vector z))
+                                            (first zs) (next zs))
+                                     acc)))
+         eng (p/engine res)]
+     (try
+       (.copy eng x (.subvector res 0 (.dim x)))
+       (loop [pos (.dim x) z y zs xs]
+         (if z
+           (do
+             (.copy eng z (.subvector res pos (.dim ^Vector z)))
+             (recur (+ pos (.dim ^Vector z)) (first zs) (next zs)))
+           res))
+       (catch Exception e
+         (do
+           (release res)
+           (throw e)))))))
+
+;; ================= Container  ================================================
+
 (defn raw
   "Returns an uninitialized instance of the same type and dimension(s)
   as x, which can be neanderthal container."
@@ -633,9 +673,14 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   [x]
-  (let [y (p/raw x)]
-    (copy! x y)
-    y))
+  (let [res (p/raw x)]
+    (try
+      (copy! x res)
+      (catch Exception e
+        (do
+          (release res)
+          (throw e))))
+    res))
 
 (defn axpy!
   "BLAS 1: Vector scale and add. Also works on matrices.
@@ -695,16 +740,46 @@
   The result is a new instance.
   "
   ([x y]
-   (axpy! 1.0 x (copy y)))
+   (let [res (copy y)]
+     (try
+       (axpy! 1.0 x (copy y))
+       (catch Exception e
+         (do
+           (release res)
+           (throw e))))))
   ([x y z]
    (if (number? x)
-     (axpy! x y (copy z))
-     (axpy! 1.0 x (copy y) z)))
+     (let [res (copy z)]
+       (try
+         (axpy! x y res)
+         (catch Exception e
+           (do
+             (release res)
+             (throw e)))))
+     (let [res (copy y)]
+       (try
+         (axpy! 1.0 x res z)
+         (catch Exception e
+           (do
+             (release res)
+             (throw e)))))))
   ([x y z w & ws]
    (if (number? x)
      (if (number? z)
-       (apply axpy! x y (zero y) z w ws)
-       (apply axpy! x y (copy z) w ws))
+       (let [res (zero y)]
+         (try
+           (apply axpy! x y res z w ws)
+           (catch Exception e
+             (do
+               (release res)
+               (throw e)))))
+       (let [res (copy z)]
+         (try
+           (apply axpy! x y res w ws)
+           (catch Exception e
+             (do
+               (release res)
+               (throw e))))))
      (apply axpy 1.0 x y z w ws))))
 
 (defn ax
@@ -712,17 +787,29 @@
   Similar to scal!, but does not change x. The result
   is a new vector instance."
   [alpha x]
-  (axpy! alpha x (p/zero x)))
+  (let [res (zero x)]
+    (try
+      (axpy! alpha x res)
+      (catch Exception e
+        (do
+          (release res)
+          (throw e))))))
 
 (defn xpy
   "Sums containers x, y & zs. The result is a new vector instance."
   ([x y]
    (axpy! 1.0 x (copy y)))
   ([x y & zs]
-   (loop [res (axpy! 1.0 x (copy y)) s zs]
-     (if s
-       (recur (axpy! 1.0 (first s) res) (next s))
-       res))))
+   (let [cy (copy y)]
+     (try
+       (loop [res (axpy! 1.0 x cy) s zs]
+         (if s
+           (recur (axpy! 1.0 (first s) res) (next s))
+           res))
+       (catch Exception e
+         (do
+           (release cy)
+           (throw e)))))))
 
 ;;============================== BLAS 2 ========================================
 
@@ -770,7 +857,13 @@
   "A pure version of mv! that returns the result
   in a new vector instance. Computes alpha a * x."
   ([alpha a x]
-   (mv! alpha a x 0.0 (p/zero (col a 0))))
+   (let [res (p/zero (col a 0))]
+     (try
+       (mv! alpha a x 0.0 res)
+       (catch Exception e
+         (do
+           (release res)
+           (throw e))))))
   ([a x]
    (mv 1.0 a x)))
 
@@ -806,7 +899,13 @@
   in a new matrix instance.
   "
   ([alpha x y]
-   (rank! alpha x y (create-raw (p/factory x) (dim x) (dim y))))
+   (let [res (create-raw (p/factory x) (dim x) (dim y))]
+     (try
+       (rank! alpha x y res)
+       (catch Exception e
+         (do
+           (release res)
+           (throw e))))))
   ([x y]
    (rank 1.0 x y)))
 
@@ -867,7 +966,13 @@
   in a new matrix instance.
   Computes alpha a * b"
   ([alpha a b]
-   (mm! alpha a b 0.0 (create (p/factory a) (mrows a) (ncols b))))
+   (let [res (create (p/factory a) (mrows a) (ncols b))]
+     (try
+       (mm! alpha a b 0.0 res)
+       (catch Exception e
+         (do
+           (release res)
+           (throw e))))))
   ([a b]
    (mm 1.0 a b)))
 
