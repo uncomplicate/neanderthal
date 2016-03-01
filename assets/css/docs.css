@@ -1,8 +1,8 @@
 /*!
  * Bootstrap Docs (http://getbootstrap.com)
- * Copyright 2011-2014 Twitter, Inc.
+ * Copyright 2011-2016 Twitter, Inc.
  * Licensed under the Creative Commons Attribution 3.0 Unported License. For
- * details, see http://creativecommons.org/licenses/by/3.0/.
+ * details, see https://creativecommons.org/licenses/by/3.0/.
  */
 
 
@@ -20,7 +20,6 @@
 
 body {
   position: relative; /* For scrollspy */
-  padding: 70px;
 }
 
 /* Keep code small in tables on account of limited space */
@@ -29,30 +28,37 @@ body {
   font-weight: normal;
 }
 
+/* Inline code within headings retain the heading's background-color */
+h2 code,
+h3 code,
+h4 code {
+  background-color: inherit;
+}
+
 /* Outline button for use within the docs */
 .btn-outline {
-  color: #109709;
+  color: #563d7c;
   background-color: transparent;
-  border-color: #109709;
+  border-color: #563d7c;
 }
 .btn-outline:hover,
 .btn-outline:focus,
 .btn-outline:active {
   color: #fff;
-  background-color: #109709;
-  border-color: #109709;
+  background-color: #563d7c;
+  border-color: #563d7c;
 }
 
 /* Inverted outline button (white on dark) */
 .btn-outline-inverse {
   color: #fff;
   background-color: transparent;
-  border-color: #5ea85b;
+  border-color: #cdbfe3;
 }
 .btn-outline-inverse:hover,
 .btn-outline-inverse:focus,
 .btn-outline-inverse:active {
-  color: #109709;
+  color: #563d7c;
   text-shadow: none;
   background-color: #fff;
   border-color: #fff;
@@ -65,7 +71,7 @@ body {
   color: #fff;
   text-align: center;
   cursor: default;
-  background-color: #109709;
+  background-color: #563d7c;
   border-radius: 15%;
 }
 .bs-docs-booticon-sm {
@@ -81,12 +87,12 @@ body {
   line-height: 140px;
 }
 .bs-docs-booticon-inverse {
-  color: #109709;
+  color: #563d7c;
   background-color: #fff;
 }
 .bs-docs-booticon-outline {
   background-color: transparent;
-  border: 1px solid #5ea85b;
+  border: 1px solid #cdbfe3;
 }
 
 
@@ -94,19 +100,24 @@ body {
  * Fancy skip link
  *
  * Make it look a bit less "bare bones"
+ * Also includes focus suppression for the Chrome tabindex="-1" workaround
  */
 
 #skippy {
   display: block;
   padding: 1em;
   color: #fff;
-  background-color: #044D00;
+  background-color: #6f5499;
   outline: 0;
 }
 
 #skippy .skiplink-text {
   padding: .5em;
   outline: 1px dotted;
+}
+
+#content:focus {
+  outline: none;
 }
 
 
@@ -127,7 +138,7 @@ body {
 .bs-docs-nav .navbar-brand,
 .bs-docs-nav .navbar-nav > li > a {
   font-weight: 500;
-  color: #109709;
+  color: #563d7c;
 }
 .bs-docs-nav .navbar-nav > li > a:hover,
 .bs-docs-nav .navbar-nav > .active > a,
@@ -136,7 +147,7 @@ body {
   background-color: #f9f9f9;
 }
 .bs-docs-nav .navbar-toggle .icon-bar {
-  background-color: #109709;
+  background-color: #563d7c;
 }
 .bs-docs-nav .navbar-header .navbar-toggle {
   border-color: #fff;
@@ -155,63 +166,34 @@ body {
  */
 
 .bs-docs-footer {
-  padding-top: 40px;
-  padding-bottom: 40px;
+  padding-top: 50px;
+  padding-bottom: 50px;
   margin-top: 100px;
-  color: #767676;
+  color: #99979c;
   text-align: center;
-  border-top: 1px solid #e5e5e5;
+  background-color: #2a2730;
+}
+.bs-docs-footer a {
+  color: #fff;
 }
 .bs-docs-footer-links {
   padding-left: 0;
-  margin-top: 20px;
+  margin-bottom: 20px;
 }
 .bs-docs-footer-links li {
-  display: inline;
-  padding: 0 2px;
+  display: inline-block;
 }
-.bs-docs-footer-links li:first-child {
-  padding-left: 0;
+.bs-docs-footer-links li + li {
+  margin-left: 15px;
 }
 
 @media (min-width: 768px) {
+  .bs-docs-footer {
+    text-align: left;
+  }
   .bs-docs-footer p {
     margin-bottom: 0;
   }
-}
-
-
-/*
- * Social buttons
- *
- * Twitter and GitHub social action buttons (for homepage and footer).
- */
-
-.bs-docs-social {
-  margin-bottom: 20px;
-  text-align: center;
-}
-.bs-docs-social-buttons {
-  display: inline-block;
-  padding-left: 0;
-  margin-bottom: 0;
-  list-style: none;
-}
-.bs-docs-social-buttons li {
-  display: inline-block;
-  padding: 5px 8px;
-  line-height: 1;
-}
-.bs-docs-social-buttons .twitter-follow-button {
-  width: 225px !important;
-}
-.bs-docs-social-buttons .twitter-share-button {
-  width: 98px !important;
-}
-/* Style the GitHub buttons via CSS instead of inline attributes */
-.github-btn {
-  overflow: hidden;
-  border: 0;
 }
 
 
@@ -225,16 +207,16 @@ body {
 .bs-docs-masthead,
 .bs-docs-header {
   position: relative;
-  padding: 30px 15px;
-  color: #5ea85b;
+  padding: 30px 0;
+  color: #cdbfe3;
   text-align: center;
   text-shadow: 0 1px 0 rgba(0,0,0,.1);
-  background-color: #044D00;
-  background-image: -webkit-gradient(linear, left top, left bottom, from(#109709), to(#044D00));
-  background-image: -webkit-linear-gradient(top, #109709 0%, #044D00 100%);
-  background-image:      -o-linear-gradient(top, #109709 0%, #044D00 100%);
-  background-image:         linear-gradient(to bottom, #109709 0%, #044D00 100%);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#109709', endColorstr='#044D00', GradientType=0);
+  background-color: #6f5499;
+  background-image: -webkit-gradient(linear, left top, left bottom, from(#563d7c), to(#6f5499));
+  background-image: -webkit-linear-gradient(top, #563d7c 0%, #6f5499 100%);
+  background-image:      -o-linear-gradient(top, #563d7c 0%, #6f5499 100%);
+  background-image:         linear-gradient(to bottom, #563d7c 0%, #6f5499 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#563d7c', endColorstr='#6F5499', GradientType=0);
   background-repeat: repeat-x;
 }
 
@@ -345,7 +327,7 @@ body {
   width: auto !important;
   height: auto !important;
   padding: 20px !important;
-  margin: 30px -30px -31px !important;
+  margin: 30px -15px -31px !important;
   overflow: hidden; /* clearfix */
   font-size: 13px !important;
   line-height: 16px !important;
@@ -580,19 +562,19 @@ body {
 .bs-docs-sidebar .nav > li > a:hover,
 .bs-docs-sidebar .nav > li > a:focus {
   padding-left: 19px;
-  color: #109709;
+  color: #563d7c;
   text-decoration: none;
   background-color: transparent;
-  border-left: 1px solid #109709;
+  border-left: 1px solid #563d7c;
 }
 .bs-docs-sidebar .nav > .active > a,
 .bs-docs-sidebar .nav > .active:hover > a,
 .bs-docs-sidebar .nav > .active:focus > a {
   padding-left: 18px;
   font-weight: bold;
-  color: #109709;
+  color: #563d7c;
   background-color: transparent;
-  border-left: 2px solid #109709;
+  border-left: 2px solid #563d7c;
 }
 
 /* Nav: second level (shown on .active) */
@@ -631,7 +613,7 @@ body {
 }
 .back-to-top:hover,
 .bs-docs-theme-toggle:hover {
-  color: #109709;
+  color: #563d7c;
   text-decoration: none;
 }
 .bs-docs-theme-toggle {
@@ -808,7 +790,7 @@ h1[id] {
 
 /* Docs colors */
 .color-swatches .bs-purple {
-  background-color: #109709;
+  background-color: #563d7c;
 }
 .color-swatches .bs-purple-light {
   background-color: #c7bfd3;
@@ -912,6 +894,10 @@ h1[id] {
   text-transform: uppercase;
   letter-spacing: 1px;
   content: "Example";
+}
+
+.bs-example-padded-bottom {
+  padding-bottom: 24px;
 }
 
 /* Tweak display of the code snippets when following an example */
@@ -1167,6 +1153,10 @@ h1[id] {
   overflow: auto;
 }
 
+.bs-example > .nav-pills-stacked-example {
+  max-width: 300px;
+}
+
 /* Simple collapse example */
 #collapseExample .well {
   margin-bottom: 0;
@@ -1176,6 +1166,19 @@ h1[id] {
 .bs-events-table > thead > tr > th:first-child,
 .bs-events-table > tbody > tr > td:first-child {
   white-space: nowrap;
+}
+
+.bs-events-table > thead > tr > th:first-child {
+  width: 150px;
+}
+
+.js-options-table > thead > tr > th:nth-child(1),
+.js-options-table > thead > tr > th:nth-child(2) {
+  width: 100px;
+}
+
+.js-options-table > thead > tr > th:nth-child(3) {
+  width: 50px;
 }
 
 /*
@@ -1321,7 +1324,7 @@ h1[id] {
 }
 .bs-glyphicons li:hover {
   color: #fff;
-  background-color: #109709;
+  background-color: #563d7c;
 }
 
 @media (min-width: 768px) {
@@ -1465,7 +1468,7 @@ h1[id] {
   width: 100%;
   margin-bottom: 15px;
   overflow: hidden;
-  color: #109709;
+  color: #563d7c;
   background-color: #f9f9f9;
   border-radius: 4px;
 }
@@ -1480,7 +1483,7 @@ h1[id] {
 }
 .bs-brand-logos .inverse {
   color: #fff;
-  background-color: #109709;
+  background-color: #563d7c;
 }
 
 /* Heading content within */
@@ -1549,8 +1552,8 @@ h1[id] {
 }
 .btn-clipboard-hover {
   color: #fff;
-  background-color: #109709;
-  border-color: #109709;
+  background-color: #563d7c;
+  border-color: #563d7c;
 }
 
 @media (min-width: 768px) {
@@ -1563,6 +1566,31 @@ h1[id] {
   }
 }
 
+/*
+ * AnchorJS Styles
+ */
+.anchorjs-link {
+  color: inherit;
+}
+
+@media (max-width: 480px) {
+  .anchorjs-link {
+    display: none;
+  }
+}
+
+*:hover > .anchorjs-link {
+  opacity: .75;
+  -webkit-transition: color .16s linear;
+       -o-transition: color .16s linear;
+          transition: color .16s linear;
+}
+
+*:hover > .anchorjs-link:hover,
+.anchorjs-link:focus {
+  text-decoration: none;
+  opacity: 1;
+}
 
 /*
  * Miscellaneous
@@ -1578,4 +1606,53 @@ h1[id] {
   outline: thin dotted \9; /* IE6-9 */
   -webkit-box-shadow: 0 0 8px rgba(82,168,236,.6);
           box-shadow: 0 0 8px rgba(82,168,236,.6);
+}
+
+/* v4 notice above main navbar */
+.v4-tease {
+  display: block;
+  padding: 15px 20px;
+  font-weight: bold;
+  color: #fff;
+  text-align: center;
+  background-color: #0275d8;
+}
+.v4-tease:hover {
+  color: #fff;
+  text-decoration: none;
+  background-color: #0269c2;
+}
+
+
+/*
+ * Social buttons
+ *
+ * Twitter and GitHub social action buttons (for homepage and footer).
+ */
+
+.bs-docs-social {
+  margin-bottom: 20px;
+  text-align: center;
+}
+.bs-docs-social-buttons {
+  display: inline-block;
+  padding-left: 0;
+  margin-bottom: 0;
+  list-style: none;
+}
+.bs-docs-social-buttons li {
+  display: inline-block;
+  padding: 5px 8px;
+  line-height: 1;
+}
+.bs-docs-social-buttons .twitter-follow-button {
+  width: 225px !important;
+}
+.bs-docs-social-buttons .twitter-share-button {
+  width: 98px !important;
+}
+/* Style the GitHub buttons via CSS instead of inline attributes */
+.github-btn {
+  overflow: hidden;
+  border: 0;
 }

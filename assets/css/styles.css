@@ -1,6 +1,10 @@
 /* Mixins.scss
  * Snippets of reusable CSS to develop faster and keep code readable
  * ----------------------------------------------------------------- */
+body {
+  position: relative;
+}
+
 .clearfix {
     zoom: 1;
 }

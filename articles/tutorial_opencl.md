@@ -21,7 +21,7 @@ parallel architectures, and you'd need to learn quite a few new tricks to collec
 the benefits you see on NVIDIA and AMD websites.
 
 * The good: Neanderthal implements BLAS algorithms and abstracts most of that
-complexity for vector and matrix computations away, behind a frendly Clojure API.
+complexity for vector and matrix computations away, behind a friendly Clojure API.
 
 **TL/DR: Multiplication of large matrices is more than 500x faster with Neanderthal
 than with optimized pure Java libraries, 25x faster than Neanderthal native engine
@@ -60,7 +60,7 @@ So, the moral of this story is: avoid copying data to and from the device unless
 it is absolutely necessary. Even avoid the communication with the device unless
 it is absolutely necessary.
 
-The typical workflow woud be: prepare the input data in your Clojure program and
+The typical workflow would be: prepare the input data in your Clojure program and
 send it to the device. Then, call many Neanderthal and ClojureCL functions that
 work with that data without transferring it back. Only transfer the final result.
 
@@ -401,7 +401,8 @@ for your chosen architecture! :)
 
 Happy hacking!
 
-```Clojure
-
+``` Clojure
 (facts "Are you ready to write number crunching Clojure code now?"
        :answer => truthy)
+
+```

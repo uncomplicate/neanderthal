@@ -21,7 +21,7 @@ I will concentrate on the performance of matrix-matrix multiplications, since it
 
 I compared Neanderthal with:
 
-* [jBLAS](http://mikiobraun.github.io/jblas/) - an easy to install library that uses a staticaly compiled ATLAS BLAS implementation, and is the most popular and the most easy to install native Java matrix library. It is fast for large matrices, but slow for small matrices.
+* [jBLAS](http://mikiobraun.github.io/jblas/) - an easy to install library that uses a staticaly compiled ATLAS BLAS implementation, and is the most popular and the easiest to install native Java matrix library. It is fast for large matrices, but slow for small matrices.
 * [Vectorz](https://github.com/mikera/vectorz) - a pure Java/Clojure matrix library. Fast for small matrices, but slower for large matrices.
 
 These two libraries are a good representation of the state of matrix computations in Java with native (jBLAS) and pure Java (Vectors) libraries. They also back the most popular Clojure matrix library, [core.matrix](https://github.com/mikera/core.matrix).

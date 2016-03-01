@@ -123,7 +123,7 @@ If you do not follow this procedure, and use a pre-packaged ATLAS provided by
 your system (if it exists), you will probably get degraded performance compared
 to a properly installed ATLAS.
 
-Eather way, Neanderthal does not care how ATLAS is provided, as long it is in
+Either way, Neanderthal does not care how ATLAS is provided, as long it is in
 the system path an was compiled as a shared library. It can even be packed in
 a jar if that's convenient, and I could make some steps in the future to make
 the "compile it and install ATLAS by yourself" step optional. But, I do not

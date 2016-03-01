@@ -28,7 +28,7 @@ implementation.
 Import the appropriate namespaces: `core` for computation functions,
 and `native` for constructors.
 
-```Clojure
+```clojure
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-native-test
   (:require [midje.sweet :refer :all]
@@ -60,7 +60,7 @@ the functions return are **primitive** where it matters (more about that later).
 
 Here are a few examples written as Midje tests:
 
-```Clojure
+```clojure
 
 (facts
  "We create a few double vectors using different input methods."
@@ -106,7 +106,7 @@ need to care about this, unless you write a pluggable Neanderthal implementation
 
 The same ByteBuffer can hold data for vectors as well as matrices.
 
-```Clojure
+```clojure
 
 (facts
  "Here is what you need to take care of if you opt to provide the initial data
@@ -146,7 +146,7 @@ transform the values of entries.
 I will show you the most popular ones, so you can easily find your way with
 others in Neanderthal API docs.
 
-```Clojure
+```clojure
 
 (facts
  "BLAS 1 asum: Sum of absolute values."
@@ -158,13 +158,13 @@ BLAS standard."
  (sum (dv 1 2 -5)) => -2.0)
 
 (facts
- "BLAS 1 dot: Dot product is a sum of the scalar productsof respective entries
+ "BLAS 1 dot: Dot product is a sum of the scalar products of respective entries
 of two vectors."
  (dot (dv 1 2 3) (dv 1 3 5)) => 22.0)
 
 (facts
  "BLAS 1 copy: Here is how we copy the data from one vector to another. We may
-provide the destionation and change it, or copy the data into a new vector.
+provide the destination and change it, or copy the data into a new vector.
 And, it works with matrices, too."
  (let [x (dv 1 2 3)
        y (dv 3)
@@ -199,7 +199,7 @@ by a scalar value). Also works on matrices."
 
 (facts
  "BLAS 1 axpy: SAXPY stands for Scalar a times x plus y. It scales a vector and
-adds it to another vector. It can help in acomplishing both the scaling of
+adds it to another vector. It can help in accomplishing both the scaling of
 vectors, additions, or both. It also works on matrices.
 It have destructive and non-destructive variants, and accepts varargs:
 ax - scaling
@@ -229,7 +229,7 @@ axpy! - destructive scaling and addition
 BLAS Level 2 functions are those that compute in quadratic time O(n^2).
 Usually, these functions combine matrices and vectors.
 
-```Clojure
+```clojure
 
 (facts
  "BLAS 2 mv: Here is how to perform a matrix-vector multiplication.
@@ -267,7 +267,7 @@ puts it in a new matrix instance."
 BLAS Level 3 functions are those that compute in cubic time O(n^3).
 They usually work with matrices and produce matrices.
 
-```Clojure
+```clojure
 
 (facts
  "BLAS 3 mm: Here is how you can multiply matrices. Note that this is matrix
@@ -305,7 +305,7 @@ we would like to see their structure, dimensions, to see specific entries, to ge
 subvectors or submatrices, to transpose matrices, etc. Neanderthal offers time
 and space efficient implementations of such operations.
 
-```Clojure
+```clojure
 
 (facts
  "Miscelaneous vector functions."
@@ -353,7 +353,7 @@ instance before using the BANG functions. The important thing is that you always
 have control and can explicitly choose what you need in particular case:
 purity or performance, or, sometimes, both.
 
-```Clojure
+```clojure
 
 (facts
  "If you change the subpart, you change the original data. "
@@ -384,7 +384,7 @@ This way, we get the full elegance of map and reduce with the speed (almost) as
 fast as looping on primitive arrays with primitive functions. See the benchmarks
 for performance details, here we only demonstrate how these are used.
 
-```Clojure
+```clojure
 
 (let [primitive-inc (fn ^double [^double x] (inc x))
       primitive-add (fn ^double [^double x ^double y ^double z] (+ x y z))
