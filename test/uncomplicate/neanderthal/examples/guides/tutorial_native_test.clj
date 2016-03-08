@@ -32,6 +32,7 @@ $code"
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-native-test
   (:require [midje.sweet :refer :all]
+            [uncomplicate.fluokitten.core :refer [fmap! fold]]
             [uncomplicate.neanderthal
              [core :refer :all]
              [native :refer :all]])
@@ -387,19 +388,20 @@ for performance details, here we only demonstrate how these are used.
 $code"
 
 (let [primitive-inc (fn ^double [^double x] (inc x))
-      primitive-add (fn ^double [^double x ^double y ^double z] (+ x y z))
+      primitive-add2 (fn ^double [^double x ^double y] (+ x y))
+      primitive-add3 (fn ^double [^double x ^double y ^double z] (+ x y z))
       primitive-multiply (fn ^double [^double x ^double y] (* x y))
       a (dge 2 3 (range 6))
       b (dge 2 3 (range 0 60 10))
       c (dge 2 3 (range 0 600 100))]
   (fact
    "You can change individual entries of any structure with fmap!. You can also
-accumulate values with freduce, or fold the entries."
+accumulate values with fold, or fold the entries."
    (fmap! primitive-inc a) => (dge 2 3 (range 1 7))
    a => (dge 2 3 (range 1 7))
-   (fmap! primitive-add a b c) => (dge 2 3 [1 112 223 334 445 556])
+   (fmap! primitive-add3 a b c) => (dge 2 3 [1 112 223 334 445 556])
    a => (dge 2 3 [1 112 223 334 445 556])
-   (freduce primitive-add 0.0 b c) => 1650.0
+   (fold primitive-add2 0.0 b c) => 1650.0
    (fold c) => 1500.0
    (fold primitive-multiply 1.0 a) => 2.06397368128E12))
 

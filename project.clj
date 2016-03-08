@@ -9,6 +9,7 @@
     :license {:name "Eclipse Public License"
               :url "http://www.eclipse.org/legal/epl-v10.html"}
     :dependencies [[org.clojure/clojure "1.8.0"]
+                   [uncomplicate/fluokitten "0.4.0-SNAPSHOT"]
                    [uncomplicate/clojurecl "0.4.0-SNAPSHOT"]
                    [uncomplicate/neanderthal-atlas ~atlas-version]
                    [org.apache.commons/commons-math3 "3.6"]
@@ -26,14 +27,14 @@
     ;;also replaces lein's default JVM argument TieredStopAtLevel=1
     :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                          "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
-    :aot [uncomplicate.neanderthal.protocols
-          uncomplicate.neanderthal.impl.buffer-block
-          uncomplicate.neanderthal.impl.cblas
-          uncomplicate.neanderthal.opencl.clblock
-          uncomplicate.neanderthal.opencl.amd-gcn]
+    #_(:aot [uncomplicate.neanderthal.protocols
+             uncomplicate.neanderthal.impl.buffer-block
+             uncomplicate.neanderthal.impl.cblas
+             uncomplicate.neanderthal.opencl.clblock
+             uncomplicate.neanderthal.opencl.amd-gcn])
 
     :profiles {:dev {:plugins [[lein-midje "3.1.3"]
-                               [lein-codox "0.9.0"]]
+                               [lein-codox "0.9.4"]]
                      :global-vars {*warn-on-reflection* true
                                    *assert* false
                                    *unchecked-math* :warn-on-boxed

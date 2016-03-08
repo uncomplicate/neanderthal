@@ -4,6 +4,8 @@
              [core :refer [wrap]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq]]]
+            [uncomplicate.fluokitten.protocols
+             :refer [PseudoFunctor Foldable fmap! fold foldmap]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [transfer! copy!]]]
@@ -17,228 +19,566 @@
             BLAS RealBufferAccessor BufferAccessor DataAccessor
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
-(defn ^:private hash* [^long h ^double x]
-  (clojure.lang.Util/hashCombine h (Double/hashCode x)))
-(defn entry-eq [res ^double x ^double y]
-  (= x y))
+(defn ^:private hash* ^double [^double h ^double x]
+  (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
+
+(defn ^:private p- ^double [^double x ^double y]
+  (- x y))
+
+(defn ^:private p+ ^double [^double x ^double y]
+  (+ x y))
+
+(extend-type IFn$DD
+  FmapFunction
+  (vector-fmap [f x]
+    (dotimes [i (.dim ^Vector x)]
+      (.alter ^RealChangeable x i f))))
+
+(extend-type IFn$LDD
+  FmapFunction
+  (vector-fmap [f x]
+    (dotimes [i (.dim ^Vector x)]
+      (.set ^RealChangeable x i (.invokePrim f i (.entry ^RealVector x i))))))
+
+(extend-type IFn$LD
+  FmapFunction
+  (vector-fmap [f x]
+    (dotimes [i (.dim ^Vector x)]
+      (.set ^RealChangeable x i (.invokePrim ^IFn$LD f i)))))
+
+(extend-type IFn$LDDD
+  FmapFunction
+  (vector-fmap [f x y]
+    (dotimes [i (.dim ^Vector x)]
+      (.set ^RealChangeable x i
+            (.invokePrim f i
+                         (.entry ^RealVector x i)
+                         (.entry ^RealVector y i))))))
+
+(extend-type IFn$DDDD
+  FmapFunction
+  (vector-fmap [f x y z]
+    (dotimes [i (.dim ^Vector x)]
+      (.set ^RealChangeable x i
+            (.invokePrim f
+                         (.entry ^RealVector x i)
+                         (.entry ^RealVector y i)
+                         (.entry ^RealVector z i))))))
+
+(extend-type IFn$LDDDD
+  FmapFunction
+  (vector-fmap [f x y z]
+    (dotimes [i (.dim ^Vector x)]
+      (.set ^RealChangeable x i
+            (.invokePrim f i
+                         (.entry ^RealVector x i)
+                         (.entry ^RealVector y i)
+                         (.entry ^RealVector z i))))))
+
+(extend-type IFn$DDDDD
+  FmapFunction
+  (vector-fmap [f x y z v]
+    (dotimes [i (.dim ^Vector x)]
+      (.set ^RealChangeable x i
+            (.invokePrim f
+                         (.entry ^RealVector x i)
+                         (.entry ^RealVector y i)
+                         (.entry ^RealVector z i)
+                         (.entry ^RealVector v i))))))
+
+(extend-type IFn$DDD
+  FmapFunction
+  (vector-fmap [f x y]
+    (dotimes [i (.dim ^Vector x)]
+      (.set ^RealChangeable x i
+            (.invokePrim f (.entry ^RealVector x i) (.entry ^RealVector y i)))))
+  ReductionFunction
+  (vector-reduce
+    ([this init x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (.entry ^RealVector x i)))
+           acc))))
+    ([this init x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (+ (.entry ^RealVector x i)
+                                                   (.entry ^RealVector y i))))
+           acc))))
+    ([this init x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (+ (.entry ^RealVector x i)
+                                                   (.entry ^RealVector y i)
+                                                   (.entry ^RealVector z i))))
+           acc))))
+    ([this init x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (+ (.entry ^RealVector x i)
+                                                   (.entry ^RealVector y i)
+                                                   (.entry ^RealVector z i)
+                                                   (.entry ^RealVector v i))))
+           acc)))))
+  (vector-reduce-map
+    ([this init g x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DD g (.entry ^RealVector x i))))
+           acc))))
+    ([this init g x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DDD g
+                                               (.entry ^RealVector x i)
+                                               (.entry ^RealVector y i))))
+           acc))))
+    ([this init g x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DDDD g
+                                               (.entry ^RealVector x i)
+                                               (.entry ^RealVector y i)
+                                               (.entry ^RealVector z i))))
+           acc))))
+    ([this init g x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DDDDD g
+                                               (.entry ^RealVector x i)
+                                               (.entry ^RealVector y i)
+                                               (.entry ^RealVector z i)
+                                               (.entry ^RealVector v i))))
+           acc))))))
+
+(extend-type IFn$ODO
+  ReductionFunction
+  (vector-reduce
+    ([this init x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (.entry ^RealVector x i)))
+           acc))))
+    ([this init x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (+ (.entry ^RealVector x i)
+                                                   (.entry ^RealVector y i))))
+           acc))))
+    ([this init x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (+ (.entry ^RealVector x i)
+                                                   (.entry ^RealVector y i)
+                                                   (.entry ^RealVector z i))))
+           acc))))
+    ([this init x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc (+ (.entry ^RealVector x i)
+                                                   (.entry ^RealVector y i)
+                                                   (.entry ^RealVector z i)
+                                                   (.entry ^RealVector v i))))
+           acc)))))
+  (vector-reduce-map
+    ([this init g x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DD g (.entry ^RealVector x i))))
+           acc))))
+    ([this init g x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DDD g
+                                               (.entry ^RealVector x i)
+                                               (.entry ^RealVector y i))))
+           acc))))
+    ([this init g x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DDDD g
+                                               (.entry ^RealVector x i)
+                                               (.entry ^RealVector y i)
+                                               (.entry ^RealVector z i))))
+           acc))))
+    ([this init g x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc (.invokePrim ^IFn$DDDDD g
+                                               (.entry ^RealVector x i)
+                                               (.entry ^RealVector y i)
+                                               (.entry ^RealVector z i)
+                                               (.entry ^RealVector v i))))
+           acc))))))
+
+
+(extend-type IFn$DLDD
+  ReductionFunction
+  (vector-reduce
+    ([this init x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (.entry ^RealVector x i)))
+           acc))))
+    ([this init x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (+ (.entry ^RealVector x i)
+                                                     (.entry ^RealVector y i))))
+           acc))))
+    ([this init x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (+ (.entry ^RealVector x i)
+                                                     (.entry ^RealVector y i)
+                                                     (.entry ^RealVector z i))))
+           acc))))
+    ([this init x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (+ (.entry ^RealVector x i)
+                                                     (.entry ^RealVector y i)
+                                                     (.entry ^RealVector z i)
+                                                     (.entry ^RealVector v i))))
+           acc)))))
+  (vector-reduce-map
+    ([this init g x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DD g (.entry ^RealVector x i))))
+           acc))))
+    ([this init g x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DDD g
+                                                 (.entry ^RealVector x i)
+                                                 (.entry ^RealVector y i))))
+           acc))))
+    ([this init g x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DDDD g
+                                                 (.entry ^RealVector x i)
+                                                 (.entry ^RealVector y i)
+                                                 (.entry ^RealVector z i))))
+           acc))))
+    ([this init g x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc (double init)]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DDDDD g
+                                                 (.entry ^RealVector x i)
+                                                 (.entry ^RealVector y i)
+                                                 (.entry ^RealVector z i)
+                                                 (.entry ^RealVector v i))))
+           acc))))))
+
+(extend-type IFn$OLDO
+  ReductionFunction
+  (vector-reduce
+    ([this init x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (.entry ^RealVector x i)))
+           acc))))
+    ([this init x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (+ (.entry ^RealVector x i)
+                                                     (.entry ^RealVector y i))))
+           acc))))
+    ([this init x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (+ (.entry ^RealVector x i)
+                                                     (.entry ^RealVector y i)
+                                                     (.entry ^RealVector z i))))
+           acc))))
+    ([this init x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur (inc i) (.invokePrim this acc i (+ (.entry ^RealVector x i)
+                                                     (.entry ^RealVector y i)
+                                                     (.entry ^RealVector z i)
+                                                     (.entry ^RealVector v i))))
+           acc)))))
+  (vector-reduce-map
+    ([this init g x]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DD g
+                                                 (.entry ^RealVector x i))))
+           acc))))
+    ([this init g x y]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DDD g
+                                                 (.entry ^RealVector x i)
+                                                 (.entry ^RealVector y i))))
+           acc))))
+    ([this init g x y z]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DDDD g
+                                                 (.entry ^RealVector x i)
+                                                 (.entry ^RealVector y i)
+                                                 (.entry ^RealVector z i))))
+           acc))))
+    ([this init g x y z v]
+     (let [dim-x (.dim ^Vector x)]
+       (loop [i 0 acc init]
+         (if (< i dim-x)
+           (recur
+            (inc i)
+            (.invokePrim this acc i (.invokePrim ^IFn$DDDDD g
+                                                 (.entry ^RealVector x i)
+                                                 (.entry ^RealVector y i)
+                                                 (.entry ^RealVector z i)
+                                                 (.entry ^RealVector v i))))
+           acc))))))
+
 
 ;; ================== map/reduce functions =====================================
 
 (defn ^:private vector-fmap!
-  ([^RealVector x f]
-   (do (cond
-         (instance? IFn$DD f)
-         (dotimes [i (.dim x)]
-           (.alter ^RealChangeable x i f))
-         (instance? IFn$LDD f)
-         (dotimes [i (.dim x)]
-           (.set ^RealChangeable x i (.invokePrim ^IFn$LDD f i (.entry x i))))
-         (instance? IFn$LD f)
-         (dotimes [i (.dim x)]
-           (.set ^RealChangeable x i (.invokePrim ^IFn$LD f i)))
-         :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-       x))
-  ([^RealVector x f ^RealVector y]
-   (do (if (<= (.dim x) (.dim y))
-         (cond
-           (instance? IFn$DDD f)
-           (dotimes [i (.dim x)]
-             (.set ^RealChangeable x i
-                   (.invokePrim ^IFn$DDD f (.entry x i) (.entry y i))))
-           (instance? IFn$LDDD f)
-           (dotimes [i (.dim x)]
-             (.set ^RealChangeable x i
-                   (.invokePrim ^IFn$LDDD f i (.entry x i) (.entry y i))))
-           :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
-       x))
-  ([^RealVector x f ^RealVector y ^RealVector z]
-   (do (if (<= (.dim x) (min (.dim y) (.dim z)))
-         (cond
-           (instance? IFn$DDDD f)
-           (dotimes [i (.dim x)]
-             (.set ^RealChangeable x i
-                   (.invokePrim ^IFn$DDDD f (.entry x i) (.entry y i) (.entry z i))))
-           (instance? IFn$LDDDD f)
-           (dotimes [i (.dim x)]
-             (.set ^RealChangeable x i
-                   (.invokePrim ^IFn$LDDDD f i (.entry x i) (.entry y i) (.entry z i))))
-           :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
-         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
-       x))
-  ([^RealVector x f ^RealVector y ^RealVector z ^RealVector w]
-   (do (if (<= (.dim x) (min (.dim y) (.dim z) (.dim w)))
-         (dotimes [i (.dim x)]
-           (.set ^RealChangeable x i
-                 (.invokePrim ^IFn$DDDDD f
-                              (.entry x i) (.entry y i) (.entry z i) (.entry w i))))
-         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
-       x))
+  ([x f]
+   (vector-fmap f x)
+   x)
+  ([^Vector x f ^Vector y]
+   (do
+     (if (<= (.dim x) (.dim y))
+       (vector-fmap f x y)
+       (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
+     x))
+  ([^Vector x f ^Vector y ^Vector z]
+   (do
+     (if (<= (.dim x) (min (.dim y) (.dim z)))
+       (vector-fmap f x y z)
+       (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
+     x))
+  ([^Vector x f ^Vector y ^Vector z ^Vector w]
+   (do
+     (if (<= (.dim x) (min (.dim y) (.dim z) (.dim w)))
+       (vector-fmap f x y z w)
+       (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
+     x))
   ([x f y z w ws]
-   (throw (UnsupportedOperationException.
-           "Primitive functions support max 4 args."))))
+   (throw (UnsupportedOperationException. "Vector fmap support up to 4 vectors."))))
 
 (defn ^:private vector-fold
   ([^RealVector x]
-   (loop [i 0 res 0.0]
-     (if (< i (.dim x))
-       (recur (inc i)
-              (+ res (.entry x i)))
-       res)))
-  ([x f]
-   (freduce x f))
-  ([x f id]
-   (freduce x id f)))
-
-(defn ^:private vector-freduce
-  ([^RealVector x f]
-   (loop [i 2 res (.invokePrim ^IFn$DDD f (.entry x 0) (.entry x 1))]
-     (if (< i (.dim x))
-       (recur (inc i) (.invokePrim ^IFn$DDD f res (.entry x i)))
-       res)))
-  ([^RealVector x acc f]
-   (cond
-     (instance? IFn$DDD f)
-     (loop [i 0 res (double acc)]
-       (if (< i (.dim x))
-         (recur (inc i) (.invokePrim ^IFn$DDD f res (.entry x i)))
-         res))
-     (instance? IFn$DLDD f)
-     (loop [i 0 res (double acc)]
-       (if (< i (.dim x))
-         (recur (inc i) (.invokePrim ^IFn$DLDD f res i (.entry x i)))
-         res))
-     (instance? IFn$ODO f)
-     (loop [i 0 res acc]
-       (if (and (< i (.dim x)) res)
-         (recur (inc i) (.invokePrim ^IFn$ODO f res (.entry x i)))
-         res))
-     (instance? IFn$OLDO f)
-     (loop [i 0 res acc]
-       (if (and (< i (.dim x)) res)
-         (recur (inc i) (.invokePrim ^IFn$OLDO f res i (.entry x i)))
-         res))
-     :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG))))
-  ([^RealVector x acc f ^RealVector y]
+   (let [dim-x (.dim x)]
+     (loop [i 0 acc 0.0]
+       (if (< i dim-x)
+         (recur (inc i)
+                (+ acc (.entry x i)))
+         acc))))
+  ([^Vector x f init]
+   (vector-reduce f init x))
+  ([^Vector x f init ^Vector y]
    (if (<= (.dim x) (.dim y))
-     (cond
-       (instance? IFn$DDDD f)
-       (loop [i 0 res (double acc)]
-         (if (and (< i (.dim x)) (Double/isFinite res))
-           (recur (inc i) (.invokePrim ^IFn$DDDD f res (.entry x i) (.entry y i)))
-           res))
-       (instance? IFn$DLDDD f)
-       (loop [i 0 res (double acc)]
-         (if (and (< i (.dim x)) (Double/isFinite res))
-           (recur (inc i) (.invokePrim ^IFn$DLDDD f res i
-                                       (.entry x i) (.entry y i)))
-           res))
-       (instance? IFn$ODDO f)
-       (loop [i 0 res acc]
-         (if (and (< i (.dim x)) res)
-           (recur (inc i) (.invokePrim ^IFn$ODDO f res (.entry x i) (.entry y i)))
-           res))
-       (instance? IFn$OLDDO f)
-       (loop [i 0 res acc]
-         (if (and (< i (.dim x)) res)
-           (recur (inc i) (.invokePrim ^IFn$OLDDO f res i
-                                       (.entry x i) (.entry y i)))
-           res))
-       :default (throw (IllegalArgumentException. ^String PRIMITIVE_FN_MSG)))
+     (vector-reduce f init x y)
      (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
-  ([^RealVector x acc f ^RealVector y ^RealVector z]
+  ([^Vector x f init ^Vector y ^Vector z]
    (if (<= (.dim x) (min (.dim y) (.dim z)))
-     (if (number? acc)
-       (loop [i 0 res (double acc)]
-         (if (and (< i (.dim x)) (Double/isFinite res))
-           (recur (inc i)
-                  (.invokePrim ^IFn$DDDDD f res
-                               (.entry x i) (.entry y i) (.entry z i)))
-           res))
-       (loop [i 0 res acc]
-         (if (and (< i (.dim x)) res)
-           (recur (inc i)
-                  (.invokePrim ^IFn$ODDDO f res
-                               (.entry x i) (.entry y i) (.entry z i)))
-           res)))
+     (vector-reduce f init x y z)
      (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
-  ([x acc f y z ws]
-   (throw (UnsupportedOperationException.
-           "Primitive functions support max 4 args."))))
+  ([^Vector x f init ^Vector y ^Vector z ^Vector v]
+   (if (<= (.dim x) (min (.dim y) (.dim z) (.dim v)))
+     (vector-reduce f init x y z v)
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([x f init y z v ws]
+   (throw (UnsupportedOperationException. "Vector fold support up to 4 vectors."))))
+
+(defn ^:private vector-foldmap
+  ([^RealVector x ^IFn$DD g]
+   (let [dim-x (.dim x)]
+     (loop [i 0 acc 0.0]
+       (if (< i dim-x)
+         (recur (inc i)
+                (+ acc (.invokePrim g (.entry x i))))
+         acc))))
+  ([^Vector x g f init]
+   (vector-reduce-map f init g x))
+  ([^Vector x g f init ^Vector y]
+   (if (<= (.dim x) (.dim y))
+     (vector-reduce-map f init g x y)
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([^Vector x g f init ^Vector y ^Vector z]
+   (if (<= (.dim x) (min (.dim y) (.dim z)))
+     (vector-reduce-map f init g x y z)
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([^Vector x g f init ^Vector y ^Vector z ^Vector v]
+   (if (<= (.dim x) (min (.dim y) (.dim z) (.dim v)))
+     (vector-reduce-map f init g x y z v)
+     (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
+  ([x g f init y z v ws]
+   (throw (UnsupportedOperationException. "Vector foldmap support up to 4 vectors."))))
 
 (defn ^:private matrix-fmap!
   ([^Matrix x f]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (fmap! (.col x i) f))
+           (vector-fmap f (.col x i)))
          (dotimes [i (.mrows x)]
-           (fmap! (.row x i) f)))
+           (vector-fmap f (.row x i))))
        x))
   ([^Matrix x f ^Matrix y]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (fmap! (.col x i) f (.col y i)))
+           (vector-fmap f (.col x i) (.col y i)))
          (dotimes [i (.mrows x)]
-           (fmap! (.row x i) f (.row y i))))
+           (vector-fmap f (.row x i) (.row y i))))
        x))
   ([^Matrix x f ^Matrix y ^Matrix z]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (fmap! (.col x i) f (.col y i) (.col z i)))
+           (vector-fmap f (.col x i) (.col y i) (.col z i)))
          (dotimes [i (.mrows x)]
-           (fmap! (.row x i) f (.row y i) (.row z i))))
+           (vector-fmap f (.row x i) (.row y i) (.row z i))))
        x))
   ([^Matrix x f ^Matrix y ^Matrix z ^Matrix w]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (fmap! (.col x i) f (.col y i) (.col z i) (.col w i)))
+           (vector-fmap f (.col x i) (.col y i) (.col z i) (.col w i)))
          (dotimes [i (.mrows x)]
-           (fmap! (.row x i) f (.row y i) (.row z i) (.col w i))))
+           (vector-fmap f (.row x i) (.row y i) (.row z i) (.col w i))))
        x))
   ([x f y z w ws]
-   (throw (UnsupportedOperationException.
-           "Primitive functions support max 4 args."))))
+   (throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
 (defn ^:private matrix-fold
   ([^RealMatrix x]
-   (loop [j 0 res 0.0]
+   (loop [j 0 acc 0.0]
      (if (< j (.ncols x))
        (recur (inc j)
               (double
-               (loop [i 0 res res]
+               (loop [i 0 acc acc]
                  (if (< i (.mrows x))
                    (recur (inc i)
-                          (+ res (.entry x i j)))
-                   res))))
-       res)))
-  ([x f]
-   (fold f 0.0))
-  ([x f id]
-   (freduce x id f)))
+                          (+ acc (.entry x i j)))
+                   acc))))
+       acc)))
+  ([^Matrix x f init]
+   (loop [i 0 acc init]
+     (if (< i (.ncols x))
+       (recur (inc i) (vector-reduce f acc (.col x i)))
+       acc)))
+  ([^Matrix x f init ^Matrix y]
+   (loop [i 0 acc init]
+     (if (< i (.ncols x))
+       (recur (inc i) (vector-reduce f acc (.col x i) (.col y i)))
+       acc)))
+  ([^Matrix x f init ^Matrix y ^Matrix z]
+   (loop [i 0 acc init]
+     (if (< i (.ncols x))
+       (recur (inc i) (vector-reduce f acc (.col x i) (.col y i) (.col z i)))
+       acc)))
+  ([^Matrix x f init ^Matrix y ^Matrix z ^Matrix v]
+   (loop [i 0 acc init]
+     (if (< i (.ncols x))
+       (recur (inc i) (vector-reduce f acc (.col x i) (.col y i) (.col z i) (.col v i)))
+       acc)))
+  ([x f init y z v ws]
+   (throw (UnsupportedOperationException. "Matrix fold support up to 4 matrices."))))
 
-(defn ^:private matrix-freduce
-  ([x f]
-   (fold x f))
-  ([^Matrix x acc f]
-   (loop [i 0 res acc]
+(defn ^:private matrix-foldmap
+  ([^RealMatrix x ^IFn$DD g]
+   (loop [j 0 acc 0.0]
+     (if (< j (.ncols x))
+       (recur (inc j)
+              (double
+               (loop [i 0 acc acc]
+                 (if (< i (.mrows x))
+                   (recur (inc i)
+                          (+ acc (.invokePrim g (.entry x i j))))
+                   acc))))
+       acc)))
+  ([^Matrix x g f init]
+   (loop [i 0 acc init]
      (if (< i (.ncols x))
-       (recur (inc i) (freduce (.col x i) res f))
-       res)))
-  ([^Matrix x acc f ^Matrix y]
-   (loop [i 0 res acc]
+       (recur (inc i) (vector-reduce-map f acc g (.col x i)))
+       acc)))
+  ([^Matrix x g f init ^Matrix y]
+   (loop [i 0 acc init]
      (if (< i (.ncols x))
-       (recur (inc i) (freduce (.col x i) res f (.col y i)))
-       res)))
-  ([^Matrix x acc f ^Matrix y ^Matrix z]
-   (loop [i 0 res acc]
+       (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i)))
+       acc)))
+  ([^Matrix x g f init ^Matrix y ^Matrix z]
+   (loop [i 0 acc init]
      (if (< i (.ncols x))
-       (recur (inc i) (freduce (.col x i) res f (.col y i) (.col z i)))
-       res)))
-  ([x acc f y z ws]
-   (throw (UnsupportedOperationException.
-           "Primitive functions support max 4 args."))))
+       (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i)))
+       acc)))
+  ([^Matrix x g f init ^Matrix y ^Matrix z ^Matrix v]
+   (loop [i 0 acc init]
+     (if (< i (.ncols x))
+       (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i) (.col v i)))
+       acc)))
+  ([x g f init y z v ws]
+   (throw (UnsupportedOperationException. "Matrix fold support up to 4 matrices."))))
 
 ;; ============ Realeaseable ===================================================
+
 (defn clean-buffer [^ByteBuffer buffer]
   (do
     (if (.isDirect buffer)
@@ -309,12 +649,13 @@
                           ^ByteBuffer buf ^long n ^long strd]
   Object
   (hashCode [this]
-    (freduce this (-> (hash :RealBlockVector) (hash-combine n)) hash*))
+    (vector-fold this hash* (-> (hash :RealBlockVector) (hash-combine n))))
   (equals [x y]
     (cond
       (nil? y) false
       (identical? x y) true
-      (and (compatible x y) (= n (.dim ^Vector y))) (freduce x true entry-eq y)
+      (and (compatible x y) (= n (.dim ^Vector y)))
+      (= 0.0 (vector-reduce-map p+ 0.0 p- x y))
       :default false))
   (toString [_]
     (format "#<RealBlockVector| %s, n:%d, stride:%d>" entry-type n strd))
@@ -383,12 +724,10 @@
       (RealBlockVector. fact accessor eng entry-type false b l strd))))
 
 (extend RealBlockVector
-  Functor
+  PseudoFunctor
   {:fmap! vector-fmap!}
   Foldable
-  {:fold vector-fold}
-  Reducible
-  {:freduce vector-freduce})
+  {:fold vector-fold})
 
 (defmethod transfer! [RealBlockVector RealBlockVector]
   [source destination]
@@ -419,15 +758,13 @@
                             ^ByteBuffer buf ^long m ^long n ^long ld ^long ord]
   Object
   (hashCode [this]
-    (freduce this
-             (-> (hash :RealGeneralMatrix) (hash-combine m) (hash-combine n))
-             hash*))
+    (matrix-fold this hash* (-> (hash :RealGeneralMatrix) (hash-combine m) (hash-combine n))))
   (equals [a b]
     (cond
       (nil? b) false
       (identical? a b) true
       (and (compatible a b) (= m (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
-      (freduce a true entry-eq b)
+      (= 0.0 (matrix-foldmap a p- p+ 0.0 b))
       :default false))
   (toString [_]
     (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
@@ -546,12 +883,10 @@
                         (if (column-major? a) ROW_MAJOR COLUMN_MAJOR))))
 
 (extend RealGeneralMatrix
-  Functor
+  PseudoFunctor
   {:fmap! matrix-fmap!}
   Foldable
-  {:fold matrix-fold}
-  Reducible
-  {:freduce matrix-freduce})
+  {:fold matrix-fold})
 
 (defmethod transfer! [RealGeneralMatrix RealGeneralMatrix]
   [source destination]

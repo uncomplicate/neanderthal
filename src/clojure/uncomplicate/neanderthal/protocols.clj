@@ -1,6 +1,14 @@
 (ns uncomplicate.neanderthal.protocols
   (:import [uncomplicate.neanderthal.protocols Block]))
 
+(defprotocol FmapFunction
+  (vector-fmap [f x] [f x y] [f x y z] [f x y z v]))
+
+(defprotocol ReductionFunction
+  (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
+  (vector-reduce-map [f init g x] [f init g x y]
+    [f init g x y z] [f init g x y z v]))
+
 (defprotocol Factory
   (create-vector [this n source options])
   (create-matrix [this m n source options])
@@ -24,17 +32,6 @@
 (defprotocol Container
   (raw [this])
   (zero [this]))
-
-(defprotocol Functor
-  (fmap! [x f] [x f y] [x f y z]
-    [x f y z v] [x f y z v ws]))
-
-(defprotocol Foldable
-  (fold [x] [x f] [x f acc]))
-
-(defprotocol Reducible
-  (freduce [x f] [x acc f] [x acc f y]
-    [x acc f y z] [x acc f y z ws]))
 
 (def ^:const ROW_MAJOR 101)
 

@@ -1,6 +1,7 @@
 (ns uncomplicate.neanderthal.buffer-block-test
   (:require [midje.sweet :refer [facts throws => roughly]]
             [uncomplicate.clojurecl.core :refer [release with-release]]
+            [uncomplicate.fluokitten.core :refer [fmap! fold foldmap]]
             [uncomplicate.neanderthal.core :refer :all])
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD]))
 
@@ -80,27 +81,19 @@
   (let [y (create-vector factory [2 3 4 5 6])
         x (create-vector factory [1 2 3 4])
         pf1 (fn ^double [^double res ^double x] (+ x res))
-        pf1o (fn [res ^double x] (conj res x))
-        pf2 (fn ^double [^double res ^double x ^double y] (+ res x y))
-        pf2o (fn [res ^double x ^double y] (conj res [x y]))
-        pf3 (fn ^double [^double res ^double x ^double y ^double z]
-              (+ res x y z))
-        pf3o (fn [res ^double x ^double y ^double z] (conj res [x y z]))]
+        pf1o (fn [res ^double x] (conj res x))]
     (facts "Reducible implementation for vector"
 
-           (freduce pf1 1.0 x) => 11.0
-           (freduce pf1o [] x) => [1.0 2.0 3.0 4.0]
+           (fold pf1 1.0 x) => 11.0
+           (fold pf1o [] x) => [1.0 2.0 3.0 4.0]
 
-           (freduce pf2 1.0 x y) => 25.0
-           (freduce pf2o [] x y)
-           => [[1.0 2.0] [2.0 3.0] [3.0 4.0] [4.0 5.0]]
+           (fold pf1 1.0 x y) => 25.0
+           (fold pf1o [] x y) => [3.0 5.0 7.0 9.0]
 
-           (freduce pf3 1.0 x y y) => 39.0
-           (freduce pf3o [] x y y)
-           => [[1.0 2.0 2.0] [2.0 3.0 3.0] [3.0 4.0 4.0] [4.0 5.0 5.0]]
+           (fold pf1 1.0 x y y) => 39.0
+           (fold pf1o [] x y y) => [5.0 8.0 11.0 14.0]
 
-           (freduce + 1.0 x y y [y])
-           => (throws UnsupportedOperationException))))
+           (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
 
 (defn test-seq-vector [factory]
   (facts "Vector as a sequence"
@@ -123,18 +116,20 @@
         pf1 (fn ^double [^double x] (double (+ x 1.0)))
         pf2 (fn ^double [^double x ^double y] (double (+ x y)))
         pf3 (fn ^double [^double x ^double y ^double z] (double (+ x y z)))
-        pf4 (fn ^double [^double x ^double y ^double z ^double w]
-              (double (+ x y z w)))]
+        pf4 (fn ^double [^double x ^double y ^double z ^double v]
+              (double (+ x y z v)))]
     (facts "Functor implementation for real general matrix"
            (instance? clojure.lang.IFn$DD pf1) => true
 
            (fmap! pf1 (fx)) => (fy)
            (fmap! pf1 x) => x
 
-           (fmap! pf2 (fx) (fy)) => (create-ge-matrix factory 2 3 [3 5 7 9 11 13])
+           (fmap! pf2 (fx) (fy))
+           => (create-ge-matrix factory 2 3 [3 5 7 9 11 13])
            (fmap! pf2 x (fy)) => x
 
-           (fmap! pf3 (fx) (fy) (fy)) => (create-ge-matrix factory 2 3 [5 8 11 14 17 20])
+           (fmap! pf3 (fx) (fy) (fy))
+           => (create-ge-matrix factory 2 3 [5 8 11 14 17 20])
            (fmap! pf3 x (fy) (fy)) => x
 
            (fmap! pf4 (fx) (fy) (fy) (fy))
@@ -157,31 +152,19 @@
   (let [x (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
         y (create-ge-matrix factory 2 3 [2 3 4 5 6 7])
         pf1 (fn ^double [^double res ^double x] (+ x res))
-        pf1o (fn [res ^double x] (conj res x))
-        pf2 (fn ^double [^double res ^double x ^double y] (+ res x y))
-        pf2o (fn [res ^double x ^double y] (conj res [x y]))
-        pf3 (fn ^double [^double res ^double x ^double y ^double z]
-              (+ res x y z))
-        pf3o (fn [res ^double x ^double y ^double z]
-               (conj res [x y z]))]
+        pf1o (fn [res ^double x] (conj res x))]
     (facts "Reducible implementation for real general matrix"
 
-           (freduce pf1 1.0 x) => 22.0
-           (freduce pf1o [] x) => [1.0 2.0 3.0 4.0 5.0 6.0]
+           (fold pf1 1.0 x) => 22.0
+           (fold pf1o [] x) => [1.0 2.0 3.0 4.0 5.0 6.0]
 
-           (freduce pf2 1.0 x y) => 49.0
-           (freduce pf2o [] x y)
-           => [[1.0 2.0] [2.0 3.0] [3.0 4.0] [4.0 5.0] [5.0 6.0] [6.0 7.0]]
+           (fold pf1 1.0 x y) => 49.0
+           (fold pf1o [] x y) => [3.0 5.0 7.0 9.0 11.0 13.0]
 
-           (freduce pf3 1.0 x y y) => 76.0
-           (freduce pf3o [] x y y)
-           => [[1.0 2.0 2.0] [2.0 3.0 3.0] [3.0 4.0 4.0] [4.0 5.0 5.0]
-               [5.0 6.0 6.0] [6.0 7.0 7.0]]
+           (fold pf1 1.0 x y y) => 76.0
+           (fold pf1o [] x y y) => [5.0 8.0 11.0 14.0 17.0 20.0]
 
-           (freduce + 1.0 x y y [y])
-           => (throws UnsupportedOperationException))))
-
-
+           (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
 
 (defn test-all [factory]
   (do
