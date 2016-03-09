@@ -28,70 +28,7 @@
 (defn ^:private p+ ^double [^double x ^double y]
   (+ x y))
 
-(extend-type IFn$DD
-  FmapFunction
-  (vector-fmap [f x]
-    (dotimes [i (.dim ^Vector x)]
-      (.alter ^RealChangeable x i f))))
-
-(extend-type IFn$LDD
-  FmapFunction
-  (vector-fmap [f x]
-    (dotimes [i (.dim ^Vector x)]
-      (.set ^RealChangeable x i (.invokePrim f i (.entry ^RealVector x i))))))
-
-(extend-type IFn$LD
-  FmapFunction
-  (vector-fmap [f x]
-    (dotimes [i (.dim ^Vector x)]
-      (.set ^RealChangeable x i (.invokePrim ^IFn$LD f i)))))
-
-(extend-type IFn$LDDD
-  FmapFunction
-  (vector-fmap [f x y]
-    (dotimes [i (.dim ^Vector x)]
-      (.set ^RealChangeable x i
-            (.invokePrim f i
-                         (.entry ^RealVector x i)
-                         (.entry ^RealVector y i))))))
-
-(extend-type IFn$DDDD
-  FmapFunction
-  (vector-fmap [f x y z]
-    (dotimes [i (.dim ^Vector x)]
-      (.set ^RealChangeable x i
-            (.invokePrim f
-                         (.entry ^RealVector x i)
-                         (.entry ^RealVector y i)
-                         (.entry ^RealVector z i))))))
-
-(extend-type IFn$LDDDD
-  FmapFunction
-  (vector-fmap [f x y z]
-    (dotimes [i (.dim ^Vector x)]
-      (.set ^RealChangeable x i
-            (.invokePrim f i
-                         (.entry ^RealVector x i)
-                         (.entry ^RealVector y i)
-                         (.entry ^RealVector z i))))))
-
-(extend-type IFn$DDDDD
-  FmapFunction
-  (vector-fmap [f x y z v]
-    (dotimes [i (.dim ^Vector x)]
-      (.set ^RealChangeable x i
-            (.invokePrim f
-                         (.entry ^RealVector x i)
-                         (.entry ^RealVector y i)
-                         (.entry ^RealVector z i)
-                         (.entry ^RealVector v i))))))
-
 (extend-type IFn$DDD
-  FmapFunction
-  (vector-fmap [f x y]
-    (dotimes [i (.dim ^Vector x)]
-      (.set ^RealChangeable x i
-            (.invokePrim f (.entry ^RealVector x i) (.entry ^RealVector y i)))))
   ReductionFunction
   (vector-reduce
     ([this init x]
@@ -400,26 +337,44 @@
 
 ;; ================== map/reduce functions =====================================
 
+(defn ^:private vector-fmap*
+  ([f ^Vector x ]
+   (dotimes [i (.dim x)]
+     (.alter ^RealChangeable x i f))
+   x)
+  ([^IFn$DDD f ^RealVector x^RealVector y]
+   (dotimes [i (.dim ^Vector x)]
+     (.set ^RealChangeable x i
+           (.invokePrim f (.entry x i) (.entry y i)))))
+  ([^IFn$DDDD f ^RealVector x ^RealVector y ^RealVector z]
+   (dotimes [i (.dim ^Vector x)]
+     (.set ^RealChangeable x i
+           (.invokePrim f (.entry x i) (.entry y i) (.entry z i)))))
+  ([^IFn$DDDDD f ^RealVector x ^RealVector y ^RealVector z ^RealVector v]
+   (dotimes [i (.dim ^Vector x)]
+     (.set ^RealChangeable x i
+           (.invokePrim f (.entry x i) (.entry y i) (.entry z i) (.entry v i))))))
+
 (defn ^:private vector-fmap!
   ([x f]
-   (vector-fmap f x)
+   (vector-fmap* f x)
    x)
   ([^Vector x f ^Vector y]
    (do
      (if (<= (.dim x) (.dim y))
-       (vector-fmap f x y)
+       (vector-fmap* f x y)
        (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
      x))
   ([^Vector x f ^Vector y ^Vector z]
    (do
      (if (<= (.dim x) (min (.dim y) (.dim z)))
-       (vector-fmap f x y z)
+       (vector-fmap* f x y z)
        (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
      x))
-  ([^Vector x f ^Vector y ^Vector z ^Vector w]
+  ([^Vector x f ^Vector y ^Vector z ^Vector v]
    (do
-     (if (<= (.dim x) (min (.dim y) (.dim z) (.dim w)))
-       (vector-fmap f x y z w)
+     (if (<= (.dim x) (min (.dim y) (.dim z) (.dim v)))
+       (vector-fmap* f x y z v)
        (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x)))))
      x))
   ([x f y z w ws]
@@ -479,30 +434,30 @@
   ([^Matrix x f]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (vector-fmap f (.col x i)))
+           (vector-fmap* f (.col x i)))
          (dotimes [i (.mrows x)]
-           (vector-fmap f (.row x i))))
+           (vector-fmap* f (.row x i))))
        x))
   ([^Matrix x f ^Matrix y]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (vector-fmap f (.col x i) (.col y i)))
+           (vector-fmap* f (.col x i) (.col y i)))
          (dotimes [i (.mrows x)]
-           (vector-fmap f (.row x i) (.row y i))))
+           (vector-fmap* f (.row x i) (.row y i))))
        x))
   ([^Matrix x f ^Matrix y ^Matrix z]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (vector-fmap f (.col x i) (.col y i) (.col z i)))
+           (vector-fmap* f (.col x i) (.col y i) (.col z i)))
          (dotimes [i (.mrows x)]
-           (vector-fmap f (.row x i) (.row y i) (.row z i))))
+           (vector-fmap* f (.row x i) (.row y i) (.row z i))))
        x))
   ([^Matrix x f ^Matrix y ^Matrix z ^Matrix w]
    (do (if (column-major? x)
          (dotimes [i (.ncols x)]
-           (vector-fmap f (.col x i) (.col y i) (.col z i) (.col w i)))
+           (vector-fmap* f (.col x i) (.col y i) (.col z i) (.col w i)))
          (dotimes [i (.mrows x)]
-           (vector-fmap f (.row x i) (.row y i) (.row z i) (.col w i))))
+           (vector-fmap* f (.row x i) (.row y i) (.row z i) (.col w i))))
        x))
   ([x f y z w ws]
    (throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))

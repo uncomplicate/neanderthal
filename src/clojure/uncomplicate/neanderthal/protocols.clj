@@ -1,9 +1,6 @@
 (ns uncomplicate.neanderthal.protocols
   (:import [uncomplicate.neanderthal.protocols Block]))
 
-(defprotocol FmapFunction
-  (vector-fmap [f x] [f x y] [f x y z] [f x y z v]))
-
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
   (vector-reduce-map [f init g x] [f init g x y]
