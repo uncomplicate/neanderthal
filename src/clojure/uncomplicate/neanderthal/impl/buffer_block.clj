@@ -8,7 +8,7 @@
              :refer [PseudoFunctor Foldable fmap! fold foldmap]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [transfer! copy!]]]
+             [core :refer [transfer! copy! mrows ncols]]]
             [uncomplicate.clojurecl.core :refer [Releaseable]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
@@ -18,6 +18,9 @@
            [uncomplicate.neanderthal.protocols
             BLAS RealBufferAccessor BufferAccessor DataAccessor
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
+
+(def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
+  "Matrices should have fitting dimensions.")
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
@@ -334,7 +337,6 @@
                                                  (.entry ^RealVector v i))))
            acc))))))
 
-
 ;; ================== map/reduce functions =====================================
 
 (defn ^:private vector-fmap*
@@ -430,6 +432,17 @@
   ([x g f init y z v ws]
    (throw (UnsupportedOperationException. "Vector foldmap support up to 4 vectors."))))
 
+(defn check-matrix-dimensions
+  ([^Matrix x ^Matrix y]
+   (and (<= (.ncols x) (.ncols y))
+        (<= (.mrows x) (.mrows y))))
+  ([^Matrix x ^Matrix y ^Matrix z]
+   (and (<= (.ncols x) (min (.ncols y) (.ncols z)))
+        (<= (.mrows x) (min (.mrows y) (.ncols z)))))
+  ([^Matrix x ^Matrix y ^Matrix z ^Matrix v]
+   (and (<= (.ncols x) (min (.ncols y) (.ncols z) (.ncols v)))
+        (<= (.mrows x) (min (.mrows y) (.ncols z) (.ncols v))))))
+
 (defn ^:private matrix-fmap!
   ([^Matrix x f]
    (do (if (column-major? x)
@@ -439,26 +452,32 @@
            (vector-fmap* f (.row x i))))
        x))
   ([^Matrix x f ^Matrix y]
-   (do (if (column-major? x)
-         (dotimes [i (.ncols x)]
-           (vector-fmap* f (.col x i) (.col y i)))
-         (dotimes [i (.mrows x)]
-           (vector-fmap* f (.row x i) (.row y i))))
-       x))
+   (if (check-matrix-dimensions x y)
+     (do (if (column-major? x)
+           (dotimes [i (.ncols x)]
+             (vector-fmap* f (.col x i) (.col y i)))
+           (dotimes [i (.mrows x)]
+             (vector-fmap* f (.row x i) (.row y i))))
+         x)
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix x f ^Matrix y ^Matrix z]
-   (do (if (column-major? x)
-         (dotimes [i (.ncols x)]
-           (vector-fmap* f (.col x i) (.col y i) (.col z i)))
-         (dotimes [i (.mrows x)]
-           (vector-fmap* f (.row x i) (.row y i) (.row z i))))
-       x))
-  ([^Matrix x f ^Matrix y ^Matrix z ^Matrix w]
-   (do (if (column-major? x)
-         (dotimes [i (.ncols x)]
-           (vector-fmap* f (.col x i) (.col y i) (.col z i) (.col w i)))
-         (dotimes [i (.mrows x)]
-           (vector-fmap* f (.row x i) (.row y i) (.row z i) (.col w i))))
-       x))
+   (if (check-matrix-dimensions x y z)
+     (do (if (column-major? x)
+           (dotimes [i (.ncols x)]
+             (vector-fmap* f (.col x i) (.col y i) (.col z i)))
+           (dotimes [i (.mrows x)]
+             (vector-fmap* f (.row x i) (.row y i) (.row z i))))
+         x)
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
+  ([^Matrix x f ^Matrix y ^Matrix z ^Matrix v]
+   (if (check-matrix-dimensions x y z v)
+     (do (if (column-major? x)
+           (dotimes [i (.ncols x)]
+             (vector-fmap* f (.col x i) (.col y i) (.col z i) (.col v i)))
+           (dotimes [i (.mrows x)]
+             (vector-fmap* f (.row x i) (.row y i) (.row z i) (.col v i))))
+         x)
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x f y z w ws]
    (throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
@@ -480,20 +499,26 @@
        (recur (inc i) (vector-reduce f acc (.col x i)))
        acc)))
   ([^Matrix x f init ^Matrix y]
-   (loop [i 0 acc init]
-     (if (< i (.ncols x))
-       (recur (inc i) (vector-reduce f acc (.col x i) (.col y i)))
-       acc)))
+   (if (check-matrix-dimensions x y)
+     (loop [i 0 acc init]
+       (if (< i (.ncols x))
+         (recur (inc i) (vector-reduce f acc (.col x i) (.col y i)))
+         acc))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix x f init ^Matrix y ^Matrix z]
-   (loop [i 0 acc init]
-     (if (< i (.ncols x))
-       (recur (inc i) (vector-reduce f acc (.col x i) (.col y i) (.col z i)))
-       acc)))
+   (if (check-matrix-dimensions x y z)
+     (loop [i 0 acc init]
+       (if (< i (.ncols x))
+         (recur (inc i) (vector-reduce f acc (.col x i) (.col y i) (.col z i)))
+         acc))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix x f init ^Matrix y ^Matrix z ^Matrix v]
-   (loop [i 0 acc init]
-     (if (< i (.ncols x))
-       (recur (inc i) (vector-reduce f acc (.col x i) (.col y i) (.col z i) (.col v i)))
-       acc)))
+   (if (check-matrix-dimensions x y z v)
+     (loop [i 0 acc init]
+       (if (< i (.ncols x))
+         (recur (inc i) (vector-reduce f acc (.col x i) (.col y i) (.col z i) (.col v i)))
+         acc))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x f init y z v ws]
    (throw (UnsupportedOperationException. "Matrix fold support up to 4 matrices."))))
 
@@ -515,20 +540,26 @@
        (recur (inc i) (vector-reduce-map f acc g (.col x i)))
        acc)))
   ([^Matrix x g f init ^Matrix y]
-   (loop [i 0 acc init]
-     (if (< i (.ncols x))
-       (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i)))
-       acc)))
+   (if (check-matrix-dimensions x y)
+     (loop [i 0 acc init]
+       (if (< i (.ncols x))
+         (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i)))
+         acc))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))     ))
   ([^Matrix x g f init ^Matrix y ^Matrix z]
-   (loop [i 0 acc init]
-     (if (< i (.ncols x))
-       (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i)))
-       acc)))
+   (if (check-matrix-dimensions x y z)
+     (loop [i 0 acc init]
+       (if (< i (.ncols x))
+         (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i)))
+         acc))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix x g f init ^Matrix y ^Matrix z ^Matrix v]
-   (loop [i 0 acc init]
-     (if (< i (.ncols x))
-       (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i) (.col v i)))
-       acc)))
+   (if (check-matrix-dimensions x y z v)
+     (loop [i 0 acc init]
+       (if (< i (.ncols x))
+         (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i) (.col v i)))
+         acc))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x g f init y z v ws]
    (throw (UnsupportedOperationException. "Matrix fold support up to 4 matrices."))))
 
