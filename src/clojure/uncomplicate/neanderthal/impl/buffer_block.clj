@@ -5,7 +5,7 @@
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq]]]
             [uncomplicate.fluokitten.protocols
-             :refer [PseudoFunctor Foldable Magma fmap!]]
+             :refer [PseudoFunctor Foldable Magma Monoid]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [transfer! copy! dim mrows ncols create-raw]]]
@@ -689,6 +689,9 @@
     (create-vector fact n (.createDataSource accessor n) nil))
   (zero [this]
     (raw this))
+  Monoid
+  (id [x]
+    (create-vector fact 0 (.createDataSource accessor 0) nil))
   EngineProvider
   (engine [_]
     eng)
