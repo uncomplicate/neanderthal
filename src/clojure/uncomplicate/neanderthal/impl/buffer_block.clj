@@ -5,11 +5,11 @@
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq]]]
             [uncomplicate.fluokitten.protocols
-             :refer [PseudoFunctor Foldable fmap! fold foldmap]]
+             :refer [PseudoFunctor Foldable Magma fmap!]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [transfer! copy! mrows ncols]]]
-            [uncomplicate.clojurecl.core :refer [Releaseable]])
+             [core :refer [transfer! copy! dim mrows ncols create-raw]]]
+            [uncomplicate.clojurecl.core :refer [Releaseable release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
@@ -30,6 +30,9 @@
 
 (defn ^:private p+ ^double [^double x ^double y]
   (+ x y))
+
+;; ================== Fluokitten implementation  ===============================
+;; ---------------------- Vector Fluokitten funcitions -------------------------
 
 (extend-type IFn$DDD
   ReductionFunction
@@ -337,8 +340,6 @@
                                                  (.entry ^RealVector v i))))
            acc))))))
 
-;; ================== map/reduce functions =====================================
-
 (defn ^:private vector-fmap*
   ([f ^Vector x ]
    (dotimes [i (.dim x)]
@@ -431,6 +432,38 @@
      (throw (IllegalArgumentException. (format DIMENSIONS_MSG (.dim x))))))
   ([x g f init y z v ws]
    (throw (UnsupportedOperationException. "Vector foldmap support up to 4 vectors."))))
+
+(defn ^:private vector-op* [^Vector x & ws]
+  (let [res ^Vector (create-raw (factory x) (transduce (map dim) + (.dim x) ws))
+        eng (engine res)]
+   (try
+     (.copy eng x (.subvector res 0 (.dim x)))
+     (reduce (fn ^long [^long pos ^Vector w]
+               (if (compatible res w)
+                 (do
+                   (.copy eng w (.subvector res pos (.dim w)) )
+                   (+ pos (.dim w)))
+                 (throw (UnsupportedOperationException.
+                         (format INCOMPATIBLE_BLOCKS_MSG res w)))))
+             (.dim x)
+             ws)
+     res
+     (catch Exception e
+       (do
+         (release res)
+         (throw e))))))
+
+(defn vector-op
+  ([^Vector x ^Vector y]
+   (vector-op* x y))
+  ([^Vector x ^Vector y ^Vector z]
+   (vector-op* x y z))
+  ([^Vector x ^Vector y ^Vector z ^Vector v]
+   (vector-op* x y z v))
+  ([^Vector x ^Vector y ^Vector z ^Vector v ws]
+   (apply vector-op* x y z v ws)))
+
+;; ---------------------- Matrix Fluokitten funcitions -------------------------
 
 (defn check-matrix-dimensions
   ([^Matrix x ^Matrix y]
@@ -644,7 +677,7 @@
       (= 0.0 (vector-reduce-map p+ 0.0 p- x y))
       :default false))
   (toString [_]
-    (format "#<RealBlockVector| %s, n:%d, stride:%d>" entry-type n strd))
+    (format "#RealBlockVector[%s, n:%d, stride:%d]" entry-type n strd))
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -713,7 +746,9 @@
   PseudoFunctor
   {:fmap! vector-fmap!}
   Foldable
-  {:fold vector-fold})
+  {:fold vector-fold}
+  Magma
+  {:op vector-op})
 
 (defmethod transfer! [RealBlockVector RealBlockVector]
   [source destination]
@@ -734,7 +769,7 @@
 
 (defmethod print-method RealBlockVector
   [^Vector x ^java.io.Writer w]
-  (.write w (format "%s%s<>" (str x) (pr-str (take 100 (seq x))))))
+  (.write w (format "%s%s" (str x) (pr-str (take 100 (seq x))))))
 
 ;; =================== Real Matrix =============================================
 
@@ -753,7 +788,7 @@
       (= 0.0 (matrix-foldmap a p- p+ 0.0 b))
       :default false))
   (toString [_]
-    (format "#<GeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
+    (format "#RealGeneralMatrix[%s, ord:%s, mxn:%dx%d, ld:%d]"
             entry-type (if (= COLUMN_MAJOR ord) "COL" "ROW")
             m n ld))
   Releaseable
@@ -896,4 +931,4 @@
 
 (defmethod print-method RealGeneralMatrix
   [^RealGeneralMatrix a ^java.io.Writer w]
-  (.write w (format "%s%s<>" (str a) (pr-str (seq a)))))
+  (.write w (format "%s%s" (str a) (pr-str (seq a)))))

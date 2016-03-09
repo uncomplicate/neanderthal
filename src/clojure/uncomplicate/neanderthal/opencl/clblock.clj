@@ -68,7 +68,7 @@
       (equals-block eng x y)
       :default false))
   (toString [_]
-    (format "#<CLBlockVector| %s, n:%d, offset:%d stride:%d>"
+    (format "#CLBlockVector[%s, n:%d, offset:%d stride:%d]"
             entry-type n ofst strd))
   Releaseable
   (release [_]
@@ -176,7 +176,7 @@
       (equals-block eng a b)
       :default false))
   (toString [_]
-    (format "#<CLGeneralMatrix| %s, %s, mxn: %dx%d, ld:%d>"
+    (format "#CLGeneralMatrix[%s, %s, mxn: %dx%d, ld:%d>]"
             entry-type "COL" m n ld))
   Releaseable
   (release [_]

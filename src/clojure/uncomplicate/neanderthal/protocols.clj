@@ -58,6 +58,14 @@
   2: %s
   3: %s")
 
+(def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG_4
+  "Operation is not permited on objects with incompatible buffers,
+  or dimensions that are incompatible in the context of the operation.
+  1: %s
+  2: %s
+  3: %s
+  4: %s")
+
 (def ^{:no-doc true :const true} ROW_COL_MSG
   "Required %s %d is higher than the row count %d.")
 
