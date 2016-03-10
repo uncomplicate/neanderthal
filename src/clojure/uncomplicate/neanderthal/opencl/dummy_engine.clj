@@ -14,11 +14,11 @@ Please use other OpenCL engines if you need BLAS operations.")
   Releaseable
   (release [_] true)
   BLAS
-  (swap [_ _ y]
+  (swap [_ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
-  (copy [_ _ y]
+  (copy [_ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
-  (dot [_ _ y]
+  (dot [_ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
   (nrm2 [_ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
@@ -26,20 +26,26 @@ Please use other OpenCL engines if you need BLAS operations.")
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
   (iamax [_ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
-  (rot [_ _ y c s]
+  (rot [_ _ _ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
   (rotg [_ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
-  (rotm [_ _ y p]
+  (rotm [_ _ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
-  (rotmg [_ _ args]
+  (rotmg [_ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
-  (scal [_ alpha _]
+  (scal [_ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
-  (axpy [_ alpha x y]
+  (axpy [_ _ _ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
   BLASPlus
-  (sum [_ x]
+  (subcopy [_ _ _ _ _ _]
+    (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
+  (sum [_ _]
+    (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
+  (imax [_ _]
+    (throw (UnsupportedOperationException. UNSUPPORTED_MSG)))
+  (imin [_ _]
     (throw (UnsupportedOperationException. UNSUPPORTED_MSG))))
 
 ;; ======================= Dense Matrix ========================================

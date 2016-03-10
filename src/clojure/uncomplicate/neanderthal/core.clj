@@ -571,8 +571,10 @@
   equal dimensions. y will be changed. Also works on
   matrices.
 
-  If the dimensions of x and y are not compatible,
-  throws IllegalArgumentException.
+  If provided with length, offset-x, and offset-y, copies a subvector
+  of x into a subvector of y, if there is enough space in y.
+
+  If x and y are not compatible, throws IllegalArgumentException.
 
   (def x (dv 1 2 3))
   (def y (dv 3 4 5))
@@ -592,17 +594,14 @@
                  (format p/DIMENSION_MSG (ecount x) (ecount y)))))
        (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
      y))
-  ([x y length]
-   (copy! x y length 0 0))
-  ([x y length offset-x]
-   (copy! x y length offset-x 0))
   ([x y length offset-x offset-y]
    (if (not (identical? x y))
      (if (p/compatible x y)
        (if (<= (long length) (min (- (ecount x) (long offset-x))
                                   (- (ecount y) (long offset-y))))
          (do
-           (.subcopy ^BLASPlus (p/engine x) x y offset-x length offset-y)
+           (.subcopy ^BLASPlus (p/engine x) x y
+                     (long offset-x) (long length) (long offset-y))
            y)
          (throw (IllegalArgumentException.
                  (format p/DIMENSION_MSG length
@@ -612,21 +611,30 @@
      y)))
 
 (defn copy
-  "Returns a new copy the entries from container x.
+  "Returns a new copy the (part of) entries from container x.
   Changes to the resulting vectors do not affect x.
 
   (copy (dv 1 2 3))
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
-  [x]
-  (let [res (p/raw x)]
-    (try
-      (copy! x res)
-      (catch Exception e
-        (do
-          (release res)
-          (throw e))))
-    res))
+  ([x]
+   (let [res (p/raw x)]
+     (try
+       (copy! x res)
+       (catch Exception e
+         (do
+           (release res)
+           (throw e))))
+     res))
+  ([x length offset]
+   (let [res (create-raw (p/factory x) length)]
+     (try
+       (copy! x res length offset 0)
+       (catch Exception e
+         (do
+           (release res)
+           (throw e))))
+     res)))
 
 (defn axpy!
   "BLAS 1: Vector scale and add. Also works on matrices.

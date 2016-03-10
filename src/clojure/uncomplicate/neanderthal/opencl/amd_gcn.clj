@@ -72,6 +72,7 @@
   (swap [_ _ y]
     (if (< 0 n)
       (do
+        (set-arg! swap-kernel 1 (wrap-int ofst))
         (set-args! swap-kernel 3 (.buffer y) (wrap-int (.offset y))
                    (wrap-int (.stride y)))
         (enq-nd! queue swap-kernel linear-work-size))
@@ -79,6 +80,7 @@
   (copy [_ x y]
     (if (< 0 n)
       (do
+        (set-arg! copy-kernel 1 (wrap-int ofst))
         (set-args! copy-kernel 3 (.buffer y) (wrap-int (.offset y))
                    (wrap-int (.stride y)))
         (enq-nd! queue copy-kernel linear-work-size))
@@ -136,6 +138,14 @@
         (enq-nd! queue axpy-kernel linear-work-size))
       queue))
   BLASPlus
+  (subcopy [_ x y kx lx ky]
+    (if (< 0 n)
+      (do
+        (set-arg copy-kernel 1 (wrap-int (+ ofst (long kx))))
+        (set-args! copy-kernel 3 (.buffer y) (wrap-int (+ (.offset y) (long ky)))
+                   (wrap-int (.stride y)))
+        (enq-nd! queue copy-kernel (work-size-1d lx)))
+      queue))
   (sum [_ x]
     (if (< 0 n)
       (do

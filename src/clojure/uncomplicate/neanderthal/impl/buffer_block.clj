@@ -16,7 +16,7 @@
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols
-            BLAS RealBufferAccessor BufferAccessor DataAccessor
+            BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor
             RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
@@ -435,13 +435,13 @@
 
 (defn ^:private vector-op* [^Vector x & ws]
   (let [res ^Vector (create-raw (factory x) (transduce (map dim) + (.dim x) ws))
-        eng (engine res)]
+        eng ^BLASPlus (engine res)]
    (try
-     (.copy eng x (.subvector res 0 (.dim x)))
+     (.subcopy eng x res 0 (.dim x) 0)
      (reduce (fn ^long [^long pos ^Vector w]
                (if (compatible res w)
                  (do
-                   (.copy eng w (.subvector res pos (.dim w)) )
+                   (.subcopy eng w res 0 (.dim w) pos )
                    (+ pos (.dim w)))
                  (throw (UnsupportedOperationException.
                          (format INCOMPATIBLE_BLOCKS_MSG res w)))))
