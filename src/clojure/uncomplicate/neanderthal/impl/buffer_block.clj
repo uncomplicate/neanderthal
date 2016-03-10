@@ -453,7 +453,7 @@
          (release res)
          (throw e))))))
 
-(defn vector-op
+(defn ^:private vector-op
   ([^Vector x ^Vector y]
    (vector-op* x y))
   ([^Vector x ^Vector y ^Vector z]
@@ -465,7 +465,7 @@
 
 ;; ---------------------- Matrix Fluokitten funcitions -------------------------
 
-(defn check-matrix-dimensions
+(defn ^:private check-matrix-dimensions
   ([^Matrix x ^Matrix y]
    (and (<= (.ncols x) (.ncols y))
         (<= (.mrows x) (.mrows y))))
@@ -598,7 +598,7 @@
 
 ;; ============ Realeaseable ===================================================
 
-(defn clean-buffer [^ByteBuffer buffer]
+(defn ^:private clean-buffer [^ByteBuffer buffer]
   (do
     (if (.isDirect buffer)
       (.clean (.cleaner ^DirectByteBuffer buffer)))

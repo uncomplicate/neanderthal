@@ -167,47 +167,6 @@
   ([factory m n]
    (create factory m n)))
 
-;; =========== TODO: move to fluokitten op
-;; === implementatiion: move to engines to avoid subvector creation?
-;;TODO THIS IS PRACTICALLY a COPY! FUNCTION WITH POSITION
-(defn concatenate!
-  ([^Vector res ^Vector x]))
-
-(defn concatenate
-  ([^Vector x ^Vector y]
-   (let [dim-x (.dim x)
-         dim-y (.dim y)
-         res ^Vector (create-raw (p/factory x) (+ dim-x dim-y))
-         eng (p/engine res)]
-     (try
-       (.copy eng x (.subvector res 0 dim-x))
-       (.copy eng y (.subvector res dim-x dim-y))
-       res
-       (catch Exception e
-         (do
-           (release res)
-           (throw e))))))
-  ([^Vector x ^Vector y & xs]
-   (let [res ^Vector (create-raw (p/factory x)
-                                 (loop [acc (.dim x) z y zs xs]
-                                   (if z
-                                     (recur (+ acc (.dim ^Vector z))
-                                            (first zs) (next zs))
-                                     acc)))
-         eng (p/engine res)]
-     (try
-       (.copy eng x (.subvector res 0 (.dim x)))
-       (loop [pos (.dim x) z y zs xs]
-         (if z
-           (do
-             (.copy eng z (.subvector res pos (.dim ^Vector z)))
-             (recur (+ pos (.dim ^Vector z)) (first zs) (next zs)))
-           res))
-       (catch Exception e
-         (do
-           (release res)
-           (throw e)))))))
-
 ;; ================= Container  ================================================
 
 (defn raw
@@ -622,17 +581,35 @@
   y
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
-  [x y]
-  (if (not (identical? x y))
-    (if (p/compatible x y)
-      (if (= (ecount x) (ecount y))
-        (do
-          (.copy (p/engine x) x y)
-          y)
-        (throw (IllegalArgumentException.
-                (format p/DIMENSION_MSG (ecount x) (ecount y)))))
-      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
-    y))
+  ([x y]
+   (if (not (identical? x y))
+     (if (p/compatible x y)
+       (if (= (ecount x) (ecount y))
+         (do
+           (.copy (p/engine x) x y)
+           y)
+         (throw (IllegalArgumentException.
+                 (format p/DIMENSION_MSG (ecount x) (ecount y)))))
+       (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
+     y))
+  ([x y length]
+   (copy! x y length 0 0))
+  ([x y length offset-x]
+   (copy! x y length offset-x 0))
+  ([x y length offset-x offset-y]
+   (if (not (identical? x y))
+     (if (p/compatible x y)
+       (if (<= (long length) (min (- (ecount x) (long offset-x))
+                                  (- (ecount y) (long offset-y))))
+         (do
+           (.subcopy ^BLASPlus (p/engine x) x y offset-x length offset-y)
+           y)
+         (throw (IllegalArgumentException.
+                 (format p/DIMENSION_MSG length
+                         (min (- (ecount x) (long offset-x))
+                              (- (ecount y) (long offset-y)))))))
+       (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
+     y)))
 
 (defn copy
   "Returns a new copy the entries from container x.

@@ -4,16 +4,16 @@
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
            [uncomplicate.neanderthal.protocols
-            BLAS BLASPlus Vector Matrix RealVector DataAccessor]))
+            BLAS BLASPlus Vector Matrix RealVector DataAccessor BufferAccessor]))
 
 ;; ============ Real Vector Engines ============================================
 
 (deftype DoubleVectorEngine []
   BLAS
   (swap [_ x y]
-    (CBLAS/dswap (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (CBLAS/dswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (copy [_ x y]
-    (CBLAS/dcopy (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (CBLAS/dcopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (dot [_ x y]
     (CBLAS/ddot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   (nrm2 [_ x]
@@ -43,6 +43,8 @@
   (axpy [_ alpha x y]
     (CBLAS/daxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y)))
   BLASPlus
+  (subcopy [_ x y kx lx ky]
+    (CBLAS/dcopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
   (sum [_ x] ;;TODO implement in C
     (let [cnt (.dim ^Vector x)]
       (loop [i 0 res 0.0]
@@ -72,9 +74,9 @@
 (deftype SingleVectorEngine []
   BLAS
   (swap [_ x y]
-    (CBLAS/sswap (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (CBLAS/sswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (copy [_ x y]
-    (CBLAS/scopy (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (CBLAS/scopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (dot [_ x y]
     (CBLAS/dsdot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   (nrm2 [_ x]
@@ -104,6 +106,8 @@
   (axpy [_ alpha x y]
     (CBLAS/saxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y)))
   BLASPlus
+  (subcopy [_ x y kx lx ky]
+    (CBLAS/scopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
   (sum [_ x] ;;TODO implement in C
     (loop [i 0 res 0.0]
       (if (< i (.dim ^Vector x))
@@ -136,9 +140,9 @@
   (swap [_ a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.order a) (.order b)))
+                (.stride a) (.stride b)))
       (CBLAS/dswap (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 1 (.buffer b) 1)
+                   (.buffer a) 0 1 (.buffer b) 0 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
           (.swap dv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
@@ -147,18 +151,18 @@
   (copy [_ a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.order a) (.order b)))
+                (.stride a) (.stride b)))
       (CBLAS/dcopy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 1 (.buffer b) 1)
+                   (.buffer a) 0 1 (.buffer b) 0 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.copy dv-engine (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.copy dv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
         (dotimes [i (.mrows ^Matrix a)]
           (.copy dv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
   (axpy [_ alpha a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.order a) (.order b)))
+                (.stride a) (.stride b)))
       (CBLAS/daxpy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
                    alpha (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
@@ -192,9 +196,9 @@
   (swap [_ a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.order a) (.order b)))
+                (.stride a) (.stride b)))
       (CBLAS/sswap (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 1 (.buffer b) 1)
+                   (.buffer a) 0 1 (.buffer b) 0 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
           (.swap sv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
@@ -203,9 +207,9 @@
   (copy [_ a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.order a) (.order b)))
+                (.stride a) (.stride b)))
       (CBLAS/scopy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 1 (.buffer b) 1)
+                   (.buffer a) 0 1 (.buffer b) 0 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
           (.copy sv-engine (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
@@ -214,7 +218,7 @@
   (axpy [_ alpha a b]
     (if (and (= (.order a) (.order b))
              (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.order a) (.order b)))
+                (.stride a) (.stride b)))
       (CBLAS/saxpy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
                    alpha (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
