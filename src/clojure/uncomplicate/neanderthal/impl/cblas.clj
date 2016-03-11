@@ -45,14 +45,9 @@
   BLASPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/dcopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
-  (sum [_ x] ;;TODO implement in C
-    (let [cnt (.dim ^Vector x)]
-      (loop [i 0 res 0.0]
-        (if (< i cnt)
-          (recur (inc i)
-                 (+ res (.entry ^RealVector x i)))
-          res))))
-  (imax [_ x] ;;TODO implement in C
+  (sum [_ x]
+    (CBLAS/dsum (.dim ^Vector x) (.buffer x) (.stride x)))
+  (imax [_ x]
     (let [cnt (.dim ^Vector x)]
       (loop [i 1 max-idx 0 max-val (.entry ^RealVector x 0)]
         (if (< i cnt)
@@ -61,7 +56,7 @@
               (recur (inc i) i v)
               (recur (inc i) max-idx max-val)))
           max-idx))))
-  (imin [_ x] ;;TODO implement in C
+  (imin [_ x]
     (let [cnt (.dim ^Vector x)]
       (loop [i 1 min-idx 0 min-val (.entry ^RealVector x 0)]
         (if (< i cnt)
@@ -109,13 +104,8 @@
   (subcopy [_ x y kx lx ky]
     (CBLAS/scopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
   (sum [_ x]
-
-    (loop [i 0 res 0.0]
-      (if (< i (.dim ^Vector x))
-        (recur (inc i)
-               (+ res (.entry ^RealVector x i)))
-        res)))
-  (imax [_ x] ;;TODO implement in C
+    (CBLAS/ssum (.dim ^Vector x) (.buffer x) (.stride x)))
+  (imax [_ x]
     (let [cnt (.dim ^Vector x)]
       (loop [i 1 max-idx 0 max-val (.entry ^RealVector x 0)]
         (if (< i cnt)
@@ -124,7 +114,7 @@
               (recur (inc i) i v)
               (recur (inc i) max-idx max-val)))
           max-idx))))
-  (imin [_ x] ;;TODO implement in C
+  (imin [_ x]
     (let [cnt (.dim ^Vector x)]
       (loop [i 1 min-idx 0 min-val (.entry ^RealVector x 0)]
         (if (< i cnt)
@@ -168,7 +158,7 @@
                    alpha (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.axpy dv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.axpy dv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)))
         (dotimes [i (.mrows ^Matrix a)]
           (.axpy dv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
   (mv [_ alpha a x beta y]
@@ -213,7 +203,7 @@
                    (.buffer a) 0 1 (.buffer b) 0 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.copy sv-engine (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.copy sv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
         (dotimes [i (.mrows ^Matrix a)]
           (.copy sv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
   (axpy [_ alpha a b]
@@ -224,7 +214,7 @@
                    alpha (.buffer a) 1 (.buffer b) 1)
       (if (column-major? a)
         (dotimes [i (.ncols ^Matrix a)]
-          (.axpy sv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)));;TODO enable raw in C
+          (.axpy sv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)))
         (dotimes [i (.mrows ^Matrix a)]
           (.axpy sv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
   (mv [_ alpha a x beta y]
