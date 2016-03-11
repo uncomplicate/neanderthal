@@ -216,7 +216,7 @@ $code"
        "Let's try with 2^20. That's more than a million."
        (let [cnt (long (Math/pow 2 20))]
          (with-release [host-x (sv (range cnt))
-                        gpu-x (treansfer! host-x (sv-cl cnt))]
+                        gpu-x (transfer! host-x (sv-cl cnt))]
 
            (println "CPU:")
            (time (asum host-x)) => (float 5.49754798E11)
@@ -239,17 +239,20 @@ $code"
       (facts
        "Let's try with 2^29. That's 2GB, the maximum that Java buffers can
 currently handle. Java 9 would hopefully increase that."
-       (let [cnt (long (dec (Math/pow 2 29)))]
+       ;; I had to change it to 2^28 because the update for my GPU driver caused
+       ;; it to complain about insufficient memory, but this is probably a temporary issue.
+       ;; time reports wrong values, criterium confirms the earlier numbers.
+       (let [cnt (long (Math/pow 2 28))]
          (with-release [host-x (sv (range cnt))
                         gpu-x (transfer! host-x (sv-cl cnt))]
 
            (println "CPU:")
            ;; note the wrong result in the CPU vector. That's because single precision floats
-           are not enough for so many accumulations. In real life, you must use doubles where needed.
-           (time (asum host-x)) => (float 1.08086391E17)
+           ;; are not enough for so many accumulations. In real life, you must use doubles where needed.
+           (time (asum host-x)) => (float 3.6780519E16)
            (println "GPU:")
            ;; GPU engine uses doubles for this accumulation, so the result is more precise.
-           (time (asum gpu-x)) => 1.44115187270549504E17))))))
+           (time (asum gpu-x)) => 3.602879688474624E16))))))
 
 "$text
 
