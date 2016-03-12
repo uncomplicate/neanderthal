@@ -29,6 +29,7 @@
            (release sub-a) => true
            (release a) => true
            (release a) => true)))
+
 (defn test-ifn-vector [factory]
   (facts "IFn implementation for real block vector"
          (let [x (create-vector factory [1 2 3 4])]
@@ -42,25 +43,26 @@
   (let [fx (fn [] (create-vector factory [1 2 3 4]))
         fy (fn [] (create-vector factory [2 3 4 5 6]))
         x (fx)
-        pf1 (fn ^double [^double x] (+ x 1.0))
-        pf2 (fn ^double [^double x ^double y] (+ x y))
-        pf3 (fn ^double [^double x ^double y ^double z] (+ x y z))
-        pf4 (fn ^double [^double x ^double y ^double z ^double w]
-              (+ x y z w))]
+        f (fn
+            (^double [^double x] (+ x 1.0))
+            (^double [^double x ^double y] (+ x y))
+            (^double [^double x ^double y ^double z] (+ x y z))
+            (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
+
     (facts "Functor implementation for real block vector"
-           (instance? IFn$DD pf1) => true
+           (instance? IFn$DD f) => true
 
-           (fmap! pf1 (fx)) => (create-vector factory [2 3 4 5])
-           (fmap! pf1 x) => x
+           (fmap! f (fx)) => (create-vector factory [2 3 4 5])
+           (fmap! f x) => x
 
-           (fmap! pf2 (fx) (fy)) => (create-vector factory [3 5 7 9])
-           (fmap! pf2 x (fy)) => x
+           (fmap! f (fx) (fy)) => (create-vector factory [3 5 7 9])
+           (fmap! f x (fy)) => x
 
-           (fmap! pf3 (fx) (fy) (fy)) => (create-vector factory [5 8 11 14])
-           (fmap! pf3 x (fy) (fy)) => x
+           (fmap! f (fx) (fy) (fy)) => (create-vector factory [5 8 11 14])
+           (fmap! f x (fy) (fy)) => x
 
-           (fmap! pf4 (fx) (fy) (fy) (fy)) => (create-vector factory [7 11 15 19])
-           (fmap! pf4 x (fy) (fy) (fy)) => x
+           (fmap! f (fx) (fy) (fy) (fy)) => (create-vector factory [7 11 15 19])
+           (fmap! f x (fy) (fy) (fy)) => x
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)])
            => (throws UnsupportedOperationException))))
@@ -93,6 +95,9 @@
            (fold pf1 1.0 x y y) => 39.0
            (fold pf1o [] x y y) => [5.0 8.0 11.0 14.0]
 
+           (fold pf1 1.0 x y y y) => 53.0
+           (fold pf1o [] x y y y) => [7.0 11.0 15.0 19.0]
+
            (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
 
 (defn test-seq-vector [factory]
@@ -113,28 +118,28 @@
   (let [fx (fn [] (create-ge-matrix factory 2 3 [1 2 3 4 5 6]))
         fy (fn [] (create-ge-matrix factory 2 3 [2 3 4 5 6 7]))
         x (fx)
-        pf1 (fn ^double [^double x] (double (+ x 1.0)))
-        pf2 (fn ^double [^double x ^double y] (double (+ x y)))
-        pf3 (fn ^double [^double x ^double y ^double z] (double (+ x y z)))
-        pf4 (fn ^double [^double x ^double y ^double z ^double v]
-              (double (+ x y z v)))]
+        f (fn
+            (^double [^double x] (+ x 1.0))
+            (^double [^double x ^double y] (+ x y))
+            (^double [^double x ^double y ^double z] (+ x y z))
+            (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
     (facts "Functor implementation for real general matrix"
-           (instance? clojure.lang.IFn$DD pf1) => true
+           (instance? clojure.lang.IFn$DD f) => true
 
-           (fmap! pf1 (fx)) => (fy)
-           (fmap! pf1 x) => x
+           (fmap! f (fx)) => (fy)
+           (fmap! f x) => x
 
-           (fmap! pf2 (fx) (fy))
+           (fmap! f (fx) (fy))
            => (create-ge-matrix factory 2 3 [3 5 7 9 11 13])
-           (fmap! pf2 x (fy)) => x
+           (fmap! f x (fy)) => x
 
-           (fmap! pf3 (fx) (fy) (fy))
+           (fmap! f (fx) (fy) (fy))
            => (create-ge-matrix factory 2 3 [5 8 11 14 17 20])
-           (fmap! pf3 x (fy) (fy)) => x
+           (fmap! f x (fy) (fy)) => x
 
-           (fmap! pf4 (fx) (fy) (fy) (fy))
+           (fmap! f (fx) (fy) (fy) (fy))
            => (create-ge-matrix factory 2 3 [7 11 15 19 23 27])
-           (fmap! pf4 x (fy) (fy) (fy)) => x
+           (fmap! f x (fy) (fy) (fy)) => x
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)])
            => (throws UnsupportedOperationException))))
