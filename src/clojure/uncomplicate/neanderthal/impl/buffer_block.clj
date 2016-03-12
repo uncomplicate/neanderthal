@@ -5,10 +5,10 @@
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq]]]
             [uncomplicate.fluokitten.protocols
-             :refer [PseudoFunctor Foldable Magma Monoid]]
+             :refer [PseudoFunctor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [transfer! copy! dim mrows ncols create-raw]]]
+             [core :refer [transfer! copy! dim mrows ncols create-raw trans]]]
             [uncomplicate.clojurecl.core :refer [Releaseable release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
@@ -463,6 +463,13 @@
   ([^Vector x ^Vector y ^Vector z ^Vector v ws]
    (apply vector-op* x y z v ws)))
 
+(defn ^:private vector-pure
+  ([x ^double v]
+   (.set ^RealChangeable (raw x) 0 v))
+  ([x ^double v ws]
+   (throw (UnsupportedOperationException.
+           "This operation would be slow on primitive vectors."))))
+
 ;; ---------------------- Matrix Fluokitten funcitions -------------------------
 
 (defn ^:private check-matrix-dimensions
@@ -549,7 +556,9 @@
    (if (check-matrix-dimensions x y z v)
      (loop [i 0 acc init]
        (if (< i (.ncols x))
-         (recur (inc i) (vector-reduce f acc (.col x i) (.col y i) (.col z i) (.col v i)))
+         (recur (inc i) (vector-reduce f acc
+                                       (.col x i) (.col y i)
+                                       (.col z i) (.col v i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x f init y z v ws]
@@ -583,18 +592,74 @@
    (if (check-matrix-dimensions x y z)
      (loop [i 0 acc init]
        (if (< i (.ncols x))
-         (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i)))
+         (recur (inc i) (vector-reduce-map f acc g
+                                           (.col x i) (.col y i) (.col z i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix x g f init ^Matrix y ^Matrix z ^Matrix v]
    (if (check-matrix-dimensions x y z v)
      (loop [i 0 acc init]
        (if (< i (.ncols x))
-         (recur (inc i) (vector-reduce-map f acc g (.col x i) (.col y i) (.col z i) (.col v i)))
+         (recur (inc i) (vector-reduce-map f acc g
+                                           (.col x i) (.col y i)
+                                           (.col z i) (.col v i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x g f init y z v ws]
    (throw (UnsupportedOperationException. "Matrix fold support up to 4 matrices."))))
+
+(defn ^:private matrix-op* [^Matrix x & ws]
+  (let [res ^Matrix (if (column-major? x)
+                      (create-raw (factory x)
+                                  (.mrows x)
+                                  (transduce (map ncols) + (.ncols x) ws))
+                      (trans (create-raw (factory x)
+                                         (.ncols x)
+                                         (transduce (map mrows) + (.mrows x) ws))))
+        eng ^BLASPlus (engine res)
+        column-reducer (fn ^long [^long pos ^Matrix w]
+                         (if (compatible res w)
+                           (do
+                             (.copy eng w (.submatrix ^Matrix res 0 pos
+                                                      (.mrows w) (.ncols w)))
+                             (+ pos (.ncols w)))
+                           (throw (UnsupportedOperationException.
+                                   (format INCOMPATIBLE_BLOCKS_MSG res w)))))
+        row-reducer (fn ^long [^long pos ^Matrix w]
+                      (if (compatible res w)
+                        (do
+                          (.copy eng w (.submatrix ^Matrix res pos 0
+                                                   (.mrows w) (.ncols w)))
+                          (+ pos (.mrows w)))
+                        (throw (UnsupportedOperationException.
+                                (format INCOMPATIBLE_BLOCKS_MSG res w)))))]
+    (try
+      (.copy eng x (.submatrix ^Matrix res 0 0 (.mrows x) (.ncols x)))
+      (if (column-major? x)
+        (reduce column-reducer (.ncols x) ws)
+        (reduce row-reducer (.mrows x) ws))
+      res
+      (catch Exception e
+        (do
+          (release res)
+          (throw e))))))
+
+(defn ^:private matrix-op
+  ([^Matrix x ^Matrix y]
+   (matrix-op* x y))
+  ([^Matrix x ^Matrix y ^Matrix z]
+   (matrix-op* x y z))
+  ([^Matrix x ^Matrix y ^Matrix z ^Matrix v]
+   (matrix-op* x y z v))
+  ([^Matrix x ^Matrix y ^Matrix z ^Vector v ws]
+   (apply matrix-op* x y z v ws)))
+
+(defn ^:private matrix-pure
+  ([x ^double v]
+   (.set ^RealChangeable (raw x) 0 0 v))
+  ([x ^double v ws]
+   (throw (UnsupportedOperationException.
+           "This operation would be slow on primitive matrices."))))
 
 ;; ============ Realeaseable ===================================================
 
@@ -750,6 +815,8 @@
   {:fmap! vector-fmap!}
   Foldable
   {:fold vector-fold}
+  Applicative
+  {:pure vector-pure}
   Magma
   {:op vector-op})
 
@@ -802,6 +869,9 @@
     (create-matrix fact m n (.createDataSource accessor (* m n)) ord))
   (zero [this]
     (raw this))
+  Monoid
+  (id [a]
+    (create-matrix fact 0 0 (.createDataSource accessor 0) nil))
   EngineProvider
   (engine [_]
     eng)
@@ -910,7 +980,11 @@
   PseudoFunctor
   {:fmap! matrix-fmap!}
   Foldable
-  {:fold matrix-fold})
+  {:fold matrix-fold}
+  Applicative
+  {:pure matrix-pure}
+  Magma
+  {:op matrix-op})
 
 (defmethod transfer! [RealGeneralMatrix RealGeneralMatrix]
   [source destination]

@@ -239,7 +239,7 @@ $code"
       (facts
        "Let's try with 2^29. That's 2GB, the maximum that Java buffers can
 currently handle. Java 9 would hopefully increase that."
-       ;; I had to change it to 2^28 because the update for my GPU driver caused
+       ;; I had to change it to 2^28 because a recent update for my GPU driver caused
        ;; it to complain about insufficient memory, but this is probably a temporary issue.
        ;; time reports wrong values, criterium confirms the earlier numbers.
        (let [cnt (long (Math/pow 2 28))]
