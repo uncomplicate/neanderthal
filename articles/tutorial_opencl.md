@@ -84,16 +84,15 @@ And, to be sure that this code is always in the proper working condition,
 I'll write a bunch of midje test facts and include them in the test suite.
 Therefore, do not mind these `facts` and `=>`s - they're not part of Neanderthal.
 
-```Clojure
-
+```clojure
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
             [uncomplicate.clojurecl.core
              :refer [with-default with-release finish! *command-queue*]]
             [uncomplicate.neanderthal
-             [core :refer [asum dot axpy! mv! mm!]]
+             [core :refer [asum dot axpy! mv! mm! transfer!]]
              [native :refer [sv sge]]
-             [opencl :refer [with-default-engine sclv sclge write!]]]))
+             [opencl :refer [with-default-engine sv-cl sge-cl]]]))
 
 ```
 
@@ -108,7 +107,7 @@ Our code will then be executed on the first available device on the first availa
 OpenCL platform. On my machine, that would activate the fastest GPU (the first
 of the three Radeons I have) using the AMD's OpenCL drivers. Your setup may be different.
 
-```Clojure
+```clojure
 
 (with-default
   (with-default-engine
@@ -123,18 +122,16 @@ CPU stuff you recognize from the plain Neanderthal tutorial."
 
 Let's see how to do the same computation on the GPU:
 
-```Clojure
-
+```clojure
 (with-default
   (with-default-engine
     (facts
      "Create a vector on the device, write into it the data from the host vector
 and compute the sum of absolute values."
 
-     (with-release [gpu-x (write! (sclv 3) (sv 1 -2 3))]
+     (with-release [gpu-x (transfer! (sv 1 -2 3) (sv-cl 3))]
 
        (asum gpu-x)) => 6.0)))
-
 ```
 
 And that is all you need to begin. That sum has just been computed on your GPU!
@@ -177,20 +174,18 @@ So, what speedups should you expect over native optimized CBLAS that is Neandert
 default? Let's measure it. I'm running this on Intel i7 4790k CPU and AMD
 Radeon R9 290x GPU. Your hardware will give different numbers.
 
-```Clojure
-
+```clojure
   (with-default
     (with-default-engine
       (facts
        "Compare the speed of computing small vectors on CPU and GPU"
        (with-release [host-x (sv 1 -2 3)
-                      gpu-x (write! (sclv 3) host-x)]
+                      gpu-x (transfer! host-x (sv-cl 3))]
 
          (println "CPU:")
          (time (asum host-x)) => 6.0
          (println "GPU:")
          (time (asum gpu-x)) => 6.0))))
-
 ```
 
 When measuring very fast code, the `time` function gives wildly imprecise results
@@ -204,21 +199,19 @@ to compute, which it does instantly.
 
 Let's try again with more data!
 
-```Clojure
-
-  (with-default
+```clojure
+(with-default
     (with-default-engine
       (facts
        "Let's try with 2^20. That's more than a million."
        (let [cnt (long (Math/pow 2 20))]
          (with-release [host-x (sv (range cnt))
-                        gpu-x (write! (sclv cnt) host-x)]
+                        gpu-x (transfer! host-x (sv-cl cnt))]
 
            (println "CPU:")
            (time (asum host-x)) => (float 5.49754798E11)
            (println "GPU:")
            (time (asum gpu-x)) => 5.497552896E11)))))
-
 ```
 
 On my machine, it's almost a tie. Criterium reports 99 microseconds on the CPU
@@ -227,25 +220,25 @@ vs 107 microseconds on the GPU.
 A million is still smallish, though. Let's get serious. Let's give a vector of
 2GB (that's 536 million entries) to both:
 
-```Clojure
-
-  (with-default
-    (with-default-engine
+```clojure
+(with-default-engine
       (facts
        "Let's try with 2^29. That's 2GB, the maximum that Java buffers can
 currently handle. Java 9 would hopefully increase that."
-       (let [cnt (long (dec (Math/pow 2 29)))]
+       ;; I had to change it to 2^28 because a recent update for my GPU driver caused
+       ;; it to complain about insufficient memory, but this is probably a temporary issue.
+       ;; time reports wrong values, criterium confirms the earlier numbers.
+       (let [cnt (long (Math/pow 2 28))]
          (with-release [host-x (sv (range cnt))
-                        gpu-x (write! (sclv cnt) host-x)]
+                        gpu-x (transfer! host-x (sv-cl cnt))]
 
            (println "CPU:")
            ;; note the wrong result in the CPU vector. That's because single precision floats
-           are not enough for so many accumulations. In real life, you must use doubles where needed.
-           (time (asum host-x)) => (float 1.08086391E17)
+           ;; are not enough for so many accumulations. In real life, you must use doubles where needed.
+           (time (asum host-x)) => (float 3.6780519E16)
            (println "GPU:")
            ;; GPU engine uses doubles for this accumulation, so the result is more precise.
-           (time (asum gpu-x)) => 1.44115187270549504E17)))))
-
+           (time (asum gpu-x)) => 3.602879688474624E16))))
 ```
 
 CPU: 92 milliseconds
@@ -258,10 +251,8 @@ are still idling most of the time waiting data to be transferred from the
 device memory to the device registers. Sum is a so simple operation
 that the main constraint is memory throughput, not computing power.
 
-```Clojure
-
-
-  (with-default
+```clojure
+(with-default
     (with-default-engine
       (facts
        "Let's try with a more parallel linear operation: adding two vectors.
@@ -270,14 +261,13 @@ hold 4GB of data (it has 4GB total memory)."
        (let [cnt (long (Math/pow 2 28))]
          (with-release [host-x (sv (range cnt))
                         host-y (sv (range cnt))
-                        gpu-x (write! (sclv cnt) host-x)
-                        gpu-y (write! (sclv cnt) host-y)]
+                        gpu-x (transfer! host-x (sv-cl cnt))
+                        gpu-y (transfer! host-y (sv-cl cnt))]
 
            (println "CPU:")
            (time (axpy! 3 host-x host-y)) => host-y
            (println "GPU:")
            (time (do (axpy! 3 gpu-x gpu-y) (finish! *command-queue*))) => truthy)))))
-
 ```
 
 CPU: 159 ms
@@ -292,10 +282,8 @@ than to transfer it back and forth to the CPU.
 Let's try with some BLAS 2 operation. Their quadratic complexity should matter.
 We'll do a matrix - vector multiplication.
 
-```Clojure
-
-
-  (with-default
+```clojure
+(with-default
     (with-default-engine
       (facts
        "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
@@ -304,9 +292,9 @@ demanding enough."
          (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-x (sv (range cnt))
                         host-y (sv (range cnt))
-                        gpu-a (write! (sclge cnt cnt) host-a)
-                        gpu-x (write! (sclv cnt) host-x)
-                        gpu-y (write! (sclv cnt) host-y)]
+                        gpu-a (transfer! host-a (sge-cl cnt cnt))
+                        gpu-x (transfer! host-x (sv-cl cnt))
+                        gpu-y (transfer! host-y (sv-cl cnt))]
 
            (println "CPU:")
            (time (mv! 3 host-a host-x 2 host-y)) => host-y
@@ -321,26 +309,24 @@ GPU: 2.77 ms
 That's a 5.5x win for the GPU. Nothing too much, but still ok. Let's try matrix
 multiplication and see how that goes.
 
-```Clojure
-
-
-  (with-default
+```clojure
+(with-default
     (with-default-engine
       (facts
-       "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
+       "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
        (let [cnt 8192]
-         (with-release [ host-a (sge cnt cnt (range (* cnt cnt)))
+         (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-b (sge cnt cnt (range (* cnt cnt)))
                         host-c (sge cnt cnt (range (* cnt cnt)))
-                        gpu-a (write! (sclge cnt cnt) host-a)
-                        gpu-b (write! (sclge cnt cnt) host-a)
-                        gpu-c (write! (sclge cnt cnt) host-a)]
+                        gpu-a (transfer! host-a (sge-cl cnt cnt))
+                        gpu-b (transfer! host-a (sge-cl cnt cnt))
+                        gpu-c (transfer! host-a (sge-cl cnt cnt))]
 
            (println "CPU:")
            (time (mm! 3 host-a host-b 2 host-c)) => host-c
            (println "GPU:")
-           (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))) => truthy))))))
+           (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))) => truthy)))))
 
 ```
 

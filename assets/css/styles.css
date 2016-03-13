@@ -131,3 +131,17 @@ h2 {
         border-top: 1px solid #e5e5e5;
     }
 }
+
+table{
+    border-collapse: collapse;
+    border-spacing: 0;
+    border:2px solid;
+}
+
+th{
+  border:2px solid;
+}
+
+td{
+  border:1px solid;
+}

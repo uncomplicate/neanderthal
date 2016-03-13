@@ -134,6 +134,16 @@ terminal and C tools.
 willing to help users of those operating systems by providing the convenient
 binaries, please [contact me](/articles/community.html).**
 
+#### This is how I installed it on Arch Linux
+
+* I had to have gcc (installed by default) and gcc-fortran packages.
+* I followed the aforementioned atlas build instructions to the letter. The only
+critical addition is to add `--shared` flag (explained in the details there, but not a default).
+* I had to create a symlink `libatlas.so` in my `/usr/lib`, that points to 'libtatlas.so' (serial)
+or 'libptatlas.so' (parallel) atlas shared binary created by the build script.
+
+That should be all, but YMMV, depending on your hardware and OS installation.
+
 ### GPU drivers for the GPU engine
 
 Everything will magically work (no need to compile anything) as long as you
