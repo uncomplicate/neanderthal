@@ -22,6 +22,10 @@ This project can be helpful for quick start.
 
 [Source code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_native_test.clj) for this tutorial.
 
+### [Why You Might Need Neanderthal Even Without Matrices](/articles/why-you-might-need-neanderthal-even-without-matrices.html)
+
+[Source code](https://github.com/uncomplicate/neanderthal/blob/master/examples/benchmarks/map_reduce.clj) for this tutorial.
+
 ### [Neanderthal API](/codox).
 
 ## GPU computation tutorials
