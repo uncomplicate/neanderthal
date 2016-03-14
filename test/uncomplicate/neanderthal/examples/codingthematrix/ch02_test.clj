@@ -95,7 +95,7 @@
  (let [cost (dv 2.5 1.5 0.006 0.45)
        quantity (dv 6 14 7 11)
        value (dv 0 960 0 3.25)]
-   (dot cost quantity) => 40.992000000000004
+   (dot cost quantity) => 40.992
    (dot value quantity) => 13475.75)
 
  (let [haystack (dv 1 -1 1 1 1 -1 1 1 1)

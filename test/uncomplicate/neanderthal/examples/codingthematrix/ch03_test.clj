@@ -15,4 +15,4 @@
        salad-shooter (dv 0.15 0 0.5 0.4 0.8)]
    (axpy 240 garden-gnome 55 hula-hoop 150 slinky
          133 silly-putty 90 salad-shooter)
-   => (dv 51 312 215.4 373.1 356)))
+   => (dv 51 312 215.4 373.09999999999997 356)))

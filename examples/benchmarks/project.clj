@@ -9,6 +9,7 @@
     :dependencies [[org.clojure/clojure "1.8.0"]
                    [criterium "0.4.3"]
                    [primitive-math "0.1.4"]
+                   [prismatic/hiphip "0.2.1"]
                    [net.mikera/core.matrix "0.50.0"]
                    [net.mikera/vectorz-clj "0.43.1"]
                    [org.jblas/jblas "1.2.3"]

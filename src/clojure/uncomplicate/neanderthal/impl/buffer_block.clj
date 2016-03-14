@@ -5,10 +5,10 @@
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 wrap-byte-seq]]]
             [uncomplicate.fluokitten.protocols
-             :refer [PseudoFunctor Foldable Magma Monoid Applicative]]
+             :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [transfer! copy! dim mrows ncols create-raw trans]]]
+             [core :refer [transfer! copy! copy dim mrows ncols create-raw trans]]]
             [uncomplicate.clojurecl.core :refer [Releaseable release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
@@ -383,6 +383,12 @@
   ([x f y z w ws]
    (throw (UnsupportedOperationException. "Vector fmap support up to 4 vectors."))))
 
+(defn ^:private vector-fmap
+  ([x f]
+   (vector-fmap! (copy x) f))
+  ([x f xs]
+   (apply vector-fmap! (copy x) f xs)))
+
 (defn ^:private vector-fold
   ([^RealVector x]
    (let [dim-x (.dim x)]
@@ -520,6 +526,12 @@
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x f y z w ws]
    (throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
+
+(defn ^:private matrix-fmap
+  ([x f]
+   (matrix-fmap! (copy x) f))
+  ([x f xs]
+   (apply matrix-fmap! (copy x) f xs)))
 
 (defn ^:private matrix-fold
   ([^RealMatrix x]
@@ -813,8 +825,11 @@
 (extend RealBlockVector
   PseudoFunctor
   {:fmap! vector-fmap!}
+  Functor
+  {:fmap vector-fmap}
   Foldable
-  {:fold vector-fold}
+  {:fold vector-fold
+   :foldmap vector-foldmap}
   Applicative
   {:pure vector-pure}
   Magma
@@ -979,8 +994,11 @@
 (extend RealGeneralMatrix
   PseudoFunctor
   {:fmap! matrix-fmap!}
+  Functor
+  {:fmap matrix-fmap}
   Foldable
-  {:fold matrix-fold}
+  {:fold matrix-fold
+   :foldmap matrix-foldmap}
   Applicative
   {:pure matrix-pure}
   Magma
