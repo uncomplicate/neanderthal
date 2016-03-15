@@ -86,7 +86,7 @@ Neanderthal's data structures are written in Clojure, so many functions work out
 
 #### Linux - optimized
 
-Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared so** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html).
+Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared libatlas.so** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html).
 
 If you do not follow this procedure, and use a pre-packaged ATLAS provided by your package manager (available in most distributions), you will probably get degraded performance compared to a properly installed ATLAS.
 
