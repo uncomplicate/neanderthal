@@ -1,6 +1,7 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.clblock
-  (:require [uncomplicate.clojurecl.core :refer :all]
+  (:require [uncomplicate.commons.core :refer [Releaseable release]]
+            [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.core :refer [transfer! copy! create]]
             [uncomplicate.neanderthal.impl.buffer-block :refer

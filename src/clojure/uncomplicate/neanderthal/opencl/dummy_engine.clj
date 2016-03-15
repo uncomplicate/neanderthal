@@ -1,7 +1,7 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.dummy-engine
   (:refer-clojure :exclude [accessor])
-  (:require [uncomplicate.clojurecl.core :refer [Releaseable release]]
+  (:require [uncomplicate.commons.core :refer [Releaseable release]]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
   (:import [uncomplicate.neanderthal.protocols

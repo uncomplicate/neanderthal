@@ -1,6 +1,6 @@
 (ns uncomplicate.neanderthal.opencl-test
   (:require [midje.sweet :refer :all]
-            [uncomplicate.clojurecl.core :refer [with-release]]
+            [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.neanderthal
              [protocols :refer [factory]]
              [core :refer :all]

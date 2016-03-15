@@ -26,7 +26,7 @@
   (ns test
     (:require [uncomplicate.neanderthal core native opencl]))
   "
-  (:require [uncomplicate.clojurecl.core :refer [release]]
+  (:require [uncomplicate.commons.core :refer [release]]
             [uncomplicate.neanderthal
              [protocols :as p]
              [math :refer [f= pow sqrt]]])

@@ -1,6 +1,6 @@
 (ns uncomplicate.neanderthal.buffer-block-test
   (:require [midje.sweet :refer [facts throws => roughly]]
-            [uncomplicate.clojurecl.core :refer [release with-release]]
+            [uncomplicate.commons.core :refer [release with-release]]
             [uncomplicate.fluokitten.core :refer [fmap! fold foldmap]]
             [uncomplicate.neanderthal.core :refer :all])
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD]))

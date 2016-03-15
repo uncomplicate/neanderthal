@@ -89,8 +89,9 @@ $code"
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
+            [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl.core
-             :refer [with-default with-release finish! *command-queue*]]
+             :refer [with-default finish! *command-queue*]]
             [uncomplicate.neanderthal
              [core :refer [asum dot axpy! mv! mm! transfer!]]
              [native :refer [sv sge]]

@@ -1,6 +1,6 @@
 (ns uncomplicate.neanderthal.real-test
   (:require [midje.sweet :refer [facts throws => roughly]]
-            [uncomplicate.clojurecl.core :refer [release with-release]]
+            [uncomplicate.commons.core :refer [release with-release]]
             [uncomplicate.neanderthal
              [protocols :refer [data-accessor]]
              [core :refer :all]

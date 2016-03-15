@@ -9,7 +9,7 @@
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [transfer! copy! copy dim mrows ncols create-raw trans]]]
-            [uncomplicate.clojurecl.core :refer [Releaseable release]])
+            [uncomplicate.commons.core :refer [Releaseable release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO

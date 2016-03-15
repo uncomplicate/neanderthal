@@ -2,6 +2,7 @@
   uncomplicate.neanderthal.opencl.amd-gcn
   (:refer-clojure :exclude [accessor])
   (:require [clojure.java.io :as io]
+            [uncomplicate.commons.core :refer [Releaseable release]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [toolbox :refer [count-work-groups enq-reduce enq-reduce-horizontal

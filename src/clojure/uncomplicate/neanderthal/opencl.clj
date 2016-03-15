@@ -1,7 +1,8 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl
-  (:require [uncomplicate.clojurecl
-             [core :refer [*context* *command-queue* cl-buffer? release]]
+  (:require [uncomplicate.commons.core :refer [release]]
+            [uncomplicate.clojurecl
+             [core :refer [*context* *command-queue* cl-buffer?]]
              [toolbox :refer [wrap-float wrap-double]]
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal
