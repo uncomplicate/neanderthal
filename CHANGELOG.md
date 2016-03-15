@@ -6,6 +6,7 @@ New features:
 * Streamlined dependencies: no longer need 2 dependencies in project files. The dependency on uncomplicate/neanderthal is enough
 * Comes with Mac OS X build out of the box. No need even for external ATLAS.
 * release and with-release moved from ClojureCL to uncomplicate/commons
+* Support for Fluokitten's fmap!, fmap, fold, foldmap, op...
 
 ## 0.4.0
 

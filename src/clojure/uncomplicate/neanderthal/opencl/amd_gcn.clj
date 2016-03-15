@@ -2,11 +2,11 @@
   uncomplicate.neanderthal.opencl.amd-gcn
   (:refer-clojure :exclude [accessor])
   (:require [clojure.java.io :as io]
-            [uncomplicate.commons.core :refer [Releaseable release]]
+            [uncomplicate.commons.core :refer [Releaseable release wrap-int]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [toolbox :refer [count-work-groups enq-reduce enq-reduce-horizontal
-                              enq-read-int enq-read-double wrap-int]]]
+                              enq-read-int enq-read-double]]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [math :refer [sqrt]]]
