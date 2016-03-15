@@ -51,8 +51,7 @@ Check out [Uncomplicate ClojureCL](http://clojurecl.uncomplicate.org) if you wan
 
 ### Implemented Features
 
-* Data structures: double and single precision vector, double and single precision
-general dense matrix (GE);
+* Data structures: double and single precision vector, double and single precision general dense matrix (GE);
 * BLAS Level 1, 2, and 3 routines;
 * Various Clojure vector and matrix functions (transpositions, submatrices etc.);
 * Fast map, reduce and fold implementations for the provided structures.
@@ -67,58 +66,64 @@ general dense matrix (GE);
 
 1. Add Neanderthal jars to your classpath ([from the Clojars](https://clojars.org/uncomplicate/neanderthal)).
 2. To use the native engine: install ATLAS on your system following the [ATLAS Installation Guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). (see [Requirements](#requirements))
-3. To use the GPU engine: install the drivers (you probably already have that) and an
-OpenCL platform software provided by the vendor of your graphic card ([as in the ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html)).
+3. To use the GPU engine: install the drivers (you probably already have that) and an OpenCL platform software provided by the vendor of your graphic card ([as in the ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html)).
 
 ### With Leiningen
 
-The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependencies to your `project.clj`, just like in [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj):
+The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependency to your `project.clj`, just like in [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj):
 
-```clojure
-[uncomplicate/neanderthal "0.5.0"]
-[uncomplicate/neanderthal-atlas "0.2.0" :classifier "amd64-Linux-gpp-jni"]
-```
+![](http://clojars.org/uncomplicate/neanderthal/latest-version.svg)
 
-Replace `amd64-Linux-gpp-jni` with your system's architecture and OS classifier. If you are not sure what exactly to write, check `(System/getProperty "os.arch")` and `(System/getProperty "os.name")`.
+## Requirements
 
-**MacOSX** will be available in Clojars in the next release. In the meantime, you should download [neanderthal-atlas-0.1.0-x86_64-MacOSX-gpp-jni.jar](https://mega.nz/#!uwB10LDY!Mb_oKJf8X-C9KBQ1haNRVnKcF55cedNYYUQeie2i1HI) and put it in your `.m2` directory.
-
-I will always provide at least the Linux build for the native jar of the library in Clojars. If the library for your OS is not in Clojars, checkout [neanderthal-atlas](https://github.com/uncomplicate/neanderthal-atlas) source and build it with maven using `mvn install`. The build is fully automatic if you have gcc and other related gnu tools. If you can successfully build ATLAS, you already have all the necessary tools.
-
-### Requirements
-
-Neanderthal is a Clojure library packed in two `jar` files, distributed through [Clojars](http://clojars.org). One is a pure Clojure library that you will use directly, and the other contains native JNI bindings for the ATLAS engine for a specific operating system. They follow [maven](http://www.maven.org) (and [leiningen](http://www.leiningen.org)) naming conventions:
-
-* Pure Clojure lib: `groupId` is `uncomplicate` and `artifactId` is `neanderthal`.
-* Native JNI lib: `groupId` is `uncomplicate` and `artifactId` is `neanderthal-atlas` with a classifier for your operating system and architecture, e.g. `amd64-Linux-gpp-jni`.
+Neanderthal's data structures are written in Clojure, so many functions work out of the box. However, you probably need Neanderthal because of its fast BLAS native and/or GPU engines.
 
 ### The native library used by Neanderthal's native engine
 
-This part is relevant for Linux and Windows. Mac OS X ships an optimized BLAS engine out of the box when you install xcode (or whatever is the current name of Apple's huge development package).
+#### Mac OS X
 
-Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared so, dll, or dylib!** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html).
-If you do not follow this procedure, and use a pre-packaged ATLAS provided by your system (if it exists), you will probably get degraded performance compared to a properly installed ATLAS.
+**Works out of the box**. You should have Apple's XCode that comes with Accelerate framework and that's it - no need to fiddle with ATLAS, and you get Apple's highly tuned BLAS engine.
+
+#### Linux - optimized
+
+Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared so** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html).
+
+If you do not follow this procedure, and use a pre-packaged ATLAS provided by your package manager (available in most distributions), you will probably get degraded performance compared to a properly installed ATLAS.
 
 Either way, Neanderthal does not care how ATLAS is provided, as long it is in the system path an was compiled as a shared library. It can even be packed in a jar if that's convenient, and I could make some steps in the future to make
 the "compile it and install ATLAS by yourself" step optional. But, I do not recommend it, other than as a convenience for people who are scared of the terminal and C tools.
 
-**If you know your way around gcc on OS X, or gcc and MinGW on Windows, and are willing to help users of those operating systems by providing the convenient binaries, please [contact me](/articles/community.html).**
-
-#### This is how I installed it on Arch Linux
+This is how I installed it on Arch Linux:
 
 * I had to have gcc (installed by default) and gcc-fortran packages.
-* I followed the aforementioned atlas build instructions to the letter. The only
-critical addition is to add `--shared` flag (explained in the details there, but not a default).
+* I followed the aforementioned atlas build instructions to the letter. The only critical addition is to add `--shared` flag (explained in the details there, but not a default).
 * I had to create a symlink `libatlas.so` in my `/usr/lib`, that points to 'libtatlas.so' (serial)
 or 'libptatlas.so' (parallel) atlas shared binary created by the build script.
 
 That should be all, but YMMV, depending on your hardware and OS installation.
 
+#### Linux - unoptimized, but easy way (NOT recommended)
+
+Use atlas build provided by your package manager. Something like:
+
+``` shell
+sudo pacman -Suy atlas-lapack
+```
+or your distribution's equivalent. It is fine as an easy way to get started, but **does not offer full performance**.
+
+#### Windows
+
+I do not have a copy of Windows, so I do not provide pre-build library for Windows. ATLAS needs [special build instructions for Windows](http://math-atlas.sourceforge.net/atlas_install/node50.html) in addition to  general [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html)
+
+**If you know your way around gcc and MinGW on Windows, and are willing to help users of that operating system by providing the convenient binaries, please [contact me](/articles/community.html).**
+
 ### GPU drivers for the GPU engine
 
-Everything will magically work (no need to compile anything) as long as you have the appropriate hardware (a GPU that supports OpenCL 2.0, which in 2015 means a newer AMD Radeon or FirePro) and install the appropriate drivers and OpenCL platform which you can obtain from the card vendor's website. Kernels supporting pre-OpenCL 2.0 and optimized for Nvidia are planned for later.
+Everything will magically work (no need to compile anything) as long as you have the appropriate hardware (a GPU that supports OpenCL 2.0, which in 2016 means a recent AMD Radeon or FirePro) and install the appropriate drivers and OpenCL platform which you can obtain from the card vendor's website. Kernels supporting pre-OpenCL 2.0 and optimized for Nvidia are planned for later.
 
 Follow the [ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
+
+However, since Neanderthal also uses ClojureCL, and JOCL binaries **for Mac OS X* are still not in Maven Central, repl will start, but trying to evaluate will raise JOCL mac binary missing exception. Until someone contributes JOCL build, you'll have to build it yourself. Please find more at [JOCL website](http://jocl.org)
 
 ## Where to Go Next
 
