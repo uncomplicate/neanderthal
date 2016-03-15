@@ -1,4 +1,4 @@
-(defproject uncomplicate/neanderthal "0.5.0-SNAPSHOT"
+(defproject uncomplicate/neanderthal "0.5.0"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -7,8 +7,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [uncomplicate/fluokitten "0.4.0"]
-                 [uncomplicate/clojurecl "0.5.0-SNAPSHOT"]
-                 [uncomplicate/neanderthal-native "0.5.0-20160315.132712-3"]
+                 [uncomplicate/clojurecl "0.5.0"]
+                 [uncomplicate/neanderthal-native "0.5.0"]
                  [org.apache.commons/commons-math3 "3.6"]
                  [vertigo "0.1.4"]]
 

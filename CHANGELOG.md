@@ -1,5 +1,12 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.5.0
+
+New features:
+* Streamlined dependencies: no longer need 2 dependencies in project files. The dependency on uncomplicate/neanderthal is enough
+* Comes with Mac OS X build out of the box. No need even for external ATLAS.
+* release and with-release moved from ClojureCL to uncomplicate/commons
+
 ## 0.4.0
 
 New features:
