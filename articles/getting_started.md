@@ -35,7 +35,7 @@ Here is how we create two double-precision vectors and compute their dot product
 This is one of the ways to multiply matrices:
 
 ```clojure
-(def a (dge 3 2 [1 2 3 4 5 6))
+(def a (dge 3 2 [1 2 3 4 5 6]))
 (def b (dge 2 3 [10 20 30 40 50 60]))
 (mm a b)
 ```
