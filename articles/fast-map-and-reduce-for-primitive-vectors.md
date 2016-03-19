@@ -1,5 +1,5 @@
 ---
-title: "Why You Might Need Neanderthal Even Without Matrices"
+title: "Fast Map and Reduce for Primitive Vectors and Matrices"
 Author: Dragan Djuric
 layout: article
 ---
