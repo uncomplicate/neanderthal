@@ -97,6 +97,7 @@ This is how I installed it on Arch Linux:
 
 * I had to have gcc (installed by default) and gcc-fortran packages.
 * I followed the aforementioned atlas build instructions to the letter. The only critical addition is to add `--shared` flag (explained in the details there, but not a default).
+* I had to disable CPU throttling with this command in the shell: `cpupower frequency-set -g performance`
 * I had to create a symlink `libatlas.so` in my `/usr/lib`, that points to 'libsatlas.so' (serial)
 or 'libtatlas.so' (parallel) atlas shared binary created by the build script.
 
