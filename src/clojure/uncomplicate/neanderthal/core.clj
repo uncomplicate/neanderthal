@@ -51,6 +51,9 @@
   [x]
   (instance? Matrix x))
 
+(defn compatible? [x y]
+  (p/compatible x y))
+
 (defmulti transfer!
   "Transfers the data from source in one type of memory, to the appropriate
   destination in another type of memory. Typically you would use it when you want to
@@ -594,7 +597,7 @@
                  (format p/DIMENSION_MSG (ecount x) (ecount y)))))
        (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
      y))
-  ([x y length offset-x offset-y]
+  ([x y offset-x length offset-y]
    (if (not (identical? x y))
      (if (p/compatible x y)
        (if (<= (long length) (min (- (ecount x) (long offset-x))
@@ -626,10 +629,10 @@
            (release res)
            (throw e))))
      res))
-  ([x length offset]
+  ([x offset length]
    (let [res (create-raw (p/factory x) length)]
      (try
-       (copy! x res length offset 0)
+       (copy! x res offset length 0)
        (catch Exception e
          (do
            (release res)

@@ -1,11 +1,12 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.clblock
   (:require [uncomplicate.commons.core :refer [Releaseable release]]
+            [uncomplicate.fluokitten.protocols :refer [Magma Monoid]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal.protocols :refer :all]
-            [uncomplicate.neanderthal.core :refer [transfer! copy! create]]
+            [uncomplicate.neanderthal.core :refer [transfer! copy! create sum]]
             [uncomplicate.neanderthal.impl.buffer-block :refer
-             [float-accessor double-accessor
+             [vector-op float-accessor double-accessor
               ->RealBlockVector ->RealGeneralMatrix]]
             [uncomplicate.neanderthal.impl.cblas :refer
              [cblas-single cblas-double]])
@@ -83,6 +84,9 @@
     (let [r (raw this)]
       (.initialize claccessor (.buffer ^Block r))
       r))
+  Monoid
+  (id [x]
+    (create-vector fact 0 (.createDataSource claccessor 0) nil))
   EngineProvider
   (engine [_]
     eng)
@@ -127,6 +131,10 @@
     (do
       (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
       this)))
+
+(extend CLBlockVector
+  Magma
+  {:op vector-op})
 
 (defmethod print-method CLBlockVector
   [x ^java.io.Writer w]
@@ -201,6 +209,9 @@
     (let [r (raw this)]
       (.initialize claccessor (.buffer ^Block r))
       r))
+  Monoid
+  (id [a]
+    (create-matrix fact 0 0 (.createDataSource claccessor 0) nil))
   Block
   (entryType [_]
     entry-type)

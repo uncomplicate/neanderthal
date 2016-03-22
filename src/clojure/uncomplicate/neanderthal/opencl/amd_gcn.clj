@@ -142,8 +142,10 @@
   (subcopy [_ x y kx lx ky]
     (if (< 0 n)
       (do
-        (set-arg copy-kernel 1 (wrap-int (+ ofst (long kx))))
-        (set-args! copy-kernel 3 (.buffer y) (wrap-int (+ (.offset y) (long ky)))
+        (set-arg! copy-kernel 1 (wrap-int (+ ofst kx)))
+        (set-args! copy-kernel 3
+                   (.buffer y)
+                   (wrap-int (+ (.offset y) ky))
                    (wrap-int (.stride y)))
         (enq-nd! queue copy-kernel (work-size-1d lx)))
       queue))

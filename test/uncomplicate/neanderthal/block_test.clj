@@ -1,7 +1,7 @@
-(ns uncomplicate.neanderthal.buffer-block-test
+(ns uncomplicate.neanderthal.block-test
   (:require [midje.sweet :refer [facts throws => roughly]]
             [uncomplicate.commons.core :refer [release with-release]]
-            [uncomplicate.fluokitten.core :refer [fmap! fold foldmap]]
+            [uncomplicate.fluokitten.core :refer [fmap! fold foldmap op]]
             [uncomplicate.neanderthal.core :refer :all])
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD]))
 
@@ -38,6 +38,28 @@
            (x -1) => (throws IndexOutOfBoundsException)
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LD x 0) => 1.0)))
+
+(defn test-op-vector [factory]
+  (facts
+   "RealBlockVector should be a Monoid."
+   (with-release [x (create-vector factory [1 2 3])
+                  y (create-vector factory [4 5])
+                  z (create-vector factory [])
+                  v1 (op x y)
+                  v2 (op y x)
+                  v3 (op x y x)
+                  v4 (op x y x y)
+                  v5 (op x y x y z z z x)
+                  t1 (create-vector factory [1 2 3 4 5])
+                  t2 (create-vector factory [4 5 1 2 3])
+                  t3 (create-vector factory [1 2 3 4 5 1 2 3])
+                  t4 (create-vector factory [1 2 3 4 5 1 2 3 4 5])
+                  t5 (create-vector factory [1 2 3 4 5 1 2 3 4 5 1 2 3])]
+     v1 => t1
+     v2 => t2
+     v3 => t3
+     v4 => t4
+     v5 => t5)))
 
 (defn test-functor-vector [factory]
   (let [fx (fn [] (create-vector factory [1 2 3 4]))
@@ -114,6 +136,28 @@
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LLD x 0 0) => 1.0)))
 
+(defn test-op-ge-matrix [factory]
+  (facts
+   "RealGeneralMatrix should be a Monoid."
+   (with-release [x (create-ge-matrix factory 2 3 (range 6))
+                  y (create-ge-matrix factory 2 2 [6 7 8 9])
+                  z (create-ge-matrix factory 2 0 [])
+                  v1 (op x y)
+                  v2 (op y x)
+                  v3 (op x y x)
+                  v4 (op x y x y)
+                  v5 (op x y x y z z z x)
+                  t1 (create-ge-matrix factory 2 5 (range 10))
+                  t2 (create-ge-matrix factory 2 5 [6 7 8 9 0 1 2 3 4 5])
+                  t3 (create-ge-matrix factory 2 8 (op (range 6) [6 7 8 9] (range 6)))
+                  t4 (create-ge-matrix factory 2 10 (op (range 10) (range 10)))
+                  t5 (create-ge-matrix factory 2 13 (op (range 10) (range 10) (range 6)))]
+     v1 => t1
+     v2 => t2
+     v3 => t3
+     v4 => t4
+     v5 => t5)))
+
 (defn test-functor-ge-matrix [factory]
   (let [fx (fn [] (create-ge-matrix factory 2 3 [1 2 3 4 5 6]))
         fy (fn [] (create-ge-matrix factory 2 3 [2 3 4 5 6 7]))
@@ -176,11 +220,13 @@
     (test-equality factory)
     (test-release factory)
     (test-ifn-vector factory)
+    (test-op-vector factory)
     (test-functor-vector factory)
     (test-fold-vector factory)
     (test-reducible-vector factory)
     (test-seq-vector factory)
     (test-ifn-ge-matrix factory)
+    (test-op-ge-matrix factory)
     (test-functor-ge-matrix factory)
     (test-fold-ge-matrix factory)
     (test-reducible-ge-matrix factory)))

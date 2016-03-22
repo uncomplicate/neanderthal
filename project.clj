@@ -1,4 +1,4 @@
-(defproject uncomplicate/neanderthal "0.5.1-SNAPSHOT"
+(defproject uncomplicate/neanderthal "0.6.0-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -26,11 +26,11 @@
   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
 
-  :aot [uncomplicate.neanderthal.protocols
-          uncomplicate.neanderthal.impl.buffer-block
-          uncomplicate.neanderthal.impl.cblas
-          uncomplicate.neanderthal.opencl.clblock
-          uncomplicate.neanderthal.opencl.amd-gcn]
+  #_(:aot [uncomplicate.neanderthal.protocols
+           uncomplicate.neanderthal.impl.buffer-block
+           uncomplicate.neanderthal.impl.cblas
+           uncomplicate.neanderthal.opencl.clblock
+           uncomplicate.neanderthal.opencl.amd-gcn])
 
   :profiles {:dev {:plugins [[lein-midje "3.1.3"]
                              [lein-codox "0.9.4"]]

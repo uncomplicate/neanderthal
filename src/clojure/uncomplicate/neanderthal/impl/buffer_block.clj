@@ -440,14 +440,13 @@
    (throw (UnsupportedOperationException. "Vector foldmap support up to 4 vectors."))))
 
 (defn ^:private vector-op* [^Vector x & ws]
-  (let [res ^Vector (create-raw (factory x) (transduce (map dim) + (.dim x) ws))
-        eng ^BLASPlus (engine res)]
+  (let [res ^Vector (create-raw (factory x) (transduce (map dim) + (.dim x) ws))]
    (try
-     (.subcopy eng x res 0 (.dim x) 0)
+     (.subcopy ^BLASPlus (engine x) x res 0 (.dim x) 0)
      (reduce (fn ^long [^long pos ^Vector w]
                (if (compatible res w)
                  (do
-                   (.subcopy eng w res 0 (.dim w) pos )
+                   (.subcopy ^BLASPlus (engine w) w res 0 (.dim w) pos)
                    (+ pos (.dim w)))
                  (throw (UnsupportedOperationException.
                          (format INCOMPATIBLE_BLOCKS_MSG res w)))))
@@ -459,7 +458,7 @@
          (release res)
          (throw e))))))
 
-(defn ^:private vector-op
+(defn vector-op
   ([^Vector x ^Vector y]
    (vector-op* x y))
   ([^Vector x ^Vector y ^Vector z]
@@ -656,7 +655,7 @@
           (release res)
           (throw e))))))
 
-(defn ^:private matrix-op
+(defn matrix-op
   ([^Matrix x ^Matrix y]
    (matrix-op* x y))
   ([^Matrix x ^Matrix y ^Matrix z]
