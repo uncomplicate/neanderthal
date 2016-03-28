@@ -264,42 +264,9 @@ __kernel void imin_reduce (__global uint* iacc, __global double* vacc,
     work_group_reduction_imax(iacc, vacc, ix, (double)(-x[ix]));
 }
 
-
-
 // ||||||||||||||||       BLAS 2      ||||||||||||||||||||||||||||||||||||||||||
 
 // ================== GEMV =====================================================
-
-inline void work_group_reduction_sum_horizontal
-(__global REAL* acc, const REAL value) {
-
-    uint local_row = get_local_id(0);
-    uint local_col = get_local_id(1);
-
-    __local REAL lacc[WGSm][WGSn];
-    lacc[local_row][local_col] = value;
-
-    work_group_barrier(CLK_LOCAL_MEM_FENCE);
-
-    REAL pacc = value;
-    uint i = get_local_size(1);
-    while (i > 0) {
-        bool include_odd = (i > ((i >> 1) << 1)) && (local_col == ((i >> 1) - 1));
-        i >>= 1;
-        if (include_odd) {
-            pacc += lacc[local_row][local_col + i + 1];
-        }
-        if (local_col < i) {
-            pacc += lacc[local_row][local_col + i];
-            lacc[local_row][local_col] = pacc;
-        }
-        work_group_barrier(CLK_LOCAL_MEM_FENCE);
-    }
-
-    if(local_col == 0) {
-        acc[get_global_size(0) * get_group_id(1) + get_global_id(0)] = pacc;
-    }
-}
 
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void sum_reduction_horizontal (__global REAL* acc) {
