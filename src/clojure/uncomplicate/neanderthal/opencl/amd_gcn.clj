@@ -5,7 +5,7 @@
             [uncomplicate.commons.core :refer [Releaseable release wrap-int]]
             [uncomplicate.clojurecl
              [core :refer :all]
-             [toolbox :refer [count-work-groups enq-reduce enq-reduce-horizontal
+             [toolbox :refer [count-work-groups enq-reduce
                               enq-read-int enq-read-double]]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
@@ -237,9 +237,8 @@
       (set-arg! gemv-reduce-kernel 1 (wrap-prim claccessor alpha))
       (set-args! gemv-reduce-kernel 5 (.buffer x) (wrap-int (.offset x))
                  (wrap-int (.stride x)))
-      (enq-reduce-horizontal queue gemv-reduce-kernel
-                             sum-reduction-horizontal-kernel
-                             WGSn m n)
+      (enq-reduce queue gemv-reduce-kernel sum-reduction-horizontal-kernel
+                  WGSn m n :horizontal)
       (set-args! axpby-kernel 4 (wrap-prim claccessor beta) (.buffer y)
                  (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
