@@ -376,9 +376,9 @@
         accessor ctx queue
         (build-program!
          (program-with-source ctx src)
-         (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSn=%d -DTS=%d -DWPT=%d"
+         (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSm=%d -DWGSn=%d -DTS=%d -DWPT=%d"
                  (.entryType ^DataAccessor accessor) Double/TYPE
-                 (.entryType ^DataAccessor accessor) wgs wgsn ts wpt)
+                 (.entryType ^DataAccessor accessor) wgs (long (/ wgs wgsn)) wgsn ts wpt)
          nil)
         wgs wgsn ts wpt)))
     ([create-accessor ctx queue]
