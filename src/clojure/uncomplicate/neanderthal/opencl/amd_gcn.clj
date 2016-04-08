@@ -91,25 +91,25 @@
       (do
         (set-args! dot-reduce-kernel 4 (.buffer y) (wrap-int (.offset y))
                    (wrap-int (.stride y)))
-        (enq-reduce queue dot-reduce-kernel sum-reduction-kernel WGS n)
+        (enq-reduce queue dot-reduce-kernel sum-reduction-kernel n WGS)
         (enq-read-double queue reduce-acc))
       0.0))
   (nrm2 [_ _]
     (if (< 0 n)
       (do
-        (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel WGS n)
+        (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel n WGS)
         (sqrt (enq-read-double queue reduce-acc)))
       0.0))
   (asum [_ _]
     (if (< 0 n)
       (do
-        (enq-reduce queue asum-reduce-kernel sum-reduction-kernel WGS n)
+        (enq-reduce queue asum-reduce-kernel sum-reduction-kernel n WGS)
         (enq-read-double queue reduce-acc))
       0.0))
   (iamax [_ _]
     (if (< 0 n)
       (do
-        (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel WGS n)
+        (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel n WGS)
         (enq-read-int queue reduce-iacc))
       0))
   (rot [_ _ y c s]
@@ -152,25 +152,25 @@
   (sum [_ x]
     (if (< 0 n)
       (do
-        (enq-reduce queue sum-reduce-kernel sum-reduction-kernel WGS n)
+        (enq-reduce queue sum-reduce-kernel sum-reduction-kernel n WGS)
         (enq-read-double queue reduce-acc))
       0.0))
   (imax [_ x]
     (if (< 0 n)
       (do
-        (enq-reduce queue imax-reduce-kernel imax-reduction-kernel WGS n)
+        (enq-reduce queue imax-reduce-kernel imax-reduction-kernel n WGS)
         (enq-read-int queue reduce-iacc))
       0))
   (imin [_ x]
     (if (< 0 n)
       (do
-        (enq-reduce queue imin-reduce-kernel imax-reduction-kernel WGS n)
+        (enq-reduce queue imin-reduce-kernel imax-reduction-kernel n WGS)
         (enq-read-int queue reduce-iacc))
       0)))
 
 ;; ======================= Dense Matrix ========================================
 
-(deftype GCNMatrixEngine [^long WGSn ^long TS ^long WPT
+(deftype GCNMatrixEngine [^long WGSm ^long WGSn ^long TS ^long WPT
                           claccessor queue
                           ^long m ^long n ^long ofst ^long ld ^long ord
                           eq-flag
@@ -238,7 +238,7 @@
       (set-args! gemv-reduce-kernel 5 (.buffer x) (wrap-int (.offset x))
                  (wrap-int (.stride x)))
       (enq-reduce queue gemv-reduce-kernel sum-reduction-horizontal-kernel
-                  WGSn m n :horizontal)
+                  m n WGSm WGSn)
       (set-args! axpby-kernel 4 (wrap-prim claccessor beta) (.buffer y)
                  (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue axpby-kernel linear-work-size)))
@@ -259,7 +259,7 @@
                              (* RTS (count-work-groups TS bn)))))))
 
 (deftype GCNFactory [^DataAccessor claccessor ctx queue prog
-                     ^long WGS WGSn TS WPT]
+                     ^long WGS ^long WGSm ^long WGSn ^long TS ^long WPT]
   Releaseable
   (release [_]
     (release prog))
@@ -340,7 +340,7 @@
           cl-ofst (wrap-int ofst)
           cl-ld (wrap-int ld)
           cl-ord (wrap-int ord)]
-      (->GCNMatrixEngine WGSn TS WPT
+      (->GCNMatrixEngine WGSm WGSn TS WPT
                          claccessor queue
                          m n ofst ld ord
                          cl-eq-flag
@@ -370,7 +370,7 @@
 (let [src [(slurp (io/resource "uncomplicate/clojurecl/kernels/reduction.cl"))
            (slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))]]
   (defn gcn-factory
-    ([create-accessor ctx queue wgs wgsn ts wpt]
+    ([create-accessor ctx queue wgs wgsm wgsn ts wpt]
      (let [accessor (create-accessor ctx queue)]
        (->GCNFactory
         accessor ctx queue
@@ -378,8 +378,8 @@
          (program-with-source ctx src)
          (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSm=%d -DWGSn=%d -DTS=%d -DWPT=%d"
                  (.entryType ^DataAccessor accessor) Double/TYPE
-                 (.entryType ^DataAccessor accessor) wgs (long (/ wgs wgsn)) wgsn ts wpt)
+                 (.entryType ^DataAccessor accessor) wgs wgsm wgsn ts wpt)
          nil)
-        wgs wgsn ts wpt)))
+        wgs wgsm wgsn ts wpt)))
     ([create-accessor ctx queue]
-     (gcn-factory create-accessor ctx queue 256 16 32 4))))
+     (gcn-factory create-accessor ctx queue 256 16 16 32 4))))
