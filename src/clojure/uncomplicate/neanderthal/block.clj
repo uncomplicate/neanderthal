@@ -13,5 +13,5 @@
 (defn order ^long [x]
   (.order ^Block x))
 
-(defn entry-count ^long [x]
-  (.count ^Block x))
+(defn block? [x]
+  (instance? Block x))

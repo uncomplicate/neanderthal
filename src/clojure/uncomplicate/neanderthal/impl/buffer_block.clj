@@ -9,7 +9,7 @@
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [transfer! copy! copy dim mrows ncols create-raw trans]]]
-            [uncomplicate.commons.core :refer [Releaseable release]])
+            [uncomplicate.commons.core :refer [Releaseable release with-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
@@ -617,7 +617,7 @@
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x g f init y z v ws]
-   (throw (UnsupportedOperationException. "Matrix fold support up to 4 matrices."))))
+   (throw (UnsupportedOperationException. "Matrix fold supports up to 4 matrices."))))
 
 (defn ^:private matrix-op* [^Matrix x & ws]
   (let [res ^Matrix (if (column-major? x)
@@ -627,25 +627,25 @@
                       (trans (create-raw (factory x)
                                          (.ncols x)
                                          (transduce (map mrows) + (.mrows x) ws))))
-        eng ^BLASPlus (engine res)
-        column-reducer (fn ^long [^long pos ^Matrix w]
-                         (if (compatible res w)
-                           (do
-                             (.copy eng w (.submatrix ^Matrix res 0 pos
-                                                      (.mrows w) (.ncols w)))
-                             (+ pos (.ncols w)))
-                           (throw (UnsupportedOperationException.
-                                   (format INCOMPATIBLE_BLOCKS_MSG res w)))))
-        row-reducer (fn ^long [^long pos ^Matrix w]
-                      (if (compatible res w)
-                        (do
-                          (.copy eng w (.submatrix ^Matrix res pos 0
-                                                   (.mrows w) (.ncols w)))
-                          (+ pos (.mrows w)))
-                        (throw (UnsupportedOperationException.
-                                (format INCOMPATIBLE_BLOCKS_MSG res w)))))]
+        column-reducer
+        (fn ^long [^long pos ^Matrix w]
+          (if (compatible res w)
+            (with-release [subres (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w))]
+              (.copy ^BLASPlus (engine w) w subres)
+              (+ pos (.ncols w)))
+            (throw (UnsupportedOperationException.
+                    (format INCOMPATIBLE_BLOCKS_MSG res w)))))
+        row-reducer
+        (fn ^long [^long pos ^Matrix w]
+          (if (compatible res w)
+            (with-release [subres (.submatrix ^Matrix res pos 0 (.mrows w) (.ncols w))]
+              (.copy  ^BLASPlus (engine w) w subres)
+              (+ pos (.mrows w)))
+            (throw (UnsupportedOperationException.
+                    (format INCOMPATIBLE_BLOCKS_MSG res w)))))]
     (try
-      (.copy eng x (.submatrix ^Matrix res 0 0 (.mrows x) (.ncols x)))
+      (with-release [subres0 (.submatrix ^Matrix res 0 0 (.mrows x) (.ncols x))]
+        (.copy ^BLASPlus (engine x) x subres0))
       (if (column-major? x)
         (reduce column-reducer (.ncols x) ws)
         (reduce row-reducer (.mrows x) ws))
@@ -763,8 +763,12 @@
   Container
   (raw [_]
     (create-vector fact n (.createDataSource accessor n) nil))
+  (raw [_ fact]
+    (create-vector fact n (.createDataSource (data-accessor fact) n) nil))
   (zero [this]
     (raw this))
+  (zero [this fact]
+    (raw this fact))
   Monoid
   (id [x]
     (create-vector fact 0 (.createDataSource accessor 0) nil))
@@ -881,8 +885,12 @@
   Container
   (raw [_]
     (create-matrix fact m n (.createDataSource accessor (* m n)) ord))
+  (raw [_ fact]
+    (create-matrix fact m n (.createDataSource (data-accessor fact) (* m n)) ord))
   (zero [this]
     (raw this))
+  (zero [this fact]
+    (raw this fact))
   Monoid
   (id [a]
     (create-matrix fact 0 0 (.createDataSource accessor 0) nil))

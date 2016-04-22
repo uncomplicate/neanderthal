@@ -33,7 +33,8 @@
   (real-test/test-mm factory))
 
 (defn block-tests [factory]
-  (block-test/test-op-vector factory))
+  (block-test/test-op-vector factory)
+  (block-test/test-op-ge-matrix factory))
 
 (with-default
   (with-gcn-engine *command-queue*

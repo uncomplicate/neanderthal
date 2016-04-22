@@ -175,14 +175,18 @@
 (defn raw
   "Returns an uninitialized instance of the same type and dimension(s)
   as x, which can be neanderthal container."
-  [x]
-  (p/raw x))
+  ([x]
+   (p/raw x))
+  ([factory x]
+   (p/raw x factory)))
 
 (defn zero
   "Returns an instance of the same type and dimension(s) as the container x,
   filled with 0."
-  [x]
-  (p/zero x))
+  ([x]
+   (p/zero x))
+  ([factory x]
+   (p/zero x factory)))
 
 ;; ================= Vector ====================================================
 

@@ -6,7 +6,7 @@
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.core :refer [transfer! copy! create sum]]
             [uncomplicate.neanderthal.impl.buffer-block :refer
-             [vector-op float-accessor double-accessor
+             [vector-op matrix-op float-accessor double-accessor
               ->RealBlockVector ->RealGeneralMatrix]]
             [uncomplicate.neanderthal.impl.cblas :refer
              [cblas-single cblas-double]])
@@ -205,9 +205,14 @@
   Container
   (raw [_]
     (create-matrix fact m n (.createDataSource claccessor (* m n)) ord))
+  (raw [_ fact]
+    (create-matrix fact m n (.createDataSource (data-accessor fact) (* m n)) ord))
   (zero [this]
-    (let [r (raw this)]
-      (.initialize claccessor (.buffer ^Block r))
+    (zero this fact))
+  (zero [this fact]
+    (let [r (raw this fact)
+          acc (data-accessor fact)]
+      (.initialize acc (.buffer ^Block r))
       r))
   Monoid
   (id [a]
@@ -268,6 +273,10 @@
     (do
       (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
       this)))
+
+(extend CLGeneralMatrix
+  Magma
+  {:op matrix-op})
 
 (defmethod transfer! [CLGeneralMatrix CLGeneralMatrix]
   [source destination]

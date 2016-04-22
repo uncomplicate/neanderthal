@@ -10,7 +10,8 @@
                  [uncomplicate/fluokitten "0.4.0"]
                  [uncomplicate/clojurecl "0.6.0-SNAPSHOT"]
                  [uncomplicate/neanderthal-native "0.5.0"]
-                 [org.apache.commons/commons-math3 "3.6"]
+                 [org.jocl/jocl-blast "0.0.1-SNAPSHOT"]
+                 [org.apache.commons/commons-math3 "3.6.1"]
                  [vertigo "0.1.4"]]
 
   :codox {:src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"

@@ -27,8 +27,8 @@
   (unmap [this mapped]))
 
 (defprotocol Container
-  (raw [this])
-  (zero [this]))
+  (raw [this] [this factory])
+  (zero [this] [this factory]))
 
 (def ^:const ROW_MAJOR 101)
 
