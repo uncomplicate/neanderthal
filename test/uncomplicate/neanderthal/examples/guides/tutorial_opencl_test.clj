@@ -354,7 +354,7 @@ demanding enough."
 "$text
 
 CPU: 17678 ms
-GPU: 721 ms
+GPU: 627 ms
 
 That's 25 times faster than the CPU! But, still, shouldn't it be even faster?
 You've probably seen those benchmarks with 1000x speed improvements!

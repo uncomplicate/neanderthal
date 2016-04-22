@@ -2,115 +2,113 @@
   uncomplicate.neanderthal.opencl.amd-gcn
   (:refer-clojure :exclude [accessor])
   (:require [clojure.java.io :as io]
-            [uncomplicate.commons.core :refer [Releaseable release wrap-int]]
+            [uncomplicate.commons.core
+             :refer [Releaseable release with-release wrap-int]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [toolbox :refer [count-work-groups enq-reduce
                               enq-read-int enq-read-double]]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [math :refer [sqrt]]]
+             [block :refer :all]
+             [math :refer [sqrt]]
+             [core :refer [dim mrows ncols]]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
   (:import [uncomplicate.clojurecl.core WorkSize CLBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Block Matrix DataAccessor]))
 
-(deftype GCNVectorEngine [^long WGS
-                          claccessor queue cl-buf
-                          ^long n ^long ofst ^long strd
-                          eq-flag
-                          reduce-acc
-                          reduce-iacc
-                          linear-work-size
-                          equals-vector-kernel
-                          swap-kernel
-                          copy-kernel
-                          scal-kernel
-                          axpy-kernel
-                          sum-reduction-kernel
-                          imax-reduction-kernel
-                          dot-reduce-kernel
-                          nrm2-reduce-kernel
-                          asum-reduce-kernel
-                          iamax-reduce-kernel
-                          sum-reduce-kernel
-                          imax-reduce-kernel
-                          imin-reduce-kernel]
+(deftype GCNVectorEngine [ctx queue prog claccessor ^long WGS ]
 
   Releaseable
   (release [_]
-    (and
-     (release eq-flag)
-     (release reduce-acc)
-     (release reduce-iacc)
-     (release equals-vector-kernel)
-     (release swap-kernel)
-     (release copy-kernel)
-     (release scal-kernel)
-     (release axpy-kernel)
-     (release sum-reduction-kernel)
-     (release imax-reduction-kernel)
-     (release dot-reduce-kernel)
-     (release nrm2-reduce-kernel)
-     (release asum-reduce-kernel)
-     (release iamax-reduce-kernel)
-     (release sum-reduce-kernel)
-     (release imax-reduce-kernel)
-     (release imin-reduce-kernel)))
+    true)
   BlockEngine
-  (equals-block [_ _ y]
-    (if (< 0 n)
-      (let [res (wrap-int 0)]
-        (set-args! equals-vector-kernel 4 (.buffer ^Block y)
-                   (wrap-int (.offset ^Block y)) (wrap-int (.stride ^Block y)))
-        (enq-fill! queue eq-flag res)
-        (set-arg! equals-vector-kernel 0 eq-flag)
-        (enq-nd! queue equals-vector-kernel linear-work-size)
-        (enq-read! queue eq-flag res)
-        (= 0 (aget res 0)))
+  (equals-block [_ x y]
+    (if (< 0 (dim x))
+      (with-release [equals-vector-kernel (kernel prog "equals_vector")
+                     eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
+        (let [res (wrap-int 0)]
+          (enq-fill! queue eq-flag-buf res)
+          (set-args! equals-vector-kernel eq-flag-buf
+                     (.buffer x) (offset-array x) (stride-array x)
+                     (.buffer y) (offset-array y) (stride-array y))
+          (enq-nd! queue equals-vector-kernel (work-size-1d (dim x)))
+          (enq-read! queue eq-flag-buf res)
+          (= 0 (aget res 0))))
       true))
   BLAS
-  (swap [_ _ y]
-    (if (< 0 n)
-      (do
-        (set-arg! swap-kernel 1 (wrap-int ofst))
-        (set-args! swap-kernel 3 (.buffer y) (wrap-int (.offset y))
-                   (wrap-int (.stride y)))
-        (enq-nd! queue swap-kernel linear-work-size))
+  (swap [_ x y]
+    (if (< 0 (dim x))
+      (with-release [swap-kernel (kernel prog "swap")]
+        (set-args! swap-kernel
+                   (.buffer x) (offset-array x) (stride-array x)
+                   (.buffer y) (offset-array y) (stride-array y))
+        (enq-nd! queue swap-kernel (work-size-1d (dim x))))
       queue))
   (copy [_ x y]
-    (if (< 0 n)
-      (do
-        (set-arg! copy-kernel 1 (wrap-int ofst))
-        (set-args! copy-kernel 3 (.buffer y) (wrap-int (.offset y))
-                   (wrap-int (.stride y)))
-        (enq-nd! queue copy-kernel linear-work-size))
+    (if (< 0 (dim x))
+      (with-release [copy-kernel (kernel prog "copy")]
+        (set-args! copy-kernel
+                   (.buffer x) (offset-array x) (stride-array x)
+                   (.buffer y) (offset-array y) (stride-array y))
+        (enq-nd! queue copy-kernel (work-size-1d (dim x))))
       queue))
-  (dot [_ _ y]
-    (if (< 0 n)
-      (do
-        (set-args! dot-reduce-kernel 4 (.buffer y) (wrap-int (.offset y))
-                   (wrap-int (.stride y)))
-        (enq-reduce queue dot-reduce-kernel sum-reduction-kernel n WGS)
+  (dot [_ x y]
+    (if (< 0 (dim x))
+      (with-release [dot-reduce-kernel (kernel prog "dot_reduce")
+                     sum-reduction-kernel (kernel prog "sum_reduction")
+                     reduce-acc
+                     (cl-buffer ctx
+                                (* Double/BYTES (count-work-groups WGS (dim x)))
+                                :read-write)]
+        (set-args! sum-reduction-kernel reduce-acc)
+        (set-args! dot-reduce-kernel reduce-acc
+                   (.buffer x) (offset-array x) (stride-array x)
+                   (.buffer y) (offset-array y) (stride-array y))
+        (enq-reduce queue dot-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (enq-read-double queue reduce-acc))
       0.0))
-  (nrm2 [_ _]
-    (if (< 0 n)
-      (do
-        (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel n WGS)
+  (nrm2 [_ x]
+    (if (< 0 (dim x))
+      (with-release [nrm2-reduce-kernel (kernel prog "nrm2_reduce")
+                     sum-reduction-kernel (kernel prog "sum_reduction")
+                     reduce-acc
+                     (cl-buffer ctx
+                                (* Double/BYTES (count-work-groups WGS (dim x)))
+                                :read-write)]
+        (set-args! sum-reduction-kernel reduce-acc)
+        (set-args! nrm2-reduce-kernel
+                   reduce-acc (.buffer x) (offset-array x) (stride-array x))
+        (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (sqrt (enq-read-double queue reduce-acc)))
       0.0))
-  (asum [_ _]
-    (if (< 0 n)
-      (do
-        (enq-reduce queue asum-reduce-kernel sum-reduction-kernel n WGS)
+  (asum [_ x]
+    (if (< 0 (dim x))
+      (with-release [asum-reduce-kernel (kernel prog "asum_reduce")
+                     sum-reduction-kernel (kernel prog "sum_reduction")
+                     reduce-acc
+                     (cl-buffer ctx
+                                (* Double/BYTES (count-work-groups WGS (dim x)))
+                                :read-write)]
+        (set-args! sum-reduction-kernel reduce-acc)
+        (set-args! asum-reduce-kernel
+                   reduce-acc (.buffer x) (offset-array x) (stride-array x))
+        (enq-reduce queue asum-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (enq-read-double queue reduce-acc))
       0.0))
-  (iamax [_ _]
-    (if (< 0 n)
-      (do
-        (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel n WGS)
-        (enq-read-int queue reduce-iacc))
+  (iamax [_ x]
+    (if (< 0 (dim x))
+      (let [wgcount (count-work-groups WGS (dim x))]
+        (with-release [iamax-reduce-kernel (kernel prog "iamax_reduce")
+                       imax-reduction-kernel (kernel prog "imax_reduction")
+                       reduce-acc (cl-buffer ctx (* Double/BYTES wgcount) :read-write)
+                       reduce-iacc (cl-buffer ctx (* Integer/BYTES wgcount) :read-write)]
+          (set-args! imax-reduction-kernel reduce-iacc reduce-acc)
+          (set-args! iamax-reduce-kernel reduce-iacc reduce-acc
+                     (.buffer x) (offset-array x) (stride-array x))
+          (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel (dim x) WGS)
+          (enq-read-int queue reduce-iacc)))
       0))
   (rot [_ _ y c s]
     (throw (UnsupportedOperationException.
@@ -124,153 +122,172 @@
   (rotmg [_ _ args]
     (throw (UnsupportedOperationException.
             "TODO.")))
-  (scal [_ alpha _];;TODO zero-length, (< 0 n)
-    (if (< 0 n)
-      (do
-        (set-args! scal-kernel 0 (wrap-prim claccessor alpha))
-        (enq-nd! queue scal-kernel linear-work-size))
+  (scal [_ alpha x]
+    (if (< 0 (dim x))
+      (with-release [scal-kernel (kernel prog "scal")]
+        (set-args! scal-kernel
+                   (wrap-prim claccessor alpha)
+                   (.buffer x) (offset-array x) (stride-array x))
+        (enq-nd! queue scal-kernel (work-size-1d (dim x))))
       queue))
   (axpy [_ alpha x y]
-    (if (< 0 n)
-      (do
-        (set-args! axpy-kernel 0 (wrap-prim claccessor alpha))
-        (set-args! axpy-kernel 4 (.buffer y) (wrap-int (.offset y))
-                   (wrap-int (.stride y)))
-        (enq-nd! queue axpy-kernel linear-work-size))
+    (if (< 0 (dim x))
+      (with-release [axpy-kernel (kernel prog "axpy")]
+        (set-args! axpy-kernel
+                   (wrap-prim claccessor alpha)
+                   (.buffer x) (offset-array x) (stride-array x)
+                   (.buffer y) (offset-array y) (stride-array y))
+        (enq-nd! queue axpy-kernel (work-size-1d (dim x))))
       queue))
   BLASPlus
   (subcopy [_ x y kx lx ky]
-    (if (< 0 n)
-      (do
-        (set-arg! copy-kernel 1 (wrap-int (+ ofst kx)))
-        (set-args! copy-kernel 3
-                   (.buffer y)
-                   (wrap-int (+ (.offset y) ky))
-                   (wrap-int (.stride y)))
+    (if (< 0 (dim x))
+      (with-release [copy-kernel (kernel prog "copy")]
+        (set-args! copy-kernel
+                   (.buffer x) (wrap-int (+ (.offset x) kx)) (stride-array x)
+                   (.buffer y) (wrap-int (+ (.offset y) ky)) (stride-array y))
         (enq-nd! queue copy-kernel (work-size-1d lx)))
       queue))
   (sum [_ x]
-    (if (< 0 n)
-      (do
-        (enq-reduce queue sum-reduce-kernel sum-reduction-kernel n WGS)
+    (if (< 0 (dim x))
+      (with-release [sum-reduce-kernel (kernel prog "sum_reduce")
+                     sum-reduction-kernel (kernel prog "sum_reduction")
+                     reduce-acc
+                     (cl-buffer ctx
+                                (* Double/BYTES (count-work-groups WGS (dim x)))
+                                :read-write)]
+        (set-args! sum-reduction-kernel reduce-acc)
+        (set-args! sum-reduce-kernel
+                   reduce-acc (.buffer x) (offset-array x) (stride-array x))
+        (enq-reduce queue sum-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (enq-read-double queue reduce-acc))
       0.0))
   (imax [_ x]
-    (if (< 0 n)
-      (do
-        (enq-reduce queue imax-reduce-kernel imax-reduction-kernel n WGS)
-        (enq-read-int queue reduce-iacc))
+    (if (< 0 (dim x))
+      (let [wgcount (count-work-groups WGS (dim x))]
+        (with-release [imax-reduce-kernel (kernel prog "imax_reduce")
+                       imax-reduction-kernel (kernel prog "imax_reduction")
+                       reduce-acc (cl-buffer ctx (* Double/BYTES wgcount) :read-write)
+                       reduce-iacc (cl-buffer ctx (* Integer/BYTES wgcount) :read-write)]
+          (set-args! imax-reduction-kernel reduce-iacc reduce-acc)
+          (set-args! imax-reduce-kernel reduce-iacc reduce-acc
+                     (.buffer x) (offset-array x) (stride-array x))
+          (enq-reduce queue imax-reduce-kernel imax-reduction-kernel (dim x) WGS)
+          (enq-read-int queue reduce-iacc)))
       0))
   (imin [_ x]
-    (if (< 0 n)
-      (do
-        (enq-reduce queue imin-reduce-kernel imax-reduction-kernel n WGS)
-        (enq-read-int queue reduce-iacc))
+    (if (< 0 (dim x))
+      (let [wgcount (count-work-groups WGS (dim x))]
+        (with-release [imin-reduce-kernel (kernel prog "imin_reduce")
+                       imax-reduction-kernel (kernel prog "imax_reduction")
+                       reduce-acc (cl-buffer ctx (* Double/BYTES wgcount) :read-write)
+                       reduce-iacc (cl-buffer ctx (* Integer/BYTES wgcount) :read-write)]
+          (set-args! imax-reduction-kernel reduce-iacc reduce-acc)
+          (set-args! imin-reduce-kernel reduce-iacc reduce-acc
+                     (.buffer x) (offset-array x) (stride-array x))
+          (enq-reduce queue imin-reduce-kernel imax-reduction-kernel (dim x) WGS)
+          (enq-read-int queue reduce-iacc)))
       0)))
 
 ;; ======================= Dense Matrix ========================================
 
-(deftype GCNMatrixEngine [^long WGSm ^long WGSn ^long TS ^long WPT
-                          claccessor queue
-                          ^long m ^long n ^long ofst ^long ld ^long ord
-                          eq-flag
-                          reduce-acc
-                          linear-work-size
-                          equals-matrix-kernel
-                          axpby-kernel
-                          sum-reduction-horizontal-kernel
-                          copy-matrix-kernel
-                          swap-matrix-kernel
-                          gerk-kernel
-                          gemv-reduce-kernel
-                          gemm-tiled-kernel
-                          gemm-tiled-fit-kernel]
+(deftype GCNMatrixEngine [ctx queue prog claccessor
+                          ^long WGSm ^long WGSn ^long TS ^long WPT]
+  Releaseable
+  (release [_]
+    true)
+  BlockEngine
+  (equals-block [_ a b]
+    (with-release [equals-matrix-kernel (kernel prog "equals_matrix")
+                   eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
+      (let [res (wrap-int 0)]
+        (enq-fill! queue eq-flag-buf res)
+        (set-args! equals-matrix-kernel eq-flag-buf
+                   (.buffer a) (offset-array a) (stride-array a)
+                   (.buffer b) (offset-array b) (stride-array b))
+        (enq-nd! queue equals-matrix-kernel (work-size-2d (mrows a) (ncols a)))
+        (enq-read! queue eq-flag-buf res)
+        (= 0 (aget res 0)))))
+  BLAS
+  (swap [_ a b]
+    (if (< 0 (* (mrows a) (ncols a)))
+      (with-release [swap-matrix-kernel (kernel prog "swap_matrix")]
+        (set-args! swap-matrix-kernel
+                   (.buffer a) (offset-array a) (stride-array a)
+                   (.buffer b) (offset-array b) (stride-array b))
+        (enq-nd! queue swap-matrix-kernel (work-size-2d (mrows a) (ncols a)))))
+    queue)
+  (copy [_ a b]
+    (if (< 0 (* (mrows a) (ncols a)))
+      (with-release [copy-matrix-kernel (kernel prog "copy_matrix")]
+        (set-args! copy-matrix-kernel
+                   (.buffer a) (offset-array a) (stride-array a)
+                   (.buffer b) (offset-array b) (stride-array b))
+        (enq-nd! queue copy-matrix-kernel (work-size-2d (mrows a) (ncols b))))
+      queue))
+  (rank [_ alpha x y a]
+    (if (< 0 (* (mrows a) (ncols a)))
+      (with-release [gerk-kernel (kernel prog "gerk")]
+        (set-args! gerk-kernel 0 (wrap-prim claccessor alpha)
+                   (.buffer x) (offset-array x) (stride-array x)
+                   (.buffer y) (offset-array y) (stride-array y)
+                   (.buffer a) (offset-array a) (stride-array a))
+        (enq-nd! queue gerk-kernel (work-size-2d (mrows a) (ncols a))))
+      queue))
+  (mv [_ alpha a x beta y]
+    (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
+                      (max 1 (* (mrows a) (count-work-groups WGSn (ncols a)))))]
+      (with-release [gemv-reduce-kernel (kernel prog "gemv_reduce")
+                     sum-reduction-horizontal-kernel
+                     (kernel prog "sum_reduction_horizontal")
+                     axpby-kernel (kernel prog "axpby")
+                     reduction-acc (cl-buffer ctx acc-size :read-write)]
+        (set-arg! sum-reduction-horizontal-kernel 0 reduction-acc)
+        (set-args! gemv-reduce-kernel reduction-acc (wrap-prim claccessor alpha)
+                   (.buffer a) (offset-array a) (stride-array a)
+                   (.buffer x) (offset-array x) (stride-array x))
+        (enq-reduce queue gemv-reduce-kernel sum-reduction-horizontal-kernel
+                    (mrows a) (ncols a) WGSm WGSn)
+        (set-args! axpby-kernel
+                   (wrap-prim claccessor 1)
+                   reduction-acc (wrap-int 0) (wrap-int 1)
+                   (wrap-prim claccessor beta)
+                   (.buffer y) (offset-array y) (stride-array y))
+        (enq-nd! queue axpby-kernel (work-size-1d (mrows a))))))
+  (mm [_ alpha a b beta c]
+    (let [m (mrows a)
+          k (ncols a)
+          n (ncols b)
+          RTS (long (/ TS WPT))]
+      (with-release [gemm-kernel (if (= 0 (mod m TS) (mod n TS))
+                                   (kernel prog "gemm_tiled_fit")
+                                   (kernel prog "gemm_tiled"))]
+        (set-args! gemm-kernel
+                   (wrap-prim claccessor alpha)
+                   (.buffer a) (offset-array a) (stride-array a)
+                   (.buffer b) (offset-array b) (stride-array b)
+                   (wrap-prim claccessor beta)
+                   (.buffer c) (offset-array c) (stride-array c)
+                   (wrap-int m) (wrap-int k) (wrap-int n))
+        (enq-nd! queue gemm-kernel
+                 (work-size-2d (* TS (count-work-groups TS m))
+                               (* RTS (count-work-groups TS n))))))))
+
+(deftype GCNFactory [ctx queue prog ^DataAccessor claccessor vector-eng matrix-eng]
   Releaseable
   (release [_]
     (and
-     (release eq-flag)
-     (release reduce-acc)
-     (release equals-matrix-kernel)
-     (release axpby-kernel)
-     (release sum-reduction-horizontal-kernel)
-     (release swap-matrix-kernel)
-     (release copy-matrix-kernel)
-     (release gerk-kernel)
-     (release gemv-reduce-kernel)
-     (release gemm-tiled-kernel)
-     (release gemm-tiled-fit-kernel)))
-  BlockEngine
-  (equals-block [_ _ b]
-    (let [res (wrap-int 0)]
-      (set-args! equals-matrix-kernel 4 (.buffer ^Block b)
-                 (wrap-int (.offset ^Block b)) (wrap-int (.stride ^Block b)))
-      (enq-fill! queue eq-flag res)
-      (set-arg! equals-matrix-kernel 0 eq-flag)
-      (enq-nd! queue equals-matrix-kernel (work-size-2d m n))
-      (enq-read! queue eq-flag res)
-      (= 0 (aget res 0))))
-  BLAS
-  (copy [_ a b]
-    (if (< 0 (* m n))
-      (do
-        (set-args! copy-matrix-kernel 3 (.buffer b) (wrap-int (.offset b))
-                   (wrap-int (.stride b)))
-        (enq-nd! queue copy-matrix-kernel (work-size-2d m n)))
-      queue))
-  (swap [_ a b]
-    (if (< 0 (* m n))
-      (do
-        (set-args! swap-matrix-kernel 3 (.buffer b) (wrap-int (.offset b))
-                   (wrap-int (.stride b)))
-        (enq-nd! queue swap-matrix-kernel (work-size-2d m n)))
-      queue))
-  (rank [_ alpha x y a]
-    (if (< 0 (* m n))
-      (do
-        (set-args! gerk-kernel 0 (wrap-prim claccessor alpha)
-                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-        (enq-nd! queue gerk-kernel (work-size-2d m n)))
-      queue))
-  (mv [_ alpha _ x beta y]
-    (do
-      (set-arg! gemv-reduce-kernel 1 (wrap-prim claccessor alpha))
-      (set-args! gemv-reduce-kernel 5 (.buffer x) (wrap-int (.offset x))
-                 (wrap-int (.stride x)))
-      (enq-reduce queue gemv-reduce-kernel sum-reduction-horizontal-kernel
-                  m n WGSm WGSn)
-      (set-args! axpby-kernel 4 (wrap-prim claccessor beta) (.buffer y)
-                 (wrap-int (.offset y)) (wrap-int (.stride y)))
-      (enq-nd! queue axpby-kernel linear-work-size)))
-  (mm [_ alpha a b beta c]
-    (let [bn (.ncols ^Matrix b)
-          RTS (long( / TS WPT))
-          gemm-kernel (if (= 0 (mod m TS) (mod bn TS))
-                        gemm-tiled-fit-kernel
-                        gemm-tiled-kernel)]
-      (set-arg! gemm-kernel 0 (wrap-prim claccessor alpha))
-      (set-args! gemm-kernel 4
-                 (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
-                 (wrap-prim claccessor beta)
-                 (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c))
-                 (wrap-int m) (wrap-int n) (wrap-int bn))
-      (enq-nd! queue gemm-kernel
-               (work-size-2d (* TS (count-work-groups TS m))
-                             (* RTS (count-work-groups TS bn)))))))
-
-(deftype GCNFactory [^DataAccessor claccessor ctx queue prog
-                     ^long WGS ^long WGSm ^long WGSn ^long TS ^long WPT]
-  Releaseable
-  (release [_]
-    (release prog))
+     (release prog)
+     (release vector-eng)
+     (release matrix-eng)))
   FactoryProvider
   (factory [_]
     (factory claccessor))
   Factory
   (create-vector [this n buf _]
     (if (and (<= 0 (long n) (.count claccessor buf)) (instance? CLBuffer buf))
-      (->CLBlockVector this claccessor (vector-engine this [buf n 0 1])
-                       (.entryType claccessor) true buf n 0 1)
+      (->CLBlockVector this claccessor vector-eng (.entryType claccessor) true
+                       buf n (wrap-int 0) (wrap-int 1))
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
                       n (.count claccessor buf) (class buf))))))
@@ -279,107 +296,32 @@
              (instance? CLBuffer buf))
       (let [order (or order DEFAULT_ORDER)
             ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
-        (->CLGeneralMatrix this claccessor
-                           (matrix-engine this [buf m n 0 ld order])
-                           (.entryType claccessor) true buf m n 0 ld order))
+        (->CLGeneralMatrix this claccessor matrix-eng (.entryType claccessor)
+                           true buf m n (wrap-int 0) (wrap-int ld) order))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d matrix from %s."
                       m n (type buf))))))
   (data-accessor [_]
     claccessor)
-  (vector-engine [_ [cl-buf n ofst strd]]
-    (let [iacc-size (* Integer/BYTES (count-work-groups WGS n))
-          acc-size (* Double/BYTES (count-work-groups WGS n))
-          cl-acc (cl-buffer ctx acc-size :read-write)
-          cl-iacc (cl-buffer ctx iacc-size :read-write)
-          cl-eq-flag (cl-buffer ctx Integer/BYTES :read-write)
-          cl-ofst (wrap-int ofst)
-          cl-strd (wrap-int strd)]
-      (->GCNVectorEngine WGS
-                         claccessor
-                         queue
-                         cl-buf
-                         n ofst strd
-                         cl-eq-flag
-                         cl-acc
-                         cl-iacc
-                         (work-size-1d n)
-                         (doto (kernel prog "equals_vector")
-                           (set-args! 1 cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "swap")
-                           (set-args! 0 cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "copy")
-                           (set-args! 0 cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "scal")
-                           (set-args! 1 cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "axpy")
-                           (set-args! 1 cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "sum_reduction")
-                           (set-args! cl-acc))
-                         (doto (kernel prog "imax_reduction")
-                           (set-args! cl-iacc cl-acc))
-                         (doto (kernel prog "dot_reduce")
-                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "nrm2_reduce")
-                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "asum_reduce")
-                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "iamax_reduce")
-                           (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "sum_reduce")
-                           (set-args! 0 cl-acc cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "imax_reduce")
-                           (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd))
-                         (doto (kernel prog "imin_reduce")
-                           (set-args! 0 cl-iacc cl-acc cl-buf cl-ofst cl-strd)))))
-  (matrix-engine [_ [cl-buf m n ofst ld ord]]
-    (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
-                      (max 1 (* (long m) (count-work-groups WGSn n))))
-          cl-acc (cl-buffer ctx acc-size :read-write)
-          cl-eq-flag (cl-buffer ctx Integer/BYTES :read-write)
-          cl-ofst (wrap-int ofst)
-          cl-ld (wrap-int ld)
-          cl-ord (wrap-int ord)]
-      (->GCNMatrixEngine WGSm WGSn TS WPT
-                         claccessor queue
-                         m n ofst ld ord
-                         cl-eq-flag
-                         cl-acc
-                         (work-size-1d m)
-                         (doto (kernel prog "equals_matrix")
-                           (set-args! 1 cl-buf cl-ofst cl-ld))
-                         (doto (kernel prog "axpby")
-                           (set-args! 0 (wrap-prim claccessor 1) cl-acc
-                                      (wrap-int 0) (wrap-int 1)))
-                         (doto (kernel prog "sum_reduction_horizontal")
-                           (set-arg! 0 cl-acc))
-                         (doto (kernel prog "copy_matrix")
-                           (set-args! 0 cl-buf cl-ofst cl-ld))
-                         (doto (kernel prog "swap_matrix")
-                           (set-args! 0 cl-buf cl-ofst cl-ld))
-                         (doto (kernel prog "gerk")
-                           (set-args! 7 cl-buf cl-ofst cl-ld))
-                         (doto (kernel prog "gemv_reduce")
-                           (set-arg! 0 cl-acc)
-                           (set-args! 2 cl-buf cl-ofst cl-ld))
-                         (doto (kernel prog "gemm_tiled")
-                           (set-args! 1 cl-buf cl-ofst cl-ld))
-                         (doto (kernel prog "gemm_tiled_fit")
-                           (set-args! 1 cl-buf cl-ofst cl-ld))))))
+  (vector-engine [_]
+    vector-eng)
+  (matrix-engine [_]
+    matrix-eng))
 
 (let [src [(slurp (io/resource "uncomplicate/clojurecl/kernels/reduction.cl"))
            (slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))]]
   (defn gcn-factory
     ([create-accessor ctx queue wgs wgsm wgsn ts wpt]
-     (let [accessor (create-accessor ctx queue)]
+     (let [accessor (create-accessor ctx queue)
+           prog (build-program!
+                 (program-with-source ctx src)
+                 (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSm=%d -DWGSn=%d -DTS=%d -DWPT=%d"
+                         (.entryType ^DataAccessor accessor) Double/TYPE
+                         (.entryType ^DataAccessor accessor) wgs wgsm wgsn ts wpt)
+                 nil)]
        (->GCNFactory
-        accessor ctx queue
-        (build-program!
-         (program-with-source ctx src)
-         (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSm=%d -DWGSn=%d -DTS=%d -DWPT=%d"
-                 (.entryType ^DataAccessor accessor) Double/TYPE
-                 (.entryType ^DataAccessor accessor) wgs wgsm wgsn ts wpt)
-         nil)
-        wgs wgsm wgsn ts wpt)))
+        ctx queue prog accessor
+        (->GCNVectorEngine ctx queue prog accessor wgs)
+        (->GCNMatrixEngine ctx queue prog accessor wgsm wgsn ts wpt ))))
     ([create-accessor ctx queue]
      (gcn-factory create-accessor ctx queue 256 16 16 32 4))))

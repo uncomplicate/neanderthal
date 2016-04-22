@@ -41,7 +41,7 @@
 
 (defn test-op-vector [factory]
   (facts
-   "RealBlockVector should be a Monoid."
+   "BlockVector should be a Monoid."
    (with-release [x (create-vector factory [1 2 3])
                   y (create-vector factory [4 5])
                   z (create-vector factory [])
@@ -138,7 +138,7 @@
 
 (defn test-op-ge-matrix [factory]
   (facts
-   "RealGeneralMatrix should be a Monoid."
+   "GeneralMatrix should be a Monoid."
    (with-release [x (create-ge-matrix factory 2 3 (range 6))
                   y (create-ge-matrix factory 2 2 [6 7 8 9])
                   z (create-ge-matrix factory 2 0 [])

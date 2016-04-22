@@ -10,8 +10,8 @@
   (create-vector [this n source options])
   (create-matrix [this m n source options])
   (data-accessor ^DataAccessor [this])
-  (vector-engine [this options])
-  (matrix-engine [this options]))
+  (vector-engine [this])
+  (matrix-engine [this]))
 
 (defprotocol EngineProvider
   (engine ^BLAS [this]))

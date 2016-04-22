@@ -12,8 +12,7 @@
              :refer [cblas-single cblas-double]]
             [uncomplicate.neanderthal.opencl
              [clblock :refer [->TypedCLAccessor]]
-             [amd-gcn :refer [gcn-factory]]
-             [dummy-engine :refer [dummy-factory]]])
+             [amd-gcn :refer [gcn-factory]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
 
 (def ^:dynamic *double-factory*)
@@ -32,12 +31,6 @@
 
 (defn gcn-double [ctx queue]
   (gcn-factory double-accessor ctx queue))
-
-(defn dummy-single [ctx queue]
-  (dummy-factory float-accessor ctx queue))
-
-(defn dummy-double [ctx queue]
-  (dummy-factory double-accessor ctx queue))
 
 (defmacro with-engine
   "Creates the required engine factories for the supported primitive types

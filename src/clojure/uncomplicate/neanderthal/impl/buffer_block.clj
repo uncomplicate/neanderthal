@@ -970,22 +970,18 @@
   (row [a i]
     (if (column-major? a)
       (let [b (.slice accessor buf i (inc (* (dec n) ld)))]
-        (RealBlockVector. fact accessor
-                          (vector-engine fact nil)
+        (RealBlockVector. fact accessor (vector-engine fact)
                           entry-type false b n ld))
       (let [b (.slice accessor buf (* ld i) n)]
-        (RealBlockVector. fact accessor
-                          (vector-engine fact nil)
+        (RealBlockVector. fact accessor (vector-engine fact)
                           entry-type false b n 1))))
   (col [a j]
     (if (column-major? a)
       (let [b (.slice accessor buf (* ld j) m)]
-        (RealBlockVector. fact accessor
-                          (vector-engine fact nil)
+        (RealBlockVector. fact accessor (vector-engine fact)
                           entry-type false b m 1))
       (let [b (.slice accessor buf j (inc (* (dec m) ld)))]
-        (RealBlockVector. fact accessor
-                          (vector-engine fact nil)
+        (RealBlockVector. fact accessor (vector-engine fact)
                           entry-type false b m ld))))
   (submatrix [a i j k l]
     (let [b (if (column-major? a)

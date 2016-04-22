@@ -259,9 +259,9 @@
                       m n (type buf))))))
   (data-accessor [_]
     acc)
-  (vector-engine [_ _]
+  (vector-engine [_]
     vector-eng)
-  (matrix-engine [_ _]
+  (matrix-engine [_]
     matrix-eng))
 
 (def cblas-single
