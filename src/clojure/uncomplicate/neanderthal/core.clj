@@ -912,9 +912,9 @@
          c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
-                       (mrows c) (ncols c)
                        (mrows a) (ncols a)
-                       (mrows b) (ncols b)))))
+                       (mrows b) (ncols b)
+                       (mrows c) (ncols c)))))
      (throw (IllegalArgumentException.
              (format p/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
   ([a b c]

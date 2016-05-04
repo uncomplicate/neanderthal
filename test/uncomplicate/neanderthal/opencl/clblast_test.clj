@@ -1,14 +1,15 @@
-(ns uncomplicate.neanderthal.opencl.amd-gcn-test
+(ns uncomplicate.neanderthal.opencl.clblast-test
   (:require [midje.sweet :refer :all]
             [uncomplicate.clojurecl.core
              :refer [with-default *command-queue*]]
+            [uncomplicate.fluokitten.core :refer [op]]
             [uncomplicate.neanderthal
              [opencl :refer [with-engine *opencl-factory*]]
              [block-test :as block-test]
              [real-test :as real-test]
              [opencl-test :as opencl-test]]
-            [uncomplicate.neanderthal.opencl.amd-gcn
-             :refer [gcn-single gcn-double]]))
+            [uncomplicate.neanderthal.opencl.clblast
+             :refer [clblast-single clblast-double]]))
 
 (defn real-tests [factory]
   (real-test/test-group factory)
@@ -38,13 +39,11 @@
   (block-test/test-op-ge-matrix factory))
 
 (with-default
-  (with-engine gcn-single *command-queue*
+  (with-engine clblast-single *command-queue*
     (block-tests *opencl-factory*)
     (real-tests *opencl-factory*)
-    (opencl-test/test-all *opencl-factory*)))
-
-(with-default
-  (with-engine gcn-single *command-queue*
+    (opencl-test/test-all *opencl-factory*))
+  (with-engine clblast-double *command-queue*
     (block-tests *opencl-factory*)
     (real-tests *opencl-factory*)
     (opencl-test/test-all *opencl-factory*)))

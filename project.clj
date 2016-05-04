@@ -28,10 +28,9 @@
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
 
   #_(:aot [uncomplicate.neanderthal.protocols
+           uncomplicate.neanderthal.core
            uncomplicate.neanderthal.impl.buffer-block
-           uncomplicate.neanderthal.impl.cblas
-           uncomplicate.neanderthal.opencl.clblock
-           uncomplicate.neanderthal.opencl.amd-gcn])
+           uncomplicate.neanderthal.impl.cblas])
 
   :profiles {:dev {:plugins [[lein-midje "3.1.3"]
                              [lein-codox "0.9.4"]]

@@ -1,13 +1,15 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.clblock
-  (:require [uncomplicate.commons.core :refer [Releaseable release wrap-int]]
+  (:require [uncomplicate.commons.core
+             :refer [Releaseable release wrap-float wrap-double]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal.protocols :refer :all]
             [uncomplicate.neanderthal.core :refer [transfer! copy! create sum]]
-            [uncomplicate.neanderthal.impl.buffer-block :refer
-             [vector-op matrix-op float-accessor double-accessor
-              ->RealBlockVector ->RealGeneralMatrix]]
+            [uncomplicate.neanderthal.impl.fluokitten
+             :refer [vector-op matrix-op]]
+            [uncomplicate.neanderthal.impl.buffer-block
+             :refer [->RealBlockVector ->RealGeneralMatrix]]
             [uncomplicate.neanderthal.impl.cblas :refer
              [cblas-single cblas-double]])
   (:import [uncomplicate.neanderthal CBLAS]
@@ -47,13 +49,17 @@
   (factory [_]
     host-fact))
 
+(defn cl-float-accessor [ctx queue]
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
+                     float-array wrap-float cblas-single))
+
+(defn cl-double-accessor [ctx queue]
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
+                     double-array wrap-double cblas-double))
+
 ;; ================== Non-blas kernels =========================================
 (defprotocol BlockEngine
   (equals-block [_ cl-x cl-y]))
-
-(defprotocol CLBlock
-  (offset-array [this])
-  (stride-array [this]))
 
 ;; =============================================================================
 
@@ -61,7 +67,7 @@
                         ^DataAccessor claccessor ^BLAS eng
                         ^Class entry-type ^Boolean master
                         ^uncomplicate.clojurecl.core.CLBuffer cl-buf
-                        ^long n ^ints ofst ^ints strd]
+                        ^long n ^long ofst ^long strd]
   Object
   (hashCode [this]
     (-> (hash :CLBlockVector) (hash-combine n)
@@ -75,7 +81,7 @@
       :default false))
   (toString [this]
     (format "#CLBlockVector[%s, n:%d, offset:%d stride:%d]"
-            entry-type n (.offset this) (.stride this)))
+            entry-type n ofst strd))
   Releaseable
   (release [_]
     (if master (release cl-buf) true))
@@ -109,34 +115,28 @@
   (buffer [_]
     cl-buf)
   (offset [_]
-    (aget ofst 0))
+    ofst)
   (stride [_]
-    (aget strd 0))
+    strd)
   (count [_]
     n)
-  CLBlock
-  (offset-array [this]
-    ofst)
-  (stride-array [this]
-    strd)
   Vector
   (dim [_]
     n)
   (subvector [this k l]
-    (CLBlockVector. fact claccessor eng entry-type false cl-buf
-                    l (wrap-int (+ (.offset this) k)) (stride-array this)))
+    (CLBlockVector. fact claccessor eng entry-type false cl-buf l (+ ofst k) strd))
   Mappable
   (map-memory [this flags]
     (let [host-fact (factory fact)
           acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
-                                      (* (.offset this) (.entryWidth claccessor))
-                                      (* (.stride this) n (.entryWidth claccessor))
+                                      (* ofst (.entryWidth claccessor))
+                                      (* strd n (.entryWidth claccessor))
                                       flags nil nil)]
       (try
         (->RealBlockVector host-fact acc (vector-engine host-fact)
-                           (.entryType acc) true mapped-buf n (.stride this))
+                           (.entryType acc) true mapped-buf n strd)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -184,7 +184,7 @@
                           ^DataAccessor claccessor ^BLAS eng
                           ^Class entry-type ^Boolean master
                           ^uncomplicate.clojurecl.core.CLBuffer cl-buf
-                          ^long m ^long n ^ints ofst ^ints ld ^long ord]
+                          ^long m ^long n ^long ofst ^long ld ^long ord]
   Object
   (hashCode [this]
     (-> (hash :CLGeneralMatrix) (hash-combine m) (hash-combine n)))
@@ -196,8 +196,8 @@
       (equals-block eng a b)
       :default false))
   (toString [this]
-    (format "#CLGeneralMatrix[%s, %s, mxn: %dx%d, ld:%d>]"
-            entry-type "COL" m n (.stride this)))
+    (format "#CLGeneralMatrix[%s, %s, mxn: %dx%d, offset:%d, ld:%d>]"
+            entry-type "COL" m n ofst ld))
   Releaseable
   (release [_]
     (if master (release cl-buf) true))
@@ -232,18 +232,13 @@
   (buffer [_]
     cl-buf)
   (offset [_]
-    (aget ofst 0))
+    ofst)
   (stride [_]
-    (aget ld 0))
+    ld)
   (order [_]
     ord)
   (count [_]
     (* m n))
-  CLBlock
-  (offset-array [this]
-    ofst)
-  (stride-array [this]
-    ld)
   Matrix
   (mrows [_]
     m)
@@ -252,35 +247,32 @@
   (row [a i]
     (if (column-major? a)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf n (wrap-int i) ld)
+                      entry-type false cl-buf n (+ ofst i) ld)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf n
-                      (wrap-int (* (.stride a) i)) (wrap-int 1))))
+                      entry-type false cl-buf n (+ ofst (* ld i)) 1)))
   (col [a j]
     (if (column-major? a)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf m
-                      (wrap-int (* (.stride a) j)) (wrap-int 1))
+                      entry-type false cl-buf m (+ ofst (* ld j)) 1)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf m (wrap-int j) ld)))
+                      entry-type false cl-buf m (+ ofst j) ld)))
   (submatrix [a i j k l]
-    (let [o (if (column-major? a)
-              (+ (.offset a) (* j (.stride a)) i)
-              (+ (.offset a) (* i (.stride a)) j))]
+    (let [o (if (column-major? a) (+ ofst (* j ld) i) (+ ofst (* i ld) j))]
       (CLGeneralMatrix. fact claccessor eng
-                        entry-type false cl-buf k l (wrap-int o) ld ord)))
+                        entry-type false cl-buf k l o ld ord)))
   Mappable
-  (map-memory [this flags]
+  (map-memory [a flags]
     (let [host-fact (factory fact)
           acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
-                                      (* (.offset this) (.entryWidth claccessor))
-                                      (* n (.stride this) (.entryWidth claccessor))
+                                      (* ofst (.entryWidth claccessor))
+                                      (* (if (column-major? a) n m)
+                                         ld (.entryWidth claccessor))
                                       flags nil nil)]
       (try
         (->RealGeneralMatrix host-fact acc (matrix-engine host-fact)
-                             (.entryType acc) true mapped-buf m n (.stride this) ord)
+                             (.entryType acc) true mapped-buf m n ld ord)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
     (do
@@ -300,7 +292,8 @@
   (let [mapped-host (map-memory source :read)]
     (try
       (copy! mapped-host destination)
-      (finally (unmap source mapped-host)))))
+      (finally
+        (unmap source mapped-host)))))
 
 (defmethod transfer! [RealGeneralMatrix CLGeneralMatrix]
   [source destination]

@@ -1,10 +1,87 @@
 (ns uncomplicate.neanderthal.impl.cblas
-  (:require [uncomplicate.neanderthal.protocols :refer :all]
+  (:require [uncomplicate.commons.core :refer [with-release]]
+            [uncomplicate.neanderthal
+             [protocols :refer :all]
+             [core :refer [dim ecount]]
+             [block :refer [order buffer offset stride]]]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Vector Matrix RealVector DataAccessor BufferAccessor]))
+
+;; =============== Common vector macros and functions ==========================
+
+(defmacro ^:private vector-rotg [method x]
+  `(if (= 1 (.stride ~x))
+    (~method (.buffer ~x))
+    (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~x))))))
+
+(defmacro ^:private vector-rotm [method x y p]
+  `(if (= 1 (.stride ~p))
+    (~method (dim ~x) (.buffer ~x) (.stride ~x)
+                 (.buffer ~y) (.stride ~y) (.buffer ~p))
+    (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~p))))))
+
+(defmacro ^:private vector-rotmg [method p args]
+  `(if (= 1 (.stride ~p) (.stride ~args))
+    (~method (.buffer ~args) (.buffer ~p))
+    (throw (IllegalArgumentException.
+            (format STRIDE_MSG 1 (str (.stride ~p) " or " (.stride ~args)))))))
+
+(defn ^:private vector-imax [^RealVector x]
+  (let [cnt (.dim x)]
+    (loop [i 1 max-idx 0 max-val (.entry x 0)]
+      (if (< i cnt)
+        (let [v (.entry x i)]
+          (if (< max-val v)
+            (recur (inc i) i v)
+            (recur (inc i) max-idx max-val)))
+        max-idx))))
+
+(defn ^:private vector-imin [^RealVector x]
+  (let [cnt (.dim x)]
+    (loop [i 1 min-idx 0 min-val (.entry x 0)]
+      (if (< i cnt)
+        (let [v (.entry x i)]
+          (if (< v min-val)
+            (recur (inc i) i v)
+            (recur (inc i) min-idx min-val)))
+        min-idx))))
+
+;; =============== Common matrix macros and functions ==========================
+
+(defmacro ^:private matrix-swap-copy [vector-eng method vector-method a b]
+  `(if (< 0 (* (.mrows ~a) (.ncols ~a)))
+     (if (and (= (order ~a) (order ~b))
+              (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
+                 (stride ~a) (stride ~b)))
+       (~method (* (.mrows ~a) (.ncols ~a)) (buffer ~a) 0 1 (buffer ~b) 0 1)
+       (if (column-major? ~a)
+         (dotimes [i# (.ncols ~a)]
+           (with-release [x# (.col ~a i#)
+                          y# (.col ~b i#)]
+             (. ~vector-eng ~vector-method x# y#)))
+         (dotimes [i# (.mrows ~a)]
+           (with-release [x# (.row ~a i#)
+                          y# (.row ~b i#)]
+             (. ~vector-eng ~vector-method x# y#)))))))
+
+(defmacro ^:private matrix-axpy [vector-eng method alpha a b]
+  `(if (< 0 (* (.mrows ~a) (.ncols ~a)))
+     (if (and (= (order ~a) (order ~b))
+              (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
+                 (stride ~a) (stride ~b)))
+       (~method (* (.mrows ~a) (.ncols ~a)) ~alpha (buffer ~a) 1 (buffer ~b) 1)
+       (if (column-major? ~a)
+         (dotimes [i# (.ncols ~a)]
+           (with-release [x# (.col ~a i#)
+                          y# (.col ~b i#)]
+             (. ~vector-eng axpy ~alpha x# y#)))
+         (dotimes [i# (.mrows ~a)]
+           (with-release [x# (.row ~a i#)
+                          y# (.row ~b i#)]
+             (. ~vector-eng axpy ~alpha x# y#)))))))
 
 ;; ============ Real Vector Engines ============================================
 
@@ -25,19 +102,11 @@
   (rot [_ x y c s]
     (CBLAS/drot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y) c s))
   (rotg [_ x]
-    (if (= 1 (.stride x))
-      (CBLAS/drotg (.buffer x))
-      (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride x))))))
+    (vector-rotg CBLAS/drotg x))
   (rotm [_ x y p]
-    (if (= 1 (.stride p))
-      (CBLAS/drotm (.dim ^Vector x) (.buffer x) (.stride x)
-                   (.buffer y) (.stride y) (.buffer p))
-      (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride p))))))
+    (vector-rotm CBLAS/drotm x y p))
   (rotmg [_ p args]
-    (if (= 1 (.stride p) (.stride args))
-      (CBLAS/drotmg (.buffer args) (.buffer p))
-      (throw (IllegalArgumentException.
-              (format STRIDE_MSG 1 (str (.stride p) " or " (.stride args)))))))
+    (vector-rotmg CBLAS/drotmg p args))
   (scal [_ alpha x]
     (CBLAS/dscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
@@ -48,23 +117,9 @@
   (sum [_ x]
     (CBLAS/dsum (.dim ^Vector x) (.buffer x) (.stride x)))
   (imax [_ x]
-    (let [cnt (.dim ^Vector x)]
-      (loop [i 1 max-idx 0 max-val (.entry ^RealVector x 0)]
-        (if (< i cnt)
-          (let [v (.entry ^RealVector x i)]
-            (if (< max-val v)
-              (recur (inc i) i v)
-              (recur (inc i) max-idx max-val)))
-          max-idx))))
+    (vector-imax x))
   (imin [_ x]
-    (let [cnt (.dim ^Vector x)]
-      (loop [i 1 min-idx 0 min-val (.entry ^RealVector x 0)]
-        (if (< i cnt)
-          (let [v (.entry ^RealVector x i)]
-            (if (< v min-val)
-              (recur (inc i) i v)
-              (recur (inc i) min-idx min-val)))
-          min-idx)))))
+    (vector-imin x)))
 
 (deftype SingleVectorEngine []
   BLAS
@@ -83,19 +138,11 @@
   (rot [_ x y c s]
     (CBLAS/srot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y) c s))
   (rotg [_ x]
-    (if (= 1 (.stride x))
-      (CBLAS/srotg (.buffer x))
-      (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride x))))))
+    (vector-rotg CBLAS/srotg x))
   (rotm [_ x y p]
-    (if (= 1 (.stride p))
-      (CBLAS/srotm (.dim ^Vector x) (.buffer x) (.stride x)
-                   (.buffer y) (.stride y) (.buffer p))
-      (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride p))))))
+    (vector-rotm CBLAS/srotm x y p))
   (rotmg [_ p args]
-    (if (= 1 (.stride p) (.stride args))
-      (CBLAS/srotmg (.buffer args) (.buffer p))
-      (throw (IllegalArgumentException.
-              (format STRIDE_MSG 1 (str (.stride p) " or " (.stride args)))))))
+    (vector-rotmg CBLAS/srotmg p args))
   (scal [_ alpha x]
     (CBLAS/sscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
@@ -106,61 +153,20 @@
   (sum [_ x]
     (CBLAS/ssum (.dim ^Vector x) (.buffer x) (.stride x)))
   (imax [_ x]
-    (let [cnt (.dim ^Vector x)]
-      (loop [i 1 max-idx 0 max-val (.entry ^RealVector x 0)]
-        (if (< i cnt)
-          (let [v (.entry ^RealVector x i)]
-            (if (< max-val v)
-              (recur (inc i) i v)
-              (recur (inc i) max-idx max-val)))
-          max-idx))))
+    (vector-imax x))
   (imin [_ x]
-    (let [cnt (.dim ^Vector x)]
-      (loop [i 1 min-idx 0 min-val (.entry ^RealVector x 0)]
-        (if (< i cnt)
-          (let [v (.entry ^RealVector x i)]
-            (if (< v min-val)
-              (recur (inc i) i v)
-              (recur (inc i) min-idx min-val)))
-          min-idx)))))
+    (vector-imin x)))
 
 ;; ================= General Matrix Engines ====================================
 
-(deftype DoubleGeneralMatrixEngine [^BLAS dv-engine]
+(deftype DoubleGeneralMatrixEngine [^BLAS vector-eng]
   BLAS
   (swap [_ a b]
-    (if (and (= (.order a) (.order b))
-             (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.stride a) (.stride b)))
-      (CBLAS/dswap (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 0 1 (.buffer b) 0 1)
-      (if (column-major? a)
-        (dotimes [i (.ncols ^Matrix a)]
-          (.swap dv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
-        (dotimes [i (.mrows ^Matrix a)]
-          (.swap dv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+    (matrix-swap-copy vector-eng CBLAS/dswap swap ^Matrix a ^Matrix b))
   (copy [_ a b]
-    (if (and (= (.order a) (.order b))
-             (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.stride a) (.stride b)))
-      (CBLAS/dcopy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 0 1 (.buffer b) 0 1)
-      (if (column-major? a)
-        (dotimes [i (.ncols ^Matrix a)]
-          (.copy dv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
-        (dotimes [i (.mrows ^Matrix a)]
-          (.copy dv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+    (matrix-swap-copy vector-eng CBLAS/dcopy copy ^Matrix a ^Matrix b))
   (axpy [_ alpha a b]
-    (if (and (= (.order a) (.order b))
-             (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.stride a) (.stride b)))
-      (CBLAS/daxpy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   alpha (.buffer a) 1 (.buffer b) 1)
-      (if (column-major? a)
-        (dotimes [i (.ncols ^Matrix a)]
-          (.axpy dv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)))
-        (dotimes [i (.mrows ^Matrix a)]
-          (.axpy dv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
+    (matrix-axpy vector-eng CBLAS/daxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
     (CBLAS/dgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
@@ -182,41 +188,14 @@
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
 
-(deftype SingleGeneralMatrixEngine [^BLAS sv-engine]
+(deftype SingleGeneralMatrixEngine [^BLAS vector-eng]
   BLAS
   (swap [_ a b]
-    (if (and (= (.order a) (.order b))
-             (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.stride a) (.stride b)))
-      (CBLAS/sswap (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 0 1 (.buffer b) 0 1)
-      (if (column-major? a)
-        (dotimes [i (.ncols ^Matrix a)]
-          (.swap sv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
-        (dotimes [i (.mrows ^Matrix a)]
-          (.swap sv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+    (matrix-swap-copy vector-eng CBLAS/sswap swap ^Matrix a ^Matrix b))
   (copy [_ a b]
-    (if (and (= (.order a) (.order b))
-             (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.stride a) (.stride b)))
-      (CBLAS/scopy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   (.buffer a) 0 1 (.buffer b) 0 1)
-      (if (column-major? a)
-        (dotimes [i (.ncols ^Matrix a)]
-          (.copy sv-engine (.col ^Matrix a i) (.col ^Matrix b i)))
-        (dotimes [i (.mrows ^Matrix a)]
-          (.copy sv-engine (.row ^Matrix a i) (.row ^Matrix b i))))))
+    (matrix-swap-copy vector-eng CBLAS/scopy copy ^Matrix a ^Matrix b))
   (axpy [_ alpha a b]
-    (if (and (= (.order a) (.order b))
-             (= (if (column-major? a) (.mrows ^Matrix a) (.ncols ^Matrix a))
-                (.stride a) (.stride b)))
-      (CBLAS/saxpy (* (.mrows ^Matrix a) (.ncols ^Matrix a))
-                   alpha (.buffer a) 1 (.buffer b) 1)
-      (if (column-major? a)
-        (dotimes [i (.ncols ^Matrix a)]
-          (.axpy sv-engine alpha (.col ^Matrix a i) (.col ^Matrix b i)))
-        (dotimes [i (.mrows ^Matrix a)]
-          (.axpy sv-engine alpha (.row ^Matrix a i) (.row ^Matrix b i))))))
+    (matrix-axpy vector-eng CBLAS/saxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
     (CBLAS/sgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)

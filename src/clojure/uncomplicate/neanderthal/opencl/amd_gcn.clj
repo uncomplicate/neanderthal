@@ -14,12 +14,11 @@
              [math :refer [sqrt]]
              [core :refer [dim mrows ncols]]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
-  (:import [uncomplicate.clojurecl.core WorkSize CLBuffer]
+  (:import [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Block Matrix DataAccessor]))
 
 (deftype GCNVectorEngine [ctx queue prog claccessor ^long WGS ]
-
   Releaseable
   (release [_]
     true)
@@ -31,8 +30,10 @@
         (let [res (wrap-int 0)]
           (enq-fill! queue eq-flag-buf res)
           (set-args! equals-vector-kernel eq-flag-buf
-                     (.buffer x) (offset-array x) (stride-array x)
-                     (.buffer y) (offset-array y) (stride-array y))
+                     (.buffer ^Block x)
+                     (wrap-int (.offset ^Block x)) (wrap-int (.stride ^Block x))
+                     (.buffer ^Block y)
+                     (wrap-int (.offset ^Block y)) (wrap-int (.stride ^Block y)))
           (enq-nd! queue equals-vector-kernel (work-size-1d (dim x)))
           (enq-read! queue eq-flag-buf res)
           (= 0 (aget res 0))))
@@ -42,16 +43,16 @@
     (if (< 0 (dim x))
       (with-release [swap-kernel (kernel prog "swap")]
         (set-args! swap-kernel
-                   (.buffer x) (offset-array x) (stride-array x)
-                   (.buffer y) (offset-array y) (stride-array y))
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-nd! queue swap-kernel (work-size-1d (dim x))))
       queue))
   (copy [_ x y]
     (if (< 0 (dim x))
       (with-release [copy-kernel (kernel prog "copy")]
         (set-args! copy-kernel
-                   (.buffer x) (offset-array x) (stride-array x)
-                   (.buffer y) (offset-array y) (stride-array y))
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-nd! queue copy-kernel (work-size-1d (dim x))))
       queue))
   (dot [_ x y]
@@ -64,8 +65,8 @@
                                 :read-write)]
         (set-args! sum-reduction-kernel reduce-acc)
         (set-args! dot-reduce-kernel reduce-acc
-                   (.buffer x) (offset-array x) (stride-array x)
-                   (.buffer y) (offset-array y) (stride-array y))
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-reduce queue dot-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (enq-read-double queue reduce-acc))
       0.0))
@@ -79,7 +80,7 @@
                                 :read-write)]
         (set-args! sum-reduction-kernel reduce-acc)
         (set-args! nrm2-reduce-kernel
-                   reduce-acc (.buffer x) (offset-array x) (stride-array x))
+                   reduce-acc (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
         (enq-reduce queue nrm2-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (sqrt (enq-read-double queue reduce-acc)))
       0.0))
@@ -93,7 +94,7 @@
                                 :read-write)]
         (set-args! sum-reduction-kernel reduce-acc)
         (set-args! asum-reduce-kernel
-                   reduce-acc (.buffer x) (offset-array x) (stride-array x))
+                   reduce-acc (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
         (enq-reduce queue asum-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (enq-read-double queue reduce-acc))
       0.0))
@@ -106,28 +107,24 @@
                        reduce-iacc (cl-buffer ctx (* Integer/BYTES wgcount) :read-write)]
           (set-args! imax-reduction-kernel reduce-iacc reduce-acc)
           (set-args! iamax-reduce-kernel reduce-iacc reduce-acc
-                     (.buffer x) (offset-array x) (stride-array x))
+                     (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
           (enq-reduce queue iamax-reduce-kernel imax-reduction-kernel (dim x) WGS)
           (enq-read-int queue reduce-iacc)))
       0))
   (rot [_ _ y c s]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (throw (UnsupportedOperationException. "TODO.")))
   (rotg [_ _]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (throw (UnsupportedOperationException. "TODO.")))
   (rotm [_ _ y p]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (throw (UnsupportedOperationException. "TODO.")))
   (rotmg [_ _ args]
-    (throw (UnsupportedOperationException.
-            "TODO.")))
+    (throw (UnsupportedOperationException. "TODO.")))
   (scal [_ alpha x]
     (if (< 0 (dim x))
       (with-release [scal-kernel (kernel prog "scal")]
         (set-args! scal-kernel
                    (wrap-prim claccessor alpha)
-                   (.buffer x) (offset-array x) (stride-array x))
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
         (enq-nd! queue scal-kernel (work-size-1d (dim x))))
       queue))
   (axpy [_ alpha x y]
@@ -135,17 +132,17 @@
       (with-release [axpy-kernel (kernel prog "axpy")]
         (set-args! axpy-kernel
                    (wrap-prim claccessor alpha)
-                   (.buffer x) (offset-array x) (stride-array x)
-                   (.buffer y) (offset-array y) (stride-array y))
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-nd! queue axpy-kernel (work-size-1d (dim x))))
       queue))
   BLASPlus
   (subcopy [_ x y kx lx ky]
-    (if (< 0 (dim x))
+    (if (< 0 lx)
       (with-release [copy-kernel (kernel prog "copy")]
         (set-args! copy-kernel
-                   (.buffer x) (wrap-int (+ (.offset x) kx)) (stride-array x)
-                   (.buffer y) (wrap-int (+ (.offset y) ky)) (stride-array y))
+                   (.buffer x) (wrap-int (+ (.offset x) kx)) (wrap-int (.stride x))
+                   (.buffer y) (wrap-int (+ (.offset y) ky)) (wrap-int (.stride y)))
         (enq-nd! queue copy-kernel (work-size-1d lx)))
       queue))
   (sum [_ x]
@@ -158,7 +155,7 @@
                                 :read-write)]
         (set-args! sum-reduction-kernel reduce-acc)
         (set-args! sum-reduce-kernel
-                   reduce-acc (.buffer x) (offset-array x) (stride-array x))
+                   reduce-acc (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
         (enq-reduce queue sum-reduce-kernel sum-reduction-kernel (dim x) WGS)
         (enq-read-double queue reduce-acc))
       0.0))
@@ -171,7 +168,7 @@
                        reduce-iacc (cl-buffer ctx (* Integer/BYTES wgcount) :read-write)]
           (set-args! imax-reduction-kernel reduce-iacc reduce-acc)
           (set-args! imax-reduce-kernel reduce-iacc reduce-acc
-                     (.buffer x) (offset-array x) (stride-array x))
+                     (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
           (enq-reduce queue imax-reduce-kernel imax-reduction-kernel (dim x) WGS)
           (enq-read-int queue reduce-iacc)))
       0))
@@ -184,7 +181,7 @@
                        reduce-iacc (cl-buffer ctx (* Integer/BYTES wgcount) :read-write)]
           (set-args! imax-reduction-kernel reduce-iacc reduce-acc)
           (set-args! imin-reduce-kernel reduce-iacc reduce-acc
-                     (.buffer x) (offset-array x) (stride-array x))
+                     (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
           (enq-reduce queue imin-reduce-kernel imax-reduction-kernel (dim x) WGS)
           (enq-read-int queue reduce-iacc)))
       0)))
@@ -203,8 +200,10 @@
       (let [res (wrap-int 0)]
         (enq-fill! queue eq-flag-buf res)
         (set-args! equals-matrix-kernel eq-flag-buf
-                   (.buffer a) (offset-array a) (stride-array a)
-                   (.buffer b) (offset-array b) (stride-array b))
+                   (.buffer ^Block a)
+                   (wrap-int (.offset ^Block a)) (wrap-int (.stride ^Block a))
+                   (.buffer ^Block b)
+                   (wrap-int (.offset ^Block b)) (wrap-int (.stride ^Block b)))
         (enq-nd! queue equals-matrix-kernel (work-size-2d (mrows a) (ncols a)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0)))))
@@ -213,25 +212,25 @@
     (if (< 0 (* (mrows a) (ncols a)))
       (with-release [swap-matrix-kernel (kernel prog "swap_matrix")]
         (set-args! swap-matrix-kernel
-                   (.buffer a) (offset-array a) (stride-array a)
-                   (.buffer b) (offset-array b) (stride-array b))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
         (enq-nd! queue swap-matrix-kernel (work-size-2d (mrows a) (ncols a)))))
     queue)
   (copy [_ a b]
     (if (< 0 (* (mrows a) (ncols a)))
       (with-release [copy-matrix-kernel (kernel prog "copy_matrix")]
         (set-args! copy-matrix-kernel
-                   (.buffer a) (offset-array a) (stride-array a)
-                   (.buffer b) (offset-array b) (stride-array b))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
         (enq-nd! queue copy-matrix-kernel (work-size-2d (mrows a) (ncols b))))
       queue))
   (rank [_ alpha x y a]
     (if (< 0 (* (mrows a) (ncols a)))
       (with-release [gerk-kernel (kernel prog "gerk")]
         (set-args! gerk-kernel 0 (wrap-prim claccessor alpha)
-                   (.buffer x) (offset-array x) (stride-array x)
-                   (.buffer y) (offset-array y) (stride-array y)
-                   (.buffer a) (offset-array a) (stride-array a))
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a)))
         (enq-nd! queue gerk-kernel (work-size-2d (mrows a) (ncols a))))
       queue))
   (mv [_ alpha a x beta y]
@@ -244,15 +243,15 @@
                      reduction-acc (cl-buffer ctx acc-size :read-write)]
         (set-arg! sum-reduction-horizontal-kernel 0 reduction-acc)
         (set-args! gemv-reduce-kernel reduction-acc (wrap-prim claccessor alpha)
-                   (.buffer a) (offset-array a) (stride-array a)
-                   (.buffer x) (offset-array x) (stride-array x))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
         (enq-reduce queue gemv-reduce-kernel sum-reduction-horizontal-kernel
                     (mrows a) (ncols a) WGSm WGSn)
         (set-args! axpby-kernel
                    (wrap-prim claccessor 1)
                    reduction-acc (wrap-int 0) (wrap-int 1)
                    (wrap-prim claccessor beta)
-                   (.buffer y) (offset-array y) (stride-array y))
+                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-nd! queue axpby-kernel (work-size-1d (mrows a))))))
   (mm [_ alpha a b beta c]
     (let [m (mrows a)
@@ -264,10 +263,10 @@
                                    (kernel prog "gemm_tiled"))]
         (set-args! gemm-kernel
                    (wrap-prim claccessor alpha)
-                   (.buffer a) (offset-array a) (stride-array a)
-                   (.buffer b) (offset-array b) (stride-array b)
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                    (wrap-prim claccessor beta)
-                   (.buffer c) (offset-array c) (stride-array c)
+                   (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c))
                    (wrap-int m) (wrap-int k) (wrap-int n))
         (enq-nd! queue gemm-kernel
                  (work-size-2d (* TS (count-work-groups TS m))
@@ -287,7 +286,7 @@
   (create-vector [this n buf _]
     (if (and (<= 0 (long n) (.count claccessor buf)) (instance? CLBuffer buf))
       (->CLBlockVector this claccessor vector-eng (.entryType claccessor) true
-                       buf n (wrap-int 0) (wrap-int 1))
+                       buf n 0 1)
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
                       n (.count claccessor buf) (class buf))))))
@@ -297,7 +296,7 @@
       (let [order (or order DEFAULT_ORDER)
             ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
         (->CLGeneralMatrix this claccessor matrix-eng (.entryType claccessor)
-                           true buf m n (wrap-int 0) (wrap-int ld) order))
+                           true buf m n 0 ld order))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d matrix from %s."
                       m n (type buf))))))
@@ -310,6 +309,7 @@
 
 (let [src [(slurp (io/resource "uncomplicate/clojurecl/kernels/reduction.cl"))
            (slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/amd_gcn/blas.cl"))]]
+
   (defn gcn-factory
     ([create-accessor ctx queue wgs wgsm wgsn ts wpt]
      (let [accessor (create-accessor ctx queue)
@@ -324,4 +324,10 @@
         (->GCNVectorEngine ctx queue prog accessor wgs)
         (->GCNMatrixEngine ctx queue prog accessor wgsm wgsn ts wpt ))))
     ([create-accessor ctx queue]
-     (gcn-factory create-accessor ctx queue 256 16 16 32 4))))
+     (gcn-factory create-accessor ctx queue 256 16 16 32 4)))
+
+  (defn gcn-single [ctx queue]
+    (gcn-factory cl-float-accessor ctx queue))
+
+  (defn gcn-double [ctx queue]
+    (gcn-factory cl-double-accessor ctx queue)))

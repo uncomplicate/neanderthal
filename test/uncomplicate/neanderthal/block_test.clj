@@ -40,21 +40,21 @@
            (.invokePrim ^IFn$LD x 0) => 1.0)))
 
 (defn test-op-vector [factory]
-  (facts
-   "BlockVector should be a Monoid."
-   (with-release [x (create-vector factory [1 2 3])
-                  y (create-vector factory [4 5])
-                  z (create-vector factory [])
-                  v1 (op x y)
-                  v2 (op y x)
-                  v3 (op x y x)
-                  v4 (op x y x y)
-                  v5 (op x y x y z z z x)
-                  t1 (create-vector factory [1 2 3 4 5])
-                  t2 (create-vector factory [4 5 1 2 3])
-                  t3 (create-vector factory [1 2 3 4 5 1 2 3])
-                  t4 (create-vector factory [1 2 3 4 5 1 2 3 4 5])
-                  t5 (create-vector factory [1 2 3 4 5 1 2 3 4 5 1 2 3])]
+  (with-release [x (create-vector factory [1 2 3])
+                 y (create-vector factory [4 5])
+                 z (create-vector factory [])
+                 v1 (op x y)
+                 v2 (op y x)
+                 v3 (op x y x)
+                 v4 (op x y x y)
+                 v5 (op x y x y z z z x)
+                 t1 (create-vector factory [1 2 3 4 5])
+                 t2 (create-vector factory [4 5 1 2 3])
+                 t3 (create-vector factory [1 2 3 4 5 1 2 3])
+                 t4 (create-vector factory [1 2 3 4 5 1 2 3 4 5])
+                 t5 (create-vector factory [1 2 3 4 5 1 2 3 4 5 1 2 3])]
+    (facts
+     "BlockVector should be a Monoid."
      v1 => t1
      v2 => t2
      v3 => t3

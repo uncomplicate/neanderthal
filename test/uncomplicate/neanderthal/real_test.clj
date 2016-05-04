@@ -96,7 +96,7 @@
 
 (defn test-iamax [factory]
   (facts "BLAS 1 iamax"
-         (iamax (create-vector factory [1 2 7 7 6 2 -10 10])) => 6
+         (iamax (create-vector factory [1 2 7 7 6 2 -12 10])) => 6
          (iamax (create-vector factory [])) => 0
          (iamax (create-vector factory [4 6 7 3])) => 2))
 
@@ -108,7 +108,7 @@
 
 (defn test-imin [factory]
   (facts "BLAS 1 imin"
-         (imin (create-vector factory [1 2 7 7 6 2 -10 10])) => 6
+         (imin (create-vector factory [1 2 7 7 6 2 -12 10])) => 6
          (imin (create-vector factory [])) => 0
          (imin (create-vector factory [4 6 7 3])) => 3))
 
@@ -321,6 +321,7 @@
          (copy (create-vector factory 1 2)) => (create-vector factory 1 2)
          (let [x (create-vector factory 1 2)]
            (identical? (copy x) x) => false)))
+
 ;; ====================== BLAS 2 ===============================
 
 (defn test-mv [factory]
@@ -346,6 +347,16 @@
               (create-vector factory 1 2 3) 0.0 (create-vector factory 0 0))
          => (mv 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
                 (create-vector factory 1 2 3))
+
+         (mv! 2.0 (submatrix (create-ge-matrix factory 4 6 (range 24)) 1 2 2 3)
+              (create-vector factory [1 3 5])
+              3.0 (create-vector factory [2 3]))
+         => (create-vector factory 272 293)
+
+         (mv! 2.0 (submatrix (create-ge-matrix factory 4 6 (range 24)) 1 2 2 3)
+              (create-vector factory [1 3 5])
+              3.0 (col (create-ge-matrix factory 2 3 (range 6)) 1))
+         => (create-vector factory 272 293)
 
          (mv! 2.0 (submatrix (create-ge-matrix factory 4 6 (range 24)) 1 2 2 3)
               (row (create-ge-matrix factory 2 3 (range 6)) 1)
@@ -396,7 +407,12 @@
          (mm! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
               (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
               3.0 (create-ge-matrix factory 2 2 [1 2 3 4]))
-         => (create-ge-matrix factory 2 2 [47 62 107 140]))
+         => (create-ge-matrix factory 2 2 [47 62 107 140])
+
+         (mm! 2.0 (create-ge-matrix factory 3 5 (take 15 (repeat 1)))
+              (create-ge-matrix factory 5 3 (take 15 (repeat 1)))
+              3.0 (create-ge-matrix factory 3 3 (take 9 (repeat 0))))
+         => (create-ge-matrix factory 3 3 (take 9 (repeat 10))))
 
   (facts "mm"
          (mm (create-ge-matrix factory 3 2 (range 6))

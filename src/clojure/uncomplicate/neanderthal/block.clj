@@ -7,6 +7,9 @@
 (defn buffer [x]
   (.buffer ^Block x))
 
+(defn offset ^long [x]
+  (.offset ^Block x))
+
 (defn stride ^long [x]
   (.stride ^Block x))
 

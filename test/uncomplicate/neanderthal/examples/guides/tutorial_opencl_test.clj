@@ -95,7 +95,8 @@ $code"
             [uncomplicate.neanderthal
              [core :refer [asum dot axpy! mv! mm! transfer!]]
              [native :refer [sv sge]]
-             [opencl :refer [with-default-engine sv-cl sge-cl]]]))
+             [opencl :refer [with-engine clv clge]]]
+            [uncomplicate.neanderthal.opencl.amd-gcn :refer [gcn-single]]))
 
 "$text
 
@@ -105,7 +106,7 @@ can fine tune the computation executions. Neanderthal can also work with the
 default setting, which we'll do here because we do not need all the ClojureCL
 knobs for the beginning.
 
-So, we will wrap all code we work with into `with-default` and `with-default-engine`.
+So, we will wrap all code we work with into `with-default` and `with-engine`.
 Our code will then be executed on the first available device on the first available
 OpenCL platform. On my machine, that would activate the fastest GPU (the first
 of the three Radeons I have) using the AMD's OpenCL drivers. Your setup would probably
@@ -114,7 +115,7 @@ be more or less different.
 $code\""
 
 (with-default
-  (with-default-engine
+  (with-engine gcn-single *command-queue*
     (facts "We'll write our GPU code here, but for now here is only plain
 CPU stuff you recognize from the plain Neanderthal tutorial."
 
@@ -129,12 +130,12 @@ Let's see how to do the same computation on the GPU:
 $code"
 
 (with-default
-  (with-default-engine
+  (with-engine gcn-single *command-queue*
     (facts
      "Create a vector on the device, write into it the data from the host vector
 and compute the sum of absolute values."
 
-     (with-release [gpu-x (transfer! (sv 1 -2 3) (sv-cl 3))]
+     (with-release [gpu-x (transfer! (sv 1 -2 3) (clv 3))]
 
        (asum gpu-x)) => 6.0)))
 
@@ -150,7 +151,7 @@ meantime, you can study that code, and probably figure it out yourself.
 
 Here are the important steps:
 
-1. Create the 3-element empty vector on the GPU device with `sv-cl`.
+1. Create the 3-element empty vector on the GPU device with `clv`.
 That is short for 'single precision floating point CL vector'. We are using
 single precision because affordable consumer-grade GPU devices offer amazing
 performance with floats, and are much slower (Radeons 290X - 8x, GeForce 980 - 32x)
@@ -184,11 +185,11 @@ $code"
 
 (comment
   (with-default
-    (with-default-engine
+    (with-engine gcn-single *command-queue*
       (facts
        "Compare the speed of computing small vectors on CPU and GPU"
        (with-release [host-x (sv 1 -2 3)
-                      gpu-x (transfer! host-x (sv-cl 3))]
+                      gpu-x (transfer! host-x (clv 3))]
 
          (println "CPU:")
          (time (asum host-x)) => 6.0
@@ -212,12 +213,12 @@ $code"
 
 (comment
   (with-default
-    (with-default-engine
+    (with-engine gcn-single *command-queue*
       (facts
        "Let's try with 2^20. That's more than a million."
        (let [cnt (long (Math/pow 2 20))]
          (with-release [host-x (sv (range cnt))
-                        gpu-x (transfer! host-x (sv-cl cnt))]
+                        gpu-x (transfer! host-x (clv cnt))]
 
            (println "CPU:")
            (time (asum host-x)) => (float 5.49754798E11)
@@ -236,7 +237,7 @@ $code"
 
 (comment
   (with-default
-    (with-default-engine
+    (with-engine gcn-single *command-queue*
       (facts
        "Let's try with 2^29. That's 2GB, the maximum that Java buffers can
 currently handle. Java 9 would hopefully increase that."
@@ -245,7 +246,7 @@ currently handle. Java 9 would hopefully increase that."
        ;; time reports wrong values, criterium confirms the earlier numbers.
        (let [cnt (long (Math/pow 2 28))]
          (with-release [host-x (sv (range cnt))
-                        gpu-x (transfer! host-x (sv-cl cnt))]
+                        gpu-x (transfer! host-x (clv cnt))]
 
            (println "CPU:")
            ;; note the wrong result in the CPU vector. That's because single precision floats
@@ -271,7 +272,7 @@ $code"
 
 (comment
   (with-default
-    (with-default-engine
+    (with-engine gcn-single *command-queue*
       (facts
        "Let's try with a more parallel linear operation: adding two vectors.
 I'll set them to 1GB each because my GPU does not have enough memory to
@@ -279,8 +280,8 @@ hold 4GB of data (it has 4GB total memory)."
        (let [cnt (long (Math/pow 2 28))]
          (with-release [host-x (sv (range cnt))
                         host-y (sv (range cnt))
-                        gpu-x (transfer! host-x (sv-cl cnt))
-                        gpu-y (transfer! host-y (sv-cl cnt))]
+                        gpu-x (transfer! host-x (clv cnt))
+                        gpu-y (transfer! host-y (clv cnt))]
 
            (println "CPU:")
            (time (axpy! 3 host-x host-y)) => host-y
@@ -305,7 +306,7 @@ $code"
 
 (comment
   (with-default
-    (with-default-engine
+    (with-engine gcn-single *command-queue*
       (facts
        "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
@@ -313,9 +314,9 @@ demanding enough."
          (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-x (sv (range cnt))
                         host-y (sv (range cnt))
-                        gpu-a (transfer! host-a (sge-cl cnt cnt))
-                        gpu-x (transfer! host-x (sv-cl cnt))
-                        gpu-y (transfer! host-y (sv-cl cnt))]
+                        gpu-a (transfer! host-a (clge cnt cnt))
+                        gpu-x (transfer! host-x (clv cnt))
+                        gpu-y (transfer! host-y (clv cnt))]
 
            (println "CPU:")
            (time (mv! 3 host-a host-x 2 host-y)) => host-y
@@ -333,21 +334,23 @@ multiplication and see how that goes.
 $code"
 
 (comment
+  (use 'uncomplicate.neanderthal.opencl.clblast)
   (with-default
-    (with-default-engine
+    (with-engine clblast-single *command-queue*
       (facts
        "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
-       (let [cnt 8192]
+       (let [cnt 8000]
          (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-b (sge cnt cnt (range (* cnt cnt)))
                         host-c (sge cnt cnt (range (* cnt cnt)))
-                        gpu-a (transfer! host-a (sge-cl cnt cnt))
-                        gpu-b (transfer! host-a (sge-cl cnt cnt))
-                        gpu-c (transfer! host-a (sge-cl cnt cnt))]
+                        gpu-a (transfer! host-a (clge cnt cnt))
+                        gpu-b (transfer! host-a (clge cnt cnt))
+                        gpu-c (transfer! host-a (clge cnt cnt))]
 
-           (println "CPU:")
-           (time (mm! 3 host-a host-b 2 host-c)) => host-c
+           ;;         (println "CPU:")
+           ;;       (time (mm! 3 host-a host-b 2 host-c)) => host-c
+           (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))
            (println "GPU:")
            (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))) => truthy))))))
 
