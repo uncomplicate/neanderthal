@@ -1,6 +1,7 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl
-  (:require [uncomplicate.commons.core :refer [release wrap-float wrap-double]]
+  (:require [uncomplicate.commons.core
+             :refer [release let-release wrap-float wrap-double]]
             [uncomplicate.clojurecl
              [core :refer [*context* *command-queue* cl-buffer?]]
              [info :refer [queue-context]]]
@@ -11,7 +12,7 @@
             [uncomplicate.neanderthal.impl.cblas
              :refer [cblas-single cblas-double]]
             [uncomplicate.neanderthal.opencl
-             [clblock :refer [->TypedCLAccessor]]
+             [clblock :refer [->TypedCLAccessor cl-to-host host-to-cl]]
              [amd-gcn :refer [gcn-double gcn-single]]
              [clblast :refer [clblast-double clblast-single]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
@@ -24,6 +25,17 @@
       (try
         ~@body
         (finally (release *opencl-factory*))))))
+
+(defmacro with-default-engine
+  ([& body]
+   `(binding [*opencl-factory* (clblast-single *context* *command-queue*)]
+      (try
+        ~@body
+        (finally (release *opencl-factory*))))))
+
+(defn host [cl]
+  (let-release [raw-host (p/raw cl (p/factory (p/factory cl)))]
+    (cl-to-host cl raw-host)))
 
 (defn clv
   "Creates an OpenCL-backed vector on the device, with dimension n, using

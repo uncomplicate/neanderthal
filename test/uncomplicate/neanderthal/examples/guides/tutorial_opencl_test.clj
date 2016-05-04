@@ -91,12 +91,11 @@ $code"
   (:require [midje.sweet :refer [facts => truthy]]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl.core
-             :refer [with-default finish! *command-queue*]]
+             :refer [with-default finish!]]
             [uncomplicate.neanderthal
-             [core :refer [asum dot axpy! mv! mm! transfer!]]
+             [core :refer [asum dot axpy! mv! mm! transfer! copy]]
              [native :refer [sv sge]]
-             [opencl :refer [with-engine clv clge]]]
-            [uncomplicate.neanderthal.opencl.amd-gcn :refer [gcn-single]]))
+             [opencl :refer [with-default-engine clv clge]]]))
 
 "$text
 
@@ -115,7 +114,7 @@ be more or less different.
 $code\""
 
 (with-default
-  (with-engine gcn-single *command-queue*
+  (with-default-engine
     (facts "We'll write our GPU code here, but for now here is only plain
 CPU stuff you recognize from the plain Neanderthal tutorial."
 
@@ -130,7 +129,7 @@ Let's see how to do the same computation on the GPU:
 $code"
 
 (with-default
-  (with-engine gcn-single *command-queue*
+  (with-default-engine
     (facts
      "Create a vector on the device, write into it the data from the host vector
 and compute the sum of absolute values."
@@ -185,20 +184,20 @@ $code"
 
 (comment
   (with-default
-    (with-engine gcn-single *command-queue*
+    (with-default-engine
       (facts
        "Compare the speed of computing small vectors on CPU and GPU"
        (with-release [host-x (sv 1 -2 3)
-                      gpu-x (transfer! host-x (clv 3))]
+                      gpu-x (clv 1 -2 3)]
 
-         (println "CPU:")
+         (print "CPU:")
          (time (asum host-x)) => 6.0
-         (println "GPU:")
+         (print "GPU:")
          (time (asum gpu-x)) => 6.0)))))
 
 "$text
 
-When measuring very fast code, the `time` function gives wildly imprecise results
+When meansuring very fast code, the `time` function gives wildly imprecise results
 - replace the calls to `time` with calls for criterium `quick-bench` and it will
 show much faster and precise measurements. Anyway, we can see that CPU is much faster:
 28 nanoseconds vs 58 microseconds. This is because calling GPU takes some time
@@ -213,16 +212,16 @@ $code"
 
 (comment
   (with-default
-    (with-engine gcn-single *command-queue*
+    (with-default-engine
       (facts
        "Let's try with 2^20. That's more than a million."
        (let [cnt (long (Math/pow 2 20))]
          (with-release [host-x (sv (range cnt))
                         gpu-x (transfer! host-x (clv cnt))]
 
-           (println "CPU:")
+           (print "CPU:")
            (time (asum host-x)) => (float 5.49754798E11)
-           (println "GPU:")
+           (print "GPU:")
            (time (asum gpu-x)) => 5.497552896E11))))))
 
 "$text
@@ -237,7 +236,7 @@ $code"
 
 (comment
   (with-default
-    (with-engine gcn-single *command-queue*
+    (with-default-engine
       (facts
        "Let's try with 2^29. That's 2GB, the maximum that Java buffers can
 currently handle. Java 9 would hopefully increase that."
@@ -248,13 +247,14 @@ currently handle. Java 9 would hopefully increase that."
          (with-release [host-x (sv (range cnt))
                         gpu-x (transfer! host-x (clv cnt))]
 
-           (println "CPU:")
+           (print "CPU:")
            ;; note the wrong result in the CPU vector. That's because single precision floats
-           ;; are not enough for so many accumulations. In real life, you must use doubles where needed.
+           ;; are not precise enough for so many accumulations. In real life,
+           ;; you must use doubles in such cases.
            (time (asum host-x)) => (float 3.6780519E16)
-           (println "GPU:")
+           (print "GPU:")
            ;; GPU engine uses doubles for this accumulation, so the result is more precise.
-           (time (asum gpu-x)) => 3.602879688474624E16))))))
+           (time (asum gpu-x)) => 3.6028792723996672E16))))))
 
 "$text
 
@@ -272,21 +272,21 @@ $code"
 
 (comment
   (with-default
-    (with-engine gcn-single *command-queue*
+    (with-default-engine
       (facts
        "Let's try with a more parallel linear operation: adding two vectors.
 I'll set them to 1GB each because my GPU does not have enough memory to
 hold 4GB of data (it has 4GB total memory)."
        (let [cnt (long (Math/pow 2 28))]
          (with-release [host-x (sv (range cnt))
-                        host-y (sv (range cnt))
+                        host-y (copy host-x)
                         gpu-x (transfer! host-x (clv cnt))
-                        gpu-y (transfer! host-y (clv cnt))]
+                        gpu-y (copy gpu-x)]
 
-           (println "CPU:")
+           (print "CPU:")
            (time (axpy! 3 host-x host-y)) => host-y
-           (println "GPU:")
-           (time (do (axpy! 3 gpu-x gpu-y) (finish! *command-queue*))) => truthy))))))
+           (print "GPU:")
+           (time (do (axpy! 3 gpu-x gpu-y) (finish!))) => truthy))))))
 
 "$text
 
@@ -306,22 +306,22 @@ $code"
 
 (comment
   (with-default
-    (with-engine gcn-single *command-queue*
+    (with-default-engine
       (facts
        "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
        (let [cnt 8192]
          (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-x (sv (range cnt))
-                        host-y (sv (range cnt))
+                        host-y (copy host-x)
                         gpu-a (transfer! host-a (clge cnt cnt))
                         gpu-x (transfer! host-x (clv cnt))
-                        gpu-y (transfer! host-y (clv cnt))]
+                        gpu-y (copy gpu-x)]
 
-           (println "CPU:")
+           (print "CPU:")
            (time (mv! 3 host-a host-x 2 host-y)) => host-y
-           (println "GPU:")
-           (time (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish! *command-queue*))) => truthy))))))
+           (print "GPU:")
+           (time (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish!))) => truthy))))))
 
 "$text
 
@@ -334,25 +334,24 @@ multiplication and see how that goes.
 $code"
 
 (comment
-  (use 'uncomplicate.neanderthal.opencl.clblast)
   (with-default
-    (with-engine clblast-single *command-queue*
+    (with-default-engine
       (facts
        "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
        (let [cnt 8000]
          (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
-                        host-b (sge cnt cnt (range (* cnt cnt)))
-                        host-c (sge cnt cnt (range (* cnt cnt)))
+                        host-b (copy host-a)
+                        host-c (copy host-a)
                         gpu-a (transfer! host-a (clge cnt cnt))
-                        gpu-b (transfer! host-a (clge cnt cnt))
-                        gpu-c (transfer! host-a (clge cnt cnt))]
+                        gpu-b (copy gpu-a)
+                        gpu-c (copy gpu-a)]
 
-           ;;         (println "CPU:")
-           ;;       (time (mm! 3 host-a host-b 2 host-c)) => host-c
-           (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))
-           (println "GPU:")
-           (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish! *command-queue*))) => truthy))))))
+           ;;(print "CPU:")
+           ;;(time (mm! 3 host-a host-b 2 host-c)) => host-c
+           (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))
+           (print "GPU:")
+           (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))) => truthy))))))
 
 "$text
 

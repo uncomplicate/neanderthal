@@ -65,7 +65,7 @@
   (transfer! (sv 1 2 3) device-vect)
   (transfer! device-vect (sv 3))
   "
-  (fn [source destination] [(class source) (class destination)]))
+  (fn ([source destination] [(class source) (class destination)])))
 
 (defn create
   "Creates an initialized vector of the dimension n, or a  matrix m x n,

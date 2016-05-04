@@ -1,7 +1,7 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.opencl.clblock
   (:require [uncomplicate.commons.core
-             :refer [Releaseable release wrap-float wrap-double]]
+             :refer [Releaseable release let-release wrap-float wrap-double]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal.protocols :refer :all]
@@ -17,6 +17,19 @@
             BLAS Vector Matrix Changeable Block DataAccessor]
            [uncomplicate.neanderthal.impl.buffer_block
             RealBlockVector RealGeneralMatrix]))
+
+(defn cl-to-host [cl host]
+  (let [mapped-host (map-memory cl :read)]
+    (try
+      (copy! mapped-host host)
+      (finally (unmap cl mapped-host)))))
+
+(defn host-to-cl [host cl]
+  (let [mapped-host (map-memory cl :write-invalidate-region)]
+    (try
+      (copy! host mapped-host)
+      cl
+      (finally (unmap cl mapped-host)))))
 
 (defprotocol CLAccessor
   (get-queue [this])
@@ -157,26 +170,16 @@
 
 (defmethod transfer! [CLBlockVector RealBlockVector]
   [source destination]
-  (let [mapped-host (map-memory source :read)]
-    (try
-      (copy! mapped-host destination)
-      (finally (unmap source mapped-host)))))
+  (cl-to-host source destination))
 
 (defmethod transfer! [RealBlockVector CLBlockVector]
   [source destination]
-  (let [mapped-host (map-memory destination :write-invalidate-region)]
-    (try
-      (do
-        (copy! source mapped-host)
-        destination)
-      (finally (unmap destination mapped-host)))))
+  (host-to-cl source destination))
 
 (defmethod transfer! [clojure.lang.Sequential CLBlockVector]
   [source ^CLBlockVector destination]
-  (transfer!
-   (transfer! source (create (factory (factory destination))
-                             (.dim destination)))
-   destination))
+  (let-release [host (raw destination (factory (factory destination)))]
+    (host-to-cl (transfer! source host) destination)))
 
 ;; ================== CL Matrix ============================================
 
@@ -289,28 +292,16 @@
 
 (defmethod transfer! [CLGeneralMatrix RealGeneralMatrix]
   [source destination]
-  (let [mapped-host (map-memory source :read)]
-    (try
-      (copy! mapped-host destination)
-      (finally
-        (unmap source mapped-host)))))
+  (cl-to-host source destination))
 
 (defmethod transfer! [RealGeneralMatrix CLGeneralMatrix]
   [source destination]
-  (let [mapped-host (map-memory destination :write-invalidate-region)]
-    (try
-      (do
-        (copy! source mapped-host)
-        destination)
-      (finally (unmap destination mapped-host)))))
+  (host-to-cl source destination))
 
 (defmethod transfer! [clojure.lang.Sequential CLGeneralMatrix]
   [source destination]
-  (transfer!
-   (transfer! source (create (factory (factory destination))
-                             (.mrows ^Matrix destination)
-                             (.ncols ^Matrix destination)))
-   destination))
+  (let-release [host (raw destination (factory (factory destination)))]
+    (host-to-cl (transfer! source host) destination)))
 
 (defmethod print-method CLGeneralMatrix
   [x ^java.io.Writer w]
