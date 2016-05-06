@@ -1,5 +1,5 @@
 (ns ^{:author "Dragan Djuric"}
-  uncomplicate.neanderthal.opencl.clblock
+    uncomplicate.neanderthal.opencl.clblock
   (:require [uncomplicate.commons.core
              :refer [Releaseable release let-release wrap-float wrap-double]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid]]

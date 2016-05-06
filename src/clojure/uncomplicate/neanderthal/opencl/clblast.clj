@@ -7,6 +7,8 @@
                      wrap-int wrap-double wrap-float]]
             [uncomplicate.clojurecl
              [core :refer :all]
+             [constants :refer [dec-error]]
+             [utils :refer [with-check]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
@@ -19,6 +21,49 @@
            [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Vector Matrix Block DataAccessor]))
+
+(defn ^:private dec-clblast-error
+  "Decodes CLBlast error code to a meaningful string.
+  If called with a number that is not recognized as an existing OpenCL error,
+  returns nil."
+  [^long code]
+  (case code
+    -1024 "kNotImplemented"
+    -1022 "kInvalidMatrixA"
+    -1021 "kInvalidMatrixB"
+    -1020 "kInvalidMatrixC"
+    -1019 "kInvalidVectorX"
+    -1018 "kInvalidVectorY"
+    -1017 "kInvalidDimension"
+    -1016 "kInvalidLeadDimA"
+    -1015 "kInvalidLeadDimB"
+    -1014 "kInvalidLeadDimC"
+    -1013 "kInvalidIncrementX"
+    -1012 "kInvalidIncrementY"
+    -1011 "kInsufficientMemoryA"
+    -1010 "kInsufficientMemoryB"
+    -1009 "kInsufficientMemoryC"
+    -1008 "kInsufficientMemoryX"
+    -1007 "kInsufficientMemoryY"
+    -2048 "kKernellaunchError"
+    -2047 "kKernelRunError"
+    -2046 "kInvalidLocalMemUsage"
+    -2045 "kNoHalfPrecision"
+    -2044 "kNoDoublePrecision"
+    -2043 "kInvalidVectorDot"
+    -2042 "kInsufficientMemoryDot"
+    nil))
+
+(defn error
+  ([^long err-code details]
+   (if-let [err (dec-clblast-error err-code)]
+     (ex-info (format "CLBlast error: %s." err)
+              {:name err :code err-code :type :clblast-error :details details})
+     (let [err (dec-error err-code)]
+       (ex-info (format "OpenCL error: %s." err)
+                {:name err :code err-code :type :opencl-error :details details})))))
+
+;; ======================
 
 (defn ^:private equals-block-vector [ctx queue prog x y]
   (if (< 0 (dim x))
@@ -70,70 +115,77 @@
               false)))))))
 
 (defmacro ^:private vector-swap-copy [queue method x y]
-  `(if (< 0 (dim ~x))
-     (~method
-      (dim ~x)
-      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-      (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 (dim ~x))
+     (with-check error
+       (~method
+        (dim ~x)
+        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+        (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private vector-dot [ctx queue res-bytes read-method method x y]
   `(if (< 0 (dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
-       (~method
-        (dim ~x) (cl-mem res-buffer#) 0
-        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-        (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
-        ~queue nil)
-       (~read-method ~queue res-buffer#))
+       (with-check error
+         (~method
+          (dim ~x) (cl-mem res-buffer#) 0
+          (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+          (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+          ~queue nil)
+         (~read-method ~queue res-buffer#)))
      0.0))
 
 (defmacro ^:private vector-sum-nrm2 [ctx queue res-bytes read-method method x]
   `(if (< 0 (dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
-       (~method
-        (dim ~x) (cl-mem res-buffer#) 0
-        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-        ~queue nil)
-       (~read-method ~queue res-buffer#))
+       (with-check error
+         (~method
+          (dim ~x) (cl-mem res-buffer#) 0
+          (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+          ~queue nil)
+         (~read-method ~queue res-buffer#)))
      0.0))
 
 (defmacro ^:private vector-ipeak [ctx queue method x]
   `(if (< 0 (dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx Integer/BYTES :read-write)]
-       (~method
-        (dim ~x) (cl-mem res-buffer#) 0
-        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-        ~queue nil)
-       (enq-read-int ~queue res-buffer#))
+       (with-check error
+         (~method
+          (dim ~x) (cl-mem res-buffer#) 0
+          (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+          ~queue nil)
+         (enq-read-int ~queue res-buffer#)))
      0))
 
 (defmacro ^:private vector-scal [queue method alpha x]
-  `(if (< 0 (dim ~x))
-     (~method
-      (dim ~x) ~alpha
-      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 (dim ~x))
+     (with-check error
+       (~method
+        (dim ~x) ~alpha
+        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private vector-axpy [queue method alpha x y]
-  `(if (< 0 (dim ~x))
-     (~method
-      (dim ~x) ~alpha
-      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-      (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 (dim ~x))
+     (with-check error
+       (~method
+        (dim ~x) ~alpha
+        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+        (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private vector-subcopy [queue method x y kx lx ky]
-  `(if (< 0 ~lx)
-     (~method
-      ~lx
-      (cl-mem (buffer ~x)) ~kx (stride ~x)
-      (cl-mem (buffer ~y)) ~ky (stride ~y)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 ~lx)
+     (with-check error
+       (~method
+        ~lx
+        (cl-mem (buffer ~x)) ~kx (stride ~x)
+        (cl-mem (buffer ~y)) ~ky (stride ~y)
+        ~queue nil)
+       nil)))
 
 ;; NOTE: rotXX methods are not supported by CLBlast yet
 ;; These signatures might change a bit once they are supported
@@ -141,52 +193,59 @@
   `(let [mem# (cl-mem (buffer ~x))
          ofst# (offset ~x)
          strd# (stride ~x)]
-     (~method
-      mem# ofst
-      mem# (+ ofst strd)
-      mem# (+ ofst (* 2 strd))
-      mem# (+ ofst (* 3 strd))
-      ~queue nil)
-     ~queue))
+     (with-check error
+       (~method
+        mem# ofst
+        mem# (+ ofst strd)
+        mem# (+ ofst (* 2 strd))
+        mem# (+ ofst (* 3 strd))
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private vector-rotm [queue method x y p]
-  `(if (< 0 (dim ~x))
-     (~method (dim ~x)
-      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-      (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
-      (cl-mem (buffer ~p)) (offset ~p) (stride ~p)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 (dim ~x))
+     (with-check error
+       (~method (dim ~x)
+        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+        (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+        (cl-mem (buffer ~p)) (offset ~p) (stride ~p)
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private vector-rotmg [queue method p args]
   `(let [mem# (cl-mem (buffer ~args))
          ofst# (offset ~args)
          strd# (stride ~args)]
-     (~method
-      mem# ofst
-      mem# (+ ofst strd)
-      mem# (+ ofst (* 2 strd))
-      mem# (+ ofst (* 3 strd))
-      (cl-mem (buffer ~p)) (offset ~p)
-      ~queue nil)
-     ~queue))
+     (with-check error
+       (~method
+        mem# ofst
+        mem# (+ ofst strd)
+        mem# (+ ofst (* 2 strd))
+        mem# (+ ofst (* 3 strd))
+        (cl-mem (buffer ~p)) (offset ~p)
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private vector-rot [queue method x y c s]
-  `(~method (dim ~x)
-    (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-    (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
-    c s
-    ~queue nil))
+  `(with-check error
+     (~method (dim ~x)
+      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+      (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+      c s
+      ~queue nil)
+     nil))
 
 (defmacro ^:private matrix-swap-copy [queue method a b]
-  `(if (< 0 (ecount ~a))
+  `(when (< 0 (ecount ~a))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (mrows ~a) (ncols ~a))
                  (stride ~a) (stride ~b)))
-       (~method
-        (ecount ~a)
-        (cl-mem (buffer ~a)) (offset ~a) 1 (cl-mem (buffer ~b)) (offset ~b) 1
-        ~queue nil)
+       (with-check error
+         (~method
+          (ecount ~a)
+          (cl-mem (buffer ~a)) (offset ~a) 1 (cl-mem (buffer ~b)) (offset ~b) 1
+          ~queue nil)
+         nil)
        (if (column-major? ~a)
          (dotimes [i# (ncols ~a)]
            (with-release [x# (.col ~a i#)
@@ -195,19 +254,20 @@
          (dotimes [i# (mrows ~a)]
            (with-release [x# (.row ~a i#)
                           y# (.row ~b i#)]
-             (vector-swap-copy ~queue ~method x# y#)))))
-     ~queue))
+             (vector-swap-copy ~queue ~method x# y#)))))))
 
 (defmacro ^:private matrix-axpy [queue method alpha a b]
-  `(if (< 0 (ecount ~a))
+  `(when (< 0 (ecount ~a))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (mrows ~a) (ncols ~a))
                  (stride ~a) (stride ~b)))
-       (~method
-        (ecount ~a)
-        ~alpha (cl-mem (buffer ~a)) (offset ~a) 1
-        (cl-mem (buffer ~b)) (offset ~b) 1
-        ~queue nil)
+       (with-check error
+         (~method
+          (ecount ~a)
+          ~alpha (cl-mem (buffer ~a)) (offset ~a) 1
+          (cl-mem (buffer ~b)) (offset ~b) 1
+          ~queue nil)
+         nil)
        (if (column-major? ~a)
          (dotimes [i# (ncols ~a)]
            (with-release [x# (.col ~a i#)
@@ -216,41 +276,44 @@
          (dotimes [i# (mrows ~a)]
            (with-release [x# (.row ~a i#)
                           y# (.row ~b i#)]
-             (vector-axpy ~queue ~method ~alpha x# y#)))))
-     ~queue))
+             (vector-axpy ~queue ~method ~alpha x# y#)))))))
 
 (defmacro ^:private matrix-gemv [queue method alpha a x beta y]
-  `(if (< 0 (ecount ~a))
-     (~method
-      (order ~a) Transpose/kNo (mrows ~a) (ncols ~a)
-      ~alpha (cl-mem (buffer ~a)) (offset ~a) (stride ~a)
-      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-      ~beta (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 (ecount ~a))
+     (with-check error
+       (~method
+        (order ~a) Transpose/kNo (mrows ~a) (ncols ~a)
+        ~alpha (cl-mem (buffer ~a)) (offset ~a) (stride ~a)
+        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+        ~beta (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+        ~queue nil)
+       nil)))
+
 (defmacro ^:private matrix-ger [queue method alpha x y a]
-  `(if (< 0 (ecount ~a))
-     (~method
-      (order ~a) (mrows ~a) (ncols ~a)
-      ~alpha
-      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
-      (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
-      (cl-mem (buffer ~a)) (offset ~a) (stride ~a)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 (ecount ~a))
+     (with-check error
+       (~method
+        (order ~a) (mrows ~a) (ncols ~a)
+        ~alpha
+        (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+        (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+        (cl-mem (buffer ~a)) (offset ~a) (stride ~a)
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private matrix-gemm [queue method alpha a b beta c]
-  `(if (< 0 (ecount ~a))
-     (~method
-      (order ~a)
-      (if (= (order ~a) (order ~c)) Transpose/kNo Transpose/kYes)
-      (if (= (order ~b) (order ~c)) Transpose/kNo Transpose/kYes)
-      (mrows ~a) (ncols ~b) (ncols ~a)
-      ~alpha (cl-mem (buffer ~a)) (offset ~a) (stride ~a)
-      (cl-mem (buffer ~b)) (offset ~b) (stride ~b)
-      ~beta (cl-mem (buffer ~c)) (offset ~c) (stride ~c)
-      ~queue nil)
-     ~queue))
+  `(when (< 0 (ecount ~a))
+     (with-check error
+       (~method
+        (order ~a)
+        (if (= (order ~a) (order ~c)) Transpose/kNo Transpose/kYes)
+        (if (= (order ~b) (order ~c)) Transpose/kNo Transpose/kYes)
+        (mrows ~a) (ncols ~b) (ncols ~a)
+        ~alpha (cl-mem (buffer ~a)) (offset ~a) (stride ~a)
+        (cl-mem (buffer ~b)) (offset ~b) (stride ~b)
+        ~beta (cl-mem (buffer ~c)) (offset ~c) (stride ~c)
+        ~queue nil)
+       nil)))
 
 (deftype CLBlastDoubleVectorEngine [ctx queue prog]
   Releaseable
@@ -416,22 +479,22 @@
 
 (let [src [(slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/equals.cl"))]]
 
-  (org.jocl.blast.CLBlast/setExceptionsEnabled true)
+  (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
   (defn clblast-double [ctx queue]
-    (let [accessor (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
-                                      double-array wrap-double cblas-double)
-          prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)]
+    (let [prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)]
       (->CLFactory
-       ctx queue prog accessor
+       ctx queue prog
+       (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
+                          double-array wrap-double cblas-double)
        (->CLBlastDoubleVectorEngine ctx queue prog)
        (->CLBlastDoubleGeneralMatrixEngine ctx queue prog))))
 
   (defn clblast-single [ctx queue]
-    (let [accessor (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
-                                      float-array wrap-float cblas-single)
-          prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
+    (let [prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
       (->CLFactory
-       ctx queue prog accessor
+       ctx queue prog
+       (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
+                          float-array wrap-float cblas-single)
        (->CLBlastSingleVectorEngine ctx queue prog)
        (->CLBlastSingleGeneralMatrixEngine ctx queue prog)))))
