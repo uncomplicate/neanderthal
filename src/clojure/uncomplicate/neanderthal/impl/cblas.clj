@@ -11,23 +11,28 @@
             BLAS BLASPlus Vector Matrix RealVector DataAccessor BufferAccessor]))
 
 ;; =============== Common vector macros and functions ==========================
+(defmacro ^:private vector-swap-copy [method x y]
+  `(~method (.dim ~x) (.buffer ~x) 0 (.stride ~x) (.buffer ~y) 0 (.stride ~y)))
+
+(defmacro ^:private vector-axpy [method alpha x y]
+  `(~method (.dim ~x) ~alpha (.buffer ~x) (.stride ~x) (.buffer ~y) (.stride ~y)))
 
 (defmacro ^:private vector-rotg [method x]
   `(if (= 1 (.stride ~x))
-    (~method (.buffer ~x))
-    (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~x))))))
+     (~method (.buffer ~x))
+     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~x))))))
 
 (defmacro ^:private vector-rotm [method x y p]
   `(if (= 1 (.stride ~p))
-    (~method (dim ~x) (.buffer ~x) (.stride ~x)
-                 (.buffer ~y) (.stride ~y) (.buffer ~p))
-    (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~p))))))
+     (~method (dim ~x) (.buffer ~x) (.stride ~x)
+      (.buffer ~y) (.stride ~y) (.buffer ~p))
+     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~p))))))
 
 (defmacro ^:private vector-rotmg [method p args]
   `(if (= 1 (.stride ~p) (.stride ~args))
-    (~method (.buffer ~args) (.buffer ~p))
-    (throw (IllegalArgumentException.
-            (format STRIDE_MSG 1 (str (.stride ~p) " or " (.stride ~args)))))))
+     (~method (.buffer ~args) (.buffer ~p))
+     (throw (IllegalArgumentException.
+             (format STRIDE_MSG 1 (str (.stride ~p) " or " (.stride ~args)))))))
 
 (defn ^:private vector-imax [^RealVector x]
   (let [cnt (.dim x)]
@@ -51,7 +56,7 @@
 
 ;; =============== Common matrix macros and functions ==========================
 
-(defmacro ^:private matrix-swap-copy [vector-eng method vector-method a b]
+(defmacro ^:private matrix-swap-copy [method a b]
   `(if (< 0 (* (.mrows ~a) (.ncols ~a)))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
@@ -61,13 +66,13 @@
          (dotimes [i# (.ncols ~a)]
            (with-release [x# (.col ~a i#)
                           y# (.col ~b i#)]
-             (. ~vector-eng ~vector-method x# y#)))
+             (vector-swap-copy ~method x# y#)))
          (dotimes [i# (.mrows ~a)]
            (with-release [x# (.row ~a i#)
                           y# (.row ~b i#)]
-             (. ~vector-eng ~vector-method x# y#)))))))
+             (vector-swap-copy ~method x# y#)))))))
 
-(defmacro ^:private matrix-axpy [vector-eng method alpha a b]
+(defmacro ^:private matrix-axpy [method alpha a b]
   `(if (< 0 (* (.mrows ~a) (.ncols ~a)))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
@@ -77,20 +82,20 @@
          (dotimes [i# (.ncols ~a)]
            (with-release [x# (.col ~a i#)
                           y# (.col ~b i#)]
-             (. ~vector-eng axpy ~alpha x# y#)))
+             (vector-axpy ~method ~alpha x# y#)))
          (dotimes [i# (.mrows ~a)]
            (with-release [x# (.row ~a i#)
                           y# (.row ~b i#)]
-             (. ~vector-eng axpy ~alpha x# y#)))))))
+             (vector-axpy ~method ~alpha x# y#)))))))
 
 ;; ============ Real Vector Engines ============================================
 
 (deftype DoubleVectorEngine []
   BLAS
   (swap [_ x y]
-    (CBLAS/dswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (vector-swap-copy CBLAS/dswap x y))
   (copy [_ x y]
-    (CBLAS/dcopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (vector-swap-copy CBLAS/dcopy x y))
   (dot [_ x y]
     (CBLAS/ddot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   (nrm2 [_ x]
@@ -110,7 +115,7 @@
   (scal [_ alpha x]
     (CBLAS/dscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
-    (CBLAS/daxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (vector-axpy CBLAS/daxpy alpha x y))
   BLASPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/dcopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
@@ -124,9 +129,9 @@
 (deftype SingleVectorEngine []
   BLAS
   (swap [_ x y]
-    (CBLAS/sswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (vector-swap-copy CBLAS/sswap x y))
   (copy [_ x y]
-    (CBLAS/scopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (vector-swap-copy CBLAS/scopy x y))
   (dot [_ x y]
     (CBLAS/dsdot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   (nrm2 [_ x]
@@ -146,7 +151,7 @@
   (scal [_ alpha x]
     (CBLAS/sscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
-    (CBLAS/saxpy (.dim ^Vector x) alpha (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (vector-axpy CBLAS/saxpy alpha x y))
   BLASPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/scopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
@@ -159,14 +164,14 @@
 
 ;; ================= General Matrix Engines ====================================
 
-(deftype DoubleGeneralMatrixEngine [^BLAS vector-eng]
+(deftype DoubleGeneralMatrixEngine []
   BLAS
   (swap [_ a b]
-    (matrix-swap-copy vector-eng CBLAS/dswap swap ^Matrix a ^Matrix b))
+    (matrix-swap-copy CBLAS/dswap ^Matrix a ^Matrix b))
   (copy [_ a b]
-    (matrix-swap-copy vector-eng CBLAS/dcopy copy ^Matrix a ^Matrix b))
+    (matrix-swap-copy CBLAS/dcopy ^Matrix a ^Matrix b))
   (axpy [_ alpha a b]
-    (matrix-axpy vector-eng CBLAS/daxpy alpha ^Matrix a ^Matrix b))
+    (matrix-axpy CBLAS/daxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
     (CBLAS/dgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
@@ -188,14 +193,14 @@
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
 
-(deftype SingleGeneralMatrixEngine [^BLAS vector-eng]
+(deftype SingleGeneralMatrixEngine []
   BLAS
   (swap [_ a b]
-    (matrix-swap-copy vector-eng CBLAS/sswap swap ^Matrix a ^Matrix b))
+    (matrix-swap-copy CBLAS/sswap ^Matrix a ^Matrix b))
   (copy [_ a b]
-    (matrix-swap-copy vector-eng CBLAS/scopy copy ^Matrix a ^Matrix b))
+    (matrix-swap-copy CBLAS/scopy ^Matrix a ^Matrix b))
   (axpy [_ alpha a b]
-    (matrix-axpy vector-eng CBLAS/saxpy alpha ^Matrix a ^Matrix b))
+    (matrix-axpy CBLAS/saxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
     (CBLAS/sgemv (.order a) CBLAS/TRANSPOSE_NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
@@ -244,11 +249,11 @@
     matrix-eng))
 
 (def cblas-single
-  (let [vect-eng (->SingleVectorEngine)]
-    (->CblasFactory (->FloatBufferAccessor) vect-eng
-                    (->SingleGeneralMatrixEngine vect-eng))))
+  (->CblasFactory (->FloatBufferAccessor)
+                  (->SingleVectorEngine)
+                  (->SingleGeneralMatrixEngine)))
 
 (def cblas-double
-  (let [vect-eng (->DoubleVectorEngine)]
-    (->CblasFactory (->DoubleBufferAccessor) vect-eng
-                    (->DoubleGeneralMatrixEngine vect-eng))))
+  (->CblasFactory (->DoubleBufferAccessor)
+                  (->DoubleVectorEngine)
+                  (->DoubleGeneralMatrixEngine)))

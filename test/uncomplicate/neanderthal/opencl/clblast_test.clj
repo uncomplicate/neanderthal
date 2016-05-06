@@ -35,6 +35,8 @@
   (real-test/test-mm factory))
 
 (defn block-tests [factory]
+  (block-test/test-equality factory)
+  (block-test/test-release factory)
   (block-test/test-op-vector factory)
   (block-test/test-op-ge-matrix factory))
 

@@ -78,7 +78,7 @@
 
 (deftype CLBlockVector [^uncomplicate.neanderthal.protocols.Factory fact
                         ^DataAccessor claccessor ^BLAS eng
-                        ^Class entry-type ^Boolean master
+                        ^Class entry-type master
                         ^uncomplicate.clojurecl.core.CLBuffer cl-buf
                         ^long n ^long ofst ^long strd]
   Object
@@ -97,7 +97,9 @@
             entry-type n ofst strd))
   Releaseable
   (release [_]
-    (if master (release cl-buf) true))
+    (if (compare-and-set! master true false)
+      (release cl-buf)
+      true))
   Container
   (raw [_]
     (create-vector fact n (.createDataSource claccessor n) nil))
@@ -137,7 +139,7 @@
   (dim [_]
     n)
   (subvector [this k l]
-    (CLBlockVector. fact claccessor eng entry-type false cl-buf l (+ ofst k) strd))
+    (CLBlockVector. fact claccessor eng entry-type (atom false) cl-buf l (+ ofst k) strd))
   Mappable
   (map-memory [this flags]
     (let [host-fact (factory fact)
@@ -185,7 +187,7 @@
 
 (deftype CLGeneralMatrix [^uncomplicate.neanderthal.protocols.Factory fact
                           ^DataAccessor claccessor ^BLAS eng
-                          ^Class entry-type ^Boolean master
+                          ^Class entry-type master
                           ^uncomplicate.clojurecl.core.CLBuffer cl-buf
                           ^long m ^long n ^long ofst ^long ld ^long ord]
   Object
@@ -203,7 +205,9 @@
             entry-type "COL" m n ofst ld))
   Releaseable
   (release [_]
-    (if master (release cl-buf) true))
+    (if (compare-and-set! master true false)
+      (release cl-buf)
+      true))
   EngineProvider
   (engine [_]
     eng)
@@ -250,19 +254,19 @@
   (row [a i]
     (if (column-major? a)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf n (+ ofst i) ld)
+                      entry-type (atom false) cl-buf n (+ ofst i) ld)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf n (+ ofst (* ld i)) 1)))
+                      entry-type (atom false) cl-buf n (+ ofst (* ld i)) 1)))
   (col [a j]
     (if (column-major? a)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf m (+ ofst (* ld j)) 1)
+                      entry-type (atom false) cl-buf m (+ ofst (* ld j)) 1)
       (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type false cl-buf m (+ ofst j) ld)))
+                      entry-type (atom false) cl-buf m (+ ofst j) ld)))
   (submatrix [a i j k l]
     (let [o (if (column-major? a) (+ ofst (* j ld) i) (+ ofst (* i ld) j))]
       (CLGeneralMatrix. fact claccessor eng
-                        entry-type false cl-buf k l o ld ord)))
+                        entry-type (atom false) cl-buf k l o ld ord)))
   Mappable
   (map-memory [a flags]
     (let [host-fact (factory fact)

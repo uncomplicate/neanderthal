@@ -285,7 +285,7 @@
   Factory
   (create-vector [this n buf _]
     (if (and (<= 0 (long n) (.count claccessor buf)) (instance? CLBuffer buf))
-      (->CLBlockVector this claccessor vector-eng (.entryType claccessor) true
+      (->CLBlockVector this claccessor vector-eng (.entryType claccessor) (atom true)
                        buf n 0 1)
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
@@ -296,7 +296,7 @@
       (let [order (or order DEFAULT_ORDER)
             ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
         (->CLGeneralMatrix this claccessor matrix-eng (.entryType claccessor)
-                           true buf m n 0 ld order))
+                           (atom true) buf m n 0 ld order))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d matrix from %s."
                       m n (type buf))))))

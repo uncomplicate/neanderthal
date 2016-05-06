@@ -339,7 +339,7 @@ $code"
       (facts
        "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
-       (let [cnt 8000]
+       (let [cnt 8192]
          (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                         host-b (copy host-a)
                         host-c (copy host-a)

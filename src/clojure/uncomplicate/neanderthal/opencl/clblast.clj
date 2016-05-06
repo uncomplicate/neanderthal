@@ -135,7 +135,50 @@
       ~queue nil)
      ~queue))
 
-(defmacro ^:private matrix-swap-copy [queue vector-eng method vector-method a b]
+;; NOTE: rotXX methods are not supported by CLBlast yet
+;; These signatures might change a bit once they are supported
+(defmacro ^:private vector-rotg [queue method x]
+  `(let [mem# (cl-mem (buffer ~x))
+         ofst# (offset ~x)
+         strd# (stride ~x)]
+     (~method
+      mem# ofst
+      mem# (+ ofst strd)
+      mem# (+ ofst (* 2 strd))
+      mem# (+ ofst (* 3 strd))
+      ~queue nil)
+     ~queue))
+
+(defmacro ^:private vector-rotm [queue method x y p]
+  `(if (< 0 (dim ~x))
+     (~method (dim ~x)
+      (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+      (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+      (cl-mem (buffer ~p)) (offset ~p) (stride ~p)
+      ~queue nil)
+     ~queue))
+
+(defmacro ^:private vector-rotmg [queue method p args]
+  `(let [mem# (cl-mem (buffer ~args))
+         ofst# (offset ~args)
+         strd# (stride ~args)]
+     (~method
+      mem# ofst
+      mem# (+ ofst strd)
+      mem# (+ ofst (* 2 strd))
+      mem# (+ ofst (* 3 strd))
+      (cl-mem (buffer ~p)) (offset ~p)
+      ~queue nil)
+     ~queue))
+
+(defmacro ^:private vector-rot [queue method x y c s]
+  `(~method (dim ~x)
+    (cl-mem (buffer ~x)) (offset ~x) (stride ~x)
+    (cl-mem (buffer ~y)) (offset ~y) (stride ~y)
+    c s
+    ~queue nil))
+
+(defmacro ^:private matrix-swap-copy [queue method a b]
   `(if (< 0 (ecount ~a))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (mrows ~a) (ncols ~a))
@@ -148,14 +191,14 @@
          (dotimes [i# (ncols ~a)]
            (with-release [x# (.col ~a i#)
                           y# (.col ~b i#)]
-             (. ~vector-eng ~vector-method x# y#)))
+             (vector-swap-copy ~queue ~method x# y#)))
          (dotimes [i# (mrows ~a)]
            (with-release [x# (.row ~a i#)
                           y# (.row ~b i#)]
-             (. ~vector-eng ~vector-method x# y#)))))
+             (vector-swap-copy ~queue ~method x# y#)))))
      ~queue))
 
-(defmacro ^:private matrix-axpy [queue vector-eng method alpha a b]
+(defmacro ^:private matrix-axpy [queue method alpha a b]
   `(if (< 0 (ecount ~a))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (mrows ~a) (ncols ~a))
@@ -169,11 +212,11 @@
          (dotimes [i# (ncols ~a)]
            (with-release [x# (.col ~a i#)
                           y# (.col ~b i#)]
-             (. ~vector-eng axpy ~alpha x# y#)))
+             (vector-axpy ~queue ~method ~alpha x# y#)))
          (dotimes [i# (mrows ~a)]
            (with-release [x# (.row ~a i#)
                           y# (.row ~b i#)]
-             (. ~vector-eng axpy ~alpha x# y#)))))
+             (vector-axpy ~queue ~method ~alpha x# y#)))))
      ~queue))
 
 (defmacro ^:private matrix-gemv [queue method alpha a x beta y]
@@ -293,7 +336,7 @@
   (imin [this x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSmin x)))
 
-(deftype CLBlastDoubleGeneralMatrixEngine [ctx queue prog ^BLAS vector-eng]
+(deftype CLBlastDoubleGeneralMatrixEngine [ctx queue prog]
   Releaseable
   (release [_]
     true)
@@ -302,11 +345,11 @@
     (equals-block-matrix ctx queue prog a b))
   BLAS
   (swap [_ a b]
-    (matrix-swap-copy queue vector-eng CLBlast/CLBlastDswap swap ^Matrix a ^Matrix b))
+    (matrix-swap-copy queue CLBlast/CLBlastDswap ^Matrix a ^Matrix b))
   (copy [_ a b]
-    (matrix-swap-copy queue vector-eng CLBlast/CLBlastDcopy copy ^Matrix a ^Matrix b))
+    (matrix-swap-copy queue CLBlast/CLBlastDcopy ^Matrix a ^Matrix b))
   (axpy [_ alpha a b]
-    (matrix-axpy queue vector-eng CLBlast/CLBlastDaxpy alpha ^Matrix a ^Matrix b))
+    (matrix-axpy queue CLBlast/CLBlastDaxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
     (matrix-gemv queue CLBlast/CLBlastDgemv alpha a x beta y))
   (rank [_ alpha x y a]
@@ -314,7 +357,7 @@
   (mm [_ alpha a b beta c]
     (matrix-gemm queue CLBlast/CLBlastDgemm alpha a b beta c)))
 
-(deftype CLBlastSingleGeneralMatrixEngine [ctx queue prog ^BLAS vector-eng]
+(deftype CLBlastSingleGeneralMatrixEngine [ctx queue prog]
   Releaseable
   (release [_]
     true)
@@ -323,11 +366,11 @@
     (equals-block-matrix ctx queue prog a b))
   BLAS
   (swap [_ a b]
-    (matrix-swap-copy queue vector-eng CLBlast/CLBlastSswap swap ^Matrix a ^Matrix b))
+    (matrix-swap-copy queue CLBlast/CLBlastSswap ^Matrix a ^Matrix b))
   (copy [_ a b]
-    (matrix-swap-copy queue vector-eng CLBlast/CLBlastScopy copy ^Matrix a ^Matrix b))
+    (matrix-swap-copy queue CLBlast/CLBlastScopy ^Matrix a ^Matrix b))
   (axpy [_ alpha a b]
-    (matrix-axpy queue vector-eng CLBlast/CLBlastSaxpy alpha ^Matrix a ^Matrix b ))
+    (matrix-axpy queue CLBlast/CLBlastSaxpy alpha ^Matrix a ^Matrix b ))
   (mv [_ alpha a x beta y]
     (matrix-gemv queue CLBlast/CLBlastSgemv alpha a x beta y))
   (rank [_ alpha x y a]
@@ -349,7 +392,7 @@
   Factory
   (create-vector [this n buf _]
     (if (and (<= 0 (long n) (.count claccessor buf)) (instance? CLBuffer buf))
-      (->CLBlockVector this claccessor vector-eng (.entryType claccessor) true
+      (->CLBlockVector this claccessor vector-eng (.entryType claccessor) (atom true)
                        buf n 0 1)
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
@@ -360,7 +403,7 @@
       (let [order (or order DEFAULT_ORDER)
             ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
         (->CLGeneralMatrix this claccessor matrix-eng (.entryType claccessor)
-                           true buf m n 0 ld order))
+                           (atom true) buf m n 0 ld order))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d matrix from %s."
                       m n (type buf))))))
@@ -378,19 +421,17 @@
   (defn clblast-double [ctx queue]
     (let [accessor (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
                                       double-array wrap-double cblas-double)
-          prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)
-          vector-eng (->CLBlastDoubleVectorEngine ctx queue prog)]
+          prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)]
       (->CLFactory
        ctx queue prog accessor
-       vector-eng
-       (->CLBlastDoubleGeneralMatrixEngine ctx queue prog vector-eng))))
+       (->CLBlastDoubleVectorEngine ctx queue prog)
+       (->CLBlastDoubleGeneralMatrixEngine ctx queue prog))))
 
   (defn clblast-single [ctx queue]
     (let [accessor (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
                                       float-array wrap-float cblas-single)
-          prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)
-          vector-eng (->CLBlastSingleVectorEngine ctx queue prog)]
+          prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
       (->CLFactory
        ctx queue prog accessor
-       vector-eng
-       (->CLBlastSingleGeneralMatrixEngine ctx queue prog vector-eng)))))
+       (->CLBlastSingleVectorEngine ctx queue prog)
+       (->CLBlastSingleGeneralMatrixEngine ctx queue prog)))))
