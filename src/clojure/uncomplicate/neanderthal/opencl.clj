@@ -20,6 +20,14 @@
 (def ^:dynamic *opencl-factory*)
 
 (defmacro with-engine
+  "Creates a concrete OpenCL factory that executes in the provided queue,
+  and binds *opencl-factory* to it. Enables the use of clv and clge in body.
+
+  (with-default
+    (with-engine clblast-single *command-queue*
+      (with-release [gpu-x (clv (range 3))]
+        (sum gpu-x))))
+  "
   ([factory queue & body]
    `(binding [*opencl-factory* (~factory (queue-context ~queue) ~queue)]
       (try
@@ -27,13 +35,30 @@
         (finally (release *opencl-factory*))))))
 
 (defmacro with-default-engine
-  ([& body]
-   `(binding [*opencl-factory* (clblast-single *context* *command-queue*)]
-      (try
-        ~@body
-        (finally (release *opencl-factory*))))))
+  "Creates a concrete single-precision CLBlast OpenCL factory that executes
+  in the default context and queue, and binds *opencl-factory* to it.
+  clv and clge in its body will create single-precision blocks.
 
-(defn host [cl]
+  (with-default
+    (with-default-engine
+      (with-release [gpu-x (clv (range 3))]
+        (sum gpu-x))))
+  "
+  [& body]
+  `(binding [*opencl-factory* (clblast-single *context* *command-queue*)]
+     (try
+       ~@body
+       (finally (release *opencl-factory*)))))
+
+(defn host
+  "Transfers cl object from the device memory to the appropriate structure
+  on the host. A more convenient and (sometimes) a slightly faster alternative
+  to transfer!
+
+  (host (clv [1 2 3]))
+  (host (clge 2 3 (range 6)))
+  "
+  [cl]
   (let-release [raw-host (p/raw cl (p/factory (p/factory cl)))]
     (cl-to-host cl raw-host)))
 
