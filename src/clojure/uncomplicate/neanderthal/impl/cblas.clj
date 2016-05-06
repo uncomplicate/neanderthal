@@ -10,7 +10,8 @@
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Vector Matrix RealVector DataAccessor BufferAccessor]))
 
-;; =============== Common vector macros and functions ==========================
+;; =============== Common vector engine  macros and functions ==================
+
 (defmacro ^:private vector-swap-copy [method x y]
   `(~method (.dim ~x) (.buffer ~x) 0 (.stride ~x) (.buffer ~y) 0 (.stride ~y)))
 

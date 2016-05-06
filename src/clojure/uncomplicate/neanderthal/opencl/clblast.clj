@@ -18,9 +18,10 @@
              :refer [cblas-single cblas-double]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
   (:import [org.jocl.blast CLBlast Transpose]
-           [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Vector Matrix Block DataAccessor]))
+
+;; =============== OpenCL and CLBlast error handling functions =================
 
 (defn ^:private dec-clblast-error
   "Decodes CLBlast error code to a meaningful string.
@@ -54,16 +55,15 @@
     -2042 "kInsufficientMemoryDot"
     nil))
 
-(defn error
-  ([^long err-code details]
-   (if-let [err (dec-clblast-error err-code)]
-     (ex-info (format "CLBlast error: %s." err)
-              {:name err :code err-code :type :clblast-error :details details})
-     (let [err (dec-error err-code)]
-       (ex-info (format "OpenCL error: %s." err)
-                {:name err :code err-code :type :opencl-error :details details})))))
+(defn ^:private error [^long err-code details]
+  (if-let [err (dec-clblast-error err-code)]
+    (ex-info (format "CLBlast error: %s." err)
+             {:name err :code err-code :type :clblast-error :details details})
+    (let [err (dec-error err-code)]
+      (ex-info (format "OpenCL error: %s." err)
+               {:name err :code err-code :type :opencl-error :details details}))))
 
-;; ======================
+;; =============== Common vector engine  macros and functions ==================
 
 (defn ^:private equals-block-vector [ctx queue prog x y]
   (if (< 0 (dim x))
@@ -235,6 +235,8 @@
       ~queue nil)
      nil))
 
+;; =============== Common matrix engine  macros and functions ==================
+
 (defmacro ^:private matrix-swap-copy [queue method a b]
   `(when (< 0 (ecount ~a))
      (if (and (= (order ~a) (order ~b))
@@ -314,6 +316,8 @@
         ~beta (cl-mem (buffer ~c)) (offset ~c) (stride ~c)
         ~queue nil)
        nil)))
+
+;; =============== CLBlast based engines =======================================
 
 (deftype CLBlastDoubleVectorEngine [ctx queue prog]
   Releaseable
@@ -454,22 +458,9 @@
     (factory claccessor))
   Factory
   (create-vector [this n buf _]
-    (if (and (<= 0 (long n) (.count claccessor buf)) (instance? CLBuffer buf))
-      (->CLBlockVector this claccessor vector-eng (.entryType claccessor) (atom true)
-                       buf n 0 1)
-      (throw (IllegalArgumentException.
-              (format "I can not create an %d element vector from %d-element %s."
-                      n (ecount claccessor buf) (class buf))))))
-  (create-matrix [this m n buf order]
-    (if (and (<= 0 (* (long m) (long n)) (.count claccessor buf))
-             (instance? CLBuffer buf))
-      (let [order (or order DEFAULT_ORDER)
-            ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
-        (->CLGeneralMatrix this claccessor matrix-eng (.entryType claccessor)
-                           (atom true) buf m n 0 ld order))
-      (throw (IllegalArgumentException.
-              (format "I do not know how to create a %dx%d matrix from %s."
-                      m n (type buf))))))
+    (create-cl-vector this vector-eng n buf))
+  (create-matrix [this m n buf ord]
+    (create-cl-ge-matrix this matrix-eng m n buf ord))
   (data-accessor [_]
     claccessor)
   (vector-engine [_]

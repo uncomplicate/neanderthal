@@ -4,15 +4,16 @@
              :refer [Releaseable release let-release wrap-float wrap-double]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid]]
             [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.neanderthal.protocols :refer :all]
-            [uncomplicate.neanderthal.core :refer [transfer! copy! create sum]]
+            [uncomplicate.neanderthal
+             [protocols :refer :all]
+             [core :refer [transfer! copy!]]]
             [uncomplicate.neanderthal.impl.fluokitten
              :refer [vector-op matrix-op]]
             [uncomplicate.neanderthal.impl.buffer-block
              :refer [->RealBlockVector ->RealGeneralMatrix]]
             [uncomplicate.neanderthal.impl.cblas :refer
              [cblas-single cblas-double]])
-  (:import [uncomplicate.neanderthal CBLAS]
+  (:import [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS Vector Matrix Changeable Block DataAccessor]
            [uncomplicate.neanderthal.impl.buffer_block
@@ -37,6 +38,7 @@
   (wrap-prim [this p]))
 
 ;; ================== Accessors ================================================
+
 (deftype TypedCLAccessor [ctx queue et ^long w array-fn wrap-fn host-fact]
   DataAccessor
   (entryType [_]
@@ -78,8 +80,7 @@
 
 (deftype CLBlockVector [^uncomplicate.neanderthal.protocols.Factory fact
                         ^DataAccessor claccessor ^BLAS eng
-                        ^Class entry-type master
-                        ^uncomplicate.clojurecl.core.CLBuffer cl-buf
+                        ^Class entry-type master ^CLBuffer cl-buf
                         ^long n ^long ofst ^long strd]
   Object
   (hashCode [this]
@@ -187,8 +188,7 @@
 
 (deftype CLGeneralMatrix [^uncomplicate.neanderthal.protocols.Factory fact
                           ^DataAccessor claccessor ^BLAS eng
-                          ^Class entry-type master
-                          ^uncomplicate.clojurecl.core.CLBuffer cl-buf
+                          ^Class entry-type master ^CLBuffer cl-buf
                           ^long m ^long n ^long ofst ^long ld ^long ord]
   Object
   (hashCode [this]
@@ -310,3 +310,24 @@
 (defmethod print-method CLGeneralMatrix
   [x ^java.io.Writer w]
   (.write w (str x)))
+
+(defn create-cl-vector [factory vector-eng ^long n buf]
+  (let [claccessor (data-accessor factory)]
+    (if (and (<= 0 n (.count claccessor buf)) (instance? CLBuffer buf))
+      (->CLBlockVector factory claccessor vector-eng (.entryType claccessor)
+                       (atom true) buf n 0 1)
+      (throw (IllegalArgumentException.
+              (format "I can not create an %d element vector from %d-element %s."
+                      n (.count claccessor buf) (class buf)))))))
+
+(defn create-cl-ge-matrix [factory matrix-eng m n buf ord]
+  (let [claccessor (data-accessor factory)]
+    (if (and (<= 0 (* (long m) (long n)) (.count claccessor buf))
+             (instance? CLBuffer buf))
+      (let [ord (or ord DEFAULT_ORDER)
+            ld (max (long (if (= COLUMN_MAJOR ord) m n)) 1)]
+        (->CLGeneralMatrix factory claccessor matrix-eng (.entryType claccessor)
+                           (atom true) buf m n 0 ld ord))
+      (throw (IllegalArgumentException.
+              (format "I do not know how to create a %dx%d matrix from %s."
+                      m n (type buf)))))))
