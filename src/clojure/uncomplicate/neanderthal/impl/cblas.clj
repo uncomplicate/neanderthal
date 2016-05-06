@@ -13,27 +13,27 @@
 ;; =============== Common vector engine  macros and functions ==================
 
 (defmacro ^:private vector-swap-copy [method x y]
-  `(~method (.dim ~x) (.buffer ~x) 0 (.stride ~x) (.buffer ~y) 0 (.stride ~y)))
+  `(~method (dim ~x) (buffer ~x) 0 (stride ~x) (buffer ~y) 0 (stride ~y)))
 
 (defmacro ^:private vector-axpy [method alpha x y]
-  `(~method (.dim ~x) ~alpha (.buffer ~x) (.stride ~x) (.buffer ~y) (.stride ~y)))
+  `(~method (dim ~x) ~alpha (buffer ~x) (stride ~x) (buffer ~y) (stride ~y)))
 
 (defmacro ^:private vector-rotg [method x]
-  `(if (= 1 (.stride ~x))
-     (~method (.buffer ~x))
-     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~x))))))
+  `(if (= 1 (stride ~x))
+     (~method (buffer ~x))
+     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (stride ~x))))))
 
 (defmacro ^:private vector-rotm [method x y p]
-  `(if (= 1 (.stride ~p))
-     (~method (dim ~x) (.buffer ~x) (.stride ~x)
-      (.buffer ~y) (.stride ~y) (.buffer ~p))
-     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~p))))))
+  `(if (= 1 (stride ~p))
+     (~method (dim ~x) (buffer ~x) (stride ~x)
+      (buffer ~y) (stride ~y) (buffer ~p))
+     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (stride ~p))))))
 
 (defmacro ^:private vector-rotmg [method p args]
-  `(if (= 1 (.stride ~p) (.stride ~args))
-     (~method (.buffer ~args) (.buffer ~p))
+  `(if (= 1 (stride ~p) (stride ~args))
+     (~method (buffer ~args) (buffer ~p))
      (throw (IllegalArgumentException.
-             (format STRIDE_MSG 1 (str (.stride ~p) " or " (.stride ~args)))))))
+             (format STRIDE_MSG 1 (str (stride ~p) " or " (stride ~args)))))))
 
 (defn ^:private vector-imax [^RealVector x]
   (let [cnt (.dim x)]

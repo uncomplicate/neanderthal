@@ -51,7 +51,7 @@
        (finally (release *opencl-factory*)))))
 
 (defn host
-  "Transfers cl object from the device memory to the appropriate structure
+  "Transfers cl object from the device memory to a corresponding structure
   on the host. A more convenient and (sometimes) a slightly faster alternative
   to transfer!
 
