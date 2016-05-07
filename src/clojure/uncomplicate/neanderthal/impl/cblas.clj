@@ -94,9 +94,9 @@
 (deftype DoubleVectorEngine []
   BLAS
   (swap [_ x y]
-    (vector-swap-copy CBLAS/dswap x y))
+    (CBLAS/dswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (copy [_ x y]
-    (vector-swap-copy CBLAS/dcopy x y))
+    (CBLAS/dcopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (dot [_ x y]
     (CBLAS/ddot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   (nrm2 [_ x]
@@ -116,7 +116,8 @@
   (scal [_ alpha x]
     (CBLAS/dscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
-    (vector-axpy CBLAS/daxpy alpha x y))
+    (CBLAS/daxpy (.dim ^Vector x)
+                 (double alpha) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   BLASPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/dcopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
@@ -130,9 +131,9 @@
 (deftype SingleVectorEngine []
   BLAS
   (swap [_ x y]
-    (vector-swap-copy CBLAS/sswap x y))
+    (CBLAS/sswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (copy [_ x y]
-    (vector-swap-copy CBLAS/scopy x y))
+    (CBLAS/scopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (dot [_ x y]
     (CBLAS/dsdot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   (nrm2 [_ x]
@@ -152,7 +153,8 @@
   (scal [_ alpha x]
     (CBLAS/sscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
   (axpy [_ alpha x y]
-    (vector-axpy CBLAS/saxpy alpha x y))
+    (CBLAS/saxpy (.dim ^Vector x)
+                 (float alpha) (.buffer x) (.stride x) (.buffer y) (.stride y)))
   BLASPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/scopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))

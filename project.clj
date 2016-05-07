@@ -7,7 +7,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [uncomplicate/commons "0.2.0-SNAPSHOT"]
-                 [uncomplicate/fluokitten "0.4.0"]
+                 [uncomplicate/fluokitten "0.5.0-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.6.0-SNAPSHOT"]
                  [uncomplicate/neanderthal-native "0.5.0"]
                  [org.jocl/jocl-blast "0.0.1-SNAPSHOT"]

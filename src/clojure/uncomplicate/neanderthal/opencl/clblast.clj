@@ -448,11 +448,13 @@
 (deftype CLFactory [ctx queue prog ^DataAccessor claccessor vector-eng matrix-eng]
   Releaseable
   (release [_]
-    (and
-     (= 0 (CLBlast/CLBlastClearCache))
-     (release prog)
-     (release vector-eng)
-     (release matrix-eng)))
+    (try
+      (and
+       (release prog)
+       (release vector-eng)
+       (release matrix-eng))
+      (finally
+        (CLBlast/CLBlastClearCache))))
   FactoryProvider
   (factory [_]
     (factory claccessor))
