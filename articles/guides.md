@@ -30,7 +30,7 @@ This project can be helpful for quick start.
 
 ## GPU computation tutorials
 
-### [Matrix Computations on GPU in Clojure (in TFLOPS!)](/articles/tutorial_opencl.html)
+### [Matrix Computations on the GPU in Clojure (in TFLOPS!)](/articles/tutorial_opencl.html)
 
 Proceed to this GPU engine tutorial when you want even more speed ([working code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_opencl_test.clj)).
 

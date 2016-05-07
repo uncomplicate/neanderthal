@@ -6,11 +6,11 @@ layout: article
 
 ## Matrix Multiplication: Neanderthal vs JBlas vs Vectorz (clojure.core.matrix)
 
-The theme of this article is Neanderthal's performance on the CPU. For comparisons of Matrix APIs, or GPU performance, see the tutorials.
+The theme of this article is Neanderthal's performance on the CPU. For comparisons of Matrix APIs, or GPU performance, see the tutorials (more than 1000x speedup for some operations).
 
 ### TL;DR Results
 
-* Even for very small matrices (except for matrices smaller than 5x5), Neanderthal is faster than core.matrix's flagship implementation (pure Java library Vectorz). For large matrices, Neanderthal is **much** faster than the flagship core.matrix implementation Vectorz: **60x faster** (floats), 30x faster (doubles), 20x faster (single-threaded floats), and 10x faster (single-threaded doubles).
+* **Even for very small matrices** (except for matrices smaller than 5x5), Neanderthal is faster than core.matrix's flagship implementation (pure Java library Vectorz). For large matrices, Neanderthal is **much** faster than the flagship core.matrix implementation Vectorz: **60x faster** (floats), 30x faster (doubles), 20x faster (single-threaded floats), and 10x faster (single-threaded doubles).
 
 * For large matrices, it is **5x faster than jBLAS** (multi-threaded) and **2x faster** (single-threaded) . For all sizes, it is much faster than jBLAS.
 

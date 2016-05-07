@@ -4,26 +4,17 @@ Author: Dragan Djuric
 layout: article
 ---
 
-For this code to work, you first need to install Neanderthal, as explained in the
-Getting Started Guide. This code is also part of the test suite ([working midje tests on github](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_native_test.clj)).
+For this code to work, you first need to install Neanderthal, as explained in the Getting Started Guide. This code is also part of the test suite ([working midje tests on github](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_native_test.clj)).
 
 ## Vector and Matrix Data Structures
 
-Before we do any numeric computations, we have to create the data to run the
-computations on.
+Before we do any numeric computations, we have to create the data to run the computations on.
 
-Neanderthal supports any pluggable infrastructure ([GPU computation is already
-available!](tutorial_opencl.html)), and the default is to use vectors
-and matrices backed by direct byte buffers, that can be sent to native libraries
-via JNI without copying overhead.
+Neanderthal supports any pluggable infrastructure ([GPU computation is already available!](tutorial_opencl.html)), and the default is to use vectors and matrices backed by direct byte buffers, that can be sent to native libraries via JNI without copying overhead.
 
 ### Creating Vectors and Matrices
 
-Functions for creating the appropriate primitive vectors or matrices are
-in the `uncomplicate.neanderthal.native` namespace. Additional implementations
-are available in appropriate namespaces; for example,
-`uncomplicate.neanderthal.opencl` activates a GPU accelerated
-implementation.
+Functions for creating the appropriate primitive vectors or matrices are in the `uncomplicate.neanderthal.native` namespace. Additional implementations are available in appropriate namespaces; for example, `uncomplicate.neanderthal.opencl` activates a GPU accelerated implementation.
 
 Import the appropriate namespaces: `core` for computation functions,
 and `native` for constructors.
@@ -47,16 +38,9 @@ d for doubles, s for floats, c for complex, ge for general dense matrix etc:
 - `dge` creates a matrix of doubles
 etc.
 
-This tutorial will work with double-precision floats. Single-precision floats
-are used in exactly the same way, except for the constructors. Single precision
-does not matter much on the CPU (other that the performance of BLAS computations
-may be up to 2x faster and they use 2x less storage space) but on the GPU it is
-the preferred format, since current consumer-grade GPUs usually offer pro-grade
-performance in single precision while being crippled for double precision 8x or
-more.
+This tutorial will work with double-precision floats. Single-precision floats are used in exactly the same way, except for the constructors. Single precision does not matter much on the CPU (other that the performance of BLAS computations may be up to 2x faster and they use 2x less storage space) but on the GPU it is the preferred format, since current consumer-grade GPUs usually offer pro-grade performance in single precision while being crippled for double precision 8x or more.
 
-All numbers in Neanderthal, both the data it holds and numbers that
-the functions return are **primitive** where it matters (more about that later).
+All numbers in Neanderthal, both the data it holds and numbers that the functions return are **primitive** where it matters (more about that later).
 
 Here are a few examples written as Midje tests:
 
@@ -79,38 +63,18 @@ Here are a few examples written as Midje tests:
 
 ### Neanderthal Keeps Data in Direct Byte Buffers
 
-Usually, these functions accept a previously allocated `ByteBuffer`, optionally
-populated with data. Please note that non-buffer input source (numbers, varargs,
-sequences) is suitable only as a convenience for smallish data and test code.
-Be careful about the performance when working with large data, though
-- sequences are slow and contain boxed numbers!
+Usually, these functions accept a previously allocated `ByteBuffer`, optionally populated with data. Please note that non-buffer input source (numbers, varargs, sequences) is suitable only as a convenience for smallish data and test code. Be careful about the performance when working with large data, though - sequences are slow and contain boxed numbers!
 
-It is awkward and cumbersome to work with buffers directly. You should take care
-of endianess: java uses BIG_ENDIAN, while Intel processors and most native
-platform natively support LITTLE_ENDIAN. If you pre-load your data in buffers,
-you, or the library you use, have to take care of using the proper native
-endianess. Also take care to revert the buffer position to 0. Vertigo library
-might help with this, and Neanderthal does not care how you prepare the buffers
-as long data is prepared well. You can use some of the existing libraries that
-work with native buffers (Vertigo, etc.), check out Neanderthal API to see what
-utilities are currently available, or roll your own.
+It is awkward and cumbersome to work with buffers directly. You should take care of endianess: java uses BIG_ENDIAN, while Intel processors and most native platform natively support LITTLE_ENDIAN. If you pre-load your data in buffers, you, or the library you use, have to take care of using the proper native endianess. Also take care to revert the buffer position to 0. Vertigo library might help with this, and Neanderthal does not care how you prepare the buffers as long data is prepared well. You can use some of the existing libraries that work with native buffers (Vertigo, etc.), check out Neanderthal API to see what utilities are currently available, or roll your own.
 
-Matrix data is also kept in one-dimensional byte buffer, and NOT in a object
-buffer or array that holds raw buffers, for performance reasons. By default,
-when used in 2D matrices, Neanderthal treats a 1D buffer as a sequence of columns.
-Column-oriented order is commonly used in numerical software, contrary to
-row-oriented order used by the C language. Java uses neither; 2D arrays are
-arrays of array references, and this difference has a huge performance impact.
-Neanderthal abstract all these performance optimizations away, and you do not
-need to care about this, unless you write a pluggable Neanderthal implementation.
+Matrix data is also kept in one-dimensional byte buffer, and NOT in a object buffer or array that holds raw buffers, for performance reasons. By default, when used in 2D matrices, Neanderthal treats a 1D buffer as a sequence of columns. Column-oriented order is commonly used in numerical software, contrary to row-oriented order used by the C language. Java uses neither; 2D arrays are arrays of array references, and this difference has a huge performance impact. Neanderthal abstract all these performance optimizations away, and you do not need to care about this, unless you write a pluggable Neanderthal implementation.
 
 The same ByteBuffer can hold data for vectors as well as matrices.
 
 ```clojure
 
 (facts
- "Here is what you need to take care of if you opt to provide the initial data
-in raw byte buffers."
+ "Here is what you need to take care of if you opt to provide the initial data in raw byte buffers."
  (let [entry-width Double/BYTES
        m 2
        n 3
@@ -129,22 +93,13 @@ in raw byte buffers."
 
 ## Pure and Non-pure Functions
 
-Many BLAS functions work in-place! It means that they mutate the data they work
-on. That way, they are orders of magnitude faster and use less memory. These
-functions have a BANG (`!`) suffix. They have non-destructive, pure variants,
-without the `!`. Keep in mind that both variants are useful for specific tasks.
-Usually, we should use the destructive variants for fast algorithm internals or
-with huge data when there is no space for copying.
+Many BLAS functions work in-place! It means that they mutate the data they work on. That way, they are orders of magnitude faster and use less memory. These functions have a BANG (`!`) suffix. They have non-destructive, pure variants, without the `!`. Keep in mind that both variants are useful for specific tasks. Usually, we should use the destructive variants for fast algorithm internals or with huge data when there is no space for copying.
 
 ## BLAS Level 1 Functions
 
-BLAS Level 1 contains functions that compute in linear time, O(n). They usually
-work with 1D vectors, but some of them are also appropriate for 2D matrices.
-Some of these functions compute a number based on vector entries while some
-transform the values of entries.
+BLAS Level 1 contains functions that compute in linear time, O(n). They usually work with 1D vectors, but some of them are also appropriate for 2D matrices. Some of these functions compute a number based on vector entries while some transform the values of entries.
 
-I will show you the most popular ones, so you can easily find your way with
-others in Neanderthal API docs.
+I will show you the most popular ones, so you can easily find your way with others in Neanderthal API docs.
 
 ```clojure
 
@@ -226,8 +181,7 @@ axpy! - destructive scaling and addition
 
 ## BLAS Level 2 Functions
 
-BLAS Level 2 functions are those that compute in quadratic time O(n^2).
-Usually, these functions combine matrices and vectors.
+BLAS Level 2 functions are those that compute in quadratic time O(n^2). Usually, these functions combine matrices and vectors.
 
 ```clojure
 
@@ -264,8 +218,7 @@ puts it in a new matrix instance."
 
 ## BLAS Level 3 Functions
 
-BLAS Level 3 functions are those that compute in cubic time O(n^3).
-They usually work with matrices and produce matrices.
+BLAS Level 3 functions are those that compute in cubic time O(n^3). They usually work with matrices and produce matrices.
 
 ```clojure
 
@@ -299,11 +252,7 @@ simpler and less useful operation."
 
 ## Useful Non-BLAS Functions
 
-While BLAS functions are the meat of linear algebra computations, there is a bunch
-of other stuff that we would like to do with vectors and matrices. For example,
-we would like to see their structure, dimensions, to see specific entries, to get
-subvectors or submatrices, to transpose matrices, etc. Neanderthal offers time
-and space efficient implementations of such operations.
+While BLAS functions are the meat of linear algebra computations, there is a bunch of other stuff that we would like to do with vectors and matrices. For example, we would like to see their structure, dimensions, to see specific entries, to get subvectors or submatrices, to transpose matrices, etc. Neanderthal offers time and space efficient implementations of such operations.
 
 ```clojure
 
@@ -343,15 +292,7 @@ and space efficient implementations of such operations.
 
 ```
 
-Neanderthal does all these things, and does them very fast, and usually without
-memory copying. You have to be careful, though. Most of the time, when you
-extract a part of a matrix or a vector, you get a live connection to the
-original data. All changes that occur to the part, will also change the original.
-It is often useful for performance reasons, but sometimes you want to avoid it.
-In that case, avoid the destructive BANG functions, or copy the data to a fresh
-instance before using the BANG functions. The important thing is that you always
-have control and can explicitly choose what you need in particular case:
-purity or performance, or, sometimes, both.
+Neanderthal does all these things, and does them very fast, and usually without memory copying. You have to be careful, though. Most of the time, when you extract a part of a matrix or a vector, you get a live connection to the original data. All changes that occur to the part, will also change the original. It is often useful for performance reasons, but sometimes you want to avoid it. In that case, avoid the destructive BANG functions, or copy the data to a fresh instance before using the BANG functions. The important thing is that you always have control and can explicitly choose what you need in particular case: purity or performance, or, sometimes, both.
 
 ```clojure
 
@@ -367,12 +308,7 @@ purity or performance, or, sometimes, both.
 
 ## **Fast** Mapping and Reducing
 
-BLAS routines are fast and neat. However, often we need to compute the entries
-of our matrices and vectors in a custom way. In Clojure, we would do that with
-map, reduce, filter and similar functions that work the sequence. However,
-sequences box all numbers, and are thus orders of magnitude slower than
-functions working on primitive arrays. On the other hand, primitive arrays
-areduce and amap are macros and a bit awkward...
+BLAS routines are fast and neat. However, often we need to compute the entries of our matrices and vectors in a custom way. In Clojure, we would do that with map, reduce, filter and similar functions that work the sequence. However, sequences box all numbers, and are thus orders of magnitude slower than functions working on primitive arrays. On the other hand, primitive arrays areduce and amap are macros and a bit awkward...
 
 Fortunataly, Neanderthal comes with [Fluokitten's](http://fluokitten.uncomplicate.org) fmap! and fold functions that:
 
@@ -380,9 +316,7 @@ Fortunataly, Neanderthal comes with [Fluokitten's](http://fluokitten.uncomplicat
 - Accept primitive hinted functions
 - Can transform the data
 
-This way, we get the full elegance of map and reduce with the speed (almost) as
-fast as looping on primitive arrays with primitive functions. See the benchmarks
-for performance details, here we only demonstrate how these are used.
+This way, we get the full elegance of map and reduce with the speed (almost) as fast as looping on primitive arrays with primitive functions. See the benchmarks for performance details, here we only demonstrate how these are used.
 
 ```clojure
 (let [primitive-inc (fn ^double [^double x] (inc x))
@@ -406,17 +340,13 @@ accumulate values with fold, or fold the entries."
 
 ## LAPACK Functions
 
-LAPACK functions build on BLAS, they are performed on the same vector and matrix
-objects: dv, dge etc.
+LAPACK functions build on BLAS, they are performed on the same vector and matrix objects: dv, dge etc.
 
-LAPACK is currently on the TODO list. It will be added to this tutorial
-once these functions are implemented.
+LAPACK is currently on the TODO list. It will be added to this tutorial once these functions are implemented.
 
 ## Can Neanderthal Go Even Faster?
 
-Yes, it can, and MUCH. Neanderthal have a pluggable infrastructure, and
-already comes with a GPU engine that can process your data on graphic cards
-orders of magnitude faster than on the CPU. Check out the [GPU tutorial](tutorial_opencl.html)!
+Yes, it can, and MUCH. Neanderthal have a pluggable infrastructure, and already comes with a GPU engine that can process your data on graphic cards orders of magnitude faster than on the CPU. Check out the [GPU tutorial](tutorial_opencl.html)!
 
 ## Additional Examples
 
