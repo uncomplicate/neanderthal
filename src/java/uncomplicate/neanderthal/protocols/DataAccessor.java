@@ -13,4 +13,7 @@ public interface DataAccessor {
     Object createDataSource (long n);
 
     Object initialize (Object data);
+
+    Object wrapPrim (double data);
+
 }

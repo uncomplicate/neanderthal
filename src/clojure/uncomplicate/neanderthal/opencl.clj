@@ -13,11 +13,14 @@
              :refer [cblas-single cblas-double]]
             [uncomplicate.neanderthal.opencl
              [clblock :refer [->TypedCLAccessor cl-to-host host-to-cl]]
-             [amd-gcn :refer [gcn-double gcn-single]]
              [clblast :refer [clblast-double clblast-single]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
 
 (def ^:dynamic *opencl-factory*)
+
+(def opencl-single clblast-single)
+
+(def opencl-double clblast-double)
 
 (defmacro with-engine
   "Creates a concrete OpenCL factory that executes in the provided queue,
@@ -45,7 +48,7 @@
         (sum gpu-x))))
   "
   [& body]
-  `(binding [*opencl-factory* (clblast-single *context* *command-queue*)]
+  `(binding [*opencl-factory* (opencl-single *context* *command-queue*)]
      (try
        ~@body
        (finally (release *opencl-factory*)))))

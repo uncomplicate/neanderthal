@@ -33,9 +33,7 @@
       (finally (unmap cl mapped-host)))))
 
 (defprotocol CLAccessor
-  (get-queue [this])
-  (wrap-seq [this s])
-  (wrap-prim [this p]))
+  (get-queue [this]))
 
 ;; ================== Accessors ================================================
 
@@ -53,13 +51,11 @@
     (do
       (enq-fill! queue cl-buf (array-fn 1))
       cl-buf))
+  (wrapPrim [_ s]
+    (wrap-fn s))
   CLAccessor
   (get-queue [_]
     queue)
-  (wrap-seq [_ s]
-    (array-fn s))
-  (wrap-prim [_ s]
-    (wrap-fn s))
   FactoryProvider
   (factory [_]
     host-fact))

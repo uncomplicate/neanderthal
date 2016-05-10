@@ -18,7 +18,7 @@
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Block Matrix DataAccessor]))
 
-(deftype GCNVectorEngine [ctx queue prog claccessor ^long WGS ]
+(deftype GCNVectorEngine [ctx queue prog ^DataAccessor claccessor ^long WGS]
   Releaseable
   (release [_]
     true)
@@ -123,7 +123,7 @@
     (if (< 0 (dim x))
       (with-release [scal-kernel (kernel prog "scal")]
         (set-args! scal-kernel
-                   (wrap-prim claccessor alpha)
+                   (.wrapPrim claccessor alpha)
                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
         (enq-nd! queue scal-kernel (work-size-1d (dim x))))
       queue))
@@ -131,7 +131,7 @@
     (if (< 0 (dim x))
       (with-release [axpy-kernel (kernel prog "axpy")]
         (set-args! axpy-kernel
-                   (wrap-prim claccessor alpha)
+                   (.wrapPrim claccessor alpha)
                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-nd! queue axpy-kernel (work-size-1d (dim x))))
@@ -188,7 +188,7 @@
 
 ;; ======================= Dense Matrix ========================================
 
-(deftype GCNMatrixEngine [ctx queue prog claccessor
+(deftype GCNMatrixEngine [ctx queue prog ^DataAccessor claccessor
                           ^long WGSm ^long WGSn ^long TS ^long WPT]
   Releaseable
   (release [_]
@@ -227,14 +227,14 @@
   (rank [_ alpha x y a]
     (if (< 0 (* (mrows a) (ncols a)))
       (with-release [gerk-kernel (kernel prog "gerk")]
-        (set-args! gerk-kernel 0 (wrap-prim claccessor alpha)
+        (set-args! gerk-kernel 0 (.wrapPrim claccessor alpha)
                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a)))
         (enq-nd! queue gerk-kernel (work-size-2d (mrows a) (ncols a))))
       queue))
   (mv [_ alpha a x beta y]
-    (let [acc-size (* (.entryWidth ^DataAccessor claccessor)
+    (let [acc-size (* (.entryWidth claccessor)
                       (max 1 (* (mrows a) (count-work-groups WGSn (ncols a)))))]
       (with-release [gemv-reduce-kernel (kernel prog "gemv_reduce")
                      sum-reduction-horizontal-kernel
@@ -242,15 +242,15 @@
                      axpby-kernel (kernel prog "axpby")
                      reduction-acc (cl-buffer ctx acc-size :read-write)]
         (set-arg! sum-reduction-horizontal-kernel 0 reduction-acc)
-        (set-args! gemv-reduce-kernel reduction-acc (wrap-prim claccessor alpha)
+        (set-args! gemv-reduce-kernel reduction-acc (.wrapPrim claccessor alpha)
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
         (enq-reduce queue gemv-reduce-kernel sum-reduction-horizontal-kernel
                     (mrows a) (ncols a) WGSm WGSn)
         (set-args! axpby-kernel
-                   (wrap-prim claccessor 1)
+                   (.wrapPrim claccessor 1)
                    reduction-acc (wrap-int 0) (wrap-int 1)
-                   (wrap-prim claccessor beta)
+                   (.wrapPrim claccessor beta)
                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-nd! queue axpby-kernel (work-size-1d (mrows a))))))
   (mm [_ alpha a b beta c]
@@ -262,10 +262,10 @@
                                    (kernel prog "gemm_tiled_fit")
                                    (kernel prog "gemm_tiled"))]
         (set-args! gemm-kernel
-                   (wrap-prim claccessor alpha)
+                   (.wrapPrim claccessor alpha)
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
-                   (wrap-prim claccessor beta)
+                   (.wrapPrim claccessor beta)
                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c))
                    (wrap-int m) (wrap-int k) (wrap-int n))
         (enq-nd! queue gemm-kernel
@@ -299,12 +299,12 @@
 
   (defn gcn-factory
     ([create-accessor ctx queue wgs wgsm wgsn ts wpt]
-     (let [accessor (create-accessor ctx queue)
+     (let [accessor ^DataAccessor (create-accessor ctx queue)
            prog (build-program!
                  (program-with-source ctx src)
                  (format "-cl-std=CL2.0 -DNUMBER=%s -DACCUMULATOR=%s -DREAL=%s -DWGS=%d -DWGSm=%d -DWGSn=%d -DTS=%d -DWPT=%d"
-                         (.entryType ^DataAccessor accessor) Double/TYPE
-                         (.entryType ^DataAccessor accessor) wgs wgsm wgsn ts wpt)
+                         (.entryType accessor) Double/TYPE
+                         (.entryType accessor) wgs wgsm wgsn ts wpt)
                  nil)]
        (->GCNFactory
         ctx queue prog accessor

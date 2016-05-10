@@ -89,7 +89,7 @@ $code"
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
-            [criterium.core :refer [quick-bench with-progress-reporting]]
+            #_[criterium.core :refer [quick-bench with-progress-reporting]]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl.core
              :refer [with-default finish!]]
@@ -130,13 +130,11 @@ $code"
 
 (with-default
   (with-default-engine
-    (facts
-     "Create a vector on the device, write into it the data from the host vector
+    (with-release [gpu-x (transfer! (sv 1 -2 3) (clv 3))]
+      (facts
+       "Create a vector on the device, write into it the data from the host vector
 and compute the sum of absolute values."
-
-     (with-release [gpu-x (transfer! (sv 1 -2 3) (clv 3))]
-
-       (asum gpu-x)) => 6.0)))
+       (asum gpu-x))) => 6.0))
 
 "$text
 
@@ -358,13 +356,13 @@ $code"
          "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
 
-         (println "CPU:")
-         (time (mm! 3 host-a host-b 2 host-c)) => host-c
+         #_(println "CPU:")
+         ;;(time (mm! 3 host-a host-b 2 host-c)) => host-c
 
          (mm! 3 gpu-a gpu-b 2 gpu-c) => gpu-c
          (finish!)
-         (println "GPU:")
-         (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))))))))
+         #_(println "GPU:")
+         #_(time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))))))))
 
 "$text
 
