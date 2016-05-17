@@ -345,7 +345,7 @@ $code"
 
 (with-default
   (with-default-engine
-    (let [cnt 8193]
+    (let [cnt 8192]
       (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                      host-b (copy host-a)
                      host-c (copy host-a)

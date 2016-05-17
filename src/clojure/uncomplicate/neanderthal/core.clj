@@ -26,7 +26,7 @@
   (ns test
     (:require [uncomplicate.neanderthal core native opencl]))
   "
-  (:require [uncomplicate.commons.core :refer [release]]
+  (:require [uncomplicate.commons.core :refer [release let-release]]
             [uncomplicate.neanderthal
              [protocols :as p]
              [math :refer [f= pow sqrt]]])
@@ -223,10 +223,10 @@
   => #<RealBlockVector| double, n:3, stride:1>(3.0 4.0 5.0)<>
   "
   [^Vector x ^long k ^long l]
-  (if (and (<= (+ k l) (dim x)))
+  (if (and (<= (+ k l) (.dim x)))
     (.subvector x k l)
     (throw (IndexOutOfBoundsException.
-            (format p/VECTOR_BOUNDS_MSG (+ k l) (dim x))))))
+            (format p/VECTOR_BOUNDS_MSG (+ k l) (.dim x))))))
 
 ;; ================= Matrix =======================
 
@@ -401,8 +401,8 @@
 
   (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
   "
-  [x y]
-  (if (and (p/compatible x y) (= (dim x) (dim y)))
+  [^Vector x ^Vector y]
+  (if (and (p/compatible x y) (= (.dim x) (.dim y)))
     (.dot (p/engine x) x y)
     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
 
@@ -515,20 +515,20 @@
   For a detailed description see
   http://www.mathkeisan.com/usersguide/man/drotg.html
   "
-  [x]
-  (if (= 4 (dim x))
+  [^Vector x]
+  (if (= 4 (.dim x))
     (do
       (.rotg (p/engine x) x)
       x)
-    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (dim x))))))
+    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (.dim x))))))
 
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
   - p must be a vector of exactly 5 entries
   - args must be a vector of exactly 4 entries
   "
-  [p args]
-  (if (and (p/compatible p args) (= 5 (dim p)) (= 4 (dim args)))
+  [^Vector p ^Vector args]
+  (if (and (p/compatible p args) (= 5 (.dim p)) (= 4 (.dim args)))
     (do
       (.rotmg (p/engine p) p args)
       p)
@@ -537,8 +537,8 @@
 (defn rotm!
   "BLAS 1: Apply modified plane rotation.
   "
-  [x y p]
-  (if (and (p/compatible x y) (= (dim x) (dim y)) (= 5 (dim p)))
+  [^Vector x ^Vector y ^Vector p]
+  (if (and (p/compatible x y) (= (.dim x) (.dim y)) (= 5 (.dim p)))
     (do
       (.rotm (p/engine x) x y p)
       x)
@@ -625,23 +625,11 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   ([x]
-   (let [res (p/raw x)]
-     (try
-       (copy! x res)
-       (catch Exception e
-         (do
-           (release res)
-           (throw e))))
-     res))
+   (let-release [res (p/raw x)]
+     (copy! x res)))
   ([x offset length]
-   (let [res (create-raw (p/factory x) length)]
-     (try
-       (copy! x res offset length 0)
-       (catch Exception e
-         (do
-           (release res)
-           (throw e))))
-     res)))
+   (let-release [res (create-raw (p/factory x) length)]
+     (copy! x res offset length 0))))
 
 (defn axpy!
   "BLAS 1: Vector scale and add. Also works on matrices.
@@ -701,46 +689,21 @@
   The result is a new instance.
   "
   ([x y]
-   (let [res (copy y)]
-     (try
-       (axpy! 1.0 x (copy y))
-       (catch Exception e
-         (do
-           (release res)
-           (throw e))))))
+   (let-release [res (copy y)]
+     (axpy! 1.0 x (copy y))))
   ([x y z]
    (if (number? x)
-     (let [res (copy z)]
-       (try
-         (axpy! x y res)
-         (catch Exception e
-           (do
-             (release res)
-             (throw e)))))
-     (let [res (copy y)]
-       (try
-         (axpy! 1.0 x res z)
-         (catch Exception e
-           (do
-             (release res)
-             (throw e)))))))
+     (let-release [res (copy z)]
+       (axpy! x y res))
+     (let-release [res (copy y)]
+       (axpy! 1.0 x res z))))
   ([x y z w & ws]
    (if (number? x)
      (if (number? z)
-       (let [res (zero y)]
-         (try
-           (apply axpy! x y res z w ws)
-           (catch Exception e
-             (do
-               (release res)
-               (throw e)))))
-       (let [res (copy z)]
-         (try
-           (apply axpy! x y res w ws)
-           (catch Exception e
-             (do
-               (release res)
-               (throw e))))))
+       (let-release [res (zero y)]
+         (apply axpy! x y res z w ws))
+       (let-release [res (copy z)]
+         (apply axpy! x y res w ws)))
      (apply axpy 1.0 x y z w ws))))
 
 (defn ax
@@ -748,29 +711,19 @@
   Similar to scal!, but does not change x. The result
   is a new vector instance."
   [alpha x]
-  (let [res (zero x)]
-    (try
-      (axpy! alpha x res)
-      (catch Exception e
-        (do
-          (release res)
-          (throw e))))))
+  (let-release [res (zero x)]
+    (axpy! alpha x res)))
 
 (defn xpy
   "Sums containers x, y & zs. The result is a new vector instance."
   ([x y]
    (axpy! 1.0 x (copy y)))
   ([x y & zs]
-   (let [cy (copy y)]
-     (try
-       (loop [res (axpy! 1.0 x cy) s zs]
-         (if s
-           (recur (axpy! 1.0 (first s) res) (next s))
-           res))
-       (catch Exception e
-         (do
-           (release cy)
-           (throw e)))))))
+   (let-release [cy (copy y)]
+     (loop [res (axpy! 1.0 x cy) s zs]
+       (if s
+         (recur (axpy! 1.0 (first s) res) (next s))
+         res)))))
 
 ;;============================== BLAS 2 ========================================
 
@@ -801,10 +754,10 @@
   (mv! 2.0 a x 1.5 y)
   => #<RealBlockVector| double, n:3, stride:1>(15.0 22.5 30.0)<>
   "
-  ([alpha a x beta y]
+  ([alpha ^Matrix a ^Vector x beta ^Vector y]
    (if (and (p/compatible a x) (p/compatible a y)
-            (= (ncols a) (dim x))
-            (= (mrows a) (dim y)))
+            (= (.ncols a) (.dim x))
+            (= (.mrows a) (.dim y)))
      (do
        (.mv (p/engine a) alpha a x beta y)
        y)
@@ -818,13 +771,8 @@
   "A pure version of mv! that returns the result
   in a new vector instance. Computes alpha a * x."
   ([alpha a x]
-   (let [res (p/zero (col a 0))]
-     (try
-       (mv! alpha a x 0.0 res)
-       (catch Exception e
-         (do
-           (release res)
-           (throw e))))))
+   (let-release [res (p/zero (col a 0))]
+     (mv! alpha a x 0.0 res)))
   ([a x]
    (mv 1.0 a x)))
 
@@ -844,10 +792,10 @@
   (rank! 1.5 (dv 1 2 3) (dv 4 5) a)
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
-  ([alpha x y a]
+  ([alpha ^Vector x ^Vector y ^Matrix a]
    (if (and (p/compatible a x) (p/compatible a y)
-            (= (mrows a) (dim x))
-            (= (ncols a) (dim y)))
+            (= (.mrows a) (.dim x))
+            (= (.ncols a) (.dim y)))
      (do
        (.rank (p/engine a) alpha x y a)
        a)
@@ -859,14 +807,9 @@
   "A pure version of rank! that returns the result
   in a new matrix instance.
   "
-  ([alpha x y]
-   (let [res (create-raw (p/factory x) (dim x) (dim y))]
-     (try
-       (rank! alpha x y res)
-       (catch Exception e
-         (do
-           (release res)
-           (throw e))))))
+  ([alpha ^Vector x ^Vector y]
+   (let-release [res (create-raw (p/factory x) (.dim x) (.dim y))]
+     (rank! alpha x y res)))
   ([x y]
    (rank 1.0 x y)))
 
@@ -902,11 +845,11 @@
   (mm! a b c)
   => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
-  ([alpha a b beta c]
+  ([alpha ^Matrix a ^Matrix b beta ^Matrix c]
    (if (and (p/compatible c a) (p/compatible c b))
-     (if (and (= (ncols a) (mrows b))
-              (= (mrows a) (mrows c))
-              (= (ncols b) (ncols c)))
+     (if (and (= (.ncols a) (.mrows b))
+              (= (.mrows a) (.mrows c))
+              (= (.ncols b) (.ncols c)))
        (do
          (.mm (p/engine a) alpha a b beta c)
          c)
@@ -926,14 +869,9 @@
   "A pure version of mm!, that returns the result
   in a new matrix instance.
   Computes alpha a * b"
-  ([alpha a b]
-   (let [res (create (p/factory a) (mrows a) (ncols b))]
-     (try
-       (mm! alpha a b 0.0 res)
-       (catch Exception e
-         (do
-           (release res)
-           (throw e))))))
+  ([alpha ^Matrix a ^Matrix b]
+   (let-release [res (create (p/factory a) (.mrows a) (.ncols b))]
+     (mm! alpha a b 0.0 res)))
   ([a b]
    (mm 1.0 a b)))
 

@@ -10,7 +10,7 @@
                  [uncomplicate/fluokitten "0.5.0-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.6.0-SNAPSHOT"]
                  [uncomplicate/neanderthal-native "0.5.0"]
-                 [org.jocl/jocl-blast "0.0.1-SNAPSHOT"]
+                 [org.jocl/jocl-blast "0.7.0-SNAPSHOT"]
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [vertigo "0.1.4"]]
 

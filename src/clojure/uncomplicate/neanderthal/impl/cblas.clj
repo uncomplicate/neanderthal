@@ -1,12 +1,13 @@
 (ns uncomplicate.neanderthal.impl.cblas
-  (:require [uncomplicate.commons.core :refer [with-release]]
+  (:require [vertigo.bytes :refer [direct-buffer]]
+            [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [dim ecount]]
              [block :refer [order buffer offset stride]]]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
-           [java.nio ByteBuffer]
+           [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus Vector Matrix RealVector DataAccessor BufferAccessor]))
 
@@ -166,6 +167,11 @@
     (vector-imin x)))
 
 ;; ================= General Matrix Engines ====================================
+
+(def ^:private double-buffer-one
+  (let [buffer-one (.createDataSource ^DataAccessor double-accessor 1)]
+    (.putDouble buffer-one 0 1.0)
+    buffer-one))
 
 (deftype DoubleGeneralMatrixEngine []
   BLAS
