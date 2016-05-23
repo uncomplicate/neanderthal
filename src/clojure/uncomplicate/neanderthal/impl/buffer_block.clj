@@ -49,6 +49,12 @@
     (direct-buffer (* Float/BYTES n)))
   (initialize [_ b]
     b)
+  (initialize [this b v]
+    (let [v (double v)
+          strd Float/BYTES]
+      (dotimes [i (.count this b)]
+        (.putFloat ^ByteBuffer b (* strd i) v))
+      b))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
@@ -69,13 +75,19 @@
   (entryType [_]
     Double/TYPE)
   (entryWidth [_]
-    Float/BYTES)
+    Double/BYTES)
   (count [_ b]
     (quot (.capacity ^ByteBuffer b) Double/BYTES))
   (createDataSource [_ n]
     (direct-buffer (* Double/BYTES n)))
   (initialize [_ b]
     b)
+  (initialize [this b v]
+    (let [v (double v)
+          strd Double/BYTES]
+      (dotimes [i (.count this b)]
+        (.putDouble ^ByteBuffer b (* strd i) v))
+      b))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
@@ -124,6 +136,9 @@
     (raw this))
   (zero [this fact]
     (raw this fact))
+  (host [this]
+    (let-release [res (raw this)]
+      (.copy eng this res)))
   Monoid
   (id [x]
     (create-vector fact 0 (.createDataSource accessor 0) nil))
@@ -133,6 +148,9 @@
   FactoryProvider
   (factory [_]
     fact)
+  DataAccessorProvider
+  (data-accessor [_]
+    accessor)
   Memory
   (compatible [_ y]
     (and (instance? RealBlockVector y) (= entry-type (.entryType ^Block y))))
@@ -155,14 +173,14 @@
     (.entry x i))
   RealChangeable
   (set [x val]
-    (do
+    (if (= 0 strd)
+      (.initialize accessor buf val)
       (dotimes [i n]
-        (.set accessor buf (* strd i) val))
-      x))
+        (.set accessor buf (* strd i) val)))
+    x)
   (set [x i val]
-    (do
-      (.set accessor buf (* strd i) val)
-      x))
+    (.set accessor buf (* strd i) val)
+    x)
   (setBoxed [x val]
     (.set x val))
   (setBoxed [x i val]
@@ -237,6 +255,15 @@
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  DataAccessorProvider
+  (data-accessor [_]
+    accessor)
   Container
   (raw [_]
     (create-matrix fact m n (.createDataSource accessor (* m n)) ord))
@@ -246,15 +273,12 @@
     (raw this))
   (zero [this fact]
     (raw this fact))
+  (host [this]
+    (let-release [res (raw this)]
+      (.copy eng this res)))
   Monoid
   (id [a]
     (create-matrix fact 0 0 (.createDataSource accessor 0) nil))
-  EngineProvider
-  (engine [_]
-    eng)
-  FactoryProvider
-  (factory [_]
-    fact)
   Memory
   (compatible [_ b]
     (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
@@ -289,22 +313,19 @@
       (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j m n)))))
   RealChangeable
   (set [a val]
-    (do
-      (if (= ld (if (column-major? a) m n))
-        (dotimes [i (* m n)]
-          (.set accessor buf i val))
-        (if (column-major? a)
-          (dotimes [i n]
-            (.set ^RealChangeable (.col a i) val))
-          (dotimes [i (.mrows a)]
-            (.set ^RealChangeable (.row a i) val))))
-      a))
+    (if (= ld (if (column-major? a) m n))
+      (.initialize accessor buf val)
+      (if (column-major? a)
+        (dotimes [i n]
+          (.set ^RealChangeable (.col a i) val))
+        (dotimes [i (.mrows a)]
+          (.set ^RealChangeable (.row a i) val))))
+    a)
   (set [a i j val]
-    (do
-      (if (= COLUMN_MAJOR ord)
-        (.set accessor buf (+ (* ld j) i) val)
-        (.set accessor buf (+ (* ld i) j) val))
-      a))
+    (if (= COLUMN_MAJOR ord)
+      (.set accessor buf (+ (* ld j) i) val)
+      (.set accessor buf (+ (* ld i) j) val))
+    a)
   (setBoxed [a val]
     (.set a val))
   (setBoxed [a i j val]

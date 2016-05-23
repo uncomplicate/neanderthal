@@ -65,6 +65,14 @@
          (entry (create-vector factory []) 0)
          => (throws IndexOutOfBoundsException)))
 
+(defn test-vector-entry! [factory]
+  (facts "Vectory entry!."
+         (entry (entry! (create-vector factory [1 2 3]) 1 77.0) 1) => 77.0))
+
+(defn test-vector-bulk-entry! [factory]
+  (facts "Vectory entry!."
+         (sum (entry! (create-vector factory [1 2 3]) 77.0)) => 231.0))
+
 ;;================ BLAS functions =========================================
 
 (defn test-dot [factory]
@@ -303,6 +311,14 @@
          (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 2 1)
          => (throws IndexOutOfBoundsException)))
 
+(defn test-matrix-entry! [factory]
+  (facts "Matrix entry!."
+         (entry (entry! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 0 1 88.0) 0 1) => 88.0))
+
+(defn test-matrix-bulk-entry! [factory]
+  (facts "Matrix entry!."
+         (sum (row (entry! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 88.0) 1)) => 264.0))
+
 (defn test-copy-matrix [factory]
   (facts "BLAS 1 copy! general matrix"
          (let [a (create-ge-matrix factory 2 3)]
@@ -420,7 +436,7 @@
          => (create-ge-matrix factory 3 3 [3 4 5 9 14 19 15 24 33])))
 
 (defn test-mm-row-major [factory]
-  (facts "BLAS 3 mm!"
+  (facts "BLAS 3 mm! transposed (row major)"
          (mm! 2.0 (trans (create-ge-matrix factory 3 2 [1 3 5 2 4 6]))
               (trans (create-ge-matrix factory 2 3 [1 4 2 5 3 6]))
               3.0  (create-ge-matrix factory 2 2 [1 2 3 4]))
@@ -433,6 +449,8 @@
     (test-vector-constructor factory)
     (test-vector factory)
     (test-vector-entry factory)
+    (test-vector-entry! factory)
+    (test-vector-bulk-entry! factory)
     (test-dot factory)
     (test-nrm2 factory)
     (test-asum factory)
@@ -449,6 +467,8 @@
     (test-matrix-constructor factory)
     (test-matrix factory)
     (test-matrix-entry factory)
+    (test-matrix-entry! factory)
+    (test-matrix-bulk-entry! factory)
     (test-copy-matrix factory)
     (test-mv factory)
     (test-mv-transpose factory)

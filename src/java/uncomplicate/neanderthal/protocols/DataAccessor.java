@@ -14,6 +14,8 @@ public interface DataAccessor {
 
     Object initialize (Object data);
 
+    Object initialize (Object data, Object value);
+
     Object wrapPrim (double data);
 
 }

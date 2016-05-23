@@ -9,7 +9,6 @@
 (defprotocol Factory
   (create-vector [this n source options])
   (create-matrix [this m n source options])
-  (data-accessor ^DataAccessor [this])
   (vector-engine [this])
   (matrix-engine [this]))
 
@@ -18,6 +17,9 @@
 
 (defprotocol FactoryProvider
   (factory [this]))
+
+(defprotocol DataAccessorProvider
+  (data-accessor ^DataAccessor [this]))
 
 (defprotocol Memory
   (compatible [this other]))
@@ -28,7 +30,8 @@
 
 (defprotocol Container
   (raw [this] [this factory])
-  (zero [this] [this factory]))
+  (zero [this] [this factory])
+  (host [this]))
 
 (def ^:const ROW_MAJOR 101)
 

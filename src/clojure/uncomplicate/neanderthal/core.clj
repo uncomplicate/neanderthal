@@ -67,6 +67,22 @@
   "
   (fn ([source destination] [(class source) (class destination)])))
 
+(defn transfer
+  "Transfers the data to the memory space defined by factory (OpenCL, CUDA, etc.).
+  If the factory is not provided, moves the data to the main host memory.
+  If x is already in the main memory, makes a fresh copy.
+
+  (transfer (sv [1 2 3]) opencl-factory)
+  (transfer (sge 2 3 (range 6)) opencl-factory)
+
+  (transfer (sv [1 2 3]))
+  "
+  ([factory x]
+   (let-release [res (p/raw x factory)]
+     (transfer! x res)))
+  ([x]
+   (p/host x)))
+
 (defn create
   "Creates an initialized vector of the dimension n, or a  matrix m x n,
   using the provided factory.

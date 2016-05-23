@@ -2,27 +2,24 @@
   (:require [midje.sweet :refer :all]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.neanderthal
-             [protocols :refer [factory]]
+             [protocols :refer [factory data-accessor]]
              [core :refer :all]
              [opencl :refer :all]
              [math :refer [pow]]])
   (:import [uncomplicate.neanderthal.protocols Block]))
 
 (defn test-clblock [ocl-factory]
-  (let [m 33
+  (let [host-factory (factory (data-accessor ocl-factory))
+        m 33
         n (long (+ 1000 (pow 2 12)))
         cnt n
         x-magic 2
         y-magic 5
         magic 17.0]
-    (with-release [host-a (doto (create-ge-matrix (factory ocl-factory) m n)
-                            (entry! x-magic))
-                   host-b (doto (create-ge-matrix (factory ocl-factory) m n)
-                            (entry! y-magic))
-                   host-x (doto (create-vector (factory ocl-factory) cnt)
-                            (entry! x-magic))
-                   host-y (doto (create-vector (factory ocl-factory) cnt)
-                            (entry! y-magic))
+    (with-release [host-a (entry! (create-ge-matrix host-factory m n) x-magic)
+                   host-b (entry! (create-ge-matrix host-factory m n) y-magic)
+                   host-x (entry! (create-vector host-factory cnt) x-magic)
+                   host-y (entry! (create-vector host-factory cnt) y-magic)
                    cl-a (create-ge-matrix ocl-factory m n host-a)
                    cl-b (create-ge-matrix ocl-factory m n)
                    cl-x (create-vector ocl-factory cnt)
@@ -51,24 +48,21 @@
        "Matrix rows and columns."
        (dim subvector-x) => (/ cnt 2)
        (transfer! (entry! host-x 3 magic) cl-x) => cl-x
-       (entry (transfer! subvector-x
-                         (create-vector (factory ocl-factory) (/ cnt 2))) 0)
+       (entry (transfer subvector-x) 0)
        => magic
-       (entry (transfer! (copy! (subvector cl-x 3 (mrows cl-a))
-                                (copy (col cl-a 6)))
-                         (create-vector (factory ocl-factory) (mrows cl-a))) 0)
+       (entry (transfer (copy! (subvector cl-x 3 (mrows cl-a))
+                           (copy (col cl-a 6)))) 0)
        => magic))))
 
 (defn test-blas1 [ocl-factory]
   (facts
    "BLAS methods"
-   (let [cnt (long (+ 1000 (pow 2 12)))
+   (let [host-factory (factory (data-accessor ocl-factory))
+         cnt (long (+ 1000 (pow 2 12)))
          x-magic 2
          y-magic 5]
-     (with-release [host-x (doto (create-vector (factory ocl-factory) cnt)
-                             (entry! x-magic))
-                    host-y (doto (create-vector (factory ocl-factory) cnt)
-                             (entry! y-magic))
+     (with-release [host-x (entry! (create-vector host-factory cnt) x-magic)
+                    host-y (entry! (create-vector host-factory cnt) y-magic)
                     cl-x (create-vector ocl-factory cnt)
                     cl-y (create-vector ocl-factory cnt)]
 
@@ -88,19 +82,16 @@
 
        (iamax cl-x) => 6
 
-       (transfer! (scal! 2 cl-x) (create-vector (factory ocl-factory) cnt))
-       => (scal! 2 host-x)
+       (transfer (scal! 2 cl-x)) => (scal! 2 host-x)
 
-       (transfer! (axpy! 2 cl-x cl-y) (create-vector (factory ocl-factory) cnt))
-       => (axpy! 2 host-x host-y)))
+       (transfer (axpy! 2 cl-x cl-y)) => (axpy! 2 host-x host-y)))
 
-   (let [cnt (long (+ 1000 (pow 2 12)))
+   (let [host-factory (factory (data-accessor ocl-factory))
+         cnt (long (+ 1000 (pow 2 12)))
          x-magic 2
          y-magic 5]
-     (with-release [host-x (doto (create-vector (factory ocl-factory) cnt)
-                             (entry! 3.5))
-                    host-y (doto (create-vector (factory ocl-factory) cnt)
-                             (entry! 1.1))
+     (with-release [host-x (entry! (create-vector host-factory cnt) 3.5)
+                    host-y (entry! (create-vector host-factory cnt) 1.1)
                     cl-x (create-vector ocl-factory cnt)
                     cl-y (create-vector ocl-factory cnt)]
 
@@ -108,13 +99,12 @@
        (transfer! host-y cl-y) => cl-y
 
        (with-release [cl-zero (zero cl-x)]
-         (transfer! cl-zero (create-vector (factory ocl-factory) cnt)))
-       => (create-vector (factory ocl-factory) cnt)
+         (transfer cl-zero)) => (create-vector host-factory cnt)
 
        (swp! cl-x cl-y) => cl-x
        (swp! cl-x cl-y) => cl-x
 
-       (transfer! cl-x (create-vector (factory ocl-factory) cnt)) => host-x
+       (transfer cl-x) => host-x
 
        (copy! cl-x cl-y) => cl-y
 
@@ -123,17 +113,15 @@
 (defn test-blas2 [ocl-factory]
   (facts
    "BLAS 2"
-   (let [m-cnt 2050
+   (let [host-factory (factory (data-accessor ocl-factory))
+         m-cnt 2050
          n-cnt 337
          a-magic 3
          x-magic 2
          y-magic 5]
-     (with-release [host-a (doto (create-ge-matrix (factory ocl-factory) m-cnt n-cnt)
-                             (entry! a-magic))
-                    host-x (doto (create-vector (factory ocl-factory) n-cnt)
-                             (entry! x-magic))
-                    host-y (doto (create-vector (factory ocl-factory) m-cnt)
-                             (entry! y-magic))
+     (with-release [host-a (entry! (create-ge-matrix host-factory m-cnt n-cnt) a-magic)
+                    host-x (entry! (create-vector host-factory n-cnt) x-magic)
+                    host-y (entry! (create-vector host-factory m-cnt) y-magic)
                     cl-a-master (create-ge-matrix ocl-factory (* 3 m-cnt) (* 3 n-cnt))
                     cl-a (transfer! host-a (submatrix cl-a-master m-cnt n-cnt m-cnt n-cnt))
                     cl-x-master (create-ge-matrix ocl-factory m-cnt n-cnt)
@@ -141,7 +129,7 @@
                     cl-x (transfer! host-x (row cl-x-master 1))
                     cl-y (transfer! host-y (row cl-y-master 1))]
        (transfer! (mv! 10 cl-a cl-x 100 cl-y)
-                  (create-vector (factory ocl-factory) m-cnt))
+                  (create-vector host-factory m-cnt))
        => (mv! 10 host-a host-x 100 host-y)))))
 
 (defn buffer [^Block b]
@@ -150,15 +138,16 @@
 (defn test-blas3 [ocl-factory]
   (facts
    "BLAS 3"
-   (let [m-cnt 123
+   (let [host-factory (factory (data-accessor ocl-factory))
+         m-cnt 123
          k-cnt 456
          n-cnt 789]
-     (with-release [host-a (create-ge-matrix (factory ocl-factory) m-cnt k-cnt
+     (with-release [host-a (create-ge-matrix host-factory m-cnt k-cnt
                                              (repeatedly (* m-cnt k-cnt) rand))
-                    host-b (create-ge-matrix (factory ocl-factory) k-cnt n-cnt
+                    host-b (create-ge-matrix host-factory k-cnt n-cnt
                                              (map (partial * 2)
                                                   (repeatedly (* k-cnt n-cnt) rand)))
-                    host-c (create-ge-matrix (factory ocl-factory) m-cnt n-cnt
+                    host-c (create-ge-matrix host-factory m-cnt n-cnt
                                              (map (partial * 2)
                                                   (repeatedly (* m-cnt n-cnt) rand)))
                     cl-a-master (create-ge-matrix ocl-factory (* 2 m-cnt) (* 2 k-cnt))
@@ -170,9 +159,9 @@
 
        (< (double
            (nrm2 (create-vector
-                  (factory ocl-factory)
+                  host-factory
                   (buffer (axpy! -1 (mm! 10 host-a host-b 100 host-c)
-                                 (create-ge-matrix (factory ocl-factory) m-cnt n-cnt
+                                 (create-ge-matrix host-factory m-cnt n-cnt
                                                    (mm! 10 cl-a cl-b 100 cl-c)))))))
           (* 2 m-cnt n-cnt k-cnt 1e-8))
        => true))))

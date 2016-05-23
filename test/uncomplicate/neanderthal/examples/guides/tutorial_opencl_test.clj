@@ -87,6 +87,7 @@ therefore do not mind these `facts` and `=>`s, they're not part of Neanderthal.
 
 $code"
 
+
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
             #_[criterium.core :refer [quick-bench with-progress-reporting]]
@@ -367,7 +368,7 @@ demanding enough."
 "$text
 
 CPU: 17678 ms
-GPU: 307 ms
+GPU: 293 ms
 
 That's almost 60x faster than the CPU! But, still, shouldn't it be even faster?
 You've probably seen those benchmarks with 1000x speed improvements!

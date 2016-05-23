@@ -1,9 +1,9 @@
 (ns uncomplicate.neanderthal.impl.fluokitten
   (:refer-clojure :exclude [accessor])
-  (:require [uncomplicate.commons.core :refer [with-release let-release]]
+  (:require [uncomplicate.commons.core :refer [let-release]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [copy create-raw dim ncols mrows trans]]])
+             [core :refer [copy create-raw trans dim ncols mrows]]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
@@ -469,59 +469,39 @@
 
 (defn matrix-fmap!
   ([^Matrix a f]
-   (do (if (column-major? a)
-         (dotimes [i (.ncols a)]
-           (with-release [x (.col a i)]
-             (vector-fmap* f x)))
-         (dotimes [i (.mrows a)]
-           (with-release [x (.row a i)]
-             (vector-fmap* f x))))
-       a))
+   (if (column-major? a)
+     (dotimes [i (.ncols a)]
+       (vector-fmap* f (.col a i)))
+     (dotimes [i (.mrows a)]
+       (vector-fmap* f (.row a i))))
+   a)
   ([^Matrix a f ^Matrix b]
    (if (check-matrix-dimensions a b)
-     (do (if (column-major? a)
-           (dotimes [i (.ncols a)]
-             (with-release [x (.col a i)
-                            y (.col b i)]
-               (vector-fmap* f x y)))
-           (dotimes [i (.mrows a)]
-             (with-release [x (.row a i)
-                            y (.row b i)]
-               (vector-fmap* f x y))))
-         a)
-     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
+     (if (column-major? a)
+       (dotimes [i (.ncols a)]
+         (vector-fmap* f (.col a i) (.col b i)))
+       (dotimes [i (.mrows a)]
+         (vector-fmap* f (.row a i) (.row b i))))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
+   a)
   ([^Matrix a f ^Matrix b ^Matrix c]
    (if (check-matrix-dimensions a b c)
-     (do (if (column-major? a)
-           (dotimes [i (.ncols a)]
-             (with-release [x (.col a i)
-                            y (.col b i)
-                            z (.col c i)]
-               (vector-fmap* f x y z)))
-           (dotimes [i (.mrows a)]
-             (with-release [x (.row a i)
-                            y (.row b i)
-                            z (.row c i)]
-               (vector-fmap* f x y z))))
-         a)
-     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
+     (if (column-major? a)
+       (dotimes [i (.ncols a)]
+         (vector-fmap* f (.col a i) (.col b i) (.col c i)))
+       (dotimes [i (.mrows a)]
+         (vector-fmap* f (.row a i) (.row b i) (.row c i))))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
+   a)
   ([^Matrix a f ^Matrix b ^Matrix c ^Matrix d]
    (if (check-matrix-dimensions a b c d)
-     (do (if (column-major? a)
-           (dotimes [i (.ncols a)]
-             (with-release [x (.col a i)
-                            y (.col b i)
-                            z (.col c i)
-                            v (.col d i)]
-               (vector-fmap* f x y z v)))
-           (dotimes [i (.mrows a)]
-             (with-release [x (.row a i)
-                            y (.row b i)
-                            z (.row c i)
-                            v (.row d i)]
-               (vector-fmap* f x y z v))))
-         a)
-     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
+     (if (column-major? a)
+            (dotimes [i (.ncols a)]
+              (vector-fmap* f (.col a i) (.col b i) (.col c i) (.col d i)))
+            (dotimes [i (.mrows a)]
+              (vector-fmap* f (.row a i) (.row b i) (.row c i) (.row d i))))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
+   a)
   ([a f b c d es]
    (throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
@@ -548,29 +528,20 @@
   ([^Matrix a f init]
    (loop [i 0 acc init]
      (if (< i (.ncols a))
-       (recur (inc i)
-              (with-release [x (.col a i)]
-                (vector-reduce f acc x)))
+       (recur (inc i) (vector-reduce f acc (.col a i)))
        acc)))
   ([^Matrix a f init ^Matrix b]
    (if (check-matrix-dimensions a b)
      (loop [i 0 acc init]
        (if (< i (.ncols a))
-         (recur (inc i)
-                (with-release [x (.col a i)
-                               y (.col b i)]
-                  (vector-reduce f acc x y)))
+         (recur (inc i) (vector-reduce f acc (.col a i) (.col b i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix a f init ^Matrix b ^Matrix c]
    (if (check-matrix-dimensions a b c)
      (loop [i 0 acc init]
        (if (< i (.ncols a))
-         (recur (inc i)
-                (with-release [x (.col a i)
-                               y (.col b i)
-                               z (.col c i)]
-                  (vector-reduce f acc x y z)))
+         (recur (inc i) (vector-reduce f acc (.col a i) (.col b i) (.col c i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix a f init ^Matrix b ^Matrix c ^Matrix d]
@@ -578,11 +549,7 @@
      (loop [i 0 acc init]
        (if (< i (.ncols a))
          (recur (inc i)
-                (with-release [x (.col a i)
-                               y (.col b i)
-                               z (.col c i)
-                               v (.col d i)]
-                  (vector-reduce f acc x y z v)))
+                (vector-reduce f acc (.col a i) (.col b i) (.col c i) (.col d i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([a f init b c d es]
@@ -603,29 +570,20 @@
   ([^Matrix a g f init]
    (loop [i 0 acc init]
      (if (< i (.ncols a))
-       (recur (inc i)
-              (with-release [x (.col a i)]
-                (vector-reduce-map f acc g x)))
+       (recur (inc i) (vector-reduce-map f acc g (.col a i)))
        acc)))
   ([^Matrix a g f init ^Matrix b]
    (if (check-matrix-dimensions a b)
      (loop [i 0 acc init]
        (if (< i (.ncols a))
-         (recur (inc i)
-                (with-release [x (.col a i)
-                               y (.col b i)]
-                  (vector-reduce-map f acc g x y)))
+         (recur (inc i) (vector-reduce-map f acc g (.col a i) (.col b i)))
          acc))
-     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))     ))
+     (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix a g f init ^Matrix b ^Matrix c]
    (if (check-matrix-dimensions a b c)
      (loop [i 0 acc init]
        (if (< i (.ncols a))
-         (recur (inc i)
-                (with-release [x (.col a i)
-                               y (.col b i)
-                               z (.col c i)]
-                  (vector-reduce-map f acc g x y z)))
+         (recur (inc i) (vector-reduce-map f acc g (.col a i) (.col b i) (.col c i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([^Matrix a g f init ^Matrix b ^Matrix c ^Matrix d]
@@ -633,11 +591,7 @@
      (loop [i 0 acc init]
        (if (< i (.ncols a))
          (recur (inc i)
-                (with-release [x (.col a i)
-                               y (.col b i)
-                               z (.col c i)
-                               v (.col d i)]
-                  (vector-reduce-map f acc g x y z v)))
+                (vector-reduce-map f acc g (.col a i) (.col b i) (.col c i) (.col d i)))
          acc))
      (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
   ([x g f init y z v ws]
@@ -654,21 +608,21 @@
     (let [column-reducer
           (fn ^long [^long pos ^Matrix w]
             (if (compatible res w)
-              (with-release [subres (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w))]
-                (.copy ^BLASPlus (engine w) w subres)
-                (+ pos (.ncols w)))
-              (throw (UnsupportedOperationException.
-                      (format INCOMPATIBLE_BLOCKS_MSG res w)))))
+              (.copy ^BLASPlus (engine w) w
+                     (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))
+              (throw (IllegalArgumentException.
+                      (format INCOMPATIBLE_BLOCKS_MSG res w))))
+            (+ pos (.ncols w)))
           row-reducer
           (fn ^long [^long pos ^Matrix w]
             (if (compatible res w)
-              (with-release [subres (.submatrix ^Matrix res pos 0 (.mrows w) (.ncols w))]
-                (.copy  ^BLASPlus (engine w) w subres)
-                (+ pos (.mrows w)))
-              (throw (UnsupportedOperationException.
-                      (format INCOMPATIBLE_BLOCKS_MSG res w)))))]
-      (with-release [subres0 (.submatrix ^Matrix res 0 0 (.mrows a) (.ncols a))]
-        (.copy ^BLASPlus (engine a) a subres0))
+              (.copy ^BLASPlus (engine w) w
+                     (.submatrix ^Matrix res pos 0 (.mrows w) (.ncols w)))
+              (throw (IllegalArgumentException.
+                      (format INCOMPATIBLE_BLOCKS_MSG res w))))
+            (+ pos (.mrows w)))]
+      (.copy ^BLASPlus (engine a) a
+             (.submatrix ^Matrix res 0 0 (.mrows a) (.ncols a)))
       (if (column-major? a)
         (reduce column-reducer (.ncols a) bs)
         (reduce row-reducer (.mrows a) bs))

@@ -1,6 +1,5 @@
 (ns uncomplicate.neanderthal.impl.cblas
   (:require [vertigo.bytes :refer [direct-buffer]]
-            [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [dim ecount]]
@@ -66,13 +65,9 @@
        (~method (* (.mrows ~a) (.ncols ~a)) (buffer ~a) 0 1 (buffer ~b) 0 1)
        (if (column-major? ~a)
          (dotimes [i# (.ncols ~a)]
-           (with-release [x# (.col ~a i#)
-                          y# (.col ~b i#)]
-             (vector-swap-copy ~method x# y#)))
+           (vector-swap-copy ~method (.col ~a i#) (.col ~b i#)))
          (dotimes [i# (.mrows ~a)]
-           (with-release [x# (.row ~a i#)
-                          y# (.row ~b i#)]
-             (vector-swap-copy ~method x# y#)))))))
+           (vector-swap-copy ~method (.row ~a i#) (.row ~b i#)))))))
 
 (defmacro ^:private matrix-axpy [method alpha a b]
   `(if (< 0 (* (.mrows ~a) (.ncols ~a)))
@@ -82,13 +77,9 @@
        (~method (* (.mrows ~a) (.ncols ~a)) ~alpha (buffer ~a) 1 (buffer ~b) 1)
        (if (column-major? ~a)
          (dotimes [i# (.ncols ~a)]
-           (with-release [x# (.col ~a i#)
-                          y# (.col ~b i#)]
-             (vector-axpy ~method ~alpha x# y#)))
+           (vector-axpy ~method ~alpha (.col ~a i#) (.col ~b i#)))
          (dotimes [i# (.mrows ~a)]
-           (with-release [x# (.row ~a i#)
-                          y# (.row ~b i#)]
-             (vector-axpy ~method ~alpha x# y#)))))))
+           (vector-axpy ~method ~alpha (.row ~a i#) (.row ~b i#)))))))
 
 ;; ============ Real Vector Engines ============================================
 
@@ -168,11 +159,6 @@
 
 ;; ================= General Matrix Engines ====================================
 
-(def ^:private double-buffer-one
-  (let [buffer-one (.createDataSource ^DataAccessor double-accessor 1)]
-    (.putDouble buffer-one 0 1.0)
-    buffer-one))
-
 (deftype DoubleGeneralMatrixEngine []
   BLAS
   (swap [_ a b]
@@ -232,6 +218,9 @@
                  beta (.buffer c) (.stride c))))
 
 (deftype CblasFactory [^DataAccessor acc ^BLAS vector-eng ^BLAS matrix-eng]
+  DataAccessorProvider
+  (data-accessor [_]
+    acc)
   Factory
   (create-vector [this n buf _]
     (if (and (<= 0 (long n) (.count acc buf))
@@ -250,8 +239,6 @@
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d matrix from %s."
                       m n (type buf))))))
-  (data-accessor [_]
-    acc)
   (vector-engine [_]
     vector-eng)
   (matrix-engine [_]

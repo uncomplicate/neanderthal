@@ -99,18 +99,14 @@
         (loop [i 0]
           (if (= i ncols-a)
             true
-            (if (with-release [x (.col ^Matrix a i)
-                               y (.col ^Matrix b i)]
-                  (= x y))
+            (if (= (.col ^Matrix a i) (.col ^Matrix b i))
               (recur (inc i))
               false))))
       (let [mrows-a (mrows a)]
         (loop [i 0]
           (if (= i mrows-a)
             true
-            (if (with-release [x (.row ^Matrix a i)
-                               y (.row ^Matrix b i)]
-                  (= x y))
+            (if (= (.row ^Matrix a i) (.row ^Matrix b i))
               (recur (inc i))
               false)))))))
 
@@ -250,13 +246,9 @@
          nil)
        (if (column-major? ~a)
          (dotimes [i# (ncols ~a)]
-           (with-release [x# (.col ~a i#)
-                          y# (.col ~b i#)]
-             (vector-swap-copy ~queue ~method x# y#)))
+           (vector-swap-copy ~queue ~method (.col ~a i#) (.col ~b i#)))
          (dotimes [i# (mrows ~a)]
-           (with-release [x# (.row ~a i#)
-                          y# (.row ~b i#)]
-             (vector-swap-copy ~queue ~method x# y#)))))))
+           (vector-swap-copy ~queue ~method (.row ~a i#) (.row ~b i#)))))))
 
 (defmacro ^:private matrix-axpy [queue method alpha a b]
   `(when (< 0 (ecount ~a))
@@ -272,13 +264,9 @@
          nil)
        (if (column-major? ~a)
          (dotimes [i# (ncols ~a)]
-           (with-release [x# (.col ~a i#)
-                          y# (.col ~b i#)]
-             (vector-axpy ~queue ~method ~alpha x# y#)))
+           (vector-axpy ~queue ~method ~alpha (.col ~a i#) (.col ~b i#)))
          (dotimes [i# (mrows ~a)]
-           (with-release [x# (.row ~a i#)
-                          y# (.row ~b i#)]
-             (vector-axpy ~queue ~method ~alpha x# y#)))))))
+           (vector-axpy ~queue ~method ~alpha (.row ~a i#) (.row ~b i#)))))))
 
 (defmacro ^:private matrix-gemv [queue method alpha a x beta y]
   `(when (< 0 (ecount ~a))
@@ -307,7 +295,7 @@
   `(when (< 0 (ecount ~a))
      (with-check error
        (~method
-        (order ~a)
+        (order ~c)
         (if (= (order ~a) (order ~c)) Transpose/kNo Transpose/kYes)
         (if (= (order ~b) (order ~c)) Transpose/kNo Transpose/kYes)
         (mrows ~a) (ncols ~b) (ncols ~a)
@@ -455,16 +443,14 @@
        (release matrix-eng))
       (finally
         (CLBlast/CLBlastClearCache))))
-  FactoryProvider
-  (factory [_]
-    (factory claccessor))
+  DataAccessorProvider
+  (data-accessor [_]
+    claccessor)
   Factory
   (create-vector [this n buf _]
     (create-cl-vector this vector-eng n buf))
   (create-matrix [this m n buf ord]
     (create-cl-ge-matrix this matrix-eng m n buf ord))
-  (data-accessor [_]
-    claccessor)
   (vector-engine [_]
     vector-eng)
   (matrix-engine [_]

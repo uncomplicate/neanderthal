@@ -16,6 +16,7 @@
   (real-test/test-ge-matrix factory)
   (real-test/test-vector-constructor factory)
   (real-test/test-vector factory)
+  (real-test/test-vector-bulk-entry! factory)
   (real-test/test-dot factory)
   (real-test/test-nrm2 factory)
   (real-test/test-asum factory)
@@ -29,10 +30,12 @@
   (real-test/test-axpy factory)
   (real-test/test-matrix-constructor factory)
   (real-test/test-matrix factory)
+  (real-test/test-matrix-bulk-entry! factory)
   (real-test/test-copy-matrix factory)
   (real-test/test-mv factory)
   (real-test/test-rank factory)
-  (real-test/test-mm factory))
+  (real-test/test-mm factory)
+  (real-test/test-mm-row-major factory))
 
 (defn block-tests [factory]
   (block-test/test-equality factory)

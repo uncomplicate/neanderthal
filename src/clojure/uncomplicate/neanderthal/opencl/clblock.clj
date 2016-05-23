@@ -15,9 +15,16 @@
              [cblas-single cblas-double]])
   (:import [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.protocols
-            BLAS Vector Matrix Changeable Block DataAccessor]
+            BLAS Vector RealVector Matrix RealMatrix RealChangeable
+            Block DataAccessor]
            [uncomplicate.neanderthal.impl.buffer_block
             RealBlockVector RealGeneralMatrix]))
+
+(def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
+  "This operation would be inefficient when stride is not 1.")
+
+(def ^{:private true :const true} INEFFICIENT_OPERATION_MSG
+  "This operation would be inefficient because it uses memory transfer. Please use transfer! of map-memory to be reminded of that.")
 
 (defn cl-to-host [cl host]
   (let [mapped-host (map-memory cl :read)]
@@ -50,6 +57,10 @@
   (initialize [_ cl-buf]
     (do
       (enq-fill! queue cl-buf (array-fn 1))
+      cl-buf))
+  (initialize [_ cl-buf v]
+    (do
+      (enq-fill! queue cl-buf (wrap-fn v))
       cl-buf))
   (wrapPrim [_ s]
     (wrap-fn s))
@@ -105,10 +116,11 @@
   (zero [this]
     (zero this fact))
   (zero [this fact]
-    (let [r (raw this fact)
-          clacc (data-accessor fact)]
-      (.initialize clacc (.buffer ^Block r))
+    (let-release [r (raw this fact)]
+      (.initialize (data-accessor fact) (.buffer ^Block r))
       r))
+  (host [this]
+    (cl-to-host this (raw this (factory claccessor))))
   Monoid
   (id [x]
     (create-vector fact 0 (.createDataSource claccessor 0) nil))
@@ -118,6 +130,9 @@
   FactoryProvider
   (factory [_]
     fact)
+  DataAccessorProvider
+  (data-accessor [_]
+    claccessor)
   Memory
   (compatible [_ y]
     (and (instance? CLBlockVector y) (= entry-type (.entryType ^Block y))))
@@ -132,14 +147,32 @@
     strd)
   (count [_]
     n)
-  Vector
+  RealChangeable
+  (set [x val]
+    (if (and (= 0 ofst) (= 1 strd))
+      (.initialize claccessor cl-buf val)
+      (throw (IllegalArgumentException. INEFFICIENT_STRIDE_MSG)))
+    x)
+  (set [_ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (setBoxed [x val]
+    (.set x val))
+  (setBoxed [_ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (alter [_ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  RealVector
   (dim [_]
     n)
+  (entry [_ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (boxedEntry [_ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   (subvector [this k l]
     (CLBlockVector. fact claccessor eng entry-type (atom false) cl-buf l (+ ofst k) strd))
   Mappable
   (map-memory [this flags]
-    (let [host-fact (factory fact)
+    (let [host-fact (factory claccessor)
           acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
@@ -177,7 +210,7 @@
 
 (defmethod transfer! [clojure.lang.Sequential CLBlockVector]
   [source ^CLBlockVector destination]
-  (let-release [host (raw destination (factory (factory destination)))]
+  (let-release [host (raw destination (factory (data-accessor destination)))]
     (host-to-cl (transfer! source host) destination)))
 
 ;; ================== CL Matrix ============================================
@@ -210,6 +243,9 @@
   FactoryProvider
   (factory [_]
     fact)
+  DataAccessorProvider
+  (data-accessor [_]
+    claccessor)
   Memory
   (compatible [_ y]
     (and (or (instance? CLGeneralMatrix y) (instance? CLBlockVector y))
@@ -222,10 +258,11 @@
   (zero [this]
     (zero this fact))
   (zero [this fact]
-    (let [r (raw this fact)
-          clacc (data-accessor fact)]
-      (.initialize clacc (.buffer ^Block r))
+    (let-release [r (raw this fact)]
+      (.initialize (data-accessor fact) (.buffer ^Block r))
       r))
+  (host [this]
+    (cl-to-host this (raw this (factory claccessor))))
   Monoid
   (id [a]
     (create-matrix fact 0 0 (.createDataSource claccessor 0) nil))
@@ -242,11 +279,31 @@
     ord)
   (count [_]
     (* m n))
-  Matrix
+  RealChangeable
+  (set [a val]
+    (if (and (= ld (if (column-major? a) m n))
+             (= 0 ofst)
+             (= (* m n) (.count claccessor cl-buf)))
+      (.initialize claccessor cl-buf val)
+      (throw (IllegalArgumentException. INEFFICIENT_STRIDE_MSG)))
+    a)
+  (set [_ _ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (alter [a i j f]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  RealMatrix
   (mrows [_]
     m)
   (ncols [_]
     n)
+  (entry [_ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (boxedEntry [_ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   (row [a i]
     (if (column-major? a)
       (CLBlockVector. fact claccessor (vector-engine fact)
@@ -263,9 +320,13 @@
     (let [o (if (column-major? a) (+ ofst (* j ld) i) (+ ofst (* i ld) j))]
       (CLGeneralMatrix. fact claccessor eng
                         entry-type (atom false) cl-buf k l o ld ord)))
+  (transpose [a]
+    (CLGeneralMatrix. fact claccessor eng
+                      entry-type (atom false) cl-buf n m ofst ld
+                      (if (column-major? a) ROW_MAJOR COLUMN_MAJOR)))
   Mappable
   (map-memory [a flags]
-    (let [host-fact (factory fact)
+    (let [host-fact (factory claccessor)
           acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
@@ -300,7 +361,7 @@
 
 (defmethod transfer! [clojure.lang.Sequential CLGeneralMatrix]
   [source destination]
-  (let-release [host (raw destination (factory (factory destination)))]
+  (let-release [host (raw destination (factory (data-accessor destination)))]
     (host-to-cl (transfer! source host) destination)))
 
 (defmethod print-method CLGeneralMatrix

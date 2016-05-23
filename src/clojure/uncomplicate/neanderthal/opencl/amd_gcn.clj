@@ -282,13 +282,14 @@
   FactoryProvider
   (factory [_]
     (factory claccessor))
+  DataAccessorProvider
+  (data-accessor [_]
+    claccessor)
   Factory
   (create-vector [this n buf _]
     (create-cl-vector this vector-eng n buf))
   (create-matrix [this m n buf ord]
     (create-cl-ge-matrix this matrix-eng m n buf ord))
-  (data-accessor [_]
-    claccessor)
   (vector-engine [_]
     vector-eng)
   (matrix-engine [_]

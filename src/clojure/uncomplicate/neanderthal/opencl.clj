@@ -53,18 +53,6 @@
        ~@body
        (finally (release *opencl-factory*)))))
 
-(defn host
-  "Transfers cl object from the device memory to a corresponding structure
-  on the host. A more convenient and (sometimes) a slightly faster alternative
-  to transfer!
-
-  (host (clv [1 2 3]))
-  (host (clge 2 3 (range 6)))
-  "
-  [cl]
-  (let-release [raw-host (p/raw cl (p/factory (p/factory cl)))]
-    (cl-to-host cl raw-host)))
-
 (defn clv
   "Creates an OpenCL-backed vector on the device, with dimension n, using
   the default engine factory.
