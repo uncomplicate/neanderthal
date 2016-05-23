@@ -1,5 +1,19 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.6.0
+
+New features
+
+* Completely new OpenCL engine for GPU matrix computing - **supports AMD, Nvidia, and Intel, on Linux, Windows, and OSX
+* Support Fluokitten's Monoid and Magma in vectors and matrices
+* transfer method in core that always transfers data to host memory
+
+Changes:
+
+* opencl methods renamed
+* default OpenCL engine changed to clblast
+* old amd-gcn engine deprecated
+
 ## 0.5.0
 
 New features:
