@@ -236,7 +236,7 @@ That's a 15x win for the GPU. Nothing too much, but still ok. Let's try matrix m
 ```clojure
 (with-default
   (with-default-engine
-    (let [cnt 8193]
+    (let [cnt 8192]
       (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
                      host-b (copy host-a)
                      host-c (copy host-a)
@@ -257,7 +257,7 @@ demanding enough."
 ```
 
 CPU: 17678 ms
-GPU: 307 ms
+GPU: 293 ms
 
 That's almost 60x faster than the CPU! But, still, shouldn't it be even faster? You've probably seen those benchmarks with 1000x speed improvements!
 
