@@ -120,11 +120,12 @@ I do not have a copy of Windows, so I do not provide pre-build library for Windo
 
 ### GPU drivers for the GPU engine
 
-Everything will magically work (no need to compile anything) as long as you have the appropriate hardware (a GPU that supports OpenCL 2.0, which in 2016 means a recent AMD Radeon or FirePro) and install the appropriate drivers and OpenCL platform which you can obtain from the card vendor's website. Kernels supporting pre-OpenCL 2.0 and optimized for Nvidia are planned for later.
+Everything will magically work (no need to compile anything) on Nvidia, AMD, and Intel's GPUs and CPUs as long as you have appropriate GPU drivers.
+
+Works on Linux, Windows, and OS X!
 
 Follow the [ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
-However, since Neanderthal also uses ClojureCL, and JOCL binaries **for Mac OS X* are still not in Maven Central, repl will start, but trying to evaluate will raise JOCL mac binary missing exception. Until someone contributes JOCL build, you'll have to build it yourself. Please find more at [JOCL website](http://jocl.org)
 
 ## Where to Go Next
 
