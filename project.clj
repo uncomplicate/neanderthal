@@ -1,4 +1,4 @@
-(defproject uncomplicate/neanderthal "0.6.0"
+(defproject uncomplicate/neanderthal "0.6.1-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
