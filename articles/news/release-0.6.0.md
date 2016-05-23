@@ -1,5 +1,5 @@
 ---
-title: Release 0.6.0
+title: Neanderthal 0.6.0: new GPU engine: Nvidia, AMD, and Intel GPUs on Linux, Windows, and OS X!
 Author: Dragan Djuric
 layout: article
 ---
