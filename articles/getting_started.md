@@ -126,6 +126,7 @@ Works on Linux, Windows, and OS X!
 
 Follow the [ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
+** If you use a pre-2.0 OpenCL device (alu Nvidia and some Intel and AMD GPUs), you'll have to use `command-queue-1` from the [ClojureCL's legacy namespace](https://github.com/uncomplicate/clojurecl/blob/master/src/clojure/uncomplicate/clojurecl/legacy.clj) instead of `command-queue` and `with-default` that are used in the examples.**
 
 ## Where to Go Next
 
