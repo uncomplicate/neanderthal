@@ -3,7 +3,6 @@
 ## 0.6.2
 
 * Updated ClojureCL dependency to 0.6.4
-* Statically compile core and impl namespaces.
 
 ## 0.6.1
 

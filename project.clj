@@ -27,10 +27,10 @@
   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
 
-  :aot [uncomplicate.neanderthal.protocols
-        uncomplicate.neanderthal.core
-        uncomplicate.neanderthal.impl.buffer-block
-        uncomplicate.neanderthal.impl.cblas]
+  #_(:aot [uncomplicate.neanderthal.protocols
+           uncomplicate.neanderthal.core
+           uncomplicate.neanderthal.impl.buffer-block
+           uncomplicate.neanderthal.impl.cblas])
 
   :profiles {:dev {:plugins [[lein-midje "3.1.3"]
                              [lein-codox "0.9.4"]]
