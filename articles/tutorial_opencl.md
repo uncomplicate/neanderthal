@@ -59,7 +59,7 @@ Therefore, do not mind these `facts` and `=>`s - they're not part of Neanderthal
 
 To be able to communicate with the GPU, we need to connect to the device drivers via the ClojureCL library and create appropriate contexts and queues through which we can fine tune the computation executions. Neanderthal can also work with the default setting, which we'll do here because we do not need all the ClojureCL knobs for the beginning.
 
-So, we will wrap all code we work with into `with-default` and `with-default-engine`. Our code will then be executed on the first available device on the first available OpenCL platform. On my machine, that would activate the most capable GPU using the AMD's OpenCL drivers. Your setup may be different.
+So, we will wrap all code we work with into `with-default` and `with-default-engine`. Our code will then be executed on the first available device on the first available OpenCL platform. On my machine, that would activate the most capable GPU using the AMD's OpenCL drivers. Your setup may be different. *If you have a pre-2.0 OpenCL platform (Nvidia, OS X), you'll have to use `with-default-1` macro from the `uncomplicate.clojurecl.legacy` namespace.*
 
 ```clojure
 (with-default
