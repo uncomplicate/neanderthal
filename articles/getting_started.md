@@ -46,8 +46,7 @@ This is one of the ways to multiply matrices:
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
 
 * The **native engine** is based on a highly optimized native [Automatically Tuned Linear Algebra Software (ATLAS)](http://math-atlas.sourceforge.net/) library of [BLAS](http://netlib.org/blas/) and [LAPACK](http://www.netlib.org/lapack/) computation routines.
-* The **GPU engine** is based on custom OpenCL kernels for BLAS routines for even more computational power when needed. That one is written in Clojure (except the kernels themselves)!
-Check out [Uncomplicate ClojureCL](http://clojurecl.uncomplicate.org) if you want to harness the GPU power from Clojure for your own algorithms.
+* The **GPU engine** is based on OpenCL BLAS routines for even more computational power when needed. It uses ClojureCL. Check out [Uncomplicate ClojureCL](http://clojurecl.uncomplicate.org) if you want to harness the GPU power from Clojure for your own algorithms.
 
 ### Implemented Features
 
