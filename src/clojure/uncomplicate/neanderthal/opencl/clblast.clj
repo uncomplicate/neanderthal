@@ -46,7 +46,7 @@
     -1009 "kInsufficientMemoryC"
     -1008 "kInsufficientMemoryX"
     -1007 "kInsufficientMemoryY"
-    -2048 "kKernellaunchError"
+    -2048 "kKernelLaunchError"
     -2047 "kKernelRunError"
     -2046 "kInvalidLocalMemUsage"
     -2045 "kNoHalfPrecision"
