@@ -1,5 +1,5 @@
 (ns uncomplicate.neanderthal.math
-  (:import [org.apache.commons.math3.util FastMath Precision]))
+  (:import [org.apache.commons.math3.util Precision]))
 
 (defn f=
   ([^double x ^double y ^double nepsilons]
@@ -43,20 +43,32 @@
 (defn floor ^double [^double x]
   (Math/floor x))
 
+(defn ceil ^double [^double x]
+  (Math/ceil x))
+
 (defn pow ^double [^double x ^double y]
-  (FastMath/pow x y))
+  (Math/pow x y))
 
 (defn exp ^double [^double x]
-  (FastMath/exp x))
+  (Math/exp x))
 
 (defn log ^double [^double x]
   (Math/log x))
+
+(defn log10 ^double [^double x]
+  (Math/log10 x))
 
 (defn log1p ^double [^double x]
   (Math/log1p x))
 
 (defn sqrt ^double [^double x]
-  (FastMath/sqrt x))
+  (Math/sqrt x))
 
 (defn abs ^double [^double x]
-  (if (< x 0.0) (- x) x))
+  (Math/abs x))
+
+(defn magnitude
+  (^double [^double range]
+   (pow 10 (floor (log10 range))))
+  (^double [^double lower ^double upper]
+   (magnitude (- upper lower))))
