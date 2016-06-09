@@ -13,7 +13,8 @@
              :refer [->RealBlockVector ->RealGeneralMatrix]]
             [uncomplicate.neanderthal.impl.cblas :refer
              [cblas-single cblas-double]])
-  (:import [uncomplicate.clojurecl.core CLBuffer]
+  (:import [clojure.lang IFn IFn$L]
+           [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS Vector RealVector Matrix RealMatrix RealChangeable
             Block DataAccessor]
@@ -147,6 +148,12 @@
     strd)
   (count [_]
     n)
+  IFn
+  (invoke [x]
+    n)
+  IFn$L
+  (invokePrim [x]
+    n)
   RealChangeable
   (set [x val]
     (if (and (= 0 ofst) (= 1 strd))
@@ -279,6 +286,12 @@
     ord)
   (count [_]
     (* m n))
+  IFn
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
   RealChangeable
   (set [a val]
     (if (and (= ld (if (column-major? a) m n))
