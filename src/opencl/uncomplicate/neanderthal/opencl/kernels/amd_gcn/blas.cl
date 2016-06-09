@@ -32,8 +32,8 @@ __kernel void equals_vector (__global uint* eq_flag,
                              const uint stride_x,
                              __global const REAL* y, const uint offset_y,
                              const uint stride_y) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
-    uint iy = offset_y + get_global_id(0) * stride_y;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint iy = offset_y + get_global_id(0) * stride_y;
     if ((x[ix] != y[iy])){
         eq_flag[0]++;
     }
@@ -44,8 +44,8 @@ __kernel void equals_matrix (__global uint* eq_flag,
                              const uint ld_a,
                              __global const REAL* b, const uint offset_b,
                              const uint ld_b) {
-    uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
-    uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
+    const uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
+    const uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
     if ((a[ia] != b[ib])){
         eq_flag[0]++;
     }
@@ -58,9 +58,9 @@ __kernel void equals_matrix (__global uint* eq_flag,
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void swap (__global REAL* x, const uint offset_x, const uint stride_x,
                     __global REAL* y, const uint offset_y, const uint stride_y) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
-    uint iy = offset_y + get_global_id(0) * stride_y;
-    REAL temp = x[ix];
+    const uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint iy = offset_y + get_global_id(0) * stride_y;
+    const REAL temp = x[ix];
     x[ix] = y[iy];
     y[iy] = temp;
 }
@@ -77,8 +77,8 @@ __kernel void copy_matrix (__global const REAL* a, const uint offset_a,
                            const uint ld_a,
                            __global REAL* b, const uint offset_b,
                            const uint ld_b) {
-    uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
-    uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
+    const uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
+    const uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
     b[ib] = a[ia];
 }
 
@@ -86,9 +86,9 @@ __kernel void swap_matrix (__global REAL* a, const uint offset_a,
                            const uint ld_a,
                            __global REAL* b, const uint offset_b,
                            const uint ld_b) {
-    uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
-    uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
-    REAL temp = a[ia];
+    const uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
+    const uint ib = offset_b + get_global_id(0) + get_global_id(1) * ld_b;
+    const REAL temp = a[ia];
     a[ia] = b[ia];
     b[ib] = temp;
 }
@@ -96,7 +96,7 @@ __kernel void swap_matrix (__global REAL* a, const uint offset_a,
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void scal (const REAL alpha, __global REAL* x,
                     const uint offset_x, const uint stride_x) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
     x[ix] = alpha * x[ix];
 }
 
@@ -105,8 +105,8 @@ __kernel void axpy (const REAL alpha, __global const REAL* x,
                     const uint offset_x, const uint stride_x,
                     __global REAL* y,
                     const uint offset_y, const uint stride_y) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
-    uint iy = offset_y + get_global_id(0) * stride_y;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint iy = offset_y + get_global_id(0) * stride_y;
     y[iy] = alpha * x[ix] + y[iy];
 }
 
@@ -115,15 +115,15 @@ __kernel void axpby (const REAL alpha, __global const REAL* x,
                      uint offset_x, const uint stride_x,
                      const REAL beta, __global REAL* y,
                      const uint offset_y, const uint stride_y) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
-    uint iy = offset_y + get_global_id(0) * stride_y;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint iy = offset_y + get_global_id(0) * stride_y;
     y[iy] = alpha * x[ix] + beta * y[iy];
 }
 
 // ================= Reduction kernels ========================================
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void sum_reduction (__global double* acc) {
-    double sum = work_group_reduction_sum(acc[get_global_id(0)]);
+    const double sum = work_group_reduction_sum(acc[get_global_id(0)]);
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -135,9 +135,9 @@ __kernel void dot_reduce (__global double* acc, __global const REAL* x,
                           const uint offset_x, const uint stride_x,
                           __global const REAL* y,
                           const uint offset_y, const uint stride_y) {
-    REAL px = x[offset_x + get_global_id(0) * stride_x];
-    REAL py = y[offset_y + get_global_id(0) * stride_y];
-    double sum = work_group_reduction_sum((double)(px * py));
+    const REAL px = x[offset_x + get_global_id(0) * stride_x];
+    const REAL py = y[offset_y + get_global_id(0) * stride_y];
+    const double sum = work_group_reduction_sum((double)(px * py));
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -147,8 +147,8 @@ __kernel void dot_reduce (__global double* acc, __global const REAL* x,
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void asum_reduce (__global double* acc, __global const REAL* x,
                            const uint offset_x, const uint stride_x) {
-    REAL px = x[offset_x + get_global_id(0) * stride_x];
-    double sum = work_group_reduction_sum((double)fabs(px));
+    const REAL px = x[offset_x + get_global_id(0) * stride_x];
+    const double sum = work_group_reduction_sum((double)fabs(px));
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -158,8 +158,8 @@ __kernel void asum_reduce (__global double* acc, __global const REAL* x,
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void sum_reduce (__global double* acc, __global const REAL* x,
                           const uint offset_x, const uint stride_x) {
-    REAL px = x[offset_x + get_global_id(0) * stride_x];
-    double sum = work_group_reduction_sum((double)px);
+    const REAL px = x[offset_x + get_global_id(0) * stride_x];
+    const double sum = work_group_reduction_sum((double)px);
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -170,8 +170,8 @@ __kernel void sum_reduce (__global double* acc, __global const REAL* x,
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void nrm2_reduce (__global double* acc, __global const REAL* x,
                            const uint offset_x, const uint stride_x) {
-    REAL px = x[offset_x + get_global_id(0) * stride_x];
-    double sum = work_group_reduction_sum((double)(px * px));
+    const REAL px = x[offset_x + get_global_id(0) * stride_x];
+    const double sum = work_group_reduction_sum((double)(px * px));
     if (get_local_id(0) == 0) {
         acc[get_group_id(0)] = sum;
     }
@@ -182,8 +182,8 @@ inline void work_group_reduction_imax (__global uint* iacc,
                                        __global double* vacc,
                                        uint const ind, const double val) {
 
-    uint local_id = get_local_id(0);
-    uint local_size = get_local_size(0);
+    const uint local_id = get_local_id(0);
+    const uint local_size = get_local_size(0);
 
     __local uint liacc[WGS];
     __local double lvacc[WGS];
@@ -230,7 +230,7 @@ inline void work_group_reduction_imax (__global uint* iacc,
 
 __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void imax_reduction (__global uint* iacc, __global double* vacc) {
-    uint gid = get_global_id(0);
+    const uint gid = get_global_id(0);
     work_group_reduction_imax(iacc, vacc, iacc[gid], (double)(vacc[gid]));
 }
 
@@ -240,7 +240,7 @@ __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void iamax_reduce (__global uint* iacc, __global double* vacc,
                             __global const REAL* x,
                             const uint offset_x, const uint stride_x) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
     work_group_reduction_imax(iacc, vacc, ix, (double)(fabs(x[ix])));
 }
 
@@ -250,7 +250,7 @@ __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void imax_reduce (__global uint* iacc, __global double* vacc,
                            __global const REAL* x,
                            const uint offset_x, const uint stride_x) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
     work_group_reduction_imax(iacc, vacc, ix, (double)(x[ix]));
 }
 
@@ -260,7 +260,7 @@ __attribute__((reqd_work_group_size(WGS, 1, 1)))
 __kernel void imin_reduce (__global uint* iacc, __global double* vacc,
                            __global const REAL* x,
                            const uint offset_x, const uint stride_x) {
-    uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
     work_group_reduction_imax(iacc, vacc, ix, (double)(-x[ix]));
 }
 
@@ -271,8 +271,8 @@ __kernel void imin_reduce (__global uint* iacc, __global double* vacc,
 __attribute__((reqd_work_group_size(WGSm, WGSn, 1)))
 __kernel void sum_reduction_horizontal (__global REAL* acc) {
 
-    uint ia = get_global_size(0) * get_global_id(1) + get_global_id(0);
-    REAL sum = work_group_reduction_sum_2(1, acc[ia]);
+    const uint ia = get_global_size(0) * get_global_id(1) + get_global_id(0);
+    const REAL sum = work_group_reduction_sum_2(1, acc[ia]);
     if (get_local_id(1) == 0) {
         acc[get_global_size(0) * get_group_id(1) + get_global_id(0)] = sum;
     }
@@ -287,9 +287,9 @@ __kernel void gemv_reduce (__global REAL* acc,
                            __global const REAL* x, const uint offset_x,
                            const uint stride_x) {
 
-    uint ia = offset_a + ld_a * get_global_id(1) + get_local_id(0);
-    uint ix = offset_x + get_global_id(1) * stride_x;
-    REAL sum = work_group_reduction_sum_2(1, alpha * a[ia] * x[ix]);
+    const uint ia = offset_a + ld_a * get_global_id(1) + get_local_id(0);
+    const uint ix = offset_x + get_global_id(1) * stride_x;
+    const REAL sum = work_group_reduction_sum_2(1, alpha * a[ia] * x[ix]);
     if (get_local_id(1) == 0) {
         acc[get_global_size(0) * get_group_id(1) + get_global_id(0)] = sum;
     }
@@ -304,9 +304,9 @@ __kernel void gerk (const REAL alpha, __global const REAL* x,
                     const uint offset_y, const uint stride_y,
                     __global REAL* a, const uint offset_a, const uint ld_a) {
 
-    uint ix = offset_x + get_global_id(0) * stride_x;
-    uint iy = offset_y + get_global_id(1) * stride_y;
-    uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
+    const uint ix = offset_x + get_global_id(0) * stride_x;
+    const uint iy = offset_y + get_global_id(1) * stride_y;
+    const uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;
     a[ia] += alpha * x[ix] * y[iy];
 }
 

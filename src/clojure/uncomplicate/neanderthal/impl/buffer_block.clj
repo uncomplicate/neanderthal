@@ -12,7 +12,7 @@
             [uncomplicate.neanderthal.impl.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
-           [clojure.lang IFn IFn$DD IFn$LD IFn$LDD]
+           [clojure.lang IFn IFn$DD IFn$LD IFn$LDD IFn$L]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor
@@ -171,6 +171,11 @@
   IFn
   (invoke [x i]
     (.entry x i))
+  (invoke [x]
+    n)
+  IFn$L
+  (invokePrim [x]
+    n)
   RealChangeable
   (set [x val]
     (if (= 0 strd)
@@ -311,6 +316,11 @@
     (if (and (< -1 (long i) m) (< -1 (long j) n))
       (.entry a i j)
       (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j m n)))))
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
   RealChangeable
   (set [a val]
     (if (= ld (if (column-major? a) m n))
