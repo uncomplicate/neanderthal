@@ -70,7 +70,7 @@
   4: %s")
 
 (def ^{:no-doc true :const true} ROW_COL_MSG
-  "Required %s %d is higher than the row count %d.")
+  "Required %s %d is higher than the %s count %d.")
 
 (def ^{:no-doc true :const true} DIMENSION_MSG
   "Incompatible dimensions - expected:%d, actual:%d.")

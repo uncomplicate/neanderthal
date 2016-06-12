@@ -278,7 +278,7 @@
   (if (< -1 i (.mrows m))
     (.row m i)
     (throw (IndexOutOfBoundsException.
-            (format p/ROW_COL_MSG "row" i (.mrows m))))))
+            (format p/ROW_COL_MSG "row" i "row" (.mrows m))))))
 
 (defn col
   "Returns the j-th column of the matrix m as a vector.
@@ -297,7 +297,7 @@
   (if (< -1 j (.ncols m))
     (.col m j)
     (throw (IndexOutOfBoundsException.
-            (format p/ROW_COL_MSG "col" j (.ncols m))))))
+            (format p/ROW_COL_MSG "col" j "col" (.ncols m))))))
 
 (defn cols
   "Returns a lazy sequence of vectors that represent

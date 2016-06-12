@@ -202,7 +202,7 @@
          (scal! 3 (create-vector factory []))
          => (create-vector factory [])))
 
-(defn test-copy-vector [factory]
+(defn test-vector-copy [factory]
   (facts "BLAS 1 copy!"
          (let [y (create-vector factory 3)]
            (copy! (create-vector factory [1 2 3]) y) => y
@@ -260,7 +260,8 @@
            (axpy 2 (create-vector factory 1 2 3) (create-vector factory 2 3 4))
            => (create-vector factory 4 7 10))))
 
-;; ================= Real General Matrix functions =====================================
+;; ================= Real General Matrix functions =============================
+
 (defn test-matrix-constructor [factory]
   (facts "Create a matrix."
          (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
@@ -319,7 +320,7 @@
   (facts "Matrix entry!."
          (sum (row (entry! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 88.0) 1)) => 264.0))
 
-(defn test-copy-matrix [factory]
+(defn test-matrix-copy [factory]
   (facts "BLAS 1 copy! general matrix"
          (let [a (create-ge-matrix factory 2 3)]
            (copy! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) a) => a
@@ -337,6 +338,15 @@
          (copy (create-vector factory 1 2)) => (create-vector factory 1 2)
          (let [x (create-vector factory 1 2)]
            (identical? (copy x) x) => false)))
+
+(defn test-matrix-scal [factory]
+  (facts "BLAS 1 scal! general matrix"
+         (let [x (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]()
+              (identical? (scal! 3 x) x) => true)
+         (scal! 3 (create-ge-matrix factory 2 3 [1 -2 3 9 8 7]))
+         => (create-ge-matrix factory 2 3 [3 -6 9 27 24 21])
+         (scal! 3 (submatrix (create-ge-matrix factory 3 2 [1 2 3 4 5 6]) 1 1 1 1))
+         => (create-ge-matrix factory 1 1 [15])))
 
 ;; ====================== BLAS 2 ===============================
 
@@ -462,14 +472,15 @@
     (test-rotmg factory)
     (test-swap factory)
     (test-scal factory)
-    (test-copy-vector factory)
+    (test-vector-copy factory)
     (test-axpy factory)
     (test-matrix-constructor factory)
     (test-matrix factory)
     (test-matrix-entry factory)
     (test-matrix-entry! factory)
     (test-matrix-bulk-entry! factory)
-    (test-copy-matrix factory)
+    (test-matrix-copy factory)
+    (test-matrix-scal factory)
     (test-mv factory)
     (test-mv-transpose factory)
     (test-rank factory)

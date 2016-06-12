@@ -18,6 +18,9 @@
 (defmacro ^:private vector-axpy [method alpha x y]
   `(~method (dim ~x) ~alpha (buffer ~x) (stride ~x) (buffer ~y) (stride ~y)))
 
+(defmacro ^:private vector-scal [method alpha x]
+  `(~method (dim ~x) ~alpha (buffer ~x) (stride ~x)))
+
 (defmacro ^:private vector-rotg [method x]
   `(if (= 1 (stride ~x))
      (~method (buffer ~x))
@@ -58,7 +61,7 @@
 ;; =============== Common matrix macros and functions ==========================
 
 (defmacro ^:private matrix-swap-copy [method a b]
-  `(if (< 0 (* (.mrows ~a) (.ncols ~a)))
+  `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
                  (stride ~a) (stride ~b)))
@@ -69,8 +72,18 @@
          (dotimes [i# (.mrows ~a)]
            (vector-swap-copy ~method (.row ~a i#) (.row ~b i#)))))))
 
+(defmacro ^:private matrix-scal [method alpha a]
+  `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
+     (if (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a)) (stride ~a))
+       (~method (* (.mrows ~a) (.ncols ~a)) ~alpha (buffer ~a) 1)
+       (if (column-major? ~a)
+         (dotimes [i# (.ncols ~a)]
+           (vector-scal ~method ~alpha (.col ~a i#)))
+         (dotimes [i# (.mrows ~a)]
+           (vector-scal ~method ~alpha (.row ~a i#)))))))
+
 (defmacro ^:private matrix-axpy [method alpha a b]
-  `(if (< 0 (* (.mrows ~a) (.ncols ~a)))
+  `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
      (if (and (= (order ~a) (order ~b))
               (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
                  (stride ~a) (stride ~b)))
@@ -165,6 +178,8 @@
     (matrix-swap-copy CBLAS/dswap ^Matrix a ^Matrix b))
   (copy [_ a b]
     (matrix-swap-copy CBLAS/dcopy ^Matrix a ^Matrix b))
+  (scal [_ alpha a]
+    (matrix-scal CBLAS/dscal alpha ^Matrix a))
   (axpy [_ alpha a b]
     (matrix-axpy CBLAS/daxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
@@ -194,6 +209,8 @@
     (matrix-swap-copy CBLAS/sswap ^Matrix a ^Matrix b))
   (copy [_ a b]
     (matrix-swap-copy CBLAS/scopy ^Matrix a ^Matrix b))
+  (scal [_ alpha a]
+    (matrix-scal CBLAS/sscal alpha ^Matrix a))
   (axpy [_ alpha a b]
     (matrix-axpy CBLAS/saxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]

@@ -1,5 +1,15 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.7.0-SNAPSHOT
+
+New features:
+
+* scal implementation for matrices.
+
+Bugfixes:
+
+* Fixed a Buffer.limit bug in subvector and submatrix.
+
 ## 0.6.2
 
 * Updated ClojureCL dependency to 0.6.4

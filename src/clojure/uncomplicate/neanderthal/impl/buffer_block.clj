@@ -200,7 +200,7 @@
   (boxedEntry [x i]
     (.entry x i))
   (subvector [_ k l]
-    (let [b (.slice accessor buf (* k strd) (* l strd))]
+    (let [b (.slice accessor buf (* k strd) (inc (* (dec l) strd)))]
       (RealBlockVector. fact accessor eng entry-type false b l strd))))
 
 (extend RealBlockVector
@@ -371,8 +371,8 @@
                           entry-type false b m ld))))
   (submatrix [a i j k l]
     (let [b (if (column-major? a)
-              (.slice accessor buf (+ (* ld j) i) (* ld l))
-              (.slice accessor buf (+ (* ld i) j) (* ld k)))]
+              (.slice accessor buf (+ (* ld j) i) (+ (* ld (dec l)) k))
+              (.slice accessor buf (+ (* ld i) j) (+ (* ld (dec k)) l)))]
       (RealGeneralMatrix. fact accessor eng entry-type false
                           b k l ld ord)))
   (transpose [a]

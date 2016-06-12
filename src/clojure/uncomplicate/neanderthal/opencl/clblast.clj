@@ -250,6 +250,21 @@
          (dotimes [i# (mrows ~a)]
            (vector-swap-copy ~queue ~method (.row ~a i#) (.row ~b i#)))))))
 
+(defmacro ^:private matrix-scal [queue method alpha a]
+  `(when (< 0 (ecount ~a))
+     (if (= (if (column-major? ~a) (mrows ~a) (ncols ~a)) (stride ~a))
+       (with-check error
+         (~method
+          (ecount ~a)
+          ~alpha (cl-mem (buffer ~a)) (offset ~a) 1
+          ~queue nil)
+         nil)
+       (if (column-major? ~a)
+         (dotimes [i# (ncols ~a)]
+           (vector-scal ~queue ~method ~alpha (.col ~a i#)))
+         (dotimes [i# (mrows ~a)]
+           (vector-scal ~queue ~method ~alpha (.row ~a i#)))))))
+
 (defmacro ^:private matrix-axpy [queue method alpha a b]
   `(when (< 0 (ecount ~a))
      (if (and (= (order ~a) (order ~b))
@@ -403,6 +418,8 @@
     (matrix-swap-copy queue CLBlast/CLBlastDswap ^Matrix a ^Matrix b))
   (copy [_ a b]
     (matrix-swap-copy queue CLBlast/CLBlastDcopy ^Matrix a ^Matrix b))
+  (scal [_ alpha a]
+    (matrix-scal queue CLBlast/CLBlastDscal alpha ^Matrix a))
   (axpy [_ alpha a b]
     (matrix-axpy queue CLBlast/CLBlastDaxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
@@ -424,6 +441,8 @@
     (matrix-swap-copy queue CLBlast/CLBlastSswap ^Matrix a ^Matrix b))
   (copy [_ a b]
     (matrix-swap-copy queue CLBlast/CLBlastScopy ^Matrix a ^Matrix b))
+  (scal [_ alpha a]
+    (matrix-scal queue CLBlast/CLBlastSscal alpha ^Matrix a))
   (axpy [_ alpha a b]
     (matrix-axpy queue CLBlast/CLBlastSaxpy alpha ^Matrix a ^Matrix b ))
   (mv [_ alpha a x beta y]
