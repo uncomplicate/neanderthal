@@ -56,13 +56,11 @@
   (createDataSource [_ n]
     (cl-buffer ctx (* w (max 1 (long n))) :read-write))
   (initialize [_ cl-buf]
-    (do
-      (enq-fill! queue cl-buf (array-fn 1))
-      cl-buf))
+    (enq-fill! queue cl-buf (array-fn 1))
+    cl-buf)
   (initialize [_ cl-buf v]
-    (do
-      (enq-fill! queue cl-buf (wrap-fn v))
-      cl-buf))
+    (enq-fill! queue cl-buf (wrap-fn v))
+    cl-buf)
   (wrapPrim [_ s]
     (wrap-fn s))
   CLAccessor
@@ -191,9 +189,8 @@
                            (.entryType acc) true mapped-buf n strd)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
-    (do
-      (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
-      this)))
+    (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
+    this))
 
 (extend CLBlockVector
   Magma
@@ -352,9 +349,8 @@
                              (.entryType acc) true mapped-buf m n ld ord)
         (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
   (unmap [this mapped]
-    (do
-      (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
-      this)))
+    (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
+    this))
 
 (extend CLGeneralMatrix
   Magma
