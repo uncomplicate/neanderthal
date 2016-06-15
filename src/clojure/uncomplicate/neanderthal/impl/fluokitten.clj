@@ -3,7 +3,7 @@
   (:require [uncomplicate.commons.core :refer [let-release]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [copy create-raw trans dim ncols mrows]]])
+             [core :refer [copy create-raw trans dim ncols mrows sum col row]]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
@@ -375,12 +375,7 @@
 
 (defn vector-fold
   ([^RealVector x]
-   (let [dim-x (.dim x)]
-     (loop [i 0 acc 0.0]
-       (if (< i dim-x)
-         (recur (inc i)
-                (+ acc (.entry x i)))
-         acc))))
+   (sum x))
   ([^Vector x f init]
    (vector-reduce f init x))
   ([^Vector x f init ^Vector y]
@@ -513,18 +508,14 @@
    (let-release [res (copy a)]
      (apply matrix-fmap! res f as))))
 
-(defn  matrix-fold
+(defn matrix-fold
   ([^RealMatrix a]
-   (loop [j 0 acc 0.0]
-     (if (< j (.ncols a))
-       (recur (inc j)
-              (double
-               (loop [i 0 acc acc]
-                 (if (< i (.mrows a))
-                   (recur (inc i)
-                          (+ acc (.entry a i j)))
-                   acc))))
-       acc)))
+   (let [vf (if (column-major? a) col row)
+         n (if (column-major? a) (.ncols a) (.mrows a))]
+     (loop [i 0 acc 0.0]
+       (if (< i n)
+         (recur (inc i) (+ acc (sum (vf a i))))
+         acc))))
   ([^Matrix a f init]
    (loop [i 0 acc init]
      (if (< i (.ncols a))

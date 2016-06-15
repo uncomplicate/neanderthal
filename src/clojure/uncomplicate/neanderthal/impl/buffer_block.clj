@@ -12,7 +12,7 @@
             [uncomplicate.neanderthal.impl.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
-           [clojure.lang IFn IFn$DD IFn$LD IFn$LDD IFn$L]
+           [clojure.lang Seqable IFn IFn$DD IFn$LD IFn$LDD IFn$LLD IFn$L]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor
@@ -124,7 +124,7 @@
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
-  clojure.lang.Seqable
+  Seqable
   (seq [_]
     (.toSeq accessor buf strd))
   Container
@@ -301,17 +301,17 @@
     ord)
   (count [_]
     (* m n))
-  clojure.lang.Seqable
+  Seqable
   (seq [a]
     (if (column-major? a)
       (map #(seq (.col a %)) (range 0 n))
       (map #(seq (.row a %)) (range 0 m))))
-  clojure.lang.IFn$LLD
+  IFn$LLD
   (invokePrim [a i j]
     (if (and (< -1 i m) (< -1 j n))
       (.entry a i j)
       (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j m n)))))
-  clojure.lang.IFn
+  IFn
   (invoke [a i j]
     (if (and (< -1 (long i) m) (< -1 (long j) n))
       (.entry a i j)
