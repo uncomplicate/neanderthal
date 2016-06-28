@@ -83,6 +83,16 @@
   ([x]
    (p/host x)))
 
+(defn native
+  "Ensures that the data x is in the native main memory,
+  and if not, transfers it there.
+
+  (let [v (sv [1 2 3])]
+    (identical? (native v) v)) => true
+  "
+  [x]
+  (p/native x))
+
 (defn create
   "Creates an initialized vector of the dimension n, or a  matrix m x n,
   using the provided factory.

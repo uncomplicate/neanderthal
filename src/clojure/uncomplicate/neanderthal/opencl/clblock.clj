@@ -120,6 +120,8 @@
       r))
   (host [this]
     (cl-to-host this (raw this (factory claccessor))))
+  (native [this]
+    (host this))
   Monoid
   (id [x]
     (create-vector fact 0 (.createDataSource claccessor 0) nil))
@@ -267,6 +269,8 @@
       r))
   (host [this]
     (cl-to-host this (raw this (factory claccessor))))
+  (native [this]
+    (host this))
   Monoid
   (id [a]
     (create-matrix fact 0 0 (.createDataSource claccessor 0) nil))

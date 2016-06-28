@@ -31,7 +31,8 @@
 (defprotocol Container
   (raw [this] [this factory])
   (zero [this] [this factory])
-  (host [this]))
+  (host [this])
+  (native [this]))
 
 (def ^:const ROW_MAJOR 101)
 

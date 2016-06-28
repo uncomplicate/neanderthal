@@ -10,6 +10,10 @@ Bugfixes:
 
 * Fixed a Buffer.limit bug in subvector and submatrix.
 
+Enhancements:
+
+* one-argument fold now use sum instead of looping.
+
 ## 0.6.2
 
 * Updated ClojureCL dependency to 0.6.4

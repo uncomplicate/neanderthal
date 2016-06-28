@@ -139,6 +139,8 @@
   (host [this]
     (let-release [res (raw this)]
       (.copy eng this res)))
+  (native [this]
+    this)
   Monoid
   (id [x]
     (create-vector fact 0 (.createDataSource accessor 0) nil))
@@ -281,6 +283,8 @@
   (host [this]
     (let-release [res (raw this)]
       (.copy eng this res)))
+  (native [this]
+    this)
   Monoid
   (id [a]
     (create-matrix fact 0 0 (.createDataSource accessor 0) nil))
