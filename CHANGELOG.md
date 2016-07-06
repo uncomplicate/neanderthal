@@ -1,6 +1,6 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
-## 0.7.0-SNAPSHOT
+## 0.7.0
 
 New features:
 
@@ -9,10 +9,13 @@ New features:
 Bugfixes:
 
 * Fixed a Buffer.limit bug in subvector and submatrix.
+* Fixes #15
 
 Enhancements:
 
+* native function in core
 * one-argument fold now use sum instead of looping.
+* Updated JOCLBlast dependency to 0.8.0 (also fixes #15)
 
 ## 0.6.2
 

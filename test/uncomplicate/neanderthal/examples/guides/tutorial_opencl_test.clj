@@ -361,7 +361,7 @@ demanding enough."
          ;;(time (mm! 3 host-a host-b 2 host-c)) => host-c
 
          (mm! 3 gpu-a gpu-b 2 gpu-c) => gpu-c
-         (finish!)
+         #_(finish!)
          #_(println "GPU:")
          #_(time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))))))))
 
