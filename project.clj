@@ -1,4 +1,4 @@
-(defproject uncomplicate/neanderthal "0.7.0"
+(defproject uncomplicate/neanderthal "0.7.1-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -38,8 +38,7 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.8.3"]
-                                  [criterium "0.4.4"]]}}
+                   :dependencies [[midje "1.8.3"]]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :source-paths ["src/clojure" "src/opencl"]

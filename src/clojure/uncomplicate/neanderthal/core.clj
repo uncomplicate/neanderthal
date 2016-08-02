@@ -833,6 +833,8 @@
   "A pure version of rank! that returns the result
   in a new matrix instance.
   "
+  ([alpha x y a]
+   (rank! alpha x y (copy a)))
   ([alpha ^Vector x ^Vector y]
    (let-release [res (create-raw (p/factory x) (.dim x) (.dim y))]
      (rank! alpha x y res)))

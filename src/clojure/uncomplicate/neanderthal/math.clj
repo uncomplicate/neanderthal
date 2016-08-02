@@ -46,8 +46,12 @@
 (defn ceil ^double [^double x]
   (Math/ceil x))
 
-(defn pow ^double [^double x ^double y]
-  (Math/pow x y))
+(defn pow
+  (^double [^double x ^double y]
+   (Math/pow x y))
+  ([^double y]
+   (fn ^double [^double x]
+     (Math/pow x y))))
 
 (defn exp ^double [^double x]
   (Math/exp x))
