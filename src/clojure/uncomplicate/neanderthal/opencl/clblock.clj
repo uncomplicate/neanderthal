@@ -67,6 +67,8 @@
   (get-queue [_]
     queue)
   FactoryProvider
+  (native-factory [_]
+    host-fact)
   (factory [_]
     host-fact))
 
@@ -119,7 +121,7 @@
       (.initialize (data-accessor fact) (.buffer ^Block r))
       r))
   (host [this]
-    (cl-to-host this (raw this (factory claccessor))))
+    (cl-to-host this (raw this (native-factory this))))
   (native [this]
     (host this))
   Monoid
@@ -131,6 +133,8 @@
   FactoryProvider
   (factory [_]
     fact)
+  (native-factory [_]
+    (native-factory claccessor))
   DataAccessorProvider
   (data-accessor [_]
     claccessor)
@@ -179,7 +183,7 @@
     (CLBlockVector. fact claccessor eng entry-type (atom false) cl-buf l (+ ofst k) strd))
   Mappable
   (map-memory [this flags]
-    (let [host-fact (factory claccessor)
+    (let [host-fact (native-factory this)
           acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
@@ -216,7 +220,7 @@
 
 (defmethod transfer! [clojure.lang.Sequential CLBlockVector]
   [source ^CLBlockVector destination]
-  (let-release [host (raw destination (factory (data-accessor destination)))]
+  (let-release [host (raw destination (native-factory destination))]
     (host-to-cl (transfer! source host) destination)))
 
 ;; ================== CL Matrix ============================================
@@ -249,6 +253,8 @@
   FactoryProvider
   (factory [_]
     fact)
+  (native-factory [_]
+    (native-factory claccessor))
   DataAccessorProvider
   (data-accessor [_]
     claccessor)
@@ -268,7 +274,7 @@
       (.initialize (data-accessor fact) (.buffer ^Block r))
       r))
   (host [this]
-    (cl-to-host this (raw this (factory claccessor))))
+    (cl-to-host this (raw this (native-factory this))))
   (native [this]
     (host this))
   Monoid
@@ -340,7 +346,7 @@
                       (if (column-major? a) ROW_MAJOR COLUMN_MAJOR)))
   Mappable
   (map-memory [a flags]
-    (let [host-fact (factory claccessor)
+    (let [host-fact (native-factory a)
           acc (data-accessor host-fact)
           queue (get-queue claccessor)
           mapped-buf (enq-map-buffer! queue cl-buf true
@@ -374,7 +380,7 @@
 
 (defmethod transfer! [clojure.lang.Sequential CLGeneralMatrix]
   [source destination]
-  (let-release [host (raw destination (factory (data-accessor destination)))]
+  (let-release [host (raw destination (native-factory destination))]
     (host-to-cl (transfer! source host) destination)))
 
 (defmethod print-method CLGeneralMatrix

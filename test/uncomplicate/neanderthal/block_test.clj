@@ -5,6 +5,33 @@
             [uncomplicate.neanderthal.core :refer :all])
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD]))
 
+(defn test-create [factory]
+  (facts "Create and create-raw."
+         (with-release [x0 (create factory 0)
+                        x1 (create factory 1)
+                        xr0 (create-raw factory 0)
+                        xr1 (create-raw factory 1)
+                        a00 (create factory 0 0)
+                        a11 (create factory 1 1)
+                        ar00 (create-raw factory 0 0)
+                        ar11 (create-raw factory 1 1)]
+           (dim x0) => 0
+           (dim x1) => 1
+           (dim xr0) => 0
+           (dim xr1) => 1
+           (create factory -1) => (throws IllegalArgumentException)
+           (create-raw factory -3) => (throws IllegalArgumentException)
+           (mrows a00) => 0
+           (ncols a00) => 0
+           (mrows a11) => 1
+           (ncols a11) => 1
+           (mrows ar00) => 0
+           (ncols ar00) => 0
+           (mrows ar11) => 1
+           (ncols ar11) => 1
+           (create factory -1 -1) => (throws IllegalArgumentException)
+           (create-raw factory -3 0) => (throws IllegalArgumentException))))
+
 (defn test-equality [factory]
   (facts "Equality and hash code."
          (with-release [x1 (create-vector factory [1 2 3 4])
@@ -141,7 +168,7 @@
    "GeneralMatrix should be a Monoid."
    (with-release [x (create-ge-matrix factory 2 3 (range 6))
                   y (create-ge-matrix factory 2 2 [6 7 8 9])
-                  z (create-ge-matrix factory 2 0 [])
+                  z (create-ge-matrix factory 0 0 [])
                   v1 (op x y)
                   v2 (op y x)
                   v3 (op x y x)
@@ -217,6 +244,7 @@
 
 (defn test-all [factory]
   (do
+    (test-create factory)
     (test-equality factory)
     (test-release factory)
     (test-ifn-vector factory)

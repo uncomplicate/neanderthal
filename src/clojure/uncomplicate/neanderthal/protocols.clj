@@ -16,7 +16,8 @@
   (engine ^BLAS [this]))
 
 (defprotocol FactoryProvider
-  (factory [this]))
+  (factory [this])
+  (native-factory [this]))
 
 (defprotocol DataAccessorProvider
   (data-accessor ^DataAccessor [this]))

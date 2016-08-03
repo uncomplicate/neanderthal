@@ -109,9 +109,12 @@
                       nil)))
   ([factory ^long m ^long n]
    (let [acc ^DataAccessor (p/data-accessor factory)]
-     (p/create-matrix factory m n
-                      (.initialize acc (.createDataSource acc (* m n)))
-                      nil))))
+     (if (or (and (< 0 m) (< 0 n)) (= 0 m n))
+       (p/create-matrix factory m n
+                        (.initialize acc (.createDataSource acc (* m n)))
+                        nil)
+       (throw (IllegalArgumentException.
+               (format "Dimensions m=%d, n=%d are not allowed." m n)))))))
 
 (defn create-raw
   "Creates an uninitialized vector of the dimension n, or a  matrix m x n,
@@ -131,9 +134,12 @@
                     (.createDataSource (p/data-accessor factory) n)
                     nil))
   ([factory ^long m ^long n]
-   (p/create-matrix factory m n
-                    (.createDataSource (p/data-accessor factory) (* m n))
-                    nil)))
+   (if (or (and (< 0 m) (< 0 n)) (= 0 m n))
+     (p/create-matrix factory m n
+                      (.createDataSource (p/data-accessor factory) (* m n))
+                      nil)
+     (throw (IllegalArgumentException.
+             (format "Dimensions m=%d, n=%d are not allowed." m n))))))
 
 (defn create-vector
   "Creates a vector from source using the provided factory.

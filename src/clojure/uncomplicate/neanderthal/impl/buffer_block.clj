@@ -150,6 +150,8 @@
   FactoryProvider
   (factory [_]
     fact)
+  (native-factory [_]
+    fact)
   DataAccessorProvider
   (data-accessor [_]
     accessor)
@@ -267,6 +269,8 @@
     eng)
   FactoryProvider
   (factory [_]
+    fact)
+  (native-factory [_]
     fact)
   DataAccessorProvider
   (data-accessor [_]

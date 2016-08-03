@@ -1,8 +1,15 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
-## 0.7.1-SNAPSHOT
+## 0.8.0-SNAPSHOT
+
+### Enhancements
 
 * one-argument pow function added.
+* native-factory method added to FactoryProvider protocol.
+
+### Bugfixes
+
+* Attempting (create -m -n) now throws IllegalArgumentException
 
 ## 0.7.0
 
