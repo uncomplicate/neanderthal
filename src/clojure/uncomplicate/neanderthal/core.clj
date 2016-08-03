@@ -109,7 +109,7 @@
                       nil)))
   ([factory ^long m ^long n]
    (let [acc ^DataAccessor (p/data-accessor factory)]
-     (if (or (and (< 0 m) (< 0 n)) (= 0 m n))
+     (if (and (<= 0 m) (<= 0 n))
        (p/create-matrix factory m n
                         (.initialize acc (.createDataSource acc (* m n)))
                         nil)
@@ -134,7 +134,7 @@
                     (.createDataSource (p/data-accessor factory) n)
                     nil))
   ([factory ^long m ^long n]
-   (if (or (and (< 0 m) (< 0 n)) (= 0 m n))
+   (if (and (<= 0 m) (<= 0 n))
      (p/create-matrix factory m n
                       (.createDataSource (p/data-accessor factory) (* m n))
                       nil)
