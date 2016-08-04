@@ -32,8 +32,8 @@
            uncomplicate.neanderthal.impl.buffer-block
            uncomplicate.neanderthal.impl.cblas])
 
-  :profiles {:dev {:plugins [[lein-midje "3.1.3"]
-                             [lein-codox "0.9.4"]]
+  :profiles {:dev {:plugins [[lein-midje "3.2"]
+                             [lein-codox "0.9.5"]]
                    :global-vars {*warn-on-reflection* true
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed

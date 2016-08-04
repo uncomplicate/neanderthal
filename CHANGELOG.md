@@ -2,6 +2,10 @@
 
 ## 0.8.0-SNAPSHOT
 
+### Changes
+
+* Removed the amd-gcn engine. Use clblast engine instead.
+
 ### Enhancements
 
 * one-argument pow function added.

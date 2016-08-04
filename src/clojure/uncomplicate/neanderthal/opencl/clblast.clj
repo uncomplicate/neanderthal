@@ -456,10 +456,10 @@
   Releaseable
   (release [_]
     (try
-      (and
-       (release prog)
-       (release vector-eng)
-       (release matrix-eng))
+      (release prog)
+      (release vector-eng)
+      (release matrix-eng)
+      true
       (finally
         (CLBlast/CLBlastClearCache))))
   DataAccessorProvider
