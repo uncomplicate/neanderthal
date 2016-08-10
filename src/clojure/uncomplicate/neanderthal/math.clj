@@ -37,8 +37,11 @@
 (defn round ^double [^double x]
   (Math/floor (+ 0.5 x)))
 
-(defn round? [^double x]
-  (= x (Math/floor (+ 0.5 x))))
+(defn round?
+  ([^double x]
+   (f= x (Math/floor (+ 0.5 x))))
+  ([^double x ^double nepsilons]
+   (f= x (Math/floor (+ 0.5 x)) nepsilons)))
 
 (defn floor ^double [^double x]
   (Math/floor x))
