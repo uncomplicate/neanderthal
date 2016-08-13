@@ -66,11 +66,16 @@
   CLAccessor
   (get-queue [_]
     queue)
+  Contextual
+  (cl-context [_]
+    ctx)
   MemoryContext
-  (compatible [_ a]
-    (and (instance? TypedCLAccessor a)
-         (= et (.et ^TypedCLAccessor a))
-         (= ctx (.ctx ^TypedCLAccessor a))))
+  (compatible [_ o]
+    (or
+     (and (instance? TypedCLAccessor o)
+          (= et (.et ^TypedCLAccessor o)) (= ctx (.ctx ^TypedCLAccessor o)))
+     (= ctx o)
+     (= et o)))
   FactoryProvider
   (native-factory [_]
     host-fact)
