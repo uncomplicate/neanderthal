@@ -22,7 +22,7 @@
 (defprotocol DataAccessorProvider
   (data-accessor ^DataAccessor [this]))
 
-(defprotocol Memory
+(defprotocol MemoryContext
   (compatible [this other]))
 
 (defprotocol Mappable

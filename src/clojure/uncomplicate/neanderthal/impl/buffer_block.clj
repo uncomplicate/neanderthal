@@ -55,6 +55,9 @@
       (dotimes [i (.count this b)]
         (.putFloat ^ByteBuffer b (* strd i) v))
       b))
+  MemoryContext
+  (compatible [_ accessor]
+    (instance? FloatBufferAccessor accessor))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
@@ -88,6 +91,9 @@
       (dotimes [i (.count this b)]
         (.putDouble ^ByteBuffer b (* strd i) v))
       b))
+  MemoryContext
+  (compatible [_ accessor]
+    (instance? DoubleBufferAccessor accessor))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
@@ -155,7 +161,7 @@
   DataAccessorProvider
   (data-accessor [_]
     accessor)
-  Memory
+  MemoryContext
   (compatible [_ y]
     (and (instance? RealBlockVector y) (= entry-type (.entryType ^Block y))))
   Block
@@ -292,7 +298,7 @@
   Monoid
   (id [a]
     (create-matrix fact 0 0 (.createDataSource accessor 0) nil))
-  Memory
+  MemoryContext
   (compatible [_ b]
     (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
          (= entry-type (.entryType ^Block b))))

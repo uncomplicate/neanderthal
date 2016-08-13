@@ -66,6 +66,11 @@
   CLAccessor
   (get-queue [_]
     queue)
+  MemoryContext
+  (compatible [_ a]
+    (and (instance? TypedCLAccessor a)
+         (= et (.et ^TypedCLAccessor a))
+         (= ctx (.ctx ^TypedCLAccessor a))))
   FactoryProvider
   (native-factory [_]
     host-fact)
@@ -138,9 +143,10 @@
   DataAccessorProvider
   (data-accessor [_]
     claccessor)
-  Memory
+  MemoryContext
   (compatible [_ y]
-    (and (instance? CLBlockVector y) (= entry-type (.entryType ^Block y))))
+    (and (instance? CLBlockVector y)
+         (compatible claccessor (data-accessor y))))
   Block
   (entryType [_]
     entry-type)
@@ -258,10 +264,10 @@
   DataAccessorProvider
   (data-accessor [_]
     claccessor)
-  Memory
-  (compatible [_ y]
-    (and (or (instance? CLGeneralMatrix y) (instance? CLBlockVector y))
-         (= entry-type (.entryType ^Block y))))
+  MemoryContext
+  (compatible [_ b]
+    (and (or (instance? CLGeneralMatrix b) (instance? CLBlockVector b))
+         (compatible claccessor (data-accessor b))))
   Container
   (raw [_]
     (create-matrix fact m n (.createDataSource claccessor (* m n)) ord))
