@@ -8,44 +8,27 @@ layout: article
 
 ## Basic setup
 
-### [Getting Started](/articles/getting_started.html)
-
-First, set up your environment, as described in the [Getting Started](getting_started.html) guide.
-
-### [Hello world](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world)
-
-This project can be helpful for quick start.
+* [Getting Started](/articles/getting_started.html) helps you to set up your environment.
+* [Hello world](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world), a project that can be helpful for quick start.
 
 ## General and native engine tutorials
 
-### [Fast, Native Speed, Vector Computations in Clojure](/articles/tutorial_native.html)
-
-[Source code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_native_test.clj) for this tutorial.
-
-### [Fast Map and Reduce for Primitive Vectors and Matrices](/articles/fast-map-and-reduce-for-primitive-vectors.html)
-
-[Source code](https://github.com/uncomplicate/neanderthal/blob/master/examples/benchmarks/map_reduce.clj) for this tutorial.
-
-### [Neanderthal API](/codox).
+* [Fast, Native Speed, Vector Computations in Clojure](/articles/tutorial_native.html), and the [source code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_native_test.clj) for this tutorial.
+* [Fast Map and Reduce for Primitive Vectors and Matrices](/articles/fast-map-and-reduce-for-primitive-vectors.html), which also comes with [source code](https://github.com/uncomplicate/neanderthal/blob/master/examples/benchmarks/map_reduce.clj) for this tutorial.
+* [Neanderthal API](/codox) contains the desrciption of each function, and also comes with mini examples.
 
 ## GPU computation tutorials
 
-### [Matrix Computations on the GPU in Clojure (in TFLOPS!)](/articles/tutorial_opencl.html)
-
-Proceed to this GPU engine tutorial when you want even more speed ([working code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_opencl_test.clj)).
+* [Matrix Computations on the GPU in Clojure (in TFLOPS!)](/articles/tutorial_opencl.html). Proceed to this GPU engine tutorial when you want even more speed ([source code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_opencl_test.clj)).
 
 ## Further examples
 
-### [Coding the Matrix in Neanderthal](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples/codingthematrix)
-
-Some examples that follow the [Coding the Matrix](http://codingthematrix.com/)
-book can be found at.
+* [Coding the Matrix in Neanderthal](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples/codingthematrix) contains examples that follow the [Coding the Matrix](http://codingthematrix.com/)
+book.
 
 ## Internal details and edge cases
 
-### [Neanderthal Tests](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal)
-
-A bit more details, but without explanations in prose, can be found in the tests. It might help when you are struggling with an edge case.
+* [Neanderthal Tests](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal) show some more details, but without explanations in prose. It might help when you are struggling with an edge case.
 
 # Making sense of legacy BLAS & LAPACK
 
@@ -55,15 +38,14 @@ little exploration, it all have sense and reason.
 
 ## Where to find legacy BLAS & LAPACK documentation
 
-### [BLAS Netlib Homepage](http://netlib.org/blas/)
+When you need more information beyond [Neanderthal API](/codox), these links can help you:
 
-### [LAPACK Netlib Homepage](http://netlib.org/lapack/)
+* [BLAS Netlib Homepage](http://netlib.org/blas/)
+* [LAPACK Netlib Homepage](http://netlib.org/lapack/)
+* [LAPACK Users' Guide](http://www.netlib.org/lapack/lug/)
+* [NEC MathKeisan man pages](http://www.mathkeisan.com/UsersGuide/man.cfm)
 
-### [LAPACK Users' Guide](http://www.netlib.org/lapack/lug/)
-
-### [NEC MathKeisan man pages](http://www.mathkeisan.com/UsersGuide/man.cfm)
-
-A more detailed doc for each subroutine is available here.
+A more detailed doc for each subroutine is available at these links.
 
 ### When that is not enough
 
