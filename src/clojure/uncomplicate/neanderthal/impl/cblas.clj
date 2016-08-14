@@ -239,8 +239,8 @@
   (data-accessor [_]
     acc)
   MemoryContext
-  (compatible [_ fac]
-    (compatible acc (data-accessor fac)))
+  (compatible [_ o]
+    (compatible acc o))
   Factory
   (create-vector [this n buf _]
     (if (and (<= 0 (long n) (.count acc buf))

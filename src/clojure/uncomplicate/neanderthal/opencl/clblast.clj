@@ -466,8 +466,8 @@
   (data-accessor [_]
     claccessor)
   MemoryContext
-  (compatible [_ fac]
-    (compatible claccessor (data-accessor fac)))
+  (compatible [_ o]
+    (compatible claccessor o))
   Factory
   (create-vector [this n buf _]
     (create-cl-vector this vector-eng n buf))

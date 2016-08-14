@@ -51,7 +51,12 @@
   [x]
   (instance? Matrix x))
 
-(defn compatible? [x y]
+(defn compatible?
+  "Check whether two objects that have some memory context are compatible.
+  That might be a compatibility of objects regarding linear algebra operations,
+  such as two vectors of the same type (float, double) being compatible
+  in dot operation, but also a compatibility of factories or other objects."
+  [x y]
   (p/compatible x y))
 
 (defmulti transfer!

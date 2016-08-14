@@ -10,6 +10,7 @@
 
 * one-argument pow function added.
 * native-factory method added to FactoryProvider protocol.
+* factories and data accessors implement compatible.
 
 ### Bugfixes
 

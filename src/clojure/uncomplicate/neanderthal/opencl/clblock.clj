@@ -69,13 +69,17 @@
   Contextual
   (cl-context [_]
     ctx)
+  DataAccessorProvider
+  (data-accessor [this]
+    this)
   MemoryContext
   (compatible [_ o]
-    (or
-     (and (instance? TypedCLAccessor o)
-          (= et (.et ^TypedCLAccessor o)) (= ctx (.ctx ^TypedCLAccessor o)))
-     (= ctx o)
-     (= et o)))
+    (let [da (data-accessor o)]
+      (or
+       (and (instance? TypedCLAccessor da)
+            (= et (.et ^TypedCLAccessor da)) (= ctx (.ctx ^TypedCLAccessor da)))
+       (= ctx da)
+       (= et da))))
   FactoryProvider
   (native-factory [_]
     host-fact)

@@ -55,9 +55,12 @@
       (dotimes [i (.count this b)]
         (.putFloat ^ByteBuffer b (* strd i) v))
       b))
+  DataAccessorProvider
+  (data-accessor [this]
+    this)
   MemoryContext
-  (compatible [_ accessor]
-    (instance? FloatBufferAccessor accessor))
+  (compatible [_ o]
+    (instance? FloatBufferAccessor (data-accessor o)))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
@@ -91,9 +94,12 @@
       (dotimes [i (.count this b)]
         (.putDouble ^ByteBuffer b (* strd i) v))
       b))
+  DataAccessorProvider
+  (data-accessor [this]
+    this)
   MemoryContext
-  (compatible [_ accessor]
-    (instance? DoubleBufferAccessor accessor))
+  (compatible [_ o]
+    (instance? DoubleBufferAccessor (data-accessor o)))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
