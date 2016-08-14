@@ -238,6 +238,9 @@
   DataAccessorProvider
   (data-accessor [_]
     acc)
+  MemoryContext
+  (compatible [_ fac]
+    (compatible acc (data-accessor fac)))
   Factory
   (create-vector [this n buf _]
     (if (and (<= 0 (long n) (.count acc buf))
