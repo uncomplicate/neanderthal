@@ -259,7 +259,7 @@ currently handle. Java 9 would hopefully increase that."
          #_(with-progress-reporting (quick-bench (asum host-x)))
 
          ;; GPU engine uses doubles for this accumulation, so the result is more precise.
-         (asum gpu-x) => 3.6028792723996672E16
+         (asum gpu-x) => (float 3.60287949E16)
          #_(println "GPU:")
          #_(with-progress-reporting (quick-bench (do (asum gpu-x) (finish!)))))))))
 
@@ -359,7 +359,6 @@ demanding enough."
 
          #_(println "CPU:")
          ;;(time (mm! 3 host-a host-b 2 host-c)) => host-c
-
          (mm! 3 gpu-a gpu-b 2 gpu-c) => gpu-c
          #_(finish!)
          #_(println "GPU:")
