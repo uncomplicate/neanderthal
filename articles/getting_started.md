@@ -40,7 +40,6 @@ This is one of the ways to multiply matrices:
 (mm a b)
 ```
 
-
 ## Overview and Features
 
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
@@ -64,8 +63,8 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 ## Installation
 
 1. Add Neanderthal jars to your classpath ([from the Clojars](https://clojars.org/uncomplicate/neanderthal)).
-2. To use the native engine: install ATLAS on your system following the [ATLAS Installation Guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). (see [Requirements](#requirements))
-3. To use the GPU engine: install the drivers (you probably already have that) and an OpenCL platform software provided by the vendor of your graphic card ([as in the ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html)).
+2. To use the native engine: install ATLAS on your system following [Native Engine Requirements](http://neanderthal.uncomplicate.org/articles/getting_started.html#the-native-library-used-by-neanderthals-native-engine)).
+3. To use the GPU engine: install the drivers and an OpenCL platform software provided by the vendor of your graphic card (you probably already have that) - (see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
 
 ### With Leiningen
 
@@ -75,47 +74,54 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 ## Requirements
 
-Neanderthal's data structures are written in Clojure, so many functions work out of the box. However, you probably need Neanderthal because of its fast BLAS native and/or GPU engines.
+Neanderthal's data structures are written in Clojure, so many functions work even without native engines. However, you probably need Neanderthal because of its fast BLAS native and/or GPU engines. Here is how to make sure they are ready to use.
 
 ### The native library used by Neanderthal's native engine
+
+Works on Linux, OS X, and Windows!
 
 #### Mac OS X
 
 **Works out of the box**. You should have Apple's XCode that comes with Accelerate framework and that's it - no need to fiddle with ATLAS, and you get Apple's highly tuned BLAS engine.
 
-#### Linux - optimized
+#### Linux - optimized (recommended)
 
-Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared libatlas.so** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html).
+Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared libatlas.so** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). Use the latest stable ATLAS, not an alpha or beta version.
 
-If you do not follow this procedure, and use a pre-packaged ATLAS provided by your package manager (available in most distributions), you will probably get degraded performance compared to a properly installed ATLAS.
+If you do not follow this procedure, and use a pre-packaged ATLAS provided by your package manager (available in most distributions), you will probably get lower performance compared to a properly tuned ATLAS (but still much faster than Java).
 
-Either way, Neanderthal does not care how ATLAS is provided, as long it is in the system path an was compiled as a shared library. It can even be packed in a jar if that's convenient, and I could make some steps in the future to make
+Either way, Neanderthal does not care how ATLAS is provided, as long it is on the path an was compiled as a shared library. It can even be packed in a jar if that's convenient, and I could make some steps in the future to make
 the "compile it and install ATLAS by yourself" step optional. But, I do not recommend it, other than as a convenience for people who are scared of the terminal and C tools.
 
 This is how I installed it on Arch Linux:
 
 * I had to have gcc (installed by default) and gcc-fortran packages.
 * I followed the aforementioned atlas build instructions to the letter. The only critical addition is to add `--shared` flag (explained in the details there, but not a default).
-* I had to disable CPU throttling with this command in the shell: `cpupower frequency-set -g performance`
+* I had to disable Hyperthreading in BIOS (after the build, you can turn it back on)
+* I had to disable CPU throttling with this command in the shell: `cpupower frequency-set -g performance` (depending on the distribution and the CPU, this may be slightly different)
 * I had to create a symlink `libatlas.so` in my `/usr/lib`, that points to 'libsatlas.so' (serial)
 or 'libtatlas.so' (parallel) atlas shared binary created by the build script.
 
 That should be all, but YMMV, depending on your hardware and OS installation.
 
-#### Linux - unoptimized, but easy way (NOT recommended)
+#### Linux - non-optimized, but easy way (not recommended)
 
 Use atlas build provided by your package manager. Something like:
 
 ``` shell
 sudo pacman -Suy atlas-lapack
 ```
-or your distribution's equivalent. It is fine as an easy way to get started, but **does not offer full performance**.
+or your distribution's equivalent. It is fine as an easy way to get started, but does not offer full performance.
 
-#### Windows
+#### Windows - non-optimized, but easy way
 
-I do not have a copy of Windows, so I do not provide pre-build library for Windows. ATLAS needs [special build instructions for Windows](http://math-atlas.sourceforge.net/atlas_install/node50.html) in addition to  general [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html)
+Find a previously compiled libatlas.dll and put it on your path (through Control Panel's Environment Variables or justby dropping it in the root of your project's folder). If you can not find libatlas.dll, send me a mail to atlasplease@uncomplicate.org, and I will send you mine. It would be nice if you write a few sentences about what you are planning to create with Neanderthal :)
 
-**If you know your way around gcc and MinGW on Windows, and are willing to help users of that operating system by providing the convenient binaries, please [contact me](/articles/community.html).**
+#### Windows - optimized
+
+Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared libatlas.dll** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). Also consult the Linux section of the page you are currently reading.
+
+Please note that the build and optimization proccess is straightforward on Linux, but needs a lot of care and patience on Windows. You'll need to use **stable** ATLAS versions (I use 3.10.3) and cygwin with MinGW. Be prepared to read the ATLAS build documentation really carefully, or hire someone to help you.
 
 ### GPU drivers for the GPU engine
 
