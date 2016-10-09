@@ -1,6 +1,6 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
-## 0.8.0-SNAPSHOT
+## 0.8.0
 
 ### Changes
 
@@ -8,13 +8,16 @@
 
 ### Enhancements
 
+* The native part is now compiled for Linux, MacOX AND Windows
 * one-argument pow function added.
 * native-factory method added to FactoryProvider protocol.
-* factories and data accessors implement compatible.
+* factories and data accessors implement the compatible method.
+* Updated JOCLBlast dependency to 0.9.0.
 
 ### Bugfixes
 
 * Attempting (create -m -n) now throws IllegalArgumentException
+* Fixed a sum bug in native implementation when stride is not 1.
 
 ## 0.7.0
 
