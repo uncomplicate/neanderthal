@@ -22,6 +22,6 @@ So, new Neanderthal:
 * Is faster and easier to use than ever.
 
 * Version 0.8.0 is in [clojars](https://clojars.org/uncomplicate/neanderthal)
-* [GPU tutorial (updated for 0.8.0)](/articles/tutorial_opencl.html)
-* [Getting started guide](/articles/getting_started.html)
+* [GPU tutorial (updated for 0.8.0)](../tutorial_opencl.html)
+* [Getting started guide](../getting_started.html)
 * [CHANGELOG](https://github.com/uncomplicate/neanderthal/blob/master/CHANGELOG.md)
