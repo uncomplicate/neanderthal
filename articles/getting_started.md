@@ -115,7 +115,8 @@ or your distribution's equivalent. It is fine as an easy way to get started, but
 
 #### Windows - non-optimized, but easy way
 
-Find a previously compiled libatlas.dll and put it on your path (through Control Panel's Environment Variables or justby dropping it in the root of your project's folder). If you can not find libatlas.dll, send me a mail to atlasplease@uncomplicate.org, and I will send you mine. It would be nice if you write a few sentences about what you are planning to create with Neanderthal :)
+Find a previously compiled libatlas.dll and put it on your path (through Control Panel's Environment Variables or just
+by dropping it in the root of your project's folder). If you can not find libatlas.dll, send me a mail to atlasplease@uncomplicate.org, and I will send you mine. It would be nice if you write a few sentences about what you are planning to create with Neanderthal :)
 
 #### Windows - optimized
 
