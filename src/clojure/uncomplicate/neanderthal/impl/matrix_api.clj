@@ -64,7 +64,10 @@
                                                         rows (long (first shp))
                                                         cols (long (second shp))]
                                                     (core/create-ge-matrix cblas/cblas-double
-                                                        rows cols (mp/element-seq (transpose data)))) 
+                                                        rows cols 
+                                                        ;; note we have to transpose since Neanderthal expects
+                                                        ;; elements in column-major order
+                                                        (mp/element-seq (transpose data)))) 
                                     :default
                                       (let [vm (mp/construct-matrix [] data)] 
                                         ;; (println m vm (shape vm))
@@ -162,6 +165,24 @@
             l (long length)]
         (.subvector m k l)))) 
 
+(extend-protocol mp/PSliceView
+  Matrix
+    (get-major-slice-view [m i] 
+      (.row m (long i))))
+
+(extend-protocol mp/PSliceView2
+  Matrix
+    (get-slice-view [m dim i]
+      (case (long dim) 
+        0 (.row m (long i))
+        1 (.col m (long i))
+        (error "Can't slice on dimension " dim " of a Matrix"))))
+
+(extend-protocol mp/PSliceSeq
+  Matrix  
+    (get-major-slice-seq [m] 
+      (mapv (fn [i] (.row m (long i)))
+            (range (.mrows m)))))
 
 
 ;; Register the Neanderthal implementation using CBLAS
