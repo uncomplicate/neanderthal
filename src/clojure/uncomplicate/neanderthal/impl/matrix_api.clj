@@ -28,6 +28,41 @@
   `(let [x# ~x]
      (double (if (number? x#) x# (mp/get-0d x#))))))
 
+(defmacro tag-symbol [tag form]
+  (let [tagged-sym (vary-meta (gensym "res") assoc :tag tag)]
+    `(let [~tagged-sym ~form] ~tagged-sym)))
+
+(defn vector-coerce* 
+  "Coerces any numerical array to an Vector instance.
+   May broadcast to the shape of an optional target if necessary.
+   Does *not* guarantee a new copy - may return same data." 
+  (^Vector [^Vector target m]
+	  (cond 
+	    (instance? Vector m) m
+      (== 0 (long (mp/dimensionality m))) 
+        (core/create cblas/cblas-double (repeat (ecount target) (double-coerce m)))
+      :else (do 
+              (when (not= (ecount target) (ecount m))
+                (error "Incompatible shapes coercing to vector of target length: " (ecount target)))
+              (vector-coerce* m))))
+  (^Vector [m]
+    (cond
+	    (instance? Vector m) m
+      (== (dimensionality m) 1)
+        (core/create-vector cblas/cblas-double (to-nested-vectors m))
+      :else (error "Can't coerce to Vector with shape: " (mp/get-shape m))))) 
+
+(defmacro vector-coerce 
+  "Coerces an argument x to an Vector instance, of the same size as m"
+  ([m x]
+    `(tag-symbol uncomplicate.neanderthal.protocols.Vector
+                 (let [x# ~x] 
+                   (if (instance? Vector x#) x# (vector-coerce* ~m x#)))))
+  ([x]
+    `(tag-symbol uncomplicate.neanderthal.protocols.Vector
+                 (let [x# ~x] 
+                   (if (instance? Vector x#) x# (vector-coerce* x#))))))
+
 (defmacro error
   "Throws an error with the provided message(s). This is a macro in order to try and ensure the 
    stack trace reports the error at the correct source line number."
@@ -207,6 +242,19 @@
   Matrix
     (element-sum [m]
       (reduce + (map core/sum (slices m)))))
+
+(extend-protocol mp/PVectorOps
+  Vector
+    (vector-dot [a b]
+      (core/dot a (vector-coerce a b)))
+    (length [a]
+      (core/nrm2 a))
+    (length-squared [a]
+      (let [l (core/nrm2 a)]
+        (* l l)))
+    (normalise [a]
+      (let [l (core/nrm2 a)]
+        (div a l))))
 
 
 ;; Register the Neanderthal implementation using CBLAS
