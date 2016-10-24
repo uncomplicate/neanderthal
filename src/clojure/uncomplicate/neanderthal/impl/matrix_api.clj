@@ -188,6 +188,10 @@
   Vector (transpose [m] m)
   Matrix (transpose [m] (.transpose m))) 
 
+(extend-protocol mp/PMatrixCloning
+  Vector (clone [m] (core/copy m))
+  Matrix	(clone [m] (core/copy m)))
+
 ;; Register the Neanderthal implementation using CBLAS
 (imp/register-implementation (core/create cblas/cblas-double 3))
 
