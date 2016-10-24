@@ -184,6 +184,9 @@
       (mapv (fn [i] (.row m (long i)))
             (range (.mrows m)))))
 
+(extend-protocol mp/PTranspose
+  Vector (transpose [m] m)
+  Matrix (transpose [m] (.transpose m))) 
 
 ;; Register the Neanderthal implementation using CBLAS
 (imp/register-implementation (core/create cblas/cblas-double 3))
