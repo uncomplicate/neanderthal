@@ -200,6 +200,15 @@
     (element-count [m]
       (.dim m)))
 
+(extend-protocol mp/PSummable
+  Vector
+    (element-sum [m]
+      (core/sum m))
+  Matrix
+    (element-sum [m]
+      (reduce + (map core/sum (slices m)))))
+
+
 ;; Register the Neanderthal implementation using CBLAS
 (imp/register-implementation (core/create cblas/cblas-double 3))
 
