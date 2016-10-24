@@ -17,3 +17,6 @@ hs_*.log
 *.so
 */nrepl-port
 */target
+/.settings/
+/.classpath
+/.project
