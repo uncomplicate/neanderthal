@@ -14,6 +14,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
+                 [net.mikera/core.matrix "0.56.0"]
                  [uncomplicate/commons "0.2.1"]
                  [uncomplicate/fluokitten "0.5.1"]
                  [uncomplicate/clojurecl "0.6.5"]
@@ -46,7 +47,8 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.8.3"]]}}
+                   :dependencies [[midje "1.8.3"]
+                                  [net.mikera/core.matrix "0.56.0" :classifier "tests"]]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :source-paths ["src/clojure" "src/opencl"]
