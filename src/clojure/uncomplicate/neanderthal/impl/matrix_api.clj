@@ -17,6 +17,12 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
+(defmacro error
+  "Throws an error with the provided message(s). This is a macro in order to try and ensure the 
+   stack trace reports the error at the correct source line number."
+  ([& messages]
+    `(throw (Exception. (str ~@messages)))))
+
 (defmacro neanderthal?
   "Returns true if v is a Neanderthal class (i.e. an instance of Matrix or Vector)"
   ([a]
@@ -62,12 +68,6 @@
     `(tag-symbol uncomplicate.neanderthal.protocols.Vector
                  (let [x# ~x] 
                    (if (instance? Vector x#) x# (vector-coerce* x#))))))
-
-(defmacro error
-  "Throws an error with the provided message(s). This is a macro in order to try and ensure the 
-   stack trace reports the error at the correct source line number."
-  ([& messages]
-    `(throw (Exception. (str ~@messages)))))
 
 (eval
   `(extend-protocol mp/PImplementation
