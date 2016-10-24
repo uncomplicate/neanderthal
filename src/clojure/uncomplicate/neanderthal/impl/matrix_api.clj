@@ -192,6 +192,14 @@
   Vector (clone [m] (core/copy m))
   Matrix	(clone [m] (core/copy m)))
 
+(extend-protocol mp/PElementCount
+  Matrix
+    (element-count [m]
+      (core/ecount m))
+  Vector
+    (element-count [m]
+      (.dim m)))
+
 ;; Register the Neanderthal implementation using CBLAS
 (imp/register-implementation (core/create cblas/cblas-double 3))
 
