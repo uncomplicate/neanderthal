@@ -219,6 +219,18 @@
       (mapv (fn [i] (.row m (long i)))
             (range (.mrows m)))))
 
+(extend-protocol mp/PMatrixRows
+  Matrix
+    (get-rows [m]
+      (mapv (fn [i] (.row m (long i)))
+            (range (.mrows m)))))
+
+(extend-protocol mp/PMatrixColumns
+  Matrix
+    (get-columns [m]
+      (mapv (fn [i] (.col m (long i)))
+            (range (.ncols m)))))
+
 (extend-protocol mp/PTranspose
   Vector (transpose [m] m)
   Matrix (transpose [m] (.transpose m))) 
