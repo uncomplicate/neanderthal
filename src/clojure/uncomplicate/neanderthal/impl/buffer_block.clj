@@ -262,6 +262,7 @@
   (.write w (format "%s%s" (str x) (pr-str (take 100 (seq x))))))
 
 ;; =================== Real Matrix =============================================
+(declare ->RealTriangularMatrix)
 
 (deftype RealGeneralMatrix [^uncomplicate.neanderthal.protocols.Factory fact
                             ^RealBufferAccessor accessor ^BLAS eng
@@ -277,9 +278,9 @@
       (and (compatible a b) (= m (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
       (= 0.0 (matrix-foldmap a p- p+ 0.0 b))
       :default false))
-  (toString [_]
+  (toString [this]
     (format "#RealGeneralMatrix[%s, ord:%s, mxn:%dx%d, ld:%d]"
-            entry-type (if (= COLUMN_MAJOR ord) "COL" "ROW")
+            entry-type (dec-property ord)
             m n ld))
   Releaseable
   (release [_]
@@ -309,6 +310,14 @@
       (.copy eng this res)))
   (native [this]
     this)
+  DenseContainer
+  (is-ge [_]
+    true)
+  (subtriangle [_ uplo diag]
+    (let [k (min m n)
+          b (.slice accessor buf 0 (+ (* ld (dec k)) k))]
+      (->RealTriangularMatrix fact accessor (tr-matrix-engine fact) entry-type
+                              false b k ld ord uplo diag)))
   Monoid
   (id [a]
     (create-matrix fact 0 0 (.createDataSource accessor 0) nil))
@@ -360,7 +369,7 @@
           (.set ^RealChangeable (.row a i) val))))
     a)
   (set [a i j val]
-    (if (= COLUMN_MAJOR ord)
+    (if (column-major? a)
       (.set accessor buf (+ (* ld j) i) val)
       (.set accessor buf (+ (* ld i) j) val))
     a)
@@ -375,8 +384,8 @@
     m)
   (ncols [_]
     n)
-  (entry [_ i j]
-    (if (= COLUMN_MAJOR ord)
+  (entry [a i j]
+    (if (column-major? a)
       (.get accessor buf (+ (* ld j) i))
       (.get accessor buf (+ (* ld i) j))))
   (boxedEntry [this i j]
@@ -443,4 +452,189 @@
 
 (defmethod print-method RealGeneralMatrix
   [^RealGeneralMatrix a ^java.io.Writer w]
+  (.write w (format "%s%s" (str a) (pr-str (seq a)))))
+
+;; =================== Real Triangular Matrix ==================================
+
+(deftype RealTriangularMatrix [^uncomplicate.neanderthal.protocols.Factory fact
+                               ^RealBufferAccessor accessor ^BLAS eng
+                               ^Class entry-type ^Boolean master
+                               ^ByteBuffer buf ^long n ^long ld
+                               ^long ord ^long fuplo ^long fdiag]
+  Object
+  (hashCode [this]
+    (matrix-fold this hash*;;TODO check fluokitten
+                 (-> (hash :RealTriangularMatrix) (hash-combine fuplo)
+                     (hash-combine n))))
+  (equals [a b]
+    (cond
+      (nil? b) false
+      (identical? a b) true
+      (and (compatible a b) (= n (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
+      (= 0.0 (matrix-foldmap a p- p+ 0.0 b));;TODO check fluokitten
+      :default false))
+  (toString [a]
+    (format "#RealTriangularMatrix[%s, ord:%s, uplo:%s, diag:%s, mxn:%dx%d, ld:%d]"
+            entry-type (dec-property ord) (dec-property fuplo) (dec-property fdiag)
+            n n ld))
+  Releaseable
+  (release [_]
+    (if master (clean-buffer buf) true))
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  (native-factory [_]
+    fact)
+  DataAccessorProvider
+  (data-accessor [_]
+    accessor)
+  Container
+  (raw [_]
+    (create-tr-matrix fact n (.createDataSource accessor (* n n)) ord fuplo fdiag))
+  (raw [_ fact]
+    (create-tr-matrix fact n (.createDataSource (data-accessor fact) (* n n)) ord fuplo fdiag))
+  (zero [this]
+    (raw this))
+  (zero [this fact]
+    (raw this fact))
+  (host [this]
+    (let-release [res (raw this)]
+      (.copy eng this res)))
+  (native [this]
+    this)
+  DenseContainer
+  (is-ge [_]
+    false)
+  Monoid
+  (id [a]
+    (create-tr-matrix fact 0 (.createDataSource accessor 0) COLUMN_MAJOR UPPER DIAG_NON_UNIT))
+  MemoryContext
+  (compatible [_ b]
+    (and (or (instance? RealTriangularMatrix b) (instance? RealGeneralMatrix b)
+             (instance? RealBlockVector b))
+         (= entry-type (.entryType ^Block b))))
+  Block
+  (entryType [_]
+    entry-type)
+  (buffer [_]
+    buf)
+  (offset [_]
+    0)
+  (stride [_]
+    ld)
+  (count [_]
+    (* n n))
+  (order [_]
+    ord)
+  (uplo [_]
+    fuplo)
+  (diag [_]
+    fdiag)
+  Seqable;;TODO the following few are the same as GE. Extract functions perhaps?
+  (seq [a]
+    (if (column-major? a)
+      (map #(seq (.col a %)) (range 0 n))
+      (map #(seq (.row a %)) (range 0 n))))
+  IFn$LLD
+  (invokePrim [a i j]
+    (if (and (< -1 i n) (< -1 j n))
+      (.entry a i j)
+      (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j n n)))))
+  IFn
+  (invoke [a i j]
+    (if (and (< -1 (long i) n) (< -1 (long j) n))
+      (.entry a i j)
+      (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j n n)))))
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
+  RealChangeable;;TODO (see previous TODO) END of same functionality as GE
+  (set [a val]
+    (if (= ld n)
+      (.initialize accessor buf val)
+      (if (column-major? a)
+        (dotimes [i n]
+          (.set ^RealChangeable (.col a i) val))
+        (dotimes [i n]
+          (.set ^RealChangeable (.row a i) val))))
+    a)
+  (set [a i j val]
+    (if (or (and (= COLUMN_MAJOR ord) (= UPPER fuplo))
+            (and (= ROW_MAJOR ord) (= LOWER fuplo)))
+      (.set accessor buf (+ (* ld (max i j)) (min i j)) val)
+      (.set accessor buf (+ (* ld (min i j)) (max i j)) val))
+    a)
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a i j f]
+    (.set a i j (.invokePrim ^IFn$DD f (.entry a i j))))
+  RealMatrix
+  (mrows [_]
+    n)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (if ((if (= UPPER fuplo) <= >=) i j)
+      (if (= COLUMN_MAJOR ord)
+        (.get accessor buf (+ (* ld j) i))
+        (.get accessor buf (+ (* ld i) j)))
+      0.0))
+  (boxedEntry [this i j]
+    (.entry this i j))
+  (row [a i]
+    (throw (UnsupportedOperationException. "Cannot access parts of a TR matrix.")))
+  (col [a j]
+    (throw (UnsupportedOperationException. "Cannot access parts of a TR matrix.")))
+  (submatrix [a i j k l]
+    (throw (UnsupportedOperationException. "Cannot access parts of a TR matrix.")))
+  (transpose [a]
+    (RealTriangularMatrix. fact accessor eng entry-type false
+                           buf n ld
+                           (if (column-major? a) ROW_MAJOR COLUMN_MAJOR)
+                           (if (= UPPER fuplo) LOWER UPPER) ;;TODO probably not right
+                           fdiag)))
+
+(extend RealTriangularMatrix
+  PseudoFunctor
+  {:fmap! matrix-fmap!}
+  Functor
+  {:fmap matrix-fmap}
+  Foldable
+  {:fold matrix-fold
+   :foldmap matrix-foldmap}
+  Applicative
+  {:pure matrix-pure}
+  Magma
+  {:op matrix-op})
+
+(defmethod transfer! [RealTriangularMatrix RealTriangularMatrix]
+  [source destination]
+  (do
+    (copy! source destination)
+    destination))
+
+;;TODO
+(defmethod transfer! [clojure.lang.Sequential RealTriangularMatrix]
+  [source ^RealTriangularMatrix destination]
+  (let [m (.mrows destination)
+        n (.ncols destination)
+        d (* m n)]
+    (loop [i 0 src source]
+      (if (and src (< i d))
+        (do
+          (if (column-major? destination)
+            (.set destination (rem i m) (quot i m) (first src))
+            (.set destination (rem i n) (quot i n) (first src)))
+          (recur (inc i) (next src)))
+        destination))))
+
+(defmethod print-method RealTriangularMatrix
+  [^RealTriangularMatrix a ^java.io.Writer w]
   (.write w (format "%s%s" (str a) (pr-str (seq a)))))

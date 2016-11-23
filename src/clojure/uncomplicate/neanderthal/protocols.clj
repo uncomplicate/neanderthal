@@ -1,4 +1,4 @@
-;;   Copyright (c) Dragan Djuric. All rights reserved.
+;   Copyright (c) Dragan Djuric. All rights reserved.
 ;;   The use and distribution terms for this software are covered by the
 ;;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php) or later
 ;;   which can be found in the file LICENSE at the root of this distribution.
@@ -15,10 +15,12 @@
     [f init g x y z] [f init g x y z v]))
 
 (defprotocol Factory
-  (create-vector [this n source options])
-  (create-matrix [this m n source options])
+  (create-vector [this n source options]);;TODO remove options
+  (create-matrix [this m n source ord]);;TODO rename to create-ge-matrix
+  (create-tr-matrix [this n source ord fuplo fdiag])
   (vector-engine [this])
-  (matrix-engine [this]))
+  (matrix-engine [this])
+  (tr-matrix-engine [this]));; rename to ge-matrix-engine
 
 (defprotocol EngineProvider
   (engine ^BLAS [this]))
@@ -43,14 +45,52 @@
   (host [this])
   (native [this]))
 
+(defprotocol DenseContainer
+  (subband [this p q])
+  (subtriangle [this uplo diag])
+  (is-ge [this]))
+
 (def ^:const ROW_MAJOR 101)
-
 (def ^:const COLUMN_MAJOR 102)
-
+(def ^:const ORDER 103)
 (def ^:const DEFAULT_ORDER COLUMN_MAJOR)
+
+(def ^:const UPPER 121)
+(def ^:const LOWER 122)
+(def ^:const UPLO 123)
+(def ^:const DEFAULT_UPLO UPPER)
+
+(def ^:const DIAG_NON_UNIT 131)
+(def ^:const DIAG_UNIT 132)
+(def ^:const DIAG 135)
+
+(def ^:const LEFT 141)
+(def ^:const RIGHT 142)
+(def ^:const SIDE 143)
 
 (defn column-major? [^Block a]
   (= COLUMN_MAJOR (.order a)))
+
+(defn dec-property
+  [^long code]
+  (case code
+    101 :row
+    102 :column
+    103 :order
+    111 :no-trans
+    112 :trans
+    113 :conj-trans
+    114 :atlas-conj
+    121 :upper
+    122 :lower
+    123 :uplo
+    131 :non-unit
+    132 :unit
+    135 :diag
+    141 :left
+    142 :right
+    143 :side
+    :unknown))
 
 (def ^{:no-doc true :const true} MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")

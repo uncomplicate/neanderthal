@@ -36,8 +36,14 @@ public interface BLAS {
 
     void mv (Object alpha, Block a, Block x, Object beta, Block y);
 
+    void mv (Block a, Block x);
+
     void rank (Object alpha, Block x, Block y, Block a);
 
     void mm (Object alpha, Block a, Block b, Object beta, Block c);
+
+    void mm (Object alpha, Block a, Block b, Object beta, Block c, boolean right);
+
+    void mm (Object alpha, Block a, Block b, boolean right);
 
 }

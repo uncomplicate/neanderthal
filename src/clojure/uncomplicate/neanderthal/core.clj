@@ -106,29 +106,6 @@
   [x]
   (p/native x))
 
-(defn create
-  "Creates an initialized vector of the dimension n, or a  matrix m x n,
-  using the provided factory.
-  More specific methods are available in technology-specific namespaces.
-
-  See uncomplicate.neanderthal.native, uncomplicate.neanderthal.opencl, etc.
-
-  (create cblas-single 3)
-  (create cblas-double 35 12)"
-  ([factory ^long n]
-   (let [acc ^DataAccessor (p/data-accessor factory)]
-     (p/create-vector factory n
-                      (.initialize acc (.createDataSource acc n))
-                      nil)))
-  ([factory ^long m ^long n]
-   (let [acc ^DataAccessor (p/data-accessor factory)]
-     (if (and (<= 0 m) (<= 0 n))
-       (p/create-matrix factory m n
-                        (.initialize acc (.createDataSource acc (* m n)))
-                        nil)
-       (throw (IllegalArgumentException.
-               (format "Dimensions m=%d, n=%d are not allowed." m n)))))))
-
 (defn create-raw
   "Creates an uninitialized vector of the dimension n, or a  matrix m x n,
   using the provided factory. It might or might not be initialized to zeroes,
@@ -153,6 +130,24 @@
                       nil)
      (throw (IllegalArgumentException.
              (format "Dimensions m=%d, n=%d are not allowed." m n))))))
+
+(defn create
+  "Creates an initialized vector of the dimension n, or a  matrix m x n,
+  using the provided factory.
+  More specific methods are available in technology-specific namespaces.
+
+  See uncomplicate.neanderthal.native, uncomplicate.neanderthal.opencl, etc.
+
+  (create cblas-single 3)
+  (create cblas-double 35 12)"
+  ([factory ^long n]
+   (let-release [res ^Block (create-raw factory n)]
+     (.initialize ^DataAccessor (p/data-accessor factory) (.buffer res))
+     res))
+  ([factory ^long m ^long n]
+   (let-release [res ^Block (create-raw factory m n)]
+     (.initialize ^DataAccessor (p/data-accessor factory) (.buffer res))
+     res)))
 
 (defn create-vector
   "Creates a vector from source using the provided factory.
@@ -187,7 +182,7 @@
   ([factory x & xs]
    (create-vector factory (cons x xs))))
 
-(defn create-ge-matrix
+(defn create-ge-matrix ;;TODO rename to create-ge
   "Creates a dense, column-oriented mxn matrix from source.
 
   If called with two arguments, creates a zero matrix with dimensions mxn.
@@ -199,21 +194,62 @@
   . direct ByteBuffer that backs the new vector.
 
   (create-ge-matrix *double-factory* 15 13)
-  "
-  ([factory m n source]
-   (let [acc ^DataAccessor (p/data-accessor factory)]
-     (cond
-       (sequential? source) (transfer! source (create-raw factory m n))
-       (matrix? source)
-       (transfer! source (create-raw factory
-                                     (.mrows ^Matrix source)
-                                     (.ncols ^Matrix source)))
-       source (p/create-matrix factory m n source p/DEFAULT_ORDER)
-       :default (throw (IllegalArgumentException.
-                        (format p/ILLEGAL_SOURCE_MSG (type source)
-                                "general matrices"))))))
+  ";;TODO doc
+  ([factory m n source];;TODO test
+   (cond
+     (or (sequential? source) (matrix? source))
+     (transfer! source (create-raw factory m n))
+     source (p/create-matrix factory m n source p/DEFAULT_ORDER)
+     :default (throw (IllegalArgumentException.
+                      (format p/ILLEGAL_SOURCE_MSG (type source)
+                              "general matrices")))))
   ([factory m n]
-   (create factory m n)))
+   (create factory m n))
+  ([factory source];;TODO test
+   (cond
+     (matrix? source)
+     (transfer! source (create-raw factory
+                                   (.mrows ^Matrix source)
+                                   (.ncols ^Matrix source)))
+     (sequential? source)
+     (let [n (long (sqrt (count source)))]
+       (transfer! source (create factory n n)))
+     (instance? java.nio.ByteBuffer source)
+     (let [acc ^DataAccessor (p/data-accessor factory)
+           n (long (sqrt (.count acc source)))]
+       (p/create-matrix factory n n source p/DEFAULT_ORDER))
+     :default (throw (IllegalArgumentException.
+                      (format p/ILLEGAL_SOURCE_MSG (type source)
+                              "general matrices"))))))
+
+(defn create-tr-raw
+  "TODO"
+  ([factory ^long n ^Boolean upper ^Boolean diag-unit]
+   (let [acc ^DataAccessor (p/data-accessor factory)]
+     (p/create-tr-matrix factory n (.createDataSource acc (* n n))
+                         p/DEFAULT_ORDER (if upper p/UPPER p/LOWER)
+                         (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT))))
+  ([factory ^long n]
+   (create-tr-raw factory n true false)))
+
+(defn create-tr
+ "TODO"
+  ([factory ^long n ^Boolean upper ^Boolean diag-unit]
+   (let-release [res ^Block (create-tr-raw factory n upper diag-unit)]
+     (.initialize ^DataAccessor (p/data-accessor factory) (.buffer res))
+     res))
+  ([factory ^long n]
+   (create-tr factory n true false))
+  ([factory ^long n source]
+   (cond
+     (or (sequential? source) (matrix? source))
+     (transfer! source (create-tr-raw factory n))
+     source
+     (p/create-tr-matrix factory n source
+                         p/DEFAULT_ORDER p/DEFAULT_UPLO p/DIAG_NON_UNIT)
+     :default (throw (IllegalArgumentException.
+                      (format p/ILLEGAL_SOURCE_MSG (type source)
+                              "triangular matrices"))))))
 
 ;; ================= Container  ================================================
 
@@ -367,6 +403,15 @@
                      i j k l (.mrows a) (.ncols a))))))
   ([^Matrix a k l]
    (submatrix a 0 0 k l)))
+
+(defn subtriangle
+  "TODO"
+  ([a]
+   (subtriangle a true false))
+  ([a diag-unit]
+   (subtriangle a true false))
+  ([^Matrix a ^Boolean upper ^Boolean diag-unit]
+   (p/subtriangle a (if upper p/UPPER p/LOWER) (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT))))
 
 (defn trans
   "Transposes matrix m, i.e returns a matrix that has
@@ -810,7 +855,13 @@
   ([alpha a x y]
    (mv! alpha a x 1.0 y))
   ([a x y]
-   (mv! 1.0 a x 0.0 y)))
+   (mv! 1.0 a x 0.0 y))
+  ([^Matrix a ^Vector x];;TODO docs
+   (if (and (p/compatible a x) (= (.ncols a) (.dim x)))
+     (do
+       (.mv (p/engine a) a x)
+       x)
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG a x))))))
 
 (defn mv
   "A pure version of mv! that returns the result
@@ -818,8 +869,11 @@
   ([alpha a x]
    (let-release [res (p/zero (col a 0))]
      (mv! alpha a x 0.0 res)))
-  ([a x]
-   (mv 1.0 a x)))
+  ([^Matrix a x]
+   (if (p/is-ge a)
+     (mv 1.0 a x)
+     (let-release [res (copy x)]
+       (mv! a res)))))
 
 (defn rank!
   "BLAS 2: General rank-1 update.
@@ -892,27 +946,41 @@
   (mm! a b c)
   => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
-  ([alpha ^Matrix a ^Matrix b beta ^Matrix c]
-   (if (and (p/compatible c a) (p/compatible c b))
+  ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
+   (if (and (p/compatible a b) (p/compatible a c))
      (if (and (= (.ncols a) (.mrows b))
               (= (.mrows a) (.mrows c))
               (= (.ncols b) (.ncols c)))
        (do
-         (.mm (p/engine a) alpha a b beta c)
+         (if (p/is-ge b)
+           (.mm (p/engine a) alpha a b beta c)
+           (.mm (p/engine b) alpha b a beta c true))
          c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
-                       (mrows a) (ncols a)
-                       (mrows b) (ncols b)
-                       (mrows c) (ncols c)))))
+                       (.mrows a) (.ncols a)
+                       (.mrows b) (.ncols b)
+                       (.mrows c) (.ncols c)))))
      (throw (IllegalArgumentException.
              (format p/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
-  ([a b c]
-   (mm! 1.0 a b 1.0 c))
+  ([alpha ^Matrix a ^Matrix b]
+   (if (and (p/compatible a b))
+     (if (and (= (.ncols a) (.mrows b)))
+       (do
+         (if (p/is-ge b)
+           (.mm (p/engine a) alpha a b false)
+           (.mm (p/engine b) alpha b a true))
+         b)
+       (throw (IllegalArgumentException.
+               (format "Incompatible dimensions - a:%dx%d, b:%dx%d."
+                       (.mrows a) (.ncols a)
+                       (.mrows b) (.ncols b)))))
+     (throw (IllegalArgumentException.
+             (format p/INCOMPATIBLE_BLOCKS_MSG a b)))))
   ([alpha a b c]
    (mm! alpha a b 1.0 c)))
 
-(defn mm
+(defn mm ;;TODO cover TR etc.
   "A pure version of mm!, that returns the result
   in a new matrix instance.
   Computes alpha a * b"

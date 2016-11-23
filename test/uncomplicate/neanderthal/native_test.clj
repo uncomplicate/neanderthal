@@ -16,3 +16,7 @@
 (block-test/test-all cblas-single)
 (real-test/test-all cblas-double)
 (real-test/test-all cblas-single)
+
+;;TODO move to test-all when OpenCL is implemented
+(real-test/test-tr cblas-double)
+(real-test/test-tr-entry cblas-double)

@@ -195,6 +195,8 @@
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
                  alpha (.buffer a) (.stride a) (.buffer x) (.stride x)
                  beta (.buffer y) (.stride y)))
+  (mv [this a x]
+    (.mv this 1.0 a x 0.0 x))
   (rank [_ alpha x y a]
     (CBLAS/dger (.order a) (.mrows ^Matrix a) (.ncols ^Matrix a)
                 alpha (.buffer x) (.stride x) (.buffer y) (.stride y)
@@ -226,6 +228,8 @@
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
                  alpha (.buffer a) (.stride a) (.buffer x) (.stride x)
                  beta (.buffer y) (.stride y)))
+  (mv [this a x]
+    (.mv this 1.0 a x 0.0 x))
   (rank [_ alpha x y a]
     (CBLAS/sger (.order a) (.mrows ^Matrix a) (.ncols ^Matrix a)
                 alpha (.buffer x) (.stride x) (.buffer y) (.stride y)
@@ -242,7 +246,43 @@
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
 
-(deftype CblasFactory [^DataAccessor acc ^BLAS vector-eng ^BLAS matrix-eng]
+;; ================= Triangular Matrix Engines =================================
+
+(deftype DoubleTriangularMatrixEngine []
+  BLAS
+  (mv [_ a x]
+    (CBLAS/dtrmv (.order a) (.uplo a) CBLAS/TRANSPOSE_NO_TRANS (.diag a)
+                 (.ncols ^Matrix a)
+                 (.buffer a) (.stride a) (.buffer x) (.stride x)))
+  (mm [_ alpha a b right]
+    (CBLAS/dtrmm (.order a) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT) (.uplo a)
+                 (if (= (.order a) (.order b))
+                   CBLAS/TRANSPOSE_NO_TRANS
+                   CBLAS/TRANSPOSE_TRANS)
+                 (.diag a)
+                 (.mrows ^Matrix b) (.ncols ^Matrix b)
+                 alpha (.buffer a) (.stride a) (.buffer b) (.stride b))))
+
+(deftype SingleTriangularMatrixEngine []
+  BLAS
+  (mv [_ a x]
+    (CBLAS/strmv (.order a) (.uplo a) CBLAS/TRANSPOSE_NO_TRANS (.diag a)
+                 (.ncols ^Matrix a)
+                 (.buffer a) (.stride a) (.buffer x) (.stride x)))
+  (mm [_ alpha a b right]
+    (CBLAS/strmm (.order a) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT) (.uplo a)
+                 (if (= (.order a) (.order b))
+                   CBLAS/TRANSPOSE_NO_TRANS
+                   CBLAS/TRANSPOSE_TRANS)
+                 (.diag a)
+                 (.mrows ^Matrix b) (.ncols ^Matrix b)
+                 alpha (.buffer a) (.stride a) (.buffer b) (.stride b))))
+
+
+;; =============== Factories ==================================================
+
+(deftype CblasFactory [^DataAccessor acc ^BLAS vector-eng ^BLAS matrix-eng
+                       ^BLAS tr-matrix-eng]
   DataAccessorProvider
   (data-accessor [_]
     acc)
@@ -257,27 +297,39 @@
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
                       n (.count acc buf) (class buf))))))
-  (create-matrix [this m n buf order]
+  (create-matrix [this m n buf ord]
     (if (and (<= 0 (* (long m) (long n)) (.count acc buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (let [order (or order DEFAULT_ORDER)
-            ld (max (long (if (= COLUMN_MAJOR order) m n)) 1)]
+      (let [ord (or ord DEFAULT_ORDER)
+            ld (max (long (if (= COLUMN_MAJOR ord) m n)) 1)]
         (->RealGeneralMatrix this acc matrix-eng (.entryType acc) true
-                             buf m n ld order))
+                             buf m n ld ord))
       (throw (IllegalArgumentException.
-              (format "I do not know how to create a %dx%d matrix from %s."
+              (format "I do not know how to create a %dx%d general matrix from %s."
                       m n (type buf))))))
+  (create-tr-matrix [this n buf ord fuplo fdiag]
+    (if (and (<= 0 (* (long n) (long n)) (.count acc buf))
+             (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
+      (->RealTriangularMatrix this acc tr-matrix-eng (.entryType acc) true
+                              buf n (max (long n) 1) ord fuplo fdiag)
+      (throw (IllegalArgumentException.
+              (format "I do not know how to create a %dx%d triangular matrix from %s."
+                      n n (type buf))))))
   (vector-engine [_]
     vector-eng)
   (matrix-engine [_]
-    matrix-eng))
+    matrix-eng)
+  (tr-matrix-engine [_]
+    tr-matrix-eng))
 
 (def cblas-single
   (->CblasFactory (->FloatBufferAccessor)
                   (->SingleVectorEngine)
-                  (->SingleGeneralMatrixEngine)))
+                  (->SingleGeneralMatrixEngine)
+                  (->SingleTriangularMatrixEngine)))
 
 (def cblas-double
   (->CblasFactory (->DoubleBufferAccessor)
                   (->DoubleVectorEngine)
-                  (->DoubleGeneralMatrixEngine)))
+                  (->DoubleGeneralMatrixEngine)
+                  (->DoubleTriangularMatrixEngine)))

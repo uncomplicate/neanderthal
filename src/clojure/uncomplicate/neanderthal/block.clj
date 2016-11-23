@@ -9,20 +9,26 @@
 (ns uncomplicate.neanderthal.block
   (:import [uncomplicate.neanderthal.protocols Block]))
 
-(defn entry-type [x]
-  (.entryType ^Block x))
+(defn entry-type [^Block x]
+  (.entryType x))
 
-(defn buffer [x]
-  (.buffer ^Block x))
+(defn buffer [^Block x]
+  (.buffer x))
 
-(defn offset ^long [x]
-  (.offset ^Block x))
+(defn offset ^long [^Block x]
+  (.offset x))
 
-(defn stride ^long [x]
-  (.stride ^Block x))
+(defn stride ^long [^Block x]
+  (.stride x))
 
-(defn order ^long [x]
-  (.order ^Block x))
+(defn order ^long [^Block x]
+  (.order x))
+
+(defn uplo ^long [^Block x]
+  (.uplo x))
+
+(defn diag ^long [^Block x]
+  (.diag x))
 
 (defn block? [x]
   (instance? Block x))

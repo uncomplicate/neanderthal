@@ -18,8 +18,11 @@ public interface Block {
 
     long stride ();
 
-    long order ();
-
     long count ();
 
+    long order ();
+
+    long uplo ();
+
+    long diag ();
 }

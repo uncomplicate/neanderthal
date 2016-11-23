@@ -281,7 +281,7 @@ simpler and less useful operation."
    (mm 1.5 a b) => (dge 2 1 [15 19.5])
    a => (dge 2 3 (range 6))
    b => (dge 3 1 (range 3))
-   (mm! a b c) => (dge 2 1 [11 15])
+   (mm! 1.0 a b c) => (dge 2 1 [11 15])
    c => (dge 2 1 [11 15])
    (mm! 1.5 a b 2.0 c) => (dge 2 1 [37 49.5])
    c => (dge 2 1 [37 49.5])))

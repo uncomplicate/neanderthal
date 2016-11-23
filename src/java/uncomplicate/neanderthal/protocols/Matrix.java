@@ -23,4 +23,5 @@ public interface Matrix {
     Matrix transpose ();
 
     Matrix submatrix (long i, long j, long k, long l);
+
 }

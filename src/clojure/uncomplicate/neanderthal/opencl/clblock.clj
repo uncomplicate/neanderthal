@@ -338,6 +338,9 @@
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   (alter [a i j f]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  DenseContainer
+  (is-ge [_]
+    true)
   RealMatrix
   (mrows [_]
     m)

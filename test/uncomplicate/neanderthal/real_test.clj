@@ -34,15 +34,23 @@
            (identical? a (zero a)) => false)))
 
 (defn test-ge-matrix [factory]
-  (facts "Matrix methods."
-         (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-               ac (create-ge-matrix factory 2 3 [0 0 0 0 0 0])]
+  (facts "General Matrix methods."
+         (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
            (mrows a) => 2
            (ncols a) => 3
 
            (row a 1) => (create-vector factory [2 4 6])
 
            (col a 1) => (create-vector factory [3 4]))))
+
+(defn test-tr [factory]
+  (facts "Triangular Matrix methods."
+         (let [a (create-ge-matrix factory 4 3 (range 12))
+               a-upper (subtriangle a)
+               a-lower (subtriangle a false)]
+           (= 3 (mrows a-upper) (ncols a-lower)) => true
+           (row a-upper 0) => (throws UnsupportedOperationException)
+           (col a-upper 0) => (throws UnsupportedOperationException))))
 
 ;; ============= Matrices and Vectors ======================================
 
@@ -460,6 +468,24 @@
               3.0  (create-ge-matrix factory 2 2 [1 2 3 4]))
          => (create-ge-matrix factory 2 2 [47 62 107 140])))
 
+;; ====================== TR Matrix ============================
+
+(defn test-tr-entry [factory]
+  (facts "TR Matrix entry."
+         (with-release [a-upper (create-tr factory 3 (range 9))]
+           (entry a-upper 0 1) => 3.0
+           (entry a-upper 1 0) => 0.0
+           (entry a-upper 1 1) => 4.0
+           (entry a-upper 2 0) => 0.0)
+         (entry (create-tr factory 2) 0 1) => 0.0
+         (entry (create-tr factory 0) 0 0)
+         => (throws IndexOutOfBoundsException)
+         (entry (create-tr factory 2) -1 2)
+         => (throws IndexOutOfBoundsException)
+         (entry (create-tr factory 2) 2 1)
+         => (throws IndexOutOfBoundsException)))
+
+;; =========================================================================
 (defn test-all [factory]
   (do
     (test-group factory)
