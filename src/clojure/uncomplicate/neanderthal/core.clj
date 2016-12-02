@@ -227,8 +227,8 @@
   ([factory ^long n ^Boolean upper ^Boolean diag-unit]
    (let [acc ^DataAccessor (p/data-accessor factory)]
      (p/create-tr-matrix factory n (.createDataSource acc (* n n))
-                         p/DEFAULT_ORDER (if upper p/UPPER p/LOWER)
-                         (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT))))
+                         {:uplo (if upper p/UPPER p/LOWER)
+                          :diag (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT)})))
   ([factory ^long n]
    (create-tr-raw factory n true false)))
 
@@ -245,8 +245,7 @@
      (or (sequential? source) (matrix? source))
      (transfer! source (create-tr-raw factory n))
      source
-     (p/create-tr-matrix factory n source
-                         p/DEFAULT_ORDER p/DEFAULT_UPLO p/DIAG_NON_UNIT)
+     (p/create-tr-matrix factory n source nil)
      :default (throw (IllegalArgumentException.
                       (format p/ILLEGAL_SOURCE_MSG (type source)
                               "triangular matrices"))))))

@@ -22,6 +22,8 @@ public interface Block {
 
     long order ();
 
+    long trans ();
+
     long uplo ();
 
     long diag ();
