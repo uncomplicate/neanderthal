@@ -270,7 +270,7 @@
                             ^RealBufferAccessor accessor ^BLAS eng
                             ^Class entry-type ^Boolean master
                             ^ByteBuffer buf ^long m ^long n
-                            ^long fd ^long sd ^long ld ^long ord ^long tra]
+                            ^long ld ^long sd ^long fd ^long ord ^long tra]
   Object
   (hashCode [this]
     (matrix-fold this hash* (-> (hash :RealGeneralMatrix) (hash-combine m) (hash-combine n)
@@ -427,8 +427,8 @@
     ([fact master buf m n ld ord tra]
      (let [columnar (columnar? ord tra)
            sd (long (if columnar m n))
-           fd (long (if columnar n m))
            ld (max sd (long ld))
+           fd (long (if columnar n m))
            accessor (data-accessor fact)]
        (RealGeneralMatrix. (if columnar column-index row-index)
                            (if (= ld sd) init-all init-slice)
@@ -436,7 +436,7 @@
                            (if columnar cross-cut straight-cut)
                            fact accessor (matrix-engine fact)
                            (.entryType accessor) master
-                           buf m n fd sd ld ord tra)))
+                           buf m n ld sd fd ord tra)))
     ([fact m n ord tra]
      (let-release [buf (.createDataSource (data-accessor fact) (* (long m) (long n)))]
        (real-ge-matrix fact true buf m n 0 ord tra)))
