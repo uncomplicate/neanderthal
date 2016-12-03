@@ -401,27 +401,27 @@
     (RealBlockVector. fact accessor (vector-engine fact) (.entryType accessor)
                       master buf n strd)))
 
-(let [column-index (fn ^long [^long ld ^long i ^long j]
-                     (+ (* ld j) i))
-      row-index (fn ^long [^long ld ^long i ^long j]
-                  (+ (* ld i) j))
-      init-all (fn [^DataAccessor accessor buf _ _ val]
-                 (.initialize accessor buf val))
-      init-slice (fn [accessor buf ld fd val]
-                   (dotimes [i fd]
-                     (.initialize ^DataAccessor accessor
-                                  (.slice ^BufferAccessor accessor
-                                          buf (* (long ld) i) fd) val)))
-      straight-cut (fn [fact ^ByteBuffer buf ld sd fd idx]
-                     (real-block-vector fact false
-                                        (.slice ^BufferAccessor (data-accessor fact)
-                                                buf (* (long ld) (long idx)) sd)
-                                        sd 1))
+(letfn [(column-index ^long [^long ld ^long i ^long j]
+          (+ (* ld j) i))
+        (row-index  ^long [^long ld ^long i ^long j]
+          (+ (* ld i) j))
+        (init-all [^DataAccessor accessor buf _ _ val]
+          (.initialize accessor buf val))
+        (init-slice  [accessor buf ld fd val]
+          (dotimes [i fd]
+            (.initialize ^DataAccessor accessor
+                         (.slice ^BufferAccessor accessor
+                                 buf (* (long ld) i) fd) val)))
+        (straight-cut  [fact ^ByteBuffer buf ld sd fd idx]
+          (real-block-vector fact false
+                             (.slice ^BufferAccessor (data-accessor fact)
+                                     buf (* (long ld) (long idx)) sd)
+                             sd 1))
 
-      cross-cut (fn [fact ^ByteBuffer buf ld sd fd idx]
-                  (real-block-vector fact false
-                                     (.slice ^BufferAccessor (data-accessor fact)
-                                             buf idx (inc (* (dec (long fd)) (long ld)))) fd ld))]
+        (cross-cut  [fact ^ByteBuffer buf ld sd fd idx]
+          (real-block-vector fact false
+                             (.slice ^BufferAccessor (data-accessor fact)
+                                     buf idx (inc (* (dec (long fd)) (long ld)))) fd ld))]
 
   (defn real-ge-matrix
     ([fact master buf m n ld ord tra]
