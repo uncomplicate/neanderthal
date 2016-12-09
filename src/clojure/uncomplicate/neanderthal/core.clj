@@ -406,11 +406,11 @@
 (defn subtriangle
   "TODO"
   ([a]
-   (subtriangle a true false))
-  ([a diag-unit]
-   (subtriangle a true false))
-  ([^Matrix a ^Boolean upper ^Boolean diag-unit]
-   (p/subtriangle a (if upper p/UPPER p/LOWER) (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT))))
+   (p/subtriangle a p/DEFAULT_UPLO p/DEFAULT_DIAG))
+  ([^Matrix a options]
+   (let [uplo (p/enc-uplo (:uplo options))
+         diag (p/enc-diag (:diag options))]
+     (p/subtriangle a uplo diag))))
 
 (defn trans
   "Transposes matrix m, i.e returns a matrix that has
@@ -422,6 +422,11 @@
   "
   [^Matrix m]
   (.transpose m))
+
+(defn order
+  "TODO"
+  [^Block m]
+  (p/dec-property (.order m)))
 
 ;; ============ Vector and Matrix access methods ===============================
 

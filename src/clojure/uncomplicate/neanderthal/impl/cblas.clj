@@ -71,10 +71,10 @@
 (defmacro ^:private matrix-swap-copy [method a b]
   `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
      (if (and (= (order ~a) (order ~b))
-              (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
+              (= (if (= COLUMN_MAJOR (order ~a)) (.mrows ~a) (.ncols ~a))
                  (stride ~a) (stride ~b)))
        (~method (* (.mrows ~a) (.ncols ~a)) (buffer ~a) 0 1 (buffer ~b) 0 1)
-       (if (column-major? ~a)
+       (if (= COLUMN_MAJOR (order ~a))
          (dotimes [i# (.ncols ~a)]
            (vector-swap-copy ~method (.col ~a i#) (.col ~b i#)))
          (dotimes [i# (.mrows ~a)]
@@ -82,9 +82,9 @@
 
 (defmacro ^:private matrix-scal [method alpha a]
   `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
-     (if (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a)) (stride ~a))
+     (if (= (if (= COLUMN_MAJOR (order ~a)) (.mrows ~a) (.ncols ~a)) (stride ~a))
        (~method (* (.mrows ~a) (.ncols ~a)) ~alpha (buffer ~a) 1)
-       (if (column-major? ~a)
+       (if (+ COLUMN_MAJOR (order ~a))
          (dotimes [i# (.ncols ~a)]
            (vector-scal ~method ~alpha (.col ~a i#)))
          (dotimes [i# (.mrows ~a)]
@@ -93,10 +93,10 @@
 (defmacro ^:private matrix-axpy [method alpha a b]
   `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
      (if (and (= (order ~a) (order ~b))
-              (= (if (column-major? ~a) (.mrows ~a) (.ncols ~a))
+              (= (if (= COLUMN_MAJOR (order ~a)) (.mrows ~a) (.ncols ~a))
                  (stride ~a) (stride ~b)))
        (~method (* (.mrows ~a) (.ncols ~a)) ~alpha (buffer ~a) 1 (buffer ~b) 1)
-       (if (column-major? ~a)
+       (if (= COLUMN_MAJOR (order ~a))
          (dotimes [i# (.ncols ~a)]
            (vector-axpy ~method ~alpha (.col ~a i#) (.col ~b i#)))
          (dotimes [i# (.mrows ~a)]
@@ -191,7 +191,7 @@
   (axpy [_ alpha a b]
     (matrix-axpy CBLAS/daxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
-    (CBLAS/dgemv (.order a) (.trans a)
+    (CBLAS/dgemv (.order a) NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
                  alpha (.buffer a) (.stride a) (.buffer x) (.stride x)
                  beta (.buffer y) (.stride y)))
@@ -203,12 +203,8 @@
                 (.buffer a) (.stride a)))
   (mm [_ alpha a b beta c]
     (CBLAS/dgemm (.order c)
-                 (if (= (.order a) (.order c))
-                   (if (= (.trans a) (.trans c)) NO_TRANS TRANS)
-                   (if (= (.trans a) (.trans c)) TRANS NO_TRANS))
-                 (if (= (.order b) (.order c))
-                   (if (= (.trans b) (.trans c)) NO_TRANS TRANS)
-                   (if (= (.trans b) (.trans c)) TRANS NO_TRANS))
+                 (if (= (.order a) (.order c)) NO_TRANS TRANS)
+                 (if (= (.order b) (.order c)) NO_TRANS TRANS)
                  (.mrows ^Matrix a) (.ncols ^Matrix b) (.ncols ^Matrix a)
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
@@ -224,7 +220,7 @@
   (axpy [_ alpha a b]
     (matrix-axpy CBLAS/saxpy alpha ^Matrix a ^Matrix b))
   (mv [_ alpha a x beta y]
-    (CBLAS/sgemv (.order a) (.trans a)
+    (CBLAS/sgemv (.order a) NO_TRANS
                  (.mrows ^Matrix a) (.ncols ^Matrix a)
                  alpha (.buffer a) (.stride a) (.buffer x) (.stride x)
                  beta (.buffer y) (.stride y)))
@@ -236,12 +232,8 @@
                 (.buffer a) (.stride a)))
   (mm [_ alpha a b beta c]
     (CBLAS/sgemm (.order c)
-                 (if (= (.order a) (.order c))
-                   (if (= (.trans a) (.trans c)) NO_TRANS TRANS)
-                   (if (= (.trans a) (.trans c)) TRANS NO_TRANS))
-                 (if (= (.order b) (.order c))
-                   (if (= (.trans b) (.trans c)) NO_TRANS TRANS)
-                   (if (= (.trans b) (.trans c)) TRANS NO_TRANS))
+                 (if (= (.order a) (.order c)) NO_TRANS TRANS)
+                 (if (= (.order b) (.order c)) NO_TRANS TRANS)
                  (.mrows ^Matrix a) (.ncols ^Matrix b) (.ncols ^Matrix a)
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
                  beta (.buffer c) (.stride c))))
@@ -251,14 +243,13 @@
 (deftype DoubleTriangularMatrixEngine []
   BLAS
   (mv [_ a x]
-    (CBLAS/dtrmv (.order a) (.uplo a) (.trans a) (.diag a)
+    (CBLAS/dtrmv (.order a) (.uplo a) NO_TRANS (.diag a)
                  (.ncols ^Matrix a)
                  (.buffer a) (.stride a) (.buffer x) (.stride x)))
   (mm [_ alpha a b right]
-    (CBLAS/dtrmm (.order a) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT) (.uplo a)
-                 (if (= (.order a) (.order b))
-                   (if (= (.trans a) (.trans b)) NO_TRANS TRANS)
-                   (if (= (.trans a) (.trans b)) TRANS NO_TRANS))
+    (CBLAS/dtrmm (.order b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
+                 (.uplo a)
+                 (if (= (.order a) (.order b)) NO_TRANS TRANS)
                  (.diag a)
                  (.mrows ^Matrix b) (.ncols ^Matrix b)
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b))))
@@ -266,14 +257,13 @@
 (deftype SingleTriangularMatrixEngine []
   BLAS
   (mv [_ a x]
-    (CBLAS/strmv (.order a) (.uplo a) (.trans a) (.diag a)
+    (CBLAS/strmv (.order a) (.uplo a) NO_TRANS (.diag a)
                  (.ncols ^Matrix a)
                  (.buffer a) (.stride a) (.buffer x) (.stride x)))
   (mm [_ alpha a b right]
-    (CBLAS/strmm (.order a) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT) (.uplo a)
-                 (if (= (.order a) (.order b))
-                   (if (= (.trans a) (.trans b)) NO_TRANS TRANS)
-                   (if (= (.trans a) (.trans b)) TRANS NO_TRANS))
+    (CBLAS/strmm (.order b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
+                 (.uplo a)
+                 (if (= (.order a) (.order b)) NO_TRANS TRANS)
                  (.diag a)
                  (.mrows ^Matrix b) (.ncols ^Matrix b)
                  alpha (.buffer a) (.stride a) (.buffer b) (.stride b))))
@@ -299,28 +289,19 @@
   (create-matrix [this m n buf options]
     (if (and (<= 0 (* (long m) (long n)) (.count acc buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (let [{ord :order
-             tra :trans
-             :or {ord DEFAULT_ORDER
-                  tra DEFAULT_TRANS}} options
-            ld (max (long (if (columnar? ord tra) m n)) 1)]
-        (real-ge-matrix this true buf m n ld ord tra))
+      (let [ord (enc-order (:order options))
+            ld (max (long (if (= COLUMN_MAJOR ord) m n)) 1)]
+        (real-ge-matrix this true buf m n ld ord))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d general matrix from %s."
                       m n (type buf))))))
   (create-tr-matrix [this n buf options]
     (if (and (<= 0 (* (long n) (long n)) (.count acc buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (let [{ord :order
-             trans :trans
-             uplo :uplo
-             diag :diag}
-            :or {ord DEFAULT_ORDER
-                 trans DEFAULT_TRANS
-                 uplo DEFAULT_UPLO
-                 diag DEFAULT_DIAG} options]
-        (->RealTriangularMatrix this acc tr-matrix-eng (.entryType acc) true
-                                buf n (max (long n) 1) ord uplo diag trans))
+      (let [ord (enc-order (:order options))
+            uplo (enc-uplo (:uplo options))
+            diag (enc-diag (:diag options))]
+        (real-tr-matrix this true buf n (max (long n) 1) ord uplo diag))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d triangular matrix from %s."
                       n n (type buf))))))

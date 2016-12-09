@@ -45,12 +45,18 @@
 
 (defn test-tr [factory]
   (facts "Triangular Matrix methods."
-         (let [a (create-ge-matrix factory 4 3 (range 12))
-               a-upper (subtriangle a)
-               a-lower (subtriangle a false)]
+         (let [a (create-ge-matrix factory 5 3 (range 15))
+               a-upper (subtriangle a {:uplo :upper})
+               a-lower (subtriangle a)]
            (= 3 (mrows a-upper) (ncols a-lower)) => true
-           (row a-upper 0) => (throws UnsupportedOperationException)
-           (col a-upper 0) => (throws UnsupportedOperationException))))
+           (row a-upper 0) => (create-vector factory [0 5 10])
+           (row a-upper 2) => (create-vector factory [12])
+           (col a-upper 0) => (create-vector factory [0])
+           (col a-upper 2) => (create-vector factory [10 11 12])
+           (row a-lower 0) => (create-vector factory [0])
+           (row a-lower 2) => (create-vector factory [2 7 12])
+           (col a-lower 0) => (create-vector factory [0 1 2])
+           (col a-lower 2) => (create-vector factory [12]))))
 
 ;; ============= Matrices and Vectors ======================================
 
@@ -476,14 +482,9 @@
            (entry a-upper 0 1) => 3.0
            (entry a-upper 1 0) => 0.0
            (entry a-upper 1 1) => 4.0
-           (entry a-upper 2 0) => 0.0)
-         (entry (create-tr factory 2) 0 1) => 0.0
-         (entry (create-tr factory 0) 0 0)
-         => (throws IndexOutOfBoundsException)
-         (entry (create-tr factory 2) -1 2)
-         => (throws IndexOutOfBoundsException)
-         (entry (create-tr factory 2) 2 1)
-         => (throws IndexOutOfBoundsException)))
+           (entry a-upper 2 0) => 0.0
+           (entry a-upper -1 2) => (throws IndexOutOfBoundsException)
+           (entry a-upper 3 2) => (throws IndexOutOfBoundsException))))
 
 ;; =========================================================================
 (defn test-all [factory]

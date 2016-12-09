@@ -19,8 +19,8 @@
   (create-matrix [this m n source options]);;TODO rename to create-ge-matrix
   (create-tr-matrix [this n source options])
   (vector-engine [this])
-  (matrix-engine [this])
-  (tr-matrix-engine [this]));; rename to ge-matrix-engine
+  (matrix-engine [this]);; rename to ge-matrix-engine
+  (tr-matrix-engine [this]))
 
 (defprotocol EngineProvider
   (engine ^BLAS [this]))
@@ -61,7 +61,7 @@
 
 (def ^:const UPPER 121)
 (def ^:const LOWER 122)
-(def ^:const DEFAULT_UPLO UPPER)
+(def ^:const DEFAULT_UPLO LOWER)
 
 (def ^:const DIAG_NON_UNIT 131)
 (def ^:const DIAG_UNIT 132)
@@ -69,17 +69,6 @@
 
 (def ^:const LEFT 141)
 (def ^:const RIGHT 142)
-
-;; TODO move to common
-(defn columnar?
-  ([^long ord ^long tra]
-   (or (and (= COLUMN_MAJOR ord) (= NO_TRANS tra))
-       (and (= ROW_MAJOR ord) (= TRANS tra))))
-  ([^Block a]
-   (columnar? (.order a) (.trans a))))
-
-(defn column-major? [^Block a]
-  (= COLUMN_MAJOR (.order a)))
 
 (defn dec-property
   [^long code]
@@ -98,7 +87,7 @@
     142 :right
     :unknown))
 
-(defn enc-property ^long [option]
+(defn enc-property [option]
   (case option
     :row 101
     :column 102
@@ -112,7 +101,16 @@
     :unit 132
     :left 141
     :right 142
-    Long/MAX_VALUE))
+    nil))
+
+(defn enc-order ^long [order]
+  (if (= :row order) 101 102))
+
+(defn enc-uplo ^long [uplo]
+  (if (= :upper uplo) 121 122))
+
+(defn enc-diag ^long [diag]
+  (if (= :unit diag) 132 131))
 
 (def ^{:no-doc true :const true} MAT_BOUNDS_MSG
   "Requested entry %d, %d is out of bounds of matrix %d x %d.")

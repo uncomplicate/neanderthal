@@ -472,7 +472,7 @@
 
 (defn matrix-fmap!
   ([^Matrix a f]
-   (if (column-major? a)
+   (if (= COLUMN_MAJOR (.order ^Block a))
      (dotimes [i (.ncols a)]
        (vector-fmap* f (.col a i)))
      (dotimes [i (.mrows a)]
@@ -480,7 +480,7 @@
    a)
   ([^Matrix a f ^Matrix b]
    (if (check-matrix-dimensions a b)
-     (if (column-major? a)
+     (if (= COLUMN_MAJOR (.order ^Block a))
        (dotimes [i (.ncols a)]
          (vector-fmap* f (.col a i) (.col b i)))
        (dotimes [i (.mrows a)]
@@ -489,7 +489,7 @@
    a)
   ([^Matrix a f ^Matrix b ^Matrix c]
    (if (check-matrix-dimensions a b c)
-     (if (column-major? a)
+     (if (= COLUMN_MAJOR (.order ^Block a))
        (dotimes [i (.ncols a)]
          (vector-fmap* f (.col a i) (.col b i) (.col c i)))
        (dotimes [i (.mrows a)]
@@ -498,7 +498,7 @@
    a)
   ([^Matrix a f ^Matrix b ^Matrix c ^Matrix d]
    (if (check-matrix-dimensions a b c d)
-     (if (column-major? a)
+     (if (= COLUMN_MAJOR (.order ^Block a))
             (dotimes [i (.ncols a)]
               (vector-fmap* f (.col a i) (.col b i) (.col c i) (.col d i)))
             (dotimes [i (.mrows a)]
@@ -518,8 +518,8 @@
 
 (defn matrix-fold
   ([^RealMatrix a]
-   (let [vf (if (column-major? a) col row)
-         n (if (column-major? a) (.ncols a) (.mrows a))]
+   (let [vf (if (= COLUMN_MAJOR (.order ^Block a)) col row)
+         n (if (= COLUMN_MAJOR (.order ^Block a)) (.ncols a) (.mrows a))]
      (loop [i 0 acc 0.0]
        (if (< i n)
          (recur (inc i) (+ acc (sum (vf a i))))
@@ -597,7 +597,7 @@
    (throw (UnsupportedOperationException. "Matrix fold supports up to 4 matrices."))))
 
 (defn matrix-op* [^Matrix a & bs]
-  (let-release [res ^Matrix (if (column-major? a)
+  (let-release [res ^Matrix (if (= COLUMN_MAJOR (.order ^Block a))
                               (create-raw (factory a)
                                           (.mrows a)
                                           (transduce (map ncols) + (.ncols a) bs))
@@ -622,7 +622,7 @@
             (+ pos (.mrows w)))]
       (.copy ^BLASPlus (engine a) a
              (.submatrix ^Matrix res 0 0 (.mrows a) (.ncols a)))
-      (if (column-major? a)
+      (if (= COLUMN_MAJOR (.order ^Block a))
         (reduce column-reducer (.ncols a) bs)
         (reduce row-reducer (.mrows a) bs))
       res)))
