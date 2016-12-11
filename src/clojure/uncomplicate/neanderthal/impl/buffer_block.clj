@@ -16,11 +16,13 @@
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [transfer! copy!]]]
+             [core :refer [transfer! copy! col row]]
+             [real :refer [sum]]]
             [uncomplicate.neanderthal.impl.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
-           [clojure.lang Seqable IFn IFn$DD IFn$LD IFn$LDD IFn$LLD IFn$L IFn$LLL]
+           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
+            IFn$LD IFn$LDD IFn$LLD IFn$L IFn$LLL]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor
@@ -126,12 +128,13 @@
 ;; ============ Real Vector ====================================================
 
 (deftype RealBlockVector [^uncomplicate.neanderthal.protocols.Factory fact
-                          ^RealBufferAccessor accessor ^BLAS eng
+                          ^RealBufferAccessor accessor ^BLASPlus eng
                           ^Class entry-type ^Boolean master
                           ^ByteBuffer buf ^long n ^long strd]
   Object
-  (hashCode [this]
-    (vector-fold this hash* (-> (hash :RealBlockVector) (hash-combine n))))
+  (hashCode [x]
+    (vector-fold* hash* (-> (hash :RealBlockVector) (hash-combine n))
+                  (.subvector x 0 (min 16 n))))
   (equals [x y]
     (cond
       (nil? y) false
@@ -225,7 +228,46 @@
     (.entry x i))
   (subvector [_ k l]
     (let [b (.slice accessor buf (* k strd) (inc (* (dec l) strd)))]
-      (RealBlockVector. fact accessor eng entry-type false b l strd))))
+      (RealBlockVector. fact accessor eng entry-type false b l strd)))
+  PseudoFunctor
+  (fmap! [x f]
+    (vector-fmap* ^IFn$DD f x))
+  (fmap! [x f y]
+    (vector-fmap* ^IFn$DDD f x y))
+  (fmap! [x f y z]
+    (vector-fmap* ^IFn$DDDD f x y z))
+  (fmap! [x f y z v]
+    (vector-fmap* ^IFn$DDDDD f x y z v))
+  (fmap! [x f y z v ws]
+    (vector-fmap* f x y z v ws))
+  Foldable
+  (fold [x]
+    (.sum eng x))
+  (fold [x f init]
+    (vector-fold* f init x))
+  (fold [x f init y]
+    (vector-fold* f init x y))
+  (fold [x f init y z]
+    (vector-fold* f init x y z))
+  (fold [x f init y z v]
+    (vector-fold* f init x y z v))
+  (fold [x f init y z v ws]
+    (vector-fold* f init x y z v ws))
+  (foldmap [x g]
+    (loop [i 0 acc 0.0]
+      (if (< i n)
+        (recur (inc i) (+ acc (.invokePrim ^IFn$DD g (.entry x i))))
+        acc)))
+  (foldmap [x g f init]
+    (vector-foldmap* f init ^IFn$DD g x))
+  (foldmap [x g f init y]
+    (vector-foldmap* f init ^IFn$DDD g x y))
+  (foldmap [x g f init y z]
+    (vector-foldmap* f int ^IFn$DDDD g x y z))
+  (foldmap [x g f init y z v]
+    (vector-foldmap* f init ^IFn$DDDDD g x y z v))
+  (foldmap [x g f init y z v ws]
+    (vector-foldmap* f init g x y z v ws)))
 
 (defn real-block-vector [fact master buf n strd]
   (let [accessor (data-accessor fact)]
@@ -233,13 +275,8 @@
                       master buf n strd)))
 
 (extend RealBlockVector
-  PseudoFunctor
-  {:fmap! vector-fmap!}
   Functor
-  {:fmap vector-fmap}
-  Foldable
-  {:fold vector-fold
-   :foldmap vector-foldmap}
+  {:fmap copy-fmap}
   Applicative
   {:pure vector-pure}
   Magma
@@ -283,7 +320,19 @@
                              buf idx (inc (* (dec (long fd)) (long ld))))
                      fd ld))
 
-(deftype RealGeneralMatrix [index* col* row*
+(defn ^:private no-trans-get [^RealMatrix a ^long i ^long j]
+  (.entry a i j))
+
+(defn ^:private trans-get [^RealMatrix a ^long j ^long i]
+  (.entry a i j))
+
+(defn ^:private no-trans-set [^RealChangeable a ^long i ^long j ^double val]
+  (.set a i j val))
+
+(defn ^:private trans-set [^RealChangeable a ^long j ^long i ^double val]
+  (.set a i j val))
+
+(deftype RealGeneralMatrix [index* get* set* col-row* col* row*
                             ^uncomplicate.neanderthal.protocols.Factory fact
                             ^RealBufferAccessor accessor ^BLAS eng
                             ^Class entry-type ^Boolean master
@@ -291,14 +340,15 @@
                             ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [this]
-    (matrix-fold this hash* (-> (hash :RealGeneralMatrix) (hash-combine m)
-                                (hash-combine n) (hash-combine ord))))
+    (matrix-fold* fd col-row* hash*
+                  (-> (hash :RealGeneralMatrix) (hash-combine m) (hash-combine n))
+                  (.submatrix this 0 0 (min 16 m) (min 16 n))))
   (equals [a b]
     (cond
       (nil? b) false
       (identical? a b) true
       (and (compatible a b) (= m (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
-      (= 0.0 (matrix-foldmap a p- p+ 0.0 b))
+      (= 0.0 (matrix-foldmap* fd col-row* p+ 0.0 p- a b))
       :default false))
   (toString [this]
     (format "#RealGeneralMatrix[%s, mxn:%dx%d, ld:%d, ord%s]"
@@ -411,7 +461,60 @@
                     (.slice accessor buf (index* ld i j) (index* ld k (dec l)))
                     k l ld ord))
   (transpose [a]
-    (real-ge-matrix fact false buf n m ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR))))
+    (real-ge-matrix fact false buf n m ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+  PseudoFunctor
+  (fmap! [a f]
+    (matrix-fmap* set* get* fd sd ^IFn$DD f a))
+  (fmap! [a f b]
+    (matrix-fmap* set* get* fd sd ^IFn$DDD f a b))
+  (fmap! [a f b c]
+    (matrix-fmap* set* get* fd sd ^IFn$DDDD f a b c))
+  (fmap! [a f b c d]
+    (matrix-fmap* set* get* fd sd ^IFn$DDDDD f a b c d))
+  (fmap! [a f b c d es]
+    (matrix-fmap* set* get* fd sd f a b c d nil))
+  Foldable
+  (fold [_]
+    (loop [j 0 acc 0.0]
+      (if (< j fd)
+        (recur (inc j)
+               (double
+                (loop [i 0 acc acc]
+                  (if (< i sd)
+                    (recur (inc i) (+ acc (.get accessor buf (+ (* ld j) i))))
+                    acc))))
+        acc)))
+  (fold [a f init]
+    (matrix-fold* fd col-row* f init a))
+  (fold [a f init b]
+    (matrix-fold* fd col-row* f init a b))
+  (fold [a f init b c]
+    (matrix-fold* fd col-row* f init a b c))
+  (fold [a f init b c d]
+    (matrix-fold* fd col-row* f init a b c d))
+  (fold [a f init b c d es]
+    (matrix-fold* fd col-row* f init a b c d es))
+  (foldmap [_ g]
+    (loop [j 0 acc 0.0]
+      (if (< j fd)
+        (recur (inc j)
+               (double
+                (loop [i 0 acc acc]
+                  (if (< i sd)
+                    (recur (inc i)
+                           (+ acc (.invokePrim ^IFn$DD g (.get accessor buf (+ (* ld j) i)))))
+                    acc))))
+        acc)))
+  (foldmap [a g f init]
+    (matrix-foldmap* fd col-row* f init ^IFn$DD g a))
+  (foldmap [a g f init b]
+    (matrix-foldmap* fd col-row* f init ^IFn$DDD g a b))
+  (foldmap [a g f init b c]
+    (matrix-foldmap* fd col-row* f init ^IFn$DDDD g a b c))
+  (foldmap [a g f init b c d]
+    (matrix-foldmap* fd col-row* f init ^IFn$DDDDD g a b c d))
+  (foldmap [a g f init b c d es]
+    (matrix-foldmap* fd col-row* f init g a b c d es)))
 
 (defn no-trans-index ^long [^long ld ^long i ^long j]
   (+ (* ld j) i))
@@ -427,25 +530,23 @@
          fd (long (if no-trans n m))
          accessor (data-accessor fact)]
      (RealGeneralMatrix. (if no-trans no-trans-index trans-index)
+                         (if no-trans no-trans-get trans-get)
+                         (if no-trans no-trans-set trans-set)
+                         (if no-trans col row)
                          (if no-trans straight-cut cross-cut)
                          (if no-trans cross-cut straight-cut)
                          fact accessor (matrix-engine fact)
                          (.entryType accessor) master
                          buf m n ld sd fd ord)))
   ([fact m n ord]
-   (let-derelease [buf (.createDataSource (data-accessor fact) (* (long m) (long n)))]
+   (let-release [buf (.createDataSource (data-accessor fact) (* (long m) (long n)))]
      (real-ge-matrix fact true buf m n 0 ord)))
   ([fact m n]
    (real-ge-matrix fact m n DEFAULT_ORDER)))
 
 (extend RealGeneralMatrix
-  PseudoFunctor
-  {:fmap! matrix-fmap!}
   Functor
-  {:fmap matrix-fmap}
-  Foldable
-  {:fold matrix-fold
-   :foldmap matrix-foldmap}
+  {:fmap copy-fmap}
   Applicative
   {:pure matrix-pure}
   Magma
@@ -487,15 +588,15 @@
                                ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
-    (matrix-fold this hash*;;TODO check fluokitten
-                 (-> (hash :RealTriangularMatrix) (hash-combine n)
-                     (hash-combine ord) (hash-combine fuplo) (hash-combine fdiag))))
+    (matrix-fold* n straight-cut hash*
+                  (-> (hash :RealTriangularMatrix) (hash-combine n))
+                  this));;TODO check fluokitten and triangle and do with submatrix
   (equals [a b]
     (cond
       (nil? b) false
       (identical? a b) true
       (and (compatible a b) (= n (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
-      (= 0.0 (matrix-foldmap a p- p+ 0.0 b));;TODO check fluokitten
+      (= 0.0 (matrix-foldmap* n straight-cut p+ 0.0 p- a b));;TODO triangle
       :default false))
   (toString [a]
     (format "#RealTriangularMatrix[%s, mxn:%dx%d, ld:%d, ord%s, uplo%s, diag%s]"
@@ -644,18 +745,6 @@
     ([fact n]
      (real-tr-matrix fact n DEFAULT_TRANS DEFAULT_UPLO DEFAULT_DIAG))))
 
-(extend RealTriangularMatrix
-  PseudoFunctor
-  {:fmap! matrix-fmap!}
-  Functor
-  {:fmap matrix-fmap}
-  Foldable
-  {:fold matrix-fold
-   :foldmap matrix-foldmap}
-  Applicative
-  {:pure matrix-pure}
-  Magma
-  {:op matrix-op})
 
 (defmethod transfer! [RealTriangularMatrix RealTriangularMatrix]
   [source destination]

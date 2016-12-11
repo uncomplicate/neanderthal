@@ -51,7 +51,6 @@
 
 (def nx (dv (range n)))
 (def ny (dv (range n)))
-
 (with-progress-reporting (quick-bench (dot nx ny)))
 ;; Execution time mean : 32.828791 µs
 
