@@ -586,12 +586,6 @@
 
 ;; =================== Real Triangular Matrix ==================================
 
-(defn left-index ^long [^long diag-pad ^long ld ^long i ^long j]
-  (+ (* (inc ld) j) (+ i diag-pad)))
-
-(defn right-index ^long [^long diag-pad ^long ld ^long i ^long j]
-  (+ (* ld (+ j diag-pad)) i))
-
 (deftype RealTRMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDD set*
                        ^IFn$LLL start* ^IFn$LLL end*
                        col-row* col* row*
@@ -754,8 +748,8 @@
            left (if no-trans (= LOWER uplo) (= UPPER uplo))
            accessor (data-accessor fact)]
        (RealTRMatrix. (if no-trans no-trans-index trans-index)
-                      (if no-trans straight-cut cross-cut)
-                      (if no-trans cross-cut straight-cut)
+                      (if no-trans no-trans-get trans-set)
+                      (if no-trans no-trans-get trans-get)
                       (if left (if non-unit id inc-id) zero)
                       (if left end (if non-unit inc-id id))
                       (if no-trans col row)
