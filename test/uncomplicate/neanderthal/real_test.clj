@@ -105,7 +105,7 @@
          => (throws IllegalArgumentException)
          (dot (create-vector factory []) (create-vector factory [])) => 0.0
          (dot (create-vector factory [1]) (create-ge-matrix factory 3 3))
-         => (throws IllegalArgumentException)
+         => (throws ClassCastException)
          (dot (create-vector factory [1 2]) (create-vector factory [1 2 3]))
          => (throws IllegalArgumentException)))
 

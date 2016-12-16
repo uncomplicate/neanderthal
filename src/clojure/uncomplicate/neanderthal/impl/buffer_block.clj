@@ -16,13 +16,13 @@
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [transfer! copy! col row]]
+             [core :refer [transfer! copy! col row mrows ncols]]
              [real :refer [sum]]]
             [uncomplicate.neanderthal.impl.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
-           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
-            IFn$LD IFn$LDD IFn$LLD IFn$L IFn$LLL]
+           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$OLLDO
+            IFn$LD IFn$LDD IFn$LLD IFn$L IFn$LLL IFn$OLLD IFn$OLLDD IFn$LLLL]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor
@@ -31,11 +31,8 @@
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
 
-(defn ^:private p- ^double [^double x ^double y]
-  (- x y))
-
-(defn ^:private p+ ^double [^double x ^double y]
-  (+ x y))
+(defn ^:private consistent? [^Block a ^Block b]
+  (and (instance? (class a) b) (compatible (data-accessor a) b )))
 
 ;; ============ Realeaseable ===================================================
 
@@ -69,8 +66,9 @@
   (data-accessor [this]
     this)
   MemoryContext
-  (compatible [_ o]
-    (instance? FloatBufferAccessor (data-accessor o)))
+  (compatible [this o]
+    (let [da (data-accessor o)]
+      (or (identical? this da) (instance? FloatBufferAccessor da))))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
@@ -108,8 +106,9 @@
   (data-accessor [this]
     this)
   MemoryContext
-  (compatible [_ o]
-    (instance? DoubleBufferAccessor (data-accessor o)))
+  (compatible [this o]
+    (let [da (data-accessor o)]
+      (or (identical? this da) (instance? DoubleBufferAccessor da))))
   BufferAccessor
   (toSeq [this buf stride]
     (if (< 0 (.count this buf))
@@ -139,8 +138,13 @@
     (cond
       (nil? y) false
       (identical? x y) true
-      (and (compatible x y) (= n (.dim ^Vector y)))
-      (= 0.0 (vector-reduce-map p+ 0.0 p- x y))
+      (and (instance? RealBlockVector y) (compatible accessor y) (= n (.dim ^Vector y)))
+      (loop [i 0]
+        (if (< i n)
+          (if (= (.entry x i) (.entry ^RealVector y i))
+            (recur (inc i))
+            false)
+          true))
       :default false))
   (toString [_]
     (format "#RealBlockVector[%s, n:%d, stride:%d]" entry-type n strd))
@@ -164,6 +168,11 @@
       (.copy eng this res)))
   (native [this]
     this)
+  (form [this]
+    :vector)
+  MemoryContext
+  (compatible [_ y]
+    (compatible accessor y))
   Monoid
   (id [x]
     (create-vector fact 0 (.createDataSource accessor 0) nil))
@@ -178,9 +187,6 @@
   DataAccessorProvider
   (data-accessor [_]
     accessor)
-  MemoryContext
-  (compatible [_ y]
-    (and (instance? RealBlockVector y) (= entry-type (.entryType ^Block y))))
   Block
   (entryType [_]
     entry-type)
@@ -267,7 +273,7 @@
   (foldmap [x g f init y z v]
     (vector-foldmap* f init ^IFn$DDDDD g x y z v))
   (foldmap [x g f init y z v ws]
-    (vector-foldmap* f init g x y z v ws)))
+    (vector-foldmap* f init g x y z v ws)))()
 
 (defn real-block-vector [fact master buf n strd]
   (let [accessor (data-accessor fact)]
@@ -320,19 +326,20 @@
                              buf idx (inc (* (dec (long fd)) (long ld))))
                      fd ld))
 
-(defn ^:private no-trans-get [^RealMatrix a ^long i ^long j]
+(defn ^:private no-trans-get ^double [^RealMatrix a ^long i ^long j]
   (.entry a i j))
 
-(defn ^:private trans-get [^RealMatrix a ^long j ^long i]
-  (.entry a i j))
+(defn ^:private trans-get ^double [^RealMatrix a ^long i ^long j]
+  (.entry a j i))
 
 (defn ^:private no-trans-set [^RealChangeable a ^long i ^long j ^double val]
   (.set a i j val))
 
-(defn ^:private trans-set [^RealChangeable a ^long j ^long i ^double val]
-  (.set a i j val))
+(defn ^:private trans-set [^RealChangeable a ^long i ^long j ^double val]
+  (.set a j i val))
 
-(deftype RealGeneralMatrix [index* get* set* col-row* col* row*
+(deftype RealGeneralMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDO set*
+                            col-row* col* row*
                             ^uncomplicate.neanderthal.protocols.Factory fact
                             ^RealBufferAccessor accessor ^BLAS eng
                             ^Class entry-type ^Boolean master
@@ -347,8 +354,18 @@
     (cond
       (nil? b) false
       (identical? a b) true
-      (and (compatible a b) (= m (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
-      (= 0.0 (matrix-foldmap* fd col-row* p+ 0.0 p- a b))
+      (and (instance? RealGeneralMatrix b) (compatible accessor b)
+           (= m (mrows b)) (= n (ncols b)))
+      (loop [j 0]
+        (if (< j fd)
+          (and (loop [i 0]
+                 (if (< i sd)
+                   (and (= (.get accessor buf (+ (* ld j) i))
+                           (.invokePrim get* ^RealGeneralMatrix b i j))
+                        (recur (inc i)))
+                   true))
+               (recur (inc j)))
+          true))
       :default false))
   (toString [this]
     (format "#RealGeneralMatrix[%s, mxn:%dx%d, ld:%d, ord%s]"
@@ -381,9 +398,12 @@
       (.copy eng this res)))
   (native [this]
     this)
+  (form [this]
+    :GE)
+  MemoryContext
+  (compatible [_ b]
+    (compatible accessor b))
   DenseContainer
-  (is-ge [_]
-    true)
   (subtriangle [_ uplo diag];;TODO remove and introduce new function similar to copy that reuses memory
     (let [k (min m n)
           b (.slice accessor buf 0 (+ (* ld (dec k)) k))]
@@ -391,10 +411,6 @@
   Monoid
   (id [a]
     (real-ge-matrix fact 0 0))
-  MemoryContext
-  (compatible [_ b]
-    (and (or (instance? RealGeneralMatrix b) (instance? RealBlockVector b))
-         (= entry-type (.entryType ^Block b))))
   Block
   (entryType [_]
     entry-type)
@@ -433,23 +449,21 @@
         (.set accessor buf (+ (* ld j) i) val)))
     a)
   (set [a i j val]
-    (.set accessor buf (index* ld i j) val)
+    (.set accessor buf (.invokePrim index* ld i j) val)
     a)
   (setBoxed [a val]
     (.set a val))
   (setBoxed [a i j val]
     (.set a i j val))
   (alter [a i j f]
-    (let [ind (index* ld i j)]
-      (.set accessor buf ind (.invokePrim ^IFn$DD f (.get accessor buf ind)))
-      a))
+    (.set a i j (.invokePrim ^IFn$DD f (.entry a i j))))
   RealMatrix
   (mrows [_]
     m)
   (ncols [_]
     n)
   (entry [a i j]
-    (.get accessor buf (index* ld i j)))
+    (.get accessor buf (.invokePrim index* ld i j)))
   (boxedEntry [this i j]
     (.entry this i j))
   (row [a i]
@@ -458,7 +472,7 @@
     (col* fact buf ld sd fd j))
   (submatrix [a i j k l]
     (real-ge-matrix fact false
-                    (.slice accessor buf (index* ld i j) (index* ld k (dec l)))
+                    (.slice accessor buf (.invokePrim index* ld i j) (.invokePrim index* ld k (dec l)))
                     k l ld ord))
   (transpose [a]
     (real-ge-matrix fact false buf n m ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
@@ -524,20 +538,16 @@
 
 (defn real-ge-matrix
   ([fact master buf m n ld ord]
-   (let [no-trans (= COLUMN_MAJOR ord)
-         sd (long (if no-trans m n))
-         ld (max sd (long ld))
-         fd (long (if no-trans n m))
-         accessor (data-accessor fact)]
-     (RealGeneralMatrix. (if no-trans no-trans-index trans-index)
-                         (if no-trans no-trans-get trans-get)
-                         (if no-trans no-trans-set trans-set)
-                         (if no-trans col row)
-                         (if no-trans straight-cut cross-cut)
-                         (if no-trans cross-cut straight-cut)
-                         fact accessor (matrix-engine fact)
-                         (.entryType accessor) master
-                         buf m n ld sd fd ord)))
+   (let [accessor (data-accessor fact)]
+     (if (= COLUMN_MAJOR ord)
+       (RealGeneralMatrix. no-trans-index no-trans-get no-trans-set col
+                           straight-cut cross-cut fact accessor (matrix-engine fact)
+                           (.entryType accessor) master buf
+                           m n (max (long ld) (long m)) m n ord)
+       (RealGeneralMatrix. trans-index trans-get trans-set row cross-cut
+                           straight-cut fact accessor (matrix-engine fact)
+                           (.entryType accessor) master buf
+                           m n (max (long ld) (long n)) n m ord))))
   ([fact m n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* (long m) (long n)))]
      (real-ge-matrix fact true buf m n 0 ord)))
@@ -576,30 +586,50 @@
 
 ;; =================== Real Triangular Matrix ==================================
 
-(deftype RealTriangularMatrix [index*
-                               col* row*
-                               ^IFn$LLL col-start* ^IFn$LLL col-len*
-                               ^IFn$LLL row-start* ^IFn$LLL row-len*
-                               ^long diag-pad
-                               ^uncomplicate.neanderthal.protocols.Factory fact
-                               ^RealBufferAccessor accessor ^BLAS eng
-                               ^Class entry-type ^Boolean master
-                               ^ByteBuffer buf ^long n ^long ld
-                               ^long ord ^long fuplo ^long fdiag]
+(defn left-index ^long [^long diag-pad ^long ld ^long i ^long j]
+  (+ (* (inc ld) j) (+ i diag-pad)))
+
+(defn right-index ^long [^long diag-pad ^long ld ^long i ^long j]
+  (+ (* ld (+ j diag-pad)) i))
+
+(deftype RealTRMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDD set*
+                       ^IFn$LLL start* ^IFn$LLL end*
+                       col-row* col* row*
+                       ^IFn$LLL col-start* ^IFn$LLL col-len*
+                       ^IFn$LLL row-start* ^IFn$LLL row-len*
+                       ^long diag-pad
+                       ^uncomplicate.neanderthal.protocols.Factory fact
+                       ^RealBufferAccessor accessor ^BLAS eng
+                       ^Class entry-type ^Boolean master
+                       ^ByteBuffer buf ^long n ^long ld
+                       ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
-    (matrix-fold* n straight-cut hash*
-                  (-> (hash :RealTriangularMatrix) (hash-combine n))
-                  this));;TODO check fluokitten and triangle and do with submatrix
+    #_(tr-matrix-fold* fd col-row* hash* (-> (hash :RealTRMatrix) (hash-combine n))
+                     (.submatrix this 0 0 (min 16 n) (min 16 n))));;TODO check fluokitten and triangle and do with submatrix
   (equals [a b]
     (cond
       (nil? b) false
       (identical? a b) true
-      (and (compatible a b) (= n (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
-      (= 0.0 (matrix-foldmap* n straight-cut p+ 0.0 p- a b));;TODO triangle
+      (and (instance? RealTRMatrix b) (compatible accessor b)
+           (= n (mrows b))
+           (if (= fuplo (.uplo ^Block b))
+             (= fdiag (.diag ^Block b))
+             (not (= fdiag (.diag ^Block b)))))
+      (loop [j 0]
+        (if (< j n)
+          (let [end (.invokePrim end* n j)]
+            (and (loop [i (.invokePrim start* n j)]
+                   (if (< i end)
+                     (and (= (.get accessor buf (+ (* ld j) i))
+                             (.invokePrim get* ^RealTRMatrix b i j))
+                          (recur (inc i)))
+                     true))
+                 (recur (inc j))))
+          true))
       :default false))
   (toString [a]
-    (format "#RealTriangularMatrix[%s, mxn:%dx%d, ld:%d, ord%s, uplo%s, diag%s]"
+    (format "#RealTRMatrix[%s, mxn:%dx%d, ld:%d, ord%s, uplo%s, diag%s]"
             entry-type n n ld (dec-property ord) (dec-property fuplo) (dec-property fdiag)))
   Releaseable
   (release [_]
@@ -626,20 +656,17 @@
     (raw this fact))
   (host [this]
     (let-release [res (raw this)]
-      (.copy eng this res)))
+      (.copy eng this res)));;implement TR.copy
   (native [this]
     this)
-  DenseContainer
-  (is-ge [_]
-    false)
+  (form [this]
+    :TR)
+  MemoryContext
+  (compatible [_ b]
+    (compatible accessor b))
   Monoid
   (id [a]
     (real-tr-matrix fact 0))
-  MemoryContext
-  (compatible [_ b]
-    (and (or (instance? RealTriangularMatrix b) (instance? RealGeneralMatrix b)
-             (instance? RealBlockVector b))
-         (= entry-type (.entryType ^Block b))))
   Block
   (entryType [_]
     entry-type)
@@ -677,38 +704,34 @@
     n)
   RealChangeable
   (set [a val]
-    (let [right-side (if (= COLUMN_MAJOR ord) (= UPPER fuplo) (= LOWER fuplo))]
-      (if right-side
-        (dotimes [j n]
-          (dotimes [i (- j diag-pad)]
-            (.set accessor buf (+ (* ld (+ j diag-pad)) i) val)))
-        (dotimes [j n]
-          (dotimes [i (- j diag-pad)]
-            (.set accessor buf (+ (* ld j) j i diag-pad) val))))))
+    (dotimes [j n]
+      (let [end (.invokePrim end* n j)]
+        (loop [i (.invokePrim start* n j)]
+          (when (< i end)
+            (.set accessor buf (+ (* ld j) i) val)))))
+    a)
   (set [a i j val]
-    (.set accessor buf (index* ld i j) val)
+    (.set accessor buf (.invokePrim index* ld i j) val)
     a)
   (setBoxed [a val]
     (.set a val))
   (setBoxed [a i j val]
     (.set a i j val))
   (alter [a i j f]
-    (let [ind (index* ld i j)]
-      (.set accessor buf ind (.invokePrim ^IFn$DD f (.get accessor buf ind)))
-      a))
+    (.set a i j (.invokePrim ^IFn$DD f (.entry a i j))))
   RealMatrix
   (mrows [_]
     n)
   (ncols [_]
     n)
   (entry [a i j]
-    (.get accessor buf (index* ld i j)))
+    (.get accessor buf (.invokePrim index* ld i j)))
   (boxedEntry [this i j]
     (.entry this i j))
   (row [a i]
     (.subvector ^Vector (row* fact buf ld n n i)
-                (+ (long (row-start* n i)) diag-pad)
-                (- (long (row-len* n i)) diag-pad)))
+                (+ (.invokePrim row-start* n i) diag-pad)
+                (- (.invokePrim row-len* n i) diag-pad)))
   (col [a j]
     (.subvector ^Vector (col* fact buf ld n n j)
                 (+ (long (col-start* n j)) diag-pad)
@@ -719,6 +742,7 @@
     (real-tr-matrix fact false buf n ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR) fuplo fdiag)))
 
 (let [zero (fn ^long [^long n ^long i] 0)
+      end (fn ^long [^long n ^long i] n)
       id (fn ^long [^long n ^long i] i)
       inc-id (fn ^long [^long n ^long i] (inc i))
       inv (fn ^long [^long n ^long i] (- n i))]
@@ -726,19 +750,25 @@
   (defn real-tr-matrix
     ([fact master buf n ld ord uplo diag]
      (let [no-trans (= COLUMN_MAJOR ord)
+           non-unit (= DIAG_NON_UNIT diag)
            left (if no-trans (= LOWER uplo) (= UPPER uplo))
            accessor (data-accessor fact)]
-       (RealTriangularMatrix. (if no-trans no-trans-index trans-index)
-                              (if no-trans straight-cut cross-cut)
-                              (if no-trans cross-cut straight-cut)
-                              (if left id zero)
-                              (if left inv inc-id)
-                              (if left zero id)
-                              (if left inc-id inv)
-                              (if (= DIAG_UNIT diag) 1 0)
-                              fact accessor (tr-matrix-engine fact)
-                              (.entryType accessor) master
-                              buf n ld ord uplo diag)))
+       (RealTRMatrix. (if no-trans no-trans-index trans-index)
+                      (if no-trans straight-cut cross-cut)
+                      (if no-trans cross-cut straight-cut)
+                      (if left (if non-unit id inc-id) zero)
+                      (if left end (if non-unit inc-id id))
+                      (if no-trans col row)
+                      (if no-trans straight-cut cross-cut)
+                      (if no-trans cross-cut straight-cut)
+                      (if left id zero)
+                      (if left inv inc-id)
+                      (if left zero id)
+                      (if left inc-id inv)
+                      (if (= DIAG_UNIT diag) 1 0)
+                      fact accessor (tr-matrix-engine fact)
+                      (.entryType accessor) master
+                      buf n ld ord uplo diag)))
     ([fact n ord uplo diag]
      (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
        (real-tr-matrix fact true buf n ord uplo diag)))
@@ -746,15 +776,15 @@
      (real-tr-matrix fact n DEFAULT_TRANS DEFAULT_UPLO DEFAULT_DIAG))))
 
 
-(defmethod transfer! [RealTriangularMatrix RealTriangularMatrix]
+(defmethod transfer! [RealTRMatrix RealTRMatrix]
   [source destination]
   (do
     (copy! source destination)
     destination))
 
 ;;TODO
-(defmethod transfer! [clojure.lang.Sequential RealTriangularMatrix]
-  [source ^RealTriangularMatrix destination]
+(defmethod transfer! [clojure.lang.Sequential RealTRMatrix]
+  [source ^RealTRMatrix destination]
   (let [m (.mrows destination)
         n (.ncols destination)
         d (* m n)]
@@ -767,6 +797,6 @@
           (recur (inc i) (next src)))
         destination))))
 
-(defmethod print-method RealTriangularMatrix
-  [^RealTriangularMatrix a ^java.io.Writer w]
+(defmethod print-method RealTRMatrix
+  [^RealTRMatrix a ^java.io.Writer w]
   (.write w (format "%s%s" (str a) (pr-str (seq a)))))

@@ -60,12 +60,14 @@
   (instance? Matrix x))
 
 (defn compatible?
-  "Check whether two objects that have some memory context are compatible.
-  That might be a compatibility of objects regarding linear algebra operations,
-  such as two vectors of the same type (float, double) being compatible
-  in dot operation, but also a compatibility of factories or other objects."
+  "Check whether two objects that have some memory context are compatible."
   [x y]
   (p/compatible x y))
+
+(defn form
+  "TODO"
+  [x]
+  (p/form x))
 
 (defmulti transfer!
   "Transfers the data from source in one type of memory, to the appropriate
@@ -567,7 +569,7 @@
 (defn rot!
   "BLAS 1: Apply plane rotation.
   "
-  ([x y ^double c ^double s]
+  ([^Vector x ^Vector y ^double c ^double s]
    (if (p/compatible x y)
      (if (and (<= -1.0 c 1.0) (<= -1.0 c 1.0)
               (f= 1.0 (+ (pow c 2) (pow s 2))))
@@ -656,7 +658,7 @@
   "
   [x y]
   (if (not (identical? x y))
-    (if (p/compatible x y)
+    (if (and (= (p/form x) (p/form y)) (p/compatible x y))
       (if (= (ecount x) (ecount y))
         (do
           (.swap (p/engine x) x y)
@@ -686,7 +688,7 @@
   "
   ([x y]
    (if (not (identical? x y))
-     (if (p/compatible x y)
+     (if (and (= (p/form x) (p/form y)) (p/compatible x y))
        (if (= (ecount x) (ecount y))
          (do
            (.copy (p/engine x) x y)
@@ -697,7 +699,7 @@
      y))
   ([x y offset-x length offset-y]
    (if (not (identical? x y))
-     (if (p/compatible x y)
+     (if (and (= (p/form x) (p/form y)) (p/compatible x y))
        (if (<= (long length) (min (- (ecount x) (long offset-x))
                                   (- (ecount y) (long offset-y))))
          (do
@@ -760,7 +762,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
   "
   ([alpha x y]
-   (if (and (p/compatible x y) (= (ecount x) (ecount y)))
+   (if (and (= (p/form x) (p/form y)) (p/compatible x y) (= (ecount x) (ecount y)))
      (do
        (.axpy (p/engine x) alpha x y)
        y)
@@ -849,7 +851,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(15.0 22.5 30.0)<>
   "
   ([alpha ^Matrix a ^Vector x beta ^Vector y]
-   (if (and (p/compatible a x) (p/compatible a y)
+   (if (and (= (p/form x) (p/form y)) (p/compatible a x) (p/compatible a y)
             (= (.ncols a) (.dim x))
             (= (.mrows a) (.dim y)))
      (do
@@ -874,7 +876,7 @@
    (let-release [res (p/zero (col a 0))]
      (mv! alpha a x 0.0 res)))
   ([^Matrix a x]
-   (if (p/is-ge a)
+   (if (= :GE (p/form a))
      (mv 1.0 a x)
      (let-release [res (copy x)]
        (mv! a res)))))
@@ -896,7 +898,7 @@
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
-   (if (and (p/compatible a x) (p/compatible a y)
+   (if (and (= (p/form x) (p/form y)) (p/compatible a x) (p/compatible a y)
             (= (.mrows a) (.dim x))
             (= (.ncols a) (.dim y)))
      (do
@@ -951,12 +953,12 @@
   => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
-   (if (and (p/compatible a b) (p/compatible a c))
+   (if (and (= (p/form a) (p/form b) (p/form c)) (p/compatible a b) (p/compatible a c))
      (if (and (= (.ncols a) (.mrows b))
               (= (.mrows a) (.mrows c))
               (= (.ncols b) (.ncols c)))
        (do
-         (if (p/is-ge b)
+         (if (= :GE (p/form b))
            (.mm (p/engine a) alpha a b beta c)
            (.mm (p/engine b) alpha b a beta c true))
          c)
@@ -968,10 +970,10 @@
      (throw (IllegalArgumentException.
              (format p/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
   ([alpha ^Matrix a ^Matrix b]
-   (if (and (p/compatible a b))
+   (if (and (or (= :GE (p/form a)) (= :GE (p/form b))) (p/compatible a b))
      (if (and (= (.ncols a) (.mrows b)))
        (do
-         (if (p/is-ge b)
+         (if (= :GE (p/form b))
            (.mm (p/engine a) alpha a b false)
            (.mm (p/engine b) alpha b a true))
          b)

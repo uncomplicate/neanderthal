@@ -81,13 +81,14 @@
   (data-accessor [this]
     this)
   MemoryContext
-  (compatible [_ o]
+  (compatible [this o]
     (let [da (data-accessor o)]
       (or
+       (identical? this o)
        (and (instance? TypedCLAccessor da)
             (= et (.et ^TypedCLAccessor da)) (= ctx (.ctx ^TypedCLAccessor da)))
-       (= ctx da)
-       (= et da))))
+       (= ctx o)
+       (= et o))))
   FactoryProvider
   (native-factory [_]
     host-fact)

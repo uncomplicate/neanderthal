@@ -43,12 +43,12 @@
   (raw [this] [this factory])
   (zero [this] [this factory])
   (host [this])
-  (native [this]))
+  (native [this])
+  (form [this]))
 
 (defprotocol DenseContainer
   (subband [this p q])
-  (subtriangle [this uplo diag])
-  (is-ge [this]))
+  (subtriangle [this uplo diag]))
 
 (def ^:const ROW_MAJOR 101)
 (def ^:const COLUMN_MAJOR 102)

@@ -134,7 +134,7 @@
         (<= (.mrows a) (min (.mrows b) (.ncols c) (.ncols d))))))
 
 (defmacro invoke-matrix-entry [get* f i j & as]
-  `(.invokePrim ~f ~@(map #(list get* % i j) as)))
+  `(.invokePrim ~f ~@(map #(list '.invokePrim get* % i j) as)))
 
 (defmacro matrix-fmap* [set* get* fd sd f & as]
   (if (< (count as) 5)
@@ -142,7 +142,7 @@
        (if (check-matrix-dimensions ~@as)
          (dotimes [j# ~fd]
            (dotimes [i# ~sd]
-             (~set* ~(first as) i# j# (invoke-matrix-entry ~get* ~f i# j# ~@as))))
+             (.invokePrim ~set* ~(first as) i# j# (invoke-matrix-entry ~get* ~f i# j# ~@as))))
          (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
        ~(first as))
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
