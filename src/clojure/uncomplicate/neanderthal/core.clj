@@ -37,8 +37,9 @@
   (:require [uncomplicate.commons.core :refer [release let-release]]
             [uncomplicate.neanderthal
              [protocols :as p]
-             [math :refer [f= pow sqrt]]])
-  (:import [uncomplicate.neanderthal.protocols Vector Matrix Block
+             [math :refer [f= pow sqrt]]
+             [block :refer [buffer ecount]]])
+  (:import [uncomplicate.neanderthal.protocols Vector Matrix
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
 (defn vect?
@@ -127,9 +128,9 @@
                     nil))
   ([factory ^long m ^long n]
    (if (and (<= 0 m) (<= 0 n))
-     (p/create-matrix factory m n
-                      (.createDataSource (p/data-accessor factory) (* m n))
-                      nil)
+     (p/create-ge factory m n
+                  (.createDataSource (p/data-accessor factory) (* m n))
+                  nil)
      (throw (IllegalArgumentException.
              (format "Dimensions m=%d, n=%d are not allowed." m n))))))
 
@@ -143,12 +144,12 @@
   (create cblas-single 3)
   (create cblas-double 35 12)"
   ([factory ^long n]
-   (let-release [res ^Block (create-raw factory n)]
-     (.initialize ^DataAccessor (p/data-accessor factory) (.buffer res))
+   (let-release [res (create-raw factory n)]
+     (.initialize (p/data-accessor factory) (buffer res))
      res))
   ([factory ^long m ^long n]
-   (let-release [res ^Block (create-raw factory m n)]
-     (.initialize ^DataAccessor (p/data-accessor factory) (.buffer res))
+   (let-release [res (create-raw factory m n)]
+     (.initialize (p/data-accessor factory) (buffer res))
      res)))
 
 (defn create-vector
@@ -201,7 +202,7 @@
    (cond
      (or (sequential? source) (matrix? source))
      (transfer! source (create-raw factory m n))
-     source (p/create-matrix factory m n source p/DEFAULT_ORDER)
+     source (p/create-ge factory m n source p/DEFAULT_ORDER)
      :default (throw (IllegalArgumentException.
                       (format p/ILLEGAL_SOURCE_MSG (type source)
                               "general matrices")))))
@@ -219,7 +220,7 @@
      (instance? java.nio.ByteBuffer source)
      (let [acc ^DataAccessor (p/data-accessor factory)
            n (long (sqrt (.count acc source)))]
-       (p/create-matrix factory n n source p/DEFAULT_ORDER))
+       (p/create-ge factory n n source p/DEFAULT_ORDER))
      :default (throw (IllegalArgumentException.
                       (format p/ILLEGAL_SOURCE_MSG (type source)
                               "general matrices"))))))
@@ -228,17 +229,17 @@
   "TODO"
   ([factory ^long n ^Boolean upper ^Boolean diag-unit]
    (let [acc ^DataAccessor (p/data-accessor factory)]
-     (p/create-tr-matrix factory n (.createDataSource acc (* n n))
-                         {:uplo (if upper p/UPPER p/LOWER)
-                          :diag (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT)})))
+     (p/create-tr factory n (.createDataSource acc (* n n))
+                  {:uplo (if upper p/UPPER p/LOWER)
+                   :diag (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT)})))
   ([factory ^long n]
    (create-tr-raw factory n true false)))
 
 (defn create-tr
- "TODO"
+  "TODO"
   ([factory ^long n ^Boolean upper ^Boolean diag-unit]
-   (let-release [res ^Block (create-tr-raw factory n upper diag-unit)]
-     (.initialize ^DataAccessor (p/data-accessor factory) (.buffer res))
+   (let-release [res (create-tr-raw factory n upper diag-unit)]
+     (.initialize ^DataAccessor (p/data-accessor factory) (buffer res))
      res))
   ([factory ^long n]
    (create-tr factory n true false))
@@ -247,7 +248,7 @@
      (or (sequential? source) (matrix? source))
      (transfer! source (create-tr-raw factory n))
      source
-     (p/create-tr-matrix factory n source nil)
+     (p/create-tr factory n source nil)
      :default (throw (IllegalArgumentException.
                       (format p/ILLEGAL_SOURCE_MSG (type source)
                               "triangular matrices"))))))
@@ -279,16 +280,6 @@
   "
   ^long [^Vector x]
   (.dim x))
-
-(defn ecount
-  "Returns the total number of elements in all dimensions of a block x
-  of (possibly strided) memory.
-
-  (ecount (dv 1 2 3)) => 3
-  (ecount (dge 2 3)) => 6
-  "
-  ^long [^Block x]
-  (.count x))
 
 (defn subvector
   "Returns a subvector starting witk k, l entries long,
@@ -424,11 +415,6 @@
   "
   [^Matrix m]
   (.transpose m))
-
-(defn order
-  "TODO"
-  [^Block m]
-  (p/dec-property (.order m)))
 
 ;; ============ Vector and Matrix access methods ===============================
 

@@ -10,40 +10,40 @@ package uncomplicate.neanderthal.protocols;
 
 public interface BLAS {
 
-    long iamax (Block x);
+    long iamax (Vector x);
 
-    void rotg (Block x);
+    void rotg (Vector x);
 
-    void rotmg (Block p, Block args);
+    void rotmg (Vector p, Vector args);
 
-    void rotm (Block x, Block y, Block p);
+    void rotm (Vector x, Vector y, Block p);
 
     void swap (Block x, Block y);
 
     void copy (Block x, Block y);
 
-    Object dot (Block x, Block y);
+    Object dot (Vector x, Vector y);
 
-    Object nrm2 (Block x);
+    Object nrm2 (Vector x);
 
-    Object asum (Block x);
+    Object asum (Vector x);
 
-    void rot (Block x, Block y, double c, double s);
+    void rot (Vector x, Vector y, double c, double s);
 
     void scal (Object alpha, Block x);
 
     void axpy (Object alpha, Block x, Block y);
 
-    void mv (Object alpha, Block a, Block x, Object beta, Block y);
+    void mv (Object alpha, Matrix a, Vector x, Object beta, Vector y);
 
-    void mv (Block a, Block x);
+    void mv (Matrix a, Vector x);
 
-    void rank (Object alpha, Block x, Block y, Block a);
+    void rank (Object alpha, Vector x, Vector y, Matrix a);
 
-    void mm (Object alpha, Block a, Block b, Object beta, Block c);
+    void mm (Object alpha, Matrix a, Matrix b, Object beta, Matrix c);
 
-    void mm (Object alpha, Block a, Block b, Object beta, Block c, boolean right);
+    void mm (Object alpha, Matrix a, Matrix b, Object beta, Matrix c, boolean right);
 
-    void mm (Object alpha, Block a, Block b, boolean right);
+    void mm (Object alpha, Matrix a, Matrix b, boolean right);
 
 }

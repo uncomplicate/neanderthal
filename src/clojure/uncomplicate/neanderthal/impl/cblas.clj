@@ -10,24 +10,16 @@
   (:require [vertigo.bytes :refer [direct-buffer]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [dim ecount]]
+             [core :refer [dim]]
              [block :refer [order buffer offset stride]]]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.protocols
-            BLAS BLASPlus Vector Matrix RealVector DataAccessor BufferAccessor]))
+            BLAS BLASPlus DataAccessor BufferAccessor Block
+            Vector RealVector ContiguousBlock GEMatrix TRMatrix]))
 
 ;; =============== Common vector engine  macros and functions ==================
-
-(defmacro ^:private vector-swap-copy [method x y]
-  `(~method (dim ~x) (buffer ~x) 0 (stride ~x) (buffer ~y) 0 (stride ~y)))
-
-(defmacro ^:private vector-axpy [method alpha x y]
-  `(~method (dim ~x) ~alpha (buffer ~x) (stride ~x) (buffer ~y) (stride ~y)))
-
-(defmacro ^:private vector-scal [method alpha x]
-  `(~method (dim ~x) ~alpha (buffer ~x) (stride ~x)))
 
 (defmacro ^:private vector-rotg [method x]
   `(if (= 1 (stride ~x))
@@ -68,39 +60,59 @@
 
 ;; =============== Common matrix macros and functions ==========================
 
-(defmacro ^:private matrix-swap-copy [method a b]
-  `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
-     (if (and (= (order ~a) (order ~b))
-              (= (if (= COLUMN_MAJOR (order ~a)) (.mrows ~a) (.ncols ~a))
-                 (stride ~a) (stride ~b)))
-       (~method (* (.mrows ~a) (.ncols ~a)) (buffer ~a) 0 1 (buffer ~b) 0 1)
-       (if (= COLUMN_MAJOR (order ~a))
-         (dotimes [i# (.ncols ~a)]
-           (vector-swap-copy ~method (.col ~a i#) (.col ~b i#)))
-         (dotimes [i# (.mrows ~a)]
-           (vector-swap-copy ~method (.row ~a i#) (.row ~b i#)))))))
+(defn ^:private slice [^BufferAccessor da buff ^long k ^long l]
+  (.slice da buff k l))
 
-(defmacro ^:private matrix-scal [method alpha a]
-  `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
-     (if (= (if (= COLUMN_MAJOR (order ~a)) (.mrows ~a) (.ncols ~a)) (stride ~a))
-       (~method (* (.mrows ~a) (.ncols ~a)) ~alpha (buffer ~a) 1)
-       (if (+ COLUMN_MAJOR (order ~a))
-         (dotimes [i# (.ncols ~a)]
-           (vector-scal ~method ~alpha (.col ~a i#)))
-         (dotimes [i# (.mrows ~a)]
-           (vector-scal ~method ~alpha (.row ~a i#)))))))
+(defmacro ^:private ge-swap-copy [method a b]
+  `(when (< 0 (.count ~a))
+     (let [ld-a# (.stride ~a)
+           sd-a# (.sd ~a)
+           fd-a# (.fd ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           sd-b# (.sd ~b)
+           fd-b# (.fd ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (if (= sd-a# sd-b# ld-a# ld-b#)
+           (~method (.count ~a) buff-a# 0 1 buff-b# 0 1)
+           (dotimes [i# fd-a#]
+             (~method sd-a# buff-a# (* ld-a# i#) 1 buff-b# (* ld-b# i#) 1)))
+         (dotimes [i# fd-a#]
+           (~method sd-a# buff-a# (* ld-a# i#) 1 buff-b# i# fd-b#))))))
 
-(defmacro ^:private matrix-axpy [method alpha a b]
-  `(when (< 0 (* (.mrows ~a) (.ncols ~a)))
-     (if (and (= (order ~a) (order ~b))
-              (= (if (= COLUMN_MAJOR (order ~a)) (.mrows ~a) (.ncols ~a))
-                 (stride ~a) (stride ~b)))
-       (~method (* (.mrows ~a) (.ncols ~a)) ~alpha (buffer ~a) 1 (buffer ~b) 1)
-       (if (= COLUMN_MAJOR (order ~a))
-         (dotimes [i# (.ncols ~a)]
-           (vector-axpy ~method ~alpha (.col ~a i#) (.col ~b i#)))
-         (dotimes [i# (.mrows ~a)]
-           (vector-axpy ~method ~alpha (.row ~a i#) (.row ~b i#)))))))
+(defmacro ^:private ge-scal [da method alpha a]
+  `(when (< 0 (.count ~a))
+     (let [ld# (.stride ~a)
+           sd# (.sd ~a)
+           fd# (.fd ~a)
+           buff# (.buffer ~a)]
+       (if (= sd# ld#)
+         (~method (.count ~a) ~alpha buff# 1)
+         (dotimes [i# fd#]
+           (~method sd# ~alpha (.slice ~da buff# (* ld# i#) sd#) 1))))))
+
+(defmacro ^:private ge-axpy [da method alpha a b]
+  `(when (< 0 (.count ~a))
+     (let [ld-a# (.stride ~a)
+           sd-a# (.sd ~a)
+           fd-a# (.fd ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           sd-b# (.sd ~b)
+           fd-b# (.fd ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (if (= sd-a# sd-b# ld-a# ld-b#)
+           (~method (.count ~a) ~alpha buff-a# 1 buff-b# 1)
+           (dotimes [i# fd-a#]
+             (~method sd-a# ~alpha
+              (.slice ~da buff-a# (* ld-a# i#) sd-a#) 1
+              (.slice ~da buff-b# (* ld-b# i#) sd-b#) 1)))
+         (dotimes [i# fd-b#]
+           (~method sd-a# ~alpha
+            (.slice ~da buff-a# i# (inc (* (dec fd-a#) ld-a#))) fd-a#
+            (.slice ~da buff-b# (* ld-b# i#) sd-b#) 1))))))
 
 ;; ============ Real Vector Engines ============================================
 
@@ -111,15 +123,15 @@
   (copy [_ x y]
     (CBLAS/dcopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (dot [_ x y]
-    (CBLAS/ddot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (CBLAS/ddot (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y)))
   (nrm2 [_ x]
-    (CBLAS/dnrm2 (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/dnrm2 (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (asum [_ x]
-    (CBLAS/dasum (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/dasum (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (iamax [_ x]
-    (CBLAS/idamax (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/idamax (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (rot [_ x y c s]
-    (CBLAS/drot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y) c s))
+    (CBLAS/drot (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y) c s))
   (rotg [_ x]
     (vector-rotg CBLAS/drotg x))
   (rotm [_ x y p]
@@ -135,7 +147,7 @@
   (subcopy [_ x y kx lx ky]
     (CBLAS/dcopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
   (sum [_ x]
-    (CBLAS/dsum (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/dsum (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (imax [_ x]
     (vector-imax x))
   (imin [_ x]
@@ -148,15 +160,15 @@
   (copy [_ x y]
     (CBLAS/scopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
   (dot [_ x y]
-    (CBLAS/dsdot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+    (CBLAS/dsdot (.dim x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y)))
   (nrm2 [_ x]
-    (CBLAS/snrm2 (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/snrm2 (.dim x) (.buffer ^Block x) (.stride ^Block x)))
   (asum [_ x]
-    (CBLAS/sasum (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/sasum (.dim x) (.buffer ^Block x) (.stride ^Block x)))
   (iamax [_ x]
-    (CBLAS/isamax (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/isamax (.dim x) (.buffer ^Block x) (.stride ^Block x)))
   (rot [_ x y c s]
-    (CBLAS/srot (.dim ^Vector x) (.buffer x) (.stride x) (.buffer y) (.stride y) c s))
+    (CBLAS/srot (.dim x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y) c s))
   (rotg [_ x]
     (vector-rotg CBLAS/srotg x))
   (rotm [_ x y p]
@@ -172,7 +184,7 @@
   (subcopy [_ x y kx lx ky]
     (CBLAS/scopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
   (sum [_ x]
-    (CBLAS/ssum (.dim ^Vector x) (.buffer x) (.stride x)))
+    (CBLAS/ssum (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (imax [_ x]
     (vector-imax x))
   (imin [_ x]
@@ -180,123 +192,127 @@
 
 ;; ================= General Matrix Engines ====================================
 
-(deftype DoubleGeneralMatrixEngine []
+(deftype DoubleGEEngine []
   BLAS
   (swap [_ a b]
-    (matrix-swap-copy CBLAS/dswap ^Matrix a ^Matrix b))
+    (ge-swap-copy CBLAS/dswap ^GEMatrix a ^GEMatrix b))
   (copy [_ a b]
-    (matrix-swap-copy CBLAS/dcopy ^Matrix a ^Matrix b))
+    (ge-swap-copy CBLAS/dcopy ^GEMatrix a ^GEMatrix b))
   (scal [_ alpha a]
-    (matrix-scal CBLAS/dscal alpha ^Matrix a))
+    (ge-scal ^BufferAccessor (data-accessor a) CBLAS/dscal alpha ^GEMatrix a))
   (axpy [_ alpha a b]
-    (matrix-axpy CBLAS/daxpy alpha ^Matrix a ^Matrix b))
+    (ge-axpy ^BufferAccessor (data-accessor a) CBLAS/daxpy alpha ^GEMatrix a ^GEMatrix b))
   (mv [_ alpha a x beta y]
-    (CBLAS/dgemv (.order a) NO_TRANS
-                 (.mrows ^Matrix a) (.ncols ^Matrix a)
-                 alpha (.buffer a) (.stride a) (.buffer x) (.stride x)
-                 beta (.buffer y) (.stride y)))
+    (CBLAS/dgemv (.order ^GEMatrix a) NO_TRANS
+                 (.mrows ^GEMatrix a) (.ncols ^GEMatrix a)
+                 alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
+                 (.buffer ^Block x) (.stride ^Block x)
+                 beta (.buffer ^Block y) (.stride ^Block y)))
   (mv [this a x]
     (.mv this 1.0 a x 0.0 x))
   (rank [_ alpha x y a]
-    (CBLAS/dger (.order a) (.mrows ^Matrix a) (.ncols ^Matrix a)
-                alpha (.buffer x) (.stride x) (.buffer y) (.stride y)
-                (.buffer a) (.stride a)))
+    (CBLAS/dger (.order ^GEMatrix a) (.mrows a) (.ncols a)
+                alpha (.buffer ^Block x) (.stride ^Block x)
+                (.buffer ^Block y) (.stride ^Block y)
+                (.buffer ^GEMatrix a) (.stride ^GEMatrix a)))
   (mm [_ alpha a b beta c]
-    (CBLAS/dgemm (.order c)
-                 (if (= (.order a) (.order c)) NO_TRANS TRANS)
-                 (if (= (.order b) (.order c)) NO_TRANS TRANS)
-                 (.mrows ^Matrix a) (.ncols ^Matrix b) (.ncols ^Matrix a)
-                 alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
-                 beta (.buffer c) (.stride c))))
+    (CBLAS/dgemm (.order ^GEMatrix c)
+                 (if (= (.order ^GEMatrix a) (.order ^GEMatrix c)) NO_TRANS TRANS)
+                 (if (= (.order ^GEMatrix b) (.order ^GEMatrix c)) NO_TRANS TRANS)
+                 (.mrows ^GEMatrix a) (.ncols ^GEMatrix b) (.ncols ^GEMatrix a)
+                 alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
+                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b)
+                 beta (.buffer ^GEMatrix c) (.stride ^GEMatrix c))))
 
-(deftype SingleGeneralMatrixEngine []
+(deftype SingleGEEngine []
   BLAS
   (swap [_ a b]
-    (matrix-swap-copy CBLAS/sswap ^Matrix a ^Matrix b))
+    (ge-swap-copy CBLAS/sswap ^GEMatrix a ^GEMatrix b))
   (copy [_ a b]
-    (matrix-swap-copy CBLAS/scopy ^Matrix a ^Matrix b))
+    (ge-swap-copy CBLAS/scopy ^GEMatrix a ^GEMatrix b))
   (scal [_ alpha a]
-    (matrix-scal CBLAS/sscal alpha ^Matrix a))
+    (ge-scal ^BufferAccessor (data-accessor a) CBLAS/sscal alpha ^GEMatrix a))
   (axpy [_ alpha a b]
-    (matrix-axpy CBLAS/saxpy alpha ^Matrix a ^Matrix b))
+    (ge-axpy ^BufferAccessor (data-accessor a) CBLAS/saxpy alpha ^GEMatrix a ^GEMatrix b))
   (mv [_ alpha a x beta y]
-    (CBLAS/sgemv (.order a) NO_TRANS
-                 (.mrows ^Matrix a) (.ncols ^Matrix a)
-                 alpha (.buffer a) (.stride a) (.buffer x) (.stride x)
-                 beta (.buffer y) (.stride y)))
+    (CBLAS/sgemv (.order ^GEMatrix a) NO_TRANS (.mrows a) (.ncols a)
+                 alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
+                 (.buffer ^Block x) (.stride ^Block x)
+                 beta (.buffer ^Block y) (.stride ^Block y)))
   (mv [this a x]
     (.mv this 1.0 a x 0.0 x))
   (rank [_ alpha x y a]
-    (CBLAS/sger (.order a) (.mrows ^Matrix a) (.ncols ^Matrix a)
-                alpha (.buffer x) (.stride x) (.buffer y) (.stride y)
-                (.buffer a) (.stride a)))
+    (CBLAS/sger (.order ^GEMatrix a) (.mrows a) (.ncols a)
+                alpha (.buffer ^Block x) (.stride ^Block x)
+                (.buffer ^Block y) (.stride ^Block y)
+                (.buffer ^GEMatrix a) (.stride ^GEMatrix a)))
   (mm [_ alpha a b beta c]
-    (CBLAS/sgemm (.order c)
-                 (if (= (.order a) (.order c)) NO_TRANS TRANS)
-                 (if (= (.order b) (.order c)) NO_TRANS TRANS)
-                 (.mrows ^Matrix a) (.ncols ^Matrix b) (.ncols ^Matrix a)
-                 alpha (.buffer a) (.stride a) (.buffer b) (.stride b)
-                 beta (.buffer c) (.stride c))))
+    (CBLAS/sgemm (.order ^GEMatrix c)
+                 (if (= (.order ^GEMatrix a) (.order ^GEMatrix c)) NO_TRANS TRANS)
+                 (if (= (.order ^GEMatrix b) (.order ^GEMatrix c)) NO_TRANS TRANS)
+                 (.mrows a) (.ncols b) (.ncols a)
+                 alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
+                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b)
+                 beta (.buffer ^GEMatrix c) (.stride ^GEMatrix c))))
 
 ;; ================= Triangular Matrix Engines =================================
 
-(deftype DoubleTriangularMatrixEngine []
+(deftype DoubleTREngine []
   BLAS
   (mv [_ a x]
-    (CBLAS/dtrmv (.order a) (.uplo a) NO_TRANS (.diag a)
-                 (.ncols ^Matrix a)
-                 (.buffer a) (.stride a) (.buffer x) (.stride x)))
+    (CBLAS/dtrmv (.order ^TRMatrix a) (.uplo ^TRMatrix a) NO_TRANS (.diag ^TRMatrix a)
+                 (.ncols a)
+                 (.buffer ^TRMatrix a) (.stride ^TRMatrix a) (.buffer ^Block x) (.stride ^Block x)))
   (mm [_ alpha a b right]
-    (CBLAS/dtrmm (.order b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
-                 (.uplo a)
-                 (if (= (.order a) (.order b)) NO_TRANS TRANS)
-                 (.diag a)
-                 (.mrows ^Matrix b) (.ncols ^Matrix b)
-                 alpha (.buffer a) (.stride a) (.buffer b) (.stride b))))
+    (CBLAS/dtrmm (.order ^GEMatrix b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
+                 (.uplo ^TRMatrix a)
+                 (if (= (.order ^TRMatrix a) (.order ^GEMatrix b)) NO_TRANS TRANS)
+                 (.diag ^TRMatrix a)
+                 (.mrows b) (.ncols b)
+                 alpha (.buffer ^TRMatrix a) (.stride ^TRMatrix a)
+                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b))))
 
-(deftype SingleTriangularMatrixEngine []
+(deftype SingleTREngine []
   BLAS
   (mv [_ a x]
-    (CBLAS/strmv (.order a) (.uplo a) NO_TRANS (.diag a)
-                 (.ncols ^Matrix a)
-                 (.buffer a) (.stride a) (.buffer x) (.stride x)))
+    (CBLAS/strmv (.order ^TRMatrix a) (.uplo ^TRMatrix a) NO_TRANS (.diag ^TRMatrix a)
+                 (.ncols a)
+                 (.buffer ^TRMatrix a) (.stride ^TRMatrix a) (.buffer ^Block x) (.stride ^Block x)))
   (mm [_ alpha a b right]
-    (CBLAS/strmm (.order b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
-                 (.uplo a)
-                 (if (= (.order a) (.order b)) NO_TRANS TRANS)
-                 (.diag a)
-                 (.mrows ^Matrix b) (.ncols ^Matrix b)
-                 alpha (.buffer a) (.stride a) (.buffer b) (.stride b))))
+    (CBLAS/strmm (.order ^GEMatrix b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
+                 (.uplo ^TRMatrix a)
+                 (if (= (.order ^TRMatrix a) (.order ^GEMatrix b)) NO_TRANS TRANS)
+                 (.diag ^TRMatrix a)
+                 (.mrows b) (.ncols b)
+                 alpha (.buffer ^TRMatrix a) (.stride ^TRMatrix a)
+                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b))))
 
 ;; =============== Factories ==================================================
 
-(deftype CblasFactory [^DataAccessor acc ^BLAS vector-eng ^BLAS matrix-eng
-                       ^BLAS tr-matrix-eng]
+(deftype CblasFactory [^DataAccessor da ^BLAS vector-eng ^BLAS ge-eng ^BLAS tr-eng]
   DataAccessorProvider
   (data-accessor [_]
-    acc)
+    da)
   MemoryContext
   (compatible [_ o]
-    (compatible acc o))
+    (compatible da o))
   Factory
   (create-vector [this n buf _]
-    (if (and (<= 0 (long n) (.count acc buf))
+    (if (and (<= 0 (long n) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (->RealBlockVector this acc vector-eng (.entryType acc) true buf n 1)
+      (->RealBlockVector this da vector-eng (.entryType da) true buf n 1)
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
-                      n (.count acc buf) (class buf))))))
-  (create-matrix [this m n buf options]
-    (if (and (<= 0 (* (long m) (long n)) (.count acc buf))
+                      n (.count da buf) (class buf))))))
+  (create-ge [this m n buf options]
+    (if (and (<= 0 (* (long m) (long n)) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (let [ord (enc-order (:order options))
-            ld (max (long (if (= COLUMN_MAJOR ord) m n)) 1)]
-        (real-ge-matrix this true buf m n ld ord))
+      (real-ge-matrix this true buf m n 0 (enc-order (:order options)))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d general matrix from %s."
                       m n (type buf))))))
-  (create-tr-matrix [this n buf options]
-    (if (and (<= 0 (* (long n) (long n)) (.count acc buf))
+  (create-tr [this n buf options]
+    (if (and (<= 0 (* (long n) (long n)) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
       (let [ord (enc-order (:order options))
             uplo (enc-uplo (:uplo options))
@@ -307,19 +323,19 @@
                       n n (type buf))))))
   (vector-engine [_]
     vector-eng)
-  (matrix-engine [_]
-    matrix-eng)
-  (tr-matrix-engine [_]
-    tr-matrix-eng))
+  (ge-engine [_]
+    ge-eng)
+  (tr-engine [_]
+    tr-eng))
 
 (def cblas-single
   (->CblasFactory (->FloatBufferAccessor)
                   (->SingleVectorEngine)
-                  (->SingleGeneralMatrixEngine)
-                  (->SingleTriangularMatrixEngine)))
+                  (->SingleGEEngine)
+                  (->SingleTREngine)))
 
 (def cblas-double
   (->CblasFactory (->DoubleBufferAccessor)
                   (->DoubleVectorEngine)
-                  (->DoubleGeneralMatrixEngine)
-                  (->DoubleTriangularMatrixEngine)))
+                  (->DoubleGEEngine)
+                  (->DoubleTREngine)))

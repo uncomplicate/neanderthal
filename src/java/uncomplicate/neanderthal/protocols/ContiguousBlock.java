@@ -8,16 +8,12 @@
 
 package uncomplicate.neanderthal.protocols;
 
-public interface Block {
+public interface ContiguousBlock extends Block, Matrix {
 
-    Object entryType ();
+    long sd ();
 
-    Object buffer ();
+    long fd ();
 
-    long offset ();
-
-    long stride ();
-
-    long count ();
+    long order ();
 
 }

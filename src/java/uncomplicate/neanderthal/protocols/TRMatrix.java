@@ -8,16 +8,9 @@
 
 package uncomplicate.neanderthal.protocols;
 
-public interface Block {
+public interface TRMatrix extends Block, ContiguousBlock {
 
-    Object entryType ();
+    long uplo ();
 
-    Object buffer ();
-
-    long offset ();
-
-    long stride ();
-
-    long count ();
-
+    long diag ();
 }

@@ -17,7 +17,7 @@
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
             IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
-           [uncomplicate.neanderthal.protocols
+           [uncomplicate.neanderthal.protocols GEMatrix
             BLASPlus RealVector RealMatrix Vector Matrix RealChangeable Block]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
@@ -176,12 +176,12 @@
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
 
-(defn matrix-op* [^Matrix a & bs]
-  (let-release [res ^Matrix (if (= COLUMN_MAJOR (.order ^Block a))
-                              (create-raw (factory a)
-                                          (.mrows a)
-                                          (transduce (map ncols) + (.ncols a) bs))
-                              (trans (create-raw (factory a)
+(defn matrix-op* [^GEMatrix a & bs]
+  (let-release [res ^GEMatrix (if (= COLUMN_MAJOR (.order ^GEMatrix a))
+                                (create-raw (factory a)
+                                            (.mrows a)
+                                            (transduce (map ncols) + (.ncols a) bs))
+                                (trans (create-raw (factory a)
                                                  (.ncols a)
                                                  (transduce (map mrows) + (.mrows a) bs))))]
     (let [column-reducer
@@ -202,7 +202,7 @@
             (+ pos (.mrows w)))]
       (.copy ^BLASPlus (engine a) a
              (.submatrix ^Matrix res 0 0 (.mrows a) (.ncols a)))
-      (if (= COLUMN_MAJOR (.order ^Block a))
+      (if (= COLUMN_MAJOR (.order ^GEMatrix a))
         (reduce column-reducer (.ncols a) bs)
         (reduce row-reducer (.mrows a) bs))
       res)))

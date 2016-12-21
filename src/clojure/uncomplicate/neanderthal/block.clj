@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.block
-  (:import [uncomplicate.neanderthal.protocols Block]))
+  (:import [uncomplicate.neanderthal.protocols Block ContiguousBlock]))
 
 (defn entry-type [^Block x]
   (.entryType x))
@@ -21,14 +21,18 @@
 (defn stride ^long [^Block x]
   (.stride x))
 
-(defn order ^long [^Block x]
+(defn order ^long [^ContiguousBlock x]
   (.order x))
-
-(defn uplo ^long [^Block x]
-  (.uplo x))
-
-(defn diag ^long [^Block x]
-  (.diag x))
 
 (defn block? [x]
   (instance? Block x))
+
+(defn ecount
+  "Returns the total number of elements in all dimensions of a block x
+  of (possibly strided) memory.
+
+  (ecount (dv 1 2 3)) => 3
+  (ecount (dge 2 3)) => 6
+  "
+  ^long [^Block x]
+  (.count x))

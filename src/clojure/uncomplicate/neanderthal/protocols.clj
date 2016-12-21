@@ -16,11 +16,11 @@
 
 (defprotocol Factory
   (create-vector [this n source options]);;TODO remove options
-  (create-matrix [this m n source options]);;TODO rename to create-ge-matrix
-  (create-tr-matrix [this n source options])
+  (create-ge [this m n source options])
+  (create-tr [this n source options])
   (vector-engine [this])
-  (matrix-engine [this]);; rename to ge-matrix-engine
-  (tr-matrix-engine [this]))
+  (ge-engine [this])
+  (tr-engine [this]))
 
 (defprotocol EngineProvider
   (engine ^BLAS [this]))

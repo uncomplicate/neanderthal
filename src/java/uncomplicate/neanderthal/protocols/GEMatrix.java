@@ -8,16 +8,6 @@
 
 package uncomplicate.neanderthal.protocols;
 
-public interface Block {
-
-    Object entryType ();
-
-    Object buffer ();
-
-    long offset ();
-
-    long stride ();
-
-    long count ();
+public interface GEMatrix extends Block, ContiguousBlock {
 
 }
