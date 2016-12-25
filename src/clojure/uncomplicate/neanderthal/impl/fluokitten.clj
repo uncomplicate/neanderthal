@@ -12,7 +12,7 @@
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [copy create-raw trans dim ncols mrows col row]]
+             [core :refer [vctr ge copy trans dim ncols mrows col row]]
              [real :refer [sum]]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
             IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
@@ -93,7 +93,7 @@
     `(throw (UnsupportedOperationException. "Vector foldmap supports up to 4 vectors."))))
 
 (defn ^:private vector-op* [^Vector x & ws]
-  (let-release [res ^Vector (create-raw (factory x) (transduce (map dim) + (.dim x) ws))]
+  (let-release [res (vctr (factory x) (transduce (map dim) + (.dim x) ws))]
     (loop [pos 0 w x ws ws]
       (when w
         (if (compatible res w)
@@ -177,34 +177,21 @@
 
 
 (defn matrix-op* [^GEMatrix a & bs]
-  (let-release [res ^GEMatrix (if (= COLUMN_MAJOR (.order ^GEMatrix a))
-                                (create-raw (factory a)
-                                            (.mrows a)
-                                            (transduce (map ncols) + (.ncols a) bs))
-                                (trans (create-raw (factory a)
-                                                 (.ncols a)
-                                                 (transduce (map mrows) + (.mrows a) bs))))]
-    (let [column-reducer
-          (fn ^long [^long pos ^Matrix w]
-            (if (compatible res w)
-              (.copy ^BLASPlus (engine w) w
-                     (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))
-              (throw (IllegalArgumentException.
-                      (format INCOMPATIBLE_BLOCKS_MSG res w))))
-            (+ pos (.ncols w)))
-          row-reducer
-          (fn ^long [^long pos ^Matrix w]
-            (if (compatible res w)
-              (.copy ^BLASPlus (engine w) w
-                     (.submatrix ^Matrix res pos 0 (.mrows w) (.ncols w)))
-              (throw (IllegalArgumentException.
-                      (format INCOMPATIBLE_BLOCKS_MSG res w))))
-            (+ pos (.mrows w)))]
+  (let [no-transp (= COLUMN_MAJOR (.order ^GEMatrix a))
+        [m n] (if no-transp [mrows ncols] [ncols mrows])]
+    (let-release [res ((if no-transp identity trans)
+                       (ge (factory a) (m a) (transduce (map n) + (n a) bs)))]
       (.copy ^BLASPlus (engine a) a
              (.submatrix ^Matrix res 0 0 (.mrows a) (.ncols a)))
-      (if (= COLUMN_MAJOR (.order ^GEMatrix a))
-        (reduce column-reducer (.ncols a) bs)
-        (reduce row-reducer (.mrows a) bs))
+      (reduce (fn ^long [^long pos ^Matrix w]
+                (if (compatible res w)
+                  (.copy ^BLASPlus (engine w) w
+                         (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))
+                  (throw (IllegalArgumentException.
+                          (format INCOMPATIBLE_BLOCKS_MSG res w))))
+                (+ pos (long (n w))))
+              (n a)
+              bs)
       res)))
 
 (defn matrix-op

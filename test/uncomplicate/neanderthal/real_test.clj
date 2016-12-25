@@ -22,142 +22,142 @@
 
 (defn test-group [factory]
   (facts "Group methods."
-         (let [x (create-vector factory [1 2 3])
-               y (create-vector factory [2 3 4])]
+         (let [x (vctr factory [1 2 3])
+               y (vctr factory [2 3 4])]
 
-           (zero x) => (create-vector factory [0 0 0])
+           (zero x) => (vctr factory [0 0 0])
            (identical? x (zero x)) => false)
 
-         (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-               ac (create-ge-matrix factory 2 3 [0 0 0 0 0 0])]
+         (let [a (ge factory 2 3 [1 2 3 4 5 6])
+               ac (ge factory 2 3 [0 0 0 0 0 0])]
            (zero a) => ac
            (identical? a (zero a)) => false)))
 
 (defn test-ge-matrix [factory]
   (facts "General Matrix methods."
-         (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
+         (let [a (ge factory 2 3 [1 2 3 4 5 6])]
            (mrows a) => 2
            (ncols a) => 3
 
-           (row a 1) => (create-vector factory [2 4 6])
+           (row a 1) => (vctr factory [2 4 6])
 
-           (col a 1) => (create-vector factory [3 4]))))
+           (col a 1) => (vctr factory [3 4]))))
 
 (defn test-tr [factory]
   (facts "Triangular Matrix methods."
-         (let [a (create-ge-matrix factory 5 3 (range 15))
+         (let [a (ge factory 5 3 (range 15))
                a-upper (subtriangle a {:uplo :upper})
                a-lower (subtriangle a)]
            (= 3 (mrows a-upper) (ncols a-lower)) => true
-           (row a-upper 0) => (create-vector factory [0 5 10])
-           (row a-upper 2) => (create-vector factory [12])
-           (col a-upper 0) => (create-vector factory [0])
-           (col a-upper 2) => (create-vector factory [10 11 12])
-           (row a-lower 0) => (create-vector factory [0])
-           (row a-lower 2) => (create-vector factory [2 7 12])
-           (col a-lower 0) => (create-vector factory [0 1 2])
-           (col a-lower 2) => (create-vector factory [12]))))
+           (row a-upper 0) => (vctr factory [0 5 10])
+           (row a-upper 2) => (vctr factory [12])
+           (col a-upper 0) => (vctr factory [0])
+           (col a-upper 2) => (vctr factory [10 11 12])
+           (row a-lower 0) => (vctr factory [0])
+           (row a-lower 2) => (vctr factory [2 7 12])
+           (col a-lower 0) => (vctr factory [0 1 2])
+           (col a-lower 2) => (vctr factory [12]))))
 
 ;; ============= Matrices and Vectors ======================================
 
 (defn test-vector-constructor [factory]
   (facts "Create a real vector."
-         (vect? (create-vector factory [1 2 3])) => true
-         (create-vector factory 1 2 3) => (create-vector factory [1 2 3])
-         (create-vector factory 3) => (create-vector factory [0 0 0])
-         ;;(create-vector factory (seq-to-buffer (data-accessor factory) [1 2 3]))
-         ;;=> (create-vector factory [1 2 3])
-         (create-vector factory nil) => (throws IllegalArgumentException)
-         (dim (create-vector factory [])) => 0
-         (create-vector factory 3) => (zero (create-vector factory [1 2 3]))))
+         (vect? (vctr factory [1 2 3])) => true
+         (vctr factory 1 2 3) => (vctr factory [1 2 3])
+         (vctr factory 3) => (vctr factory [0 0 0])
+         ;;(vctr factory (seq-to-buffer (data-accessor factory) [1 2 3]))
+         ;;=> (vctr factory [1 2 3])
+         (vctr factory nil) => (throws IllegalArgumentException)
+         (dim (vctr factory [])) => 0
+         (vctr factory 3) => (zero (vctr factory [1 2 3]))))
 
 (defn test-vector [factory]
   (facts "General vector functions."
-         (dim (create-vector factory [1 2 3])) => 3
-         (dim (create-vector factory [])) => 0
+         (dim (vctr factory [1 2 3])) => 3
+         (dim (vctr factory [])) => 0
 
-         (subvector (create-vector factory 1 2 3 4 5 6) 1 3)
-         => (create-vector factory 2 3 4)
-         (subvector (create-vector factory 1 2 3) 2 3)
+         (subvector (vctr factory 1 2 3 4 5 6) 1 3)
+         => (vctr factory 2 3 4)
+         (subvector (vctr factory 1 2 3) 2 3)
          => (throws IndexOutOfBoundsException)))
 
 (defn test-vector-entry [factory]
   (facts "Vectory entry."
-         (entry (create-vector factory [1 2 3]) 1) => 2.0
-         (entry (create-vector factory []) 0)
+         (entry (vctr factory [1 2 3]) 1) => 2.0
+         (entry (vctr factory []) 0)
          => (throws IndexOutOfBoundsException)))
 
 (defn test-vector-entry! [factory]
   (facts "Vectory entry!."
-         (entry (entry! (create-vector factory [1 2 3]) 1 77.0) 1) => 77.0))
+         (entry (entry! (vctr factory [1 2 3]) 1 77.0) 1) => 77.0))
 
 (defn test-vector-bulk-entry! [factory]
   (facts "Vectory entry!."
-         (sum (entry! (create-vector factory [1 2 3]) 77.0)) => 231.0))
+         (sum (entry! (vctr factory [1 2 3]) 77.0)) => 231.0))
 
 ;;================ BLAS functions =========================================
 
 (defn test-dot [factory]
   (facts "BLAS 1 dot."
-         (dot (create-vector factory [1 2 3]) (create-vector factory [10 30 -10]))
+         (dot (vctr factory [1 2 3]) (vctr factory [10 30 -10]))
          => 40.0
-         (dot (create-vector factory [1 2 3]) nil)
+         (dot (vctr factory [1 2 3]) nil)
          => (throws IllegalArgumentException)
-         (dot (create-vector factory []) (create-vector factory [])) => 0.0
-         (dot (create-vector factory [1]) (create-ge-matrix factory 3 3))
+         (dot (vctr factory []) (vctr factory [])) => 0.0
+         (dot (vctr factory [1]) (ge factory 3 3))
          => (throws ClassCastException)
-         (dot (create-vector factory [1 2]) (create-vector factory [1 2 3]))
+         (dot (vctr factory [1 2]) (vctr factory [1 2 3]))
          => (throws IllegalArgumentException)))
 
 (defn test-nrm2 [factory]
   (facts "BLAS 1 nrm2."
-         (nrm2 (create-vector factory [1 2 3]))  => (roughly (Math/sqrt 14))
-         (nrm2 (create-vector factory [])) => 0.0))
+         (nrm2 (vctr factory [1 2 3]))  => (roughly (Math/sqrt 14))
+         (nrm2 (vctr factory [])) => 0.0))
 
 (defn test-asum [factory]
   (facts "BLAS 1 asum."
-         (asum (create-vector factory [1 2 -3]))  => 6.0
-         (asum (create-vector factory [])) => 0.0))
+         (asum (vctr factory [1 2 -3]))  => 6.0
+         (asum (vctr factory [])) => 0.0))
 
 (defn test-sum [factory]
   (facts "BLAS Plus 1 sum."
-         (sum (create-vector factory [1 2 -5]))  => -2.0
-         (sum (create-vector factory [])) => 0.0))
+         (sum (vctr factory [1 2 -5]))  => -2.0
+         (sum (vctr factory [])) => 0.0))
 
 (defn test-iamax [factory]
   (facts "BLAS 1 iamax"
-         (iamax (create-vector factory [1 2 7 7 6 2 -12 10])) => 6
-         (iamax (create-vector factory [])) => 0
-         (iamax (create-vector factory [4 6 7 3])) => 2))
+         (iamax (vctr factory [1 2 7 7 6 2 -12 10])) => 6
+         (iamax (vctr factory [])) => 0
+         (iamax (vctr factory [4 6 7 3])) => 2))
 
 (defn test-imax [factory]
   (facts "BLAS 1 imax"
-         (imax (create-vector factory [1 2 7 7 6 2 -10 10])) => 7
-         (imax (create-vector factory [])) => 0
-         (imax (create-vector factory [4 6 7 3])) => 2))
+         (imax (vctr factory [1 2 7 7 6 2 -10 10])) => 7
+         (imax (vctr factory [])) => 0
+         (imax (vctr factory [4 6 7 3])) => 2))
 
 (defn test-imin [factory]
   (facts "BLAS 1 imin"
-         (imin (create-vector factory [1 2 7 7 6 2 -12 10])) => 6
-         (imin (create-vector factory [])) => 0
-         (imin (create-vector factory [4 6 7 3])) => 3))
+         (imin (vctr factory [1 2 7 7 6 2 -12 10])) => 6
+         (imin (vctr factory [])) => 0
+         (imin (vctr factory [4 6 7 3])) => 3))
 
 (defn test-rot [factory]
   (facts "BLAS 1 rot!"
-         (let [x (create-vector factory [1 2 3 4 5])
-               y (create-vector factory [-1 -2 -3 -4 -5])]
+         (let [x (vctr factory [1 2 3 4 5])
+               y (vctr factory [-1 -2 -3 -4 -5])]
            (do (rot! x y 1 0) [x y])
-           => [(create-vector factory 1 2 3 4 5)
-               (create-vector factory -1 -2 -3 -4 -5)]
+           => [(vctr factory 1 2 3 4 5)
+               (vctr factory -1 -2 -3 -4 -5)]
 
            (do (rot! x y 0.5 (/ (sqrt 3) 2.0)) [x y]
-               (+ (double (nrm2 (axpy -1 x (create-vector factory
+               (+ (double (nrm2 (axpy -1 x (vctr factory
                                                           -0.3660254037844386
                                                           -0.7320508075688772
                                                           -1.098076211353316
                                                           -1.4641016151377544
                                                           -1.8301270189221928))))
-                  (double (nrm2 (axpy -1 y (create-vector factory
+                  (double (nrm2 (axpy -1 y (vctr factory
                                                           -1.3660254037844386
                                                           -2.732050807568877
                                                           -4.098076211353316
@@ -166,21 +166,21 @@
            => (roughly 0 1e-6)
 
            (rot! x y (/ (sqrt 3) 2.0)  0.5) => x
-           (rot! x (create-vector factory 1) 0.5 0.5)
+           (rot! x (vctr factory 1) 0.5 0.5)
            => (throws IllegalArgumentException)
            (rot! x y 300 0.3) => (throws IllegalArgumentException)
            (rot! x y 0.5 0.5) => (throws IllegalArgumentException))))
 
 (defn test-rotg [factory]
   (facts "BLAS 1 rotg!"
-         (let [x (create-vector factory 1 2 3 4)]
+         (let [x (vctr factory 1 2 3 4)]
            (rotg! x) => x)
-         (rotg! (create-vector factory 0 0 0 0))
-         => (create-vector factory 0 0 1 0)
-         (rotg! (create-vector factory 0 2 0 0))
-         => (create-vector factory 2 1 0 1)
-         (nrm2 (axpy -1 (rotg! (create-vector factory 6 -8 0 0))
-                     (create-vector factory -10 -5/3 -3/5 4/5)))
+         (rotg! (vctr factory 0 0 0 0))
+         => (vctr factory 0 0 1 0)
+         (rotg! (vctr factory 0 2 0 0))
+         => (vctr factory 2 1 0 1)
+         (nrm2 (axpy -1 (rotg! (vctr factory 6 -8 0 0))
+                     (vctr factory -10 -5/3 -3/5 4/5)))
          => (roughly 0 1e-6)))
 
 (defn test-rotm [factory]
@@ -194,291 +194,291 @@
 (defn test-swap [factory]
   (facts
    "BLAS 1 swap! vectors"
-   (let [x (create-vector factory [1 2 3])]
-     (swp! x (create-vector factory 3)) => x
-     (swp! x (create-vector factory [10 20 30]))
-     => (create-vector factory [10 20 30])
+   (let [x (vctr factory [1 2 3])]
+     (swp! x (vctr factory 3)) => x
+     (swp! x (vctr factory [10 20 30]))
+     => (vctr factory [10 20 30])
      (swp! x nil) => (throws IllegalArgumentException)
-     (identical? (swp! x (create-vector factory [10 20 30])) x) => true
-     (swp! x (create-vector factory [10 20]))
+     (identical? (swp! x (vctr factory [10 20 30])) x) => true
+     (swp! x (vctr factory [10 20]))
      => (throws IllegalArgumentException)))
 
   (facts
    "BLAS 1 swap! matrices"
-   (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
-     (swp! a (create-ge-matrix factory 2 3)) => a
-     (swp! a (create-ge-matrix factory 2 3 [10 20 30 40 50 60]))
-     => (create-ge-matrix factory 2 3 [10 20 30 40 50 60])
+   (let [a (ge factory 2 3 [1 2 3 4 5 6])]
+     (swp! a (ge factory 2 3)) => a
+     (swp! a (ge factory 2 3 [10 20 30 40 50 60]))
+     => (ge factory 2 3 [10 20 30 40 50 60])
      (swp! a nil) => (throws IllegalArgumentException)
-     (identical? (swp! a (create-ge-matrix factory 2 3 [10 20 30 40 50 60])) a)
+     (identical? (swp! a (ge factory 2 3 [10 20 30 40 50 60])) a)
      => true
-     (swp! a (create-ge-matrix factory 1 2 [10 20]))
+     (swp! a (ge factory 1 2 [10 20]))
      => (throws IllegalArgumentException))))
 
 (defn test-scal [factory]
   (facts "BLAS 1 scal!"
-         (let [x (create-vector factory [1 2 3])]()
+         (let [x (vctr factory [1 2 3])]()
               (identical? (scal! 3 x) x) => true)
-         (scal! 3 (create-vector factory [1 -2 3]))
-         => (create-vector factory [3 -6 9])
-         (scal! 3 (create-vector factory []))
-         => (create-vector factory [])))
+         (scal! 3 (vctr factory [1 -2 3]))
+         => (vctr factory [3 -6 9])
+         (scal! 3 (vctr factory []))
+         => (vctr factory [])))
 
 (defn test-vector-copy [factory]
   (facts "BLAS 1 copy!"
-         (let [y (create-vector factory 3)]
-           (copy! (create-vector factory [1 2 3]) y) => y
-           (copy (create-vector factory [1 2 3])) => y)
+         (let [y (vctr factory 3)]
+           (copy! (vctr factory [1 2 3]) y) => y
+           (copy (vctr factory [1 2 3])) => y)
 
-         (copy! (create-vector factory [10 20 30])
-                (create-vector factory [1 2 3]))
-         => (create-vector factory [10 20 30])
-         (copy! (create-vector factory [1 2 3]) nil)
+         (copy! (vctr factory [10 20 30])
+                (vctr factory [1 2 3]))
+         => (vctr factory [10 20 30])
+         (copy! (vctr factory [1 2 3]) nil)
          => (throws IllegalArgumentException)
-         (copy! (create-vector factory [10 20 30]) (create-vector factory [1]))
+         (copy! (vctr factory [10 20 30]) (vctr factory [1]))
          => (throws IllegalArgumentException)
 
-         (copy (create-vector factory 1 2)) => (create-vector factory 1 2)
-         (let [x (create-vector factory 1 2)]
+         (copy (vctr factory 1 2)) => (vctr factory 1 2)
+         (let [x (vctr factory 1 2)]
            (identical? (copy x) x) => false)))
 
 (defn test-axpy [factory]
   (facts "BLAS 1 axpy!"
-         (let [y (create-vector factory [1 2 3])]
-           (axpy! 2.0 (create-vector factory [10 20 30]) y)
-           => (create-vector factory [21 42 63])
-           (identical? (axpy! 3.0 (create-vector factory [1 2 3]) y) y) => true
-           (axpy! 2.0 (create-vector factory [1 2]) y)
+         (let [y (vctr factory [1 2 3])]
+           (axpy! 2.0 (vctr factory [10 20 30]) y)
+           => (vctr factory [21 42 63])
+           (identical? (axpy! 3.0 (vctr factory [1 2 3]) y) y) => true
+           (axpy! 2.0 (vctr factory [1 2]) y)
            => (throws IllegalArgumentException)
-           (axpy! (create-vector factory [10 20 30])
-                  (create-vector factory [1 2 3]))
-           => (create-vector factory [11 22 33]))
+           (axpy! (vctr factory [10 20 30])
+                  (vctr factory [1 2 3]))
+           => (vctr factory [11 22 33]))
 
-         (axpy! 2 (create-vector factory 1 2 3) (create-vector factory 1 2 3)
-                (create-vector factory 2 3 4) 4.0 (create-vector factory 5 6 7))
-         => (create-vector factory 25 33 41)
-         (axpy! 2 (create-vector factory 1 2 3) (create-vector factory 1 2 3)
-                (create-vector factory 2 3 4) 4.0)
+         (axpy! 2 (vctr factory 1 2 3) (vctr factory 1 2 3)
+                (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7))
+         => (vctr factory 25 33 41)
+         (axpy! 2 (vctr factory 1 2 3) (vctr factory 1 2 3)
+                (vctr factory 2 3 4) 4.0)
          => (throws IllegalArgumentException)
-         (axpy! (create-vector factory 1 2 3) (create-vector factory 1 2 3)
-                (create-vector factory 1 2 3) (create-vector factory 1 2 3)
-                (create-vector factory 1 2 3))
-         => (axpy! 5 (create-vector factory 1 2 3) (create-vector factory 3))
-         (axpy! 4 "af" (create-vector factory 1 2 3) 3 "b" "c")
+         (axpy! (vctr factory 1 2 3) (vctr factory 1 2 3)
+                (vctr factory 1 2 3) (vctr factory 1 2 3)
+                (vctr factory 1 2 3))
+         => (axpy! 5 (vctr factory 1 2 3) (vctr factory 3))
+         (axpy! 4 "af" (vctr factory 1 2 3) 3 "b" "c")
          => (throws IllegalArgumentException)
-         (let [y (create-vector factory [1 2 3])]
-           (axpy! 2 (create-vector factory 1 2 3) y
-                  (create-vector factory 2 3 4) 4.0 (create-vector factory 5 6 7))
+         (let [y (vctr factory [1 2 3])]
+           (axpy! 2 (vctr factory 1 2 3) y
+                  (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7))
            => y))
 
   (facts "BLAS1 axpy"
-         (let [y (create-vector factory [1 2 3])]
-           (axpy 2.0 (create-vector factory [10 20 30]))
+         (let [y (vctr factory [1 2 3])]
+           (axpy 2.0 (vctr factory [10 20 30]))
            => (throws IllegalArgumentException)
-           (identical? (axpy 3.0 (create-vector factory [1 2 3]) y) y) => false
-           (axpy (create-vector factory 1 2 3) (create-vector factory 2 3 4)
-                 (create-vector factory 3 4 5) (create-vector factory 3))
-           => (create-vector factory 6 9 12)
-           (axpy 2 (create-vector factory 1 2 3) (create-vector factory 2 3 4))
-           => (create-vector factory 4 7 10))))
+           (identical? (axpy 3.0 (vctr factory [1 2 3]) y) y) => false
+           (axpy (vctr factory 1 2 3) (vctr factory 2 3 4)
+                 (vctr factory 3 4 5) (vctr factory 3))
+           => (vctr factory 6 9 12)
+           (axpy 2 (vctr factory 1 2 3) (vctr factory 2 3 4))
+           => (vctr factory 4 7 10))))
 
 ;; ================= Real General Matrix functions =============================
 
 (defn test-matrix-constructor [factory]
   (facts "Create a matrix."
-         (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
-           (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) => a
-           ;;(create-ge-matrix factory 2 3 (seq-to-buffer (data-accessor factory)
+         (let [a (ge factory 2 3 [1 2 3 4 5 6])]
+           (ge factory 2 3 [1 2 3 4 5 6]) => a
+           ;;(ge factory 2 3 (seq-to-buffer (data-accessor factory)
                                                         ;;[1 2 3 4 5 6]))
            ;;=> a
-           (create-ge-matrix factory 2 3 nil) => (throws IllegalArgumentException)
-           ;;(create-ge-matrix factory 0 0 [])
-           ;;=> (create-ge-matrix factory 0 0 (seq-to-buffer (data-accessor factory) []))
+           (ge factory 2 3 nil) => (zero a)
+           ;;(ge factory 0 0 [])
+           ;;=> (ge factory 0 0 (seq-to-buffer (data-accessor factory) []))
 
            )))
 
 (defn test-matrix [factory]
   (facts "General Matrix methods."
-         (ncols (create-ge-matrix factory 2 3 [1 2 3 4 5 6])) => 3
-         (ncols (create-ge-matrix factory 0 0 [])) => 0
+         (ncols (ge factory 2 3 [1 2 3 4 5 6])) => 3
+         (ncols (ge factory 0 0 [])) => 0
 
-         (mrows (create-ge-matrix factory 2 3)) => 2
-         (mrows (create-ge-matrix factory 0 0)) => 0
+         (mrows (ge factory 2 3)) => 2
+         (mrows (ge factory 0 0)) => 0
 
-         (row (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 1)
-         => (create-vector factory 2 4 6)
-         (row (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 4)
+         (row (ge factory 2 3 [1 2 3 4 5 6]) 1)
+         => (vctr factory 2 4 6)
+         (row (ge factory 2 3 [1 2 3 4 5 6]) 4)
          => (throws IndexOutOfBoundsException)
 
-         (col (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 1)
-         => (create-vector factory 3 4)
-         (col (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 4)
+         (col (ge factory 2 3 [1 2 3 4 5 6]) 1)
+         => (vctr factory 3 4)
+         (col (ge factory 2 3 [1 2 3 4 5 6]) 4)
          => (throws IndexOutOfBoundsException)
 
-         (submatrix (create-ge-matrix factory 3 4 (range 12)) 1 2 2 1)
-         => (create-ge-matrix factory 2 1 [7 8])
-         (submatrix (create-ge-matrix factory 3 4 (range 12)) 2 3)
-         => (create-ge-matrix factory 2 3 [0 1 3 4 6 7])
-         (submatrix (create-ge-matrix factory 3 4 (range 12)) 3 4)
-         => (create-ge-matrix factory 3 4 (range 12))
-         (submatrix (create-ge-matrix factory 3 4 (range 12)) 1 1 3 3)
+         (submatrix (ge factory 3 4 (range 12)) 1 2 2 1)
+         => (ge factory 2 1 [7 8])
+         (submatrix (ge factory 3 4 (range 12)) 2 3)
+         => (ge factory 2 3 [0 1 3 4 6 7])
+         (submatrix (ge factory 3 4 (range 12)) 3 4)
+         => (ge factory 3 4 (range 12))
+         (submatrix (ge factory 3 4 (range 12)) 1 1 3 3)
          => (throws IndexOutOfBoundsException)))
 
 (defn test-matrix-entry [factory]
   (facts "Matrix entry."
-         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
-         (entry (create-ge-matrix factory 0 0) 0 0)
+         (entry (ge factory 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
+         (entry (ge factory 0 0) 0 0)
          => (throws IndexOutOfBoundsException)
-         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) -1 2)
+         (entry (ge factory 2 3 [1 2 3 4 5 6]) -1 2)
          => (throws IndexOutOfBoundsException)
-         (entry (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 2 1)
+         (entry (ge factory 2 3 [1 2 3 4 5 6]) 2 1)
          => (throws IndexOutOfBoundsException)))
 
 (defn test-matrix-entry! [factory]
   (facts "Matrix entry!."
-         (entry (entry! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 0 1 88.0) 0 1) => 88.0))
+         (entry (entry! (ge factory 2 3 [1 2 3 4 5 6]) 0 1 88.0) 0 1) => 88.0))
 
 (defn test-matrix-bulk-entry! [factory]
   (facts "Matrix entry!."
-         (sum (row (entry! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) 88.0) 1)) => 264.0))
+         (sum (row (entry! (ge factory 2 3 [1 2 3 4 5 6]) 88.0) 1)) => 264.0))
 
 (defn test-matrix-copy [factory]
   (facts "BLAS 1 copy! general matrix"
-         (let [a (create-ge-matrix factory 2 3)]
-           (copy! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) a) => a
-           (copy (create-ge-matrix factory 2 3 [1 2 3 4 5 6])) => a)
+         (let [a (ge factory 2 3)]
+           (copy! (ge factory 2 3 [1 2 3 4 5 6]) a) => a
+           (copy (ge factory 2 3 [1 2 3 4 5 6])) => a)
 
-         (copy! (create-ge-matrix factory 2 3 [10 20 30 40 50 60])
-                (create-ge-matrix factory 2 3 [1 2 3 4 5 6]))
-         => (create-ge-matrix factory 2 3 [10 20 30 40 50 60])
-         (copy! (create-ge-matrix factory 2 3 [1 2 3 4 5 6]) nil)
+         (copy! (ge factory 2 3 [10 20 30 40 50 60])
+                (ge factory 2 3 [1 2 3 4 5 6]))
+         => (ge factory 2 3 [10 20 30 40 50 60])
+         (copy! (ge factory 2 3 [1 2 3 4 5 6]) nil)
          => (throws IllegalArgumentException)
-         (copy! (create-ge-matrix factory 2 3 [10 20 30 40 50 60])
-                (create-ge-matrix factory 2 2))
+         (copy! (ge factory 2 3 [10 20 30 40 50 60])
+                (ge factory 2 2))
          => (throws IllegalArgumentException)
 
-         (copy (create-vector factory 1 2)) => (create-vector factory 1 2)
-         (let [x (create-vector factory 1 2)]
+         (copy (vctr factory 1 2)) => (vctr factory 1 2)
+         (let [x (vctr factory 1 2)]
            (identical? (copy x) x) => false)))
 
 (defn test-matrix-scal [factory]
   (facts "BLAS 1 scal! general matrix"
-         (let [x (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]()
+         (let [x (ge factory 2 3 [1 2 3 4 5 6])]()
               (identical? (scal! 3 x) x) => true)
-         (scal! 3 (create-ge-matrix factory 2 3 [1 -2 3 9 8 7]))
-         => (create-ge-matrix factory 2 3 [3 -6 9 27 24 21])
-         (scal! 3 (submatrix (create-ge-matrix factory 3 2 [1 2 3 4 5 6]) 1 1 1 1))
-         => (create-ge-matrix factory 1 1 [15])))
+         (scal! 3 (ge factory 2 3 [1 -2 3 9 8 7]))
+         => (ge factory 2 3 [3 -6 9 27 24 21])
+         (scal! 3 (submatrix (ge factory 3 2 [1 2 3 4 5 6]) 1 1 1 1))
+         => (ge factory 1 1 [15])))
 
 ;; ====================== BLAS 2 ===============================
 
 (defn test-mv [factory]
   (facts "BLAS 2 mv!"
-         (mv! 2.0 (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
-              (create-vector factory 1 2 3) 3 (create-vector factory [1 2 3 4]))
+         (mv! 2.0 (ge factory 3 2 [1 2 3 4 5 6])
+              (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4]))
          => (throws IllegalArgumentException)
 
-         (let [y (create-vector factory [1 2 3])]
-           (mv! 2 (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
-                (create-vector factory 1 2) 3 y)
+         (let [y (vctr factory [1 2 3])]
+           (mv! 2 (ge factory 3 2 [1 2 3 4 5 6])
+                (vctr factory 1 2) 3 y)
            => y)
 
-         (mv! (create-ge-matrix factory 2 3 [1 10 2 20 3 30])
-              (create-vector factory 7 0 4) (create-vector factory 0 0))
-         => (create-vector factory 19 190)
+         (mv! (ge factory 2 3 [1 10 2 20 3 30])
+              (vctr factory 7 0 4) (vctr factory 0 0))
+         => (vctr factory 19 190)
 
-         (mv! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-              (create-vector factory 1 2 3) 3.0 (create-vector factory 1 2))
-         => (create-vector factory 47 62)
+         (mv! 2.0 (ge factory 2 3 [1 2 3 4 5 6])
+              (vctr factory 1 2 3) 3.0 (vctr factory 1 2))
+         => (vctr factory 47 62)
 
-         (mv! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-              (create-vector factory 1 2 3) 0.0 (create-vector factory 0 0))
-         => (mv 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-                (create-vector factory 1 2 3))
+         (mv! 2.0 (ge factory 2 3 [1 2 3 4 5 6])
+              (vctr factory 1 2 3) 0.0 (vctr factory 0 0))
+         => (mv 2.0 (ge factory 2 3 [1 2 3 4 5 6])
+                (vctr factory 1 2 3))
 
-         (mv! 2.0 (submatrix (create-ge-matrix factory 4 6 (range 24)) 1 2 2 3)
-              (create-vector factory [1 3 5])
-              3.0 (create-vector factory [2 3]))
-         => (create-vector factory 272 293)
+         (mv! 2.0 (submatrix (ge factory 4 6 (range 24)) 1 2 2 3)
+              (vctr factory [1 3 5])
+              3.0 (vctr factory [2 3]))
+         => (vctr factory 272 293)
 
-         (mv! 2.0 (submatrix (create-ge-matrix factory 4 6 (range 24)) 1 2 2 3)
-              (create-vector factory [1 3 5])
-              3.0 (col (create-ge-matrix factory 2 3 (range 6)) 1))
-         => (create-vector factory 272 293)
+         (mv! 2.0 (submatrix (ge factory 4 6 (range 24)) 1 2 2 3)
+              (vctr factory [1 3 5])
+              3.0 (col (ge factory 2 3 (range 6)) 1))
+         => (vctr factory 272 293)
 
-         (mv! 2.0 (submatrix (create-ge-matrix factory 4 6 (range 24)) 1 2 2 3)
-              (row (create-ge-matrix factory 2 3 (range 6)) 1)
-              3.0 (col (create-ge-matrix factory 2 3 (range 6)) 1))
-         => (create-vector factory 272 293)))
+         (mv! 2.0 (submatrix (ge factory 4 6 (range 24)) 1 2 2 3)
+              (row (ge factory 2 3 (range 6)) 1)
+              3.0 (col (ge factory 2 3 (range 6)) 1))
+         => (vctr factory 272 293)))
 
 (defn test-mv-transpose [factory]
   (facts "BLAS 2 mv!"
-         (mv! (trans (create-ge-matrix factory 3 2 [1 3 5 2 4 6]))
-              (create-vector factory 1 2 3) (create-vector factory 0 0))
-         => (mv! (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-                 (create-vector factory 1 2 3) (create-vector factory 0 0))))
+         (mv! (trans (ge factory 3 2 [1 3 5 2 4 6]))
+              (vctr factory 1 2 3) (vctr factory 0 0))
+         => (mv! (ge factory 2 3 [1 2 3 4 5 6])
+                 (vctr factory 1 2 3) (vctr factory 0 0))))
 
 (defn test-rank [factory]
   (facts "BLAS 2 rank!"
-         (let [a (create-ge-matrix factory 2 3)]
-           (rank! 2.0 (create-vector factory 1 2)
-                  (create-vector factory 1 2 3) a)
+         (let [a (ge factory 2 3)]
+           (rank! 2.0 (vctr factory 1 2)
+                  (vctr factory 1 2 3) a)
            => a)
-         (rank! (create-vector factory 3 2 1 4)
-                (create-vector factory 1 2 3)
-                (create-ge-matrix factory 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
-         => (create-ge-matrix factory 4 3 [4 4 4 8 8 6 4 10 12 10 5 13])
+         (rank! (vctr factory 3 2 1 4)
+                (vctr factory 1 2 3)
+                (ge factory 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
+         => (ge factory 4 3 [4 4 4 8 8 6 4 10 12 10 5 13])
 
-         (rank! (create-vector factory 1 2) (create-vector factory 1 2 3)
-                (create-ge-matrix factory 2 2 [1 2 3 5]))
+         (rank! (vctr factory 1 2) (vctr factory 1 2 3)
+                (ge factory 2 2 [1 2 3 5]))
          => (throws IllegalArgumentException)))
 
 ;; ====================== BLAS 3 ================================
 
 (defn test-mm [factory]
   (facts "BLAS 3 mm!"
-         (mm! 2.0 (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
-              (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
-              3.0 (create-ge-matrix factory 3 2 [1 2 3 4 5 6]))
+         (mm! 2.0 (ge factory 3 2 [1 2 3 4 5 6])
+              (ge factory 3 2 [1 2 3 4 5 6])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6]))
          => (throws IllegalArgumentException)
 
-         (mm! 2.0 (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
-              (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-              3.0 (create-ge-matrix factory 3 2 [1 2 3 4 5 6]))
+         (mm! 2.0 (ge factory 3 2 [1 2 3 4 5 6])
+              (ge factory 2 3 [1 2 3 4 5 6])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6]))
          => (throws IllegalArgumentException)
 
-         (let [c (create-ge-matrix factory 2 2 [1 2 3 4])]
-           (mm! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-                (create-ge-matrix factory 3 2 [1 2 3 4 5 6]) 3.0 c)
+         (let [c (ge factory 2 2 [1 2 3 4])]
+           (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6])
+                (ge factory 3 2 [1 2 3 4 5 6]) 3.0 c)
            => c)
 
-         (mm! 2.0 (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-              (create-ge-matrix factory 3 2 [1 2 3 4 5 6])
-              3.0 (create-ge-matrix factory 2 2 [1 2 3 4]))
-         => (create-ge-matrix factory 2 2 [47 62 107 140])
+         (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6])
+              (ge factory 3 2 [1 2 3 4 5 6])
+              3.0 (ge factory 2 2 [1 2 3 4]))
+         => (ge factory 2 2 [47 62 107 140])
 
-         (mm! 2.0 (create-ge-matrix factory 3 5 (take 15 (repeat 1)))
-              (create-ge-matrix factory 5 3 (take 15 (repeat 1)))
-              3.0 (create-ge-matrix factory 3 3 (take 9 (repeat 0))))
-         => (create-ge-matrix factory 3 3 (take 9 (repeat 10))))
+         (mm! 2.0 (ge factory 3 5 (take 15 (repeat 1)))
+              (ge factory 5 3 (take 15 (repeat 1)))
+              3.0 (ge factory 3 3 (take 9 (repeat 0))))
+         => (ge factory 3 3 (take 9 (repeat 10))))
 
   (facts "mm"
-         (mm (create-ge-matrix factory 3 2 (range 6))
-             (create-ge-matrix factory 2 3 (range 6)))
-         => (create-ge-matrix factory 3 3 [3 4 5 9 14 19 15 24 33])))
+         (mm (ge factory 3 2 (range 6))
+             (ge factory 2 3 (range 6)))
+         => (ge factory 3 3 [3 4 5 9 14 19 15 24 33])))
 
 (defn test-mm-row-major [factory]
   (facts "BLAS 3 mm! transposed (row major)"
-         (mm! 2.0 (trans (create-ge-matrix factory 3 2 [1 3 5 2 4 6]))
-              (trans (create-ge-matrix factory 2 3 [1 4 2 5 3 6]))
-              3.0  (create-ge-matrix factory 2 2 [1 2 3 4]))
-         => (create-ge-matrix factory 2 2 [47 62 107 140])))
+         (mm! 2.0 (trans (ge factory 3 2 [1 3 5 2 4 6]))
+              (trans (ge factory 2 3 [1 4 2 5 3 6]))
+              3.0  (ge factory 2 2 [1 2 3 4]))
+         => (ge factory 2 2 [47 62 107 140])))
 
 ;; ====================== TR Matrix ============================
 
 (defn test-tr-entry [factory]
   (facts "TR Matrix entry."
-         (with-release [a-upper (create-tr factory 3 (range 9))]
+         (with-release [a-upper (tr factory 3 (range 9))]
            (entry a-upper 0 1) => 3.0
            (entry a-upper 1 0) => 0.0
            (entry a-upper 1 1) => 4.0

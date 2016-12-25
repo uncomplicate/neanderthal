@@ -35,6 +35,7 @@
     (:require [uncomplicate.neanderthal core native opencl]))
   "
   (:require [uncomplicate.commons.core :refer [release let-release]]
+            [uncomplicate.fluokitten.core :refer [fmap]]
             [uncomplicate.neanderthal
              [protocols :as p]
              [math :refer [f= pow sqrt]]
@@ -44,7 +45,6 @@
 
 (defn vect?
   "Returns true if x implements uncomplicate.neanderthal.protocols.Vector.
-
   (vect? (dv 1 2 3)) => true
   (vect? [1 2 3]) => false
   "
@@ -53,22 +53,11 @@
 
 (defn matrix?
   "Returns true if x implements uncomplicate.neanderthal.protocols.Matrix.
-
   (matrix? (dge 3 2 [1 2 3 4 5 6])) => true
   (matrix? [[1 2] [3 4] [5 6]]) => false
   "
   [x]
   (instance? Matrix x))
-
-(defn compatible?
-  "Check whether two objects that have some memory context are compatible."
-  [x y]
-  (p/compatible x y))
-
-(defn form
-  "TODO"
-  [x]
-  (p/form x))
 
 (defmulti transfer!
   "Transfers the data from source in one type of memory, to the appropriate
@@ -109,149 +98,59 @@
   [x]
   (p/native x))
 
-(defn create-raw
-  "Creates an uninitialized vector of the dimension n, or a  matrix m x n,
-  using the provided factory. It might or might not be initialized to zeroes,
-  depending of the underlying memory (DirectBytebuffer is zero-initialized,
-  OpenCL CLBuffer contains random junk). If you need to be sure that the
-  new object is filled with zeros, consider using the create function.
-
-  More specific methods are available in technology-specific namespaces.
-
-  See uncomplicate.neanderthal.native, uncomplicate.neanderthal.opencl, etc.
-
-  (create-raw cblas-single 3)
-  (create-raw cblas-double 35 12)"
-  ([factory ^long n]
-   (p/create-vector factory n
-                    (.createDataSource (p/data-accessor factory) n)
-                    nil))
-  ([factory ^long m ^long n]
-   (if (and (<= 0 m) (<= 0 n))
-     (p/create-ge factory m n
-                  (.createDataSource (p/data-accessor factory) (* m n))
-                  nil)
-     (throw (IllegalArgumentException.
-             (format "Dimensions m=%d, n=%d are not allowed." m n))))))
-
-(defn create
-  "Creates an initialized vector of the dimension n, or a  matrix m x n,
-  using the provided factory.
-  More specific methods are available in technology-specific namespaces.
-
-  See uncomplicate.neanderthal.native, uncomplicate.neanderthal.opencl, etc.
-
-  (create cblas-single 3)
-  (create cblas-double 35 12)"
-  ([factory ^long n]
-   (let-release [res (create-raw factory n)]
-     (.initialize (p/data-accessor factory) (buffer res))
-     res))
-  ([factory ^long m ^long n]
-   (let-release [res (create-raw factory m n)]
-     (.initialize (p/data-accessor factory) (buffer res))
-     res)))
-
-(defn create-vector
-  "Creates a vector from source using the provided factory.
-
-  Accepts the following source:
-  - java.nio.ByteBuffer with a capacity divisible by the element width,
-  . which will be used as-is for backing the vector.
-  - a positive integer, which will be used as a dimension
-  . of new vector with zeroes as entries.
-  - a floating point number, which will be the only entry
-  . in a one-dimensional vector.
-  - a clojure sequence, which will be copied into a
-  . direct ByteBuffer that backs the new vector.
-  - varargs will be treated as a clojure sequence.
-
-  (create-vector *double-factory* [1 2 3])
-  (create-vector *single-factory* 12)
-  "
+(defn vctr
+  "TODO"
   ([factory source]
-   (let [acc ^DataAccessor (p/data-accessor factory)]
-     (cond
-       (integer? source) (create factory source)
-       (sequential? source) (transfer! source (create-raw factory (count source)))
-       (vect? source) (transfer! source (create-raw factory (.dim ^Vector source)))
-       (float? source) (.set ^RealChangeable (create-raw factory 1) 0 source)
-       source (p/create-vector factory
-                               (.count ^DataAccessor (p/data-accessor factory)
-                                       source)
-                               source nil)
-       :default (throw (IllegalArgumentException.
-                        (format p/ILLEGAL_SOURCE_MSG (type source) "vectors"))))))
+   (cond
+     (integer? source) (p/create-vector factory (.createDataSource (p/data-accessor factory) source) source nil)
+     (number? source) (.set ^RealChangeable (vctr factory 1) 0 source)
+     :default (transfer factory source)))
   ([factory x & xs]
-   (create-vector factory (cons x xs))))
+   (vctr factory (cons x xs))))
 
-(defn create-ge-matrix ;;TODO rename to create-ge
-  "Creates a dense, column-oriented mxn matrix from source.
-
-  If called with two arguments, creates a zero matrix with dimensions mxn.
-
-  Accepts the following sources:
-  - java.nio.ByteBuffer with a capacity = elementWidth * m * n,
-  . which will be used as-is for backing the matrix.
-  - a clojure sequence, which will be copied into a
-  . direct ByteBuffer that backs the new vector.
-
-  (create-ge-matrix *double-factory* 15 13)
-  ";;TODO doc
-  ([factory m n source];;TODO test
-   (cond
-     (or (sequential? source) (matrix? source))
-     (transfer! source (create-raw factory m n))
-     source (p/create-ge factory m n source p/DEFAULT_ORDER)
-     :default (throw (IllegalArgumentException.
-                      (format p/ILLEGAL_SOURCE_MSG (type source)
-                              "general matrices")))))
-  ([factory m n]
-   (create factory m n))
-  ([factory source];;TODO test
-   (cond
-     (matrix? source)
-     (transfer! source (create-raw factory
-                                   (.mrows ^Matrix source)
-                                   (.ncols ^Matrix source)))
-     (sequential? source)
-     (let [n (long (sqrt (count source)))]
-       (transfer! source (create factory n n)))
-     (instance? java.nio.ByteBuffer source)
-     (let [acc ^DataAccessor (p/data-accessor factory)
-           n (long (sqrt (.count acc source)))]
-       (p/create-ge factory n n source p/DEFAULT_ORDER))
-     :default (throw (IllegalArgumentException.
-                      (format p/ILLEGAL_SOURCE_MSG (type source)
-                              "general matrices"))))))
-
-(defn create-tr-raw
+(defn ge
   "TODO"
-  ([factory ^long n ^Boolean upper ^Boolean diag-unit]
-   (let [acc ^DataAccessor (p/data-accessor factory)]
-     (p/create-tr factory n (.createDataSource acc (* n n))
-                  {:uplo (if upper p/UPPER p/LOWER)
-                   :diag (if diag-unit p/DIAG_UNIT p/DIAG_NON_UNIT)})))
-  ([factory ^long n]
-   (create-tr-raw factory n true false)))
+  ([factory m n source options]
+   (let-release [res (if (and (< -1 (long m)) (< -1 (long n)))
+                       (p/create-ge factory (.createDataSource (p/data-accessor factory) (* (long m) (long n)))
+                                    m n (fmap p/enc-property options))
+                       (throw (IllegalArgumentException.
+                               (format "Dimensions m=%d, n=%d are not allowed." m n))))]
+     (if source
+       (transfer! source res)
+       res)))
+  ([factory ^long m ^long n arg]
+   (if (or (not arg) (map? arg))
+     (ge factory m n nil arg)
+     (ge factory m n arg nil)))
+  ([factory ^long m ^long n]
+   (ge factory m n nil nil))
+  ([factory ^Matrix a]
+   (ge factory (.mrows a) (.ncols a) a nil)))
 
-(defn create-tr
+(defn tr
   "TODO"
-  ([factory ^long n ^Boolean upper ^Boolean diag-unit]
-   (let-release [res (create-tr-raw factory n upper diag-unit)]
-     (.initialize ^DataAccessor (p/data-accessor factory) (buffer res))
-     res))
-  ([factory ^long n]
-   (create-tr factory n true false))
-  ([factory ^long n source]
-   (cond
-     (or (sequential? source) (matrix? source))
-     (transfer! source (create-tr-raw factory n))
-     source
-     (p/create-tr factory n source nil)
-     :default (throw (IllegalArgumentException.
-                      (format p/ILLEGAL_SOURCE_MSG (type source)
-                              "triangular matrices"))))))
+  ([factory ^long n source options]
+   (let-release [res (if (< -1 n)
+                       (p/create-tr factory (.createDataSource (p/data-accessor factory) (* n n))
+                                    n (fmap p/enc-property options))
+                       (throw (IllegalArgumentException.
+                               (format "Dimension n=%d is not allowed." n))))]
+     (if source
+       (transfer! source res)
+       res)))
+  ([factory ^long n arg]
+   (if (or (not arg) (map? arg))
+     (tr factory n nil arg)
+     (tr factory n arg nil)))
+  ([factory source]
+   (if (number? source)
+     (tr factory source nil nil)
+     (tr factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
+
+(defn init-zero [x]
+  (.initialize (p/data-accessor x) (buffer x))
+  x)
 
 ;; ================= Container  ================================================
 
@@ -655,7 +554,7 @@
     x))
 
 (defn copy!
-  "BLAS 1: Copy a vector or a matrice.
+  "BLAS 1: Copy a vector or a matrix.
   Copies the entries of x into y and returns x. x and y must have
   equal dimensions. y will be changed. Also works on
   matrices.
@@ -710,7 +609,7 @@
    (let-release [res (p/raw x)]
      (copy! x res)))
   ([x offset length]
-   (let-release [res (create-raw (p/factory x) length)]
+   (let-release [res (vctr (p/factory x) length)]
      (copy! x res offset length 0))))
 
 (defn axpy!
@@ -901,7 +800,7 @@
   ([alpha x y a]
    (rank! alpha x y (copy a)))
   ([alpha ^Vector x ^Vector y]
-   (let-release [res (create-raw (p/factory x) (.dim x) (.dim y))]
+   (let-release [res (ge (p/factory x) (.dim x) (.dim y))]
      (rank! alpha x y res)))
   ([x y]
    (rank 1.0 x y)))
@@ -977,7 +876,7 @@
   in a new matrix instance.
   Computes alpha a * b"
   ([alpha ^Matrix a ^Matrix b]
-   (let-release [res (create (p/factory a) (.mrows a) (.ncols b))]
+   (let-release [res (ge (p/factory a) (.mrows a) (.ncols b))]
      (mm! alpha a b 0.0 res)))
   ([a b]
    (mm 1.0 a b)))

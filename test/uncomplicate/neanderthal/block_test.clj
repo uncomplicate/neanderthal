@@ -15,20 +15,19 @@
 
 (defn test-create [factory]
   (facts "Create and create-raw."
-         (with-release [x0 (create factory 0)
-                        x1 (create factory 1)
-                        xr0 (create-raw factory 0)
-                        xr1 (create-raw factory 1)
-                        a00 (create factory 0 0)
-                        a11 (create factory 1 1)
-                        ar00 (create-raw factory 0 0)
-                        ar11 (create-raw factory 1 1)]
+         (with-release [x0 (vctr factory 0)
+                        x1 (vctr factory 1)
+                        xr0 (vctr factory 0)
+                        xr1 (vctr factory 1)
+                        a00 (ge factory 0 0)
+                        a11 (ge factory 1 1)
+                        ar00 (ge factory 0 0)
+                        ar11 (ge factory 1 1)]
            (dim x0) => 0
            (dim x1) => 1
            (dim xr0) => 0
            (dim xr1) => 1
-           (create factory -1) => (throws IllegalArgumentException)
-           (create-raw factory -3) => (throws IllegalArgumentException)
+           (vctr factory -1) => (throws IllegalArgumentException)
            (mrows a00) => 0
            (ncols a00) => 0
            (mrows a11) => 1
@@ -37,16 +36,16 @@
            (ncols ar00) => 0
            (mrows ar11) => 1
            (ncols ar11) => 1
-           (create factory -1 -1) => (throws IllegalArgumentException)
-           (create-raw factory -3 0) => (throws IllegalArgumentException))))
+           (ge factory -1 -1) => (throws IllegalArgumentException)
+           (ge factory -3 0) => (throws IllegalArgumentException))))
 
 (defn test-equality [factory]
   (facts "Equality and hash code."
-         (with-release [x1 (create-vector factory [1 2 3 4])
-                        y1 (create-vector factory [1 2 3 4])
-                        x2 (row (create-ge-matrix factory 2 2 [1 2 3 4]) 0)
-                        y2 (create-vector factory [1 3])
-                        y3 (create-vector factory [1 2 3 5])]
+         (with-release [x1 (vctr factory [1 2 3 4])
+                        y1 (vctr factory [1 2 3 4])
+                        x2 (row (ge factory 2 2 [1 2 3 4]) 0)
+                        y2 (vctr factory [1 3])
+                        y3 (vctr factory [1 2 3 5])]
            (.equals x1 nil) => false
            (= x1 y1) => true
            (= x1 y2) => false
@@ -54,7 +53,7 @@
            (= x1 y3) => false)))
 
 (defn test-release [factory]
-  (let [a (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
+  (let [a (ge factory 2 3 [1 2 3 4 5 6])
         col-a (col a 0)
         sub-a (submatrix a 0 0 1 1)]
     (facts "RealBlockVector and RealBlockMatrix release."
@@ -67,7 +66,7 @@
 
 (defn test-ifn-vector [factory]
   (facts "IFn implementation for real block vector"
-         (let [x (create-vector factory [1 2 3 4])]
+         (let [x (vctr factory [1 2 3 4])]
            (x 2) => 3.0
            (x 5) => (throws IndexOutOfBoundsException)
            (x -1) => (throws IndexOutOfBoundsException)
@@ -75,19 +74,19 @@
            (.invokePrim ^IFn$LD x 0) => 1.0)))
 
 (defn test-op-vector [factory]
-  (with-release [x (create-vector factory [1 2 3])
-                 y (create-vector factory [4 5])
-                 z (create-vector factory [])
+  (with-release [x (vctr factory [1 2 3])
+                 y (vctr factory [4 5])
+                 z (vctr factory [])
                  v1 (op x y)
                  v2 (op y x)
                  v3 (op x y x)
                  v4 (op x y x y)
                  v5 (op x y x y z z z x)
-                 t1 (create-vector factory [1 2 3 4 5])
-                 t2 (create-vector factory [4 5 1 2 3])
-                 t3 (create-vector factory [1 2 3 4 5 1 2 3])
-                 t4 (create-vector factory [1 2 3 4 5 1 2 3 4 5])
-                 t5 (create-vector factory [1 2 3 4 5 1 2 3 4 5 1 2 3])]
+                 t1 (vctr factory [1 2 3 4 5])
+                 t2 (vctr factory [4 5 1 2 3])
+                 t3 (vctr factory [1 2 3 4 5 1 2 3])
+                 t4 (vctr factory [1 2 3 4 5 1 2 3 4 5])
+                 t5 (vctr factory [1 2 3 4 5 1 2 3 4 5 1 2 3])]
     (facts
      "BlockVector should be a Monoid."
      v1 => t1
@@ -97,8 +96,8 @@
      v5 => t5)))
 
 (defn test-functor-vector [factory]
-  (let [fx (fn [] (create-vector factory [1 2 3 4]))
-        fy (fn [] (create-vector factory [2 3 4 5 6]))
+  (let [fx (fn [] (vctr factory [1 2 3 4]))
+        fy (fn [] (vctr factory [2 3 4 5 6]))
         x (fx)
         f (fn
             (^double [^double x] (+ x 1.0))
@@ -109,23 +108,23 @@
     (facts "Functor implementation for real block vector"
            (instance? IFn$DD f) => true
 
-           (fmap! f (fx)) => (create-vector factory [2 3 4 5])
+           (fmap! f (fx)) => (vctr factory [2 3 4 5])
            (fmap! f x) => x
 
-           (fmap! f (fx) (fy)) => (create-vector factory [3 5 7 9])
+           (fmap! f (fx) (fy)) => (vctr factory [3 5 7 9])
            (fmap! f x (fy)) => x
 
-           (fmap! f (fx) (fy) (fy)) => (create-vector factory [5 8 11 14])
+           (fmap! f (fx) (fy) (fy)) => (vctr factory [5 8 11 14])
            (fmap! f x (fy) (fy)) => x
 
-           (fmap! f (fx) (fy) (fy) (fy)) => (create-vector factory [7 11 15 19])
+           (fmap! f (fx) (fy) (fy) (fy)) => (vctr factory [7 11 15 19])
            (fmap! f x (fy) (fy) (fy)) => x
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)])
            => (throws UnsupportedOperationException))))
 
 (defn test-fold-vector [factory]
-  (let [x (create-vector factory [1 2 3 4])
+  (let [x (vctr factory [1 2 3 4])
         *' (fn ^double [^double x ^double y]
              (* x y))
         +' (fn ^double [^double x ^double y]
@@ -137,8 +136,8 @@
            (fold +' 0.0 x) => (fold x))))
 
 (defn test-reducible-vector [factory]
-  (let [y (create-vector factory [2 3 4 5 6])
-        x (create-vector factory [1 2 3 4])
+  (let [y (vctr factory [2 3 4 5 6])
+        x (vctr factory [1 2 3 4])
         pf1 (fn ^double [^double res ^double x] (+ x res))
         pf1o (fn [res ^double x] (conj res x))]
     (facts "Reducible implementation for vector"
@@ -159,12 +158,12 @@
 
 (defn test-seq-vector [factory]
   (facts "Vector as a sequence"
-         (seq (create-vector factory [1 2 3])) => '(1.0 2.0 3.0)
-         (seq (row (create-ge-matrix factory 2 3 (range 6)) 1)) => '(1.0 3.0 5.0)))
+         (seq (vctr factory [1 2 3])) => '(1.0 2.0 3.0)
+         (seq (row (ge factory 2 3 (range 6)) 1)) => '(1.0 3.0 5.0)))
 
 (defn test-ifn-ge-matrix [factory]
   (facts "IFn implementation for double general matrix"
-         (let [x (create-ge-matrix factory 2 3 [1 2 3 4 5 6])]
+         (let [x (ge factory 2 3 [1 2 3 4 5 6])]
            (x 1 2) => 6.0
            (x 2 1) => (throws IndexOutOfBoundsException)
            (x -1 3) => (throws IndexOutOfBoundsException)
@@ -174,19 +173,19 @@
 (defn test-op-ge-matrix [factory]
   (facts
    "GeneralMatrix should be a Monoid."
-   (with-release [x (create-ge-matrix factory 2 3 (range 6))
-                  y (create-ge-matrix factory 2 2 [6 7 8 9])
-                  z (create-ge-matrix factory 0 0 [])
+   (with-release [x (ge factory 2 3 (range 6))
+                  y (ge factory 2 2 [6 7 8 9])
+                  z (ge factory 0 0 [])
                   v1 (op x y)
                   v2 (op y x)
                   v3 (op x y x)
                   v4 (op x y x y)
                   v5 (op x y x y z z z x)
-                  t1 (create-ge-matrix factory 2 5 (range 10))
-                  t2 (create-ge-matrix factory 2 5 [6 7 8 9 0 1 2 3 4 5])
-                  t3 (create-ge-matrix factory 2 8 (op (range 6) [6 7 8 9] (range 6)))
-                  t4 (create-ge-matrix factory 2 10 (op (range 10) (range 10)))
-                  t5 (create-ge-matrix factory 2 13 (op (range 10) (range 10) (range 6)))]
+                  t1 (ge factory 2 5 (range 10))
+                  t2 (ge factory 2 5 [6 7 8 9 0 1 2 3 4 5])
+                  t3 (ge factory 2 8 (op (range 6) [6 7 8 9] (range 6)))
+                  t4 (ge factory 2 10 (op (range 10) (range 10)))
+                  t5 (ge factory 2 13 (op (range 10) (range 10) (range 6)))]
      v1 => t1
      v2 => t2
      v3 => t3
@@ -194,8 +193,8 @@
      v5 => t5)))
 
 (defn test-functor-ge-matrix [factory]
-  (let [fx (fn [] (create-ge-matrix factory 2 3 [1 2 3 4 5 6]))
-        fy (fn [] (create-ge-matrix factory 2 3 [2 3 4 5 6 7]))
+  (let [fx (fn [] (ge factory 2 3 [1 2 3 4 5 6]))
+        fy (fn [] (ge factory 2 3 [2 3 4 5 6 7]))
         x (fx)
         f (fn
             (^double [^double x] (+ x 1.0))
@@ -209,22 +208,22 @@
            (fmap! f x) => x
 
            (fmap! f (fx) (fy))
-           => (create-ge-matrix factory 2 3 [3 5 7 9 11 13])
+           => (ge factory 2 3 [3 5 7 9 11 13])
            (fmap! f x (fy)) => x
 
            (fmap! f (fx) (fy) (fy))
-           => (create-ge-matrix factory 2 3 [5 8 11 14 17 20])
+           => (ge factory 2 3 [5 8 11 14 17 20])
            (fmap! f x (fy) (fy)) => x
 
            (fmap! f (fx) (fy) (fy) (fy))
-           => (create-ge-matrix factory 2 3 [7 11 15 19 23 27])
+           => (ge factory 2 3 [7 11 15 19 23 27])
            (fmap! f x (fy) (fy) (fy)) => x
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)])
            => (throws UnsupportedOperationException))))
 
 (defn test-fold-ge-matrix [factory]
-  (let [x (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
+  (let [x (ge factory 2 3 [1 2 3 4 5 6])
         *' (fn ^double [^double x ^double y] (double (* x y)))
         +' (fn ^double [^double x ^double y] (double (+ x y)))]
     (facts "Fold implementation for real general matrix"
@@ -233,8 +232,8 @@
            (fold +' 0.0 x) => (fold x))))
 
 (defn test-reducible-ge-matrix [factory]
-  (let [x (create-ge-matrix factory 2 3 [1 2 3 4 5 6])
-        y (create-ge-matrix factory 2 3 [2 3 4 5 6 7])
+  (let [x (ge factory 2 3 [1 2 3 4 5 6])
+        y (ge factory 2 3 [2 3 4 5 6 7])
         pf1 (fn ^double [^double res ^double x] (+ x res))
         pf1o (fn [res ^double x] (conj res x))]
     (facts "Reducible implementation for real general matrix"

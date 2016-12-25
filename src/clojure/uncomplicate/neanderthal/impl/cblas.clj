@@ -297,21 +297,21 @@
   (compatible [_ o]
     (compatible da o))
   Factory
-  (create-vector [this n buf _]
+  (create-vector [this buf n _]
     (if (and (<= 0 (long n) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (->RealBlockVector this da vector-eng (.entryType da) true buf n 1)
+      (real-block-vector this true buf n 1)
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
                       n (.count da buf) (class buf))))))
-  (create-ge [this m n buf options]
+  (create-ge [this buf m n options]
     (if (and (<= 0 (* (long m) (long n)) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
       (real-ge-matrix this true buf m n 0 (enc-order (:order options)))
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d general matrix from %s."
                       m n (type buf))))))
-  (create-tr [this n buf options]
+  (create-tr [this buf n options]
     (if (and (<= 0 (* (long n) (long n)) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
       (let [ord (enc-order (:order options))

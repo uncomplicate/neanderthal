@@ -160,10 +160,10 @@
   (seq [_]
     (.toSeq da buf strd))
   Container
-  (raw [_]
-    (create-vector fact n (.createDataSource da n) nil))
+  (raw [this]
+    (raw this fact))
   (raw [_ fact]
-    (create-vector fact n (.createDataSource (data-accessor fact) n) nil))
+    (create-vector fact (.createDataSource (data-accessor fact) n) n nil))
   (zero [this]
     (raw this))
   (zero [this fact]
@@ -180,7 +180,7 @@
     (compatible da y))
   Monoid
   (id [x]
-    (create-vector fact 0 (.createDataSource da 0) nil))
+    (create-vector fact (.createDataSource da 0) 0 nil))
   EngineProvider
   (engine [_]
     eng)
@@ -292,6 +292,12 @@
   {:pure vector-pure}
   Magma
   {:op vector-op})
+
+(extend-type clojure.lang.Sequential
+  Container
+  (raw [this fact]
+    (let [n (count this)]
+      (create-vector fact (.createDataSource (data-accessor fact) n) n nil))))
 
 (defmethod transfer! [RealBlockVector RealBlockVector]
   [source destination]

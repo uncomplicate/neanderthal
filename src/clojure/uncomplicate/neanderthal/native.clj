@@ -9,7 +9,7 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.native
   (:require [uncomplicate.neanderthal.core
-             :refer [create create-vector create-ge-matrix]]
+             :refer [vctr ge tr]]
             [uncomplicate.neanderthal.impl.cblas
              :refer [cblas-single cblas-double]]))
 
@@ -45,7 +45,7 @@
   => #<RealBlockVector| float, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   ([source]
-   (create-vector cblas-single source))
+   (vctr cblas-single source))
   ([x & xs]
    (sv (cons x xs))))
 
@@ -79,20 +79,19 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   ([source]
-   (create-vector cblas-double source))
+   (vctr cblas-double source))
   ([x & xs]
    (dv (cons x xs))))
 
 (defn dge
-  "Creates a native-backed, dense, column-oriented double mxn matrix from source.
+  "Creates a native-backed, dense, double mxn matrix from source and/or options.
 
   If called with two arguments, creates a zero matrix with dimensions mxn.
 
   Accepts the following sources:
-  - java.nio.ByteBuffer with a capacity = Double/BYTES * m * n,
-  . which will be used as-is for backing the matrix.
   - a clojure sequence, which will be copied into a
   . direct ByteBuffer that backs the new vector.
+  -
 
   (dge 2 3)
   => #<GeneralMatrix| double, COL, mxn: 2x3, ld:2>((0.0 0.0) (0.0 0.0) (0.0 0.0))<>
@@ -103,10 +102,16 @@
   (dge 3 2 (java.nio.ByteBuffer/allocateDirect 48))
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((0.0 0.0 0.0) (0.0 0.0 0.0))<>
   "
-  ([^long m ^long n source]
-   (create-ge-matrix cblas-double m n source))
+  ([^long m ^long n source options]
+   (ge cblas-double m n source options))
+  ([^long m ^long n arg]
+   (if (map? arg)
+     (ge cblas-double m n arg)
+     (ge cblas-double m n arg nil)))
   ([^long m ^long n]
-   (create cblas-double m n)))
+   (ge cblas-double m n))
+  ([a]
+   (ge cblas-double a)))
 
 (defn sge
   "Creates a native-backed, dense, column-oriented float mxn matrix from source.
@@ -116,8 +121,6 @@
   Accepts the following sources:
   - java.nio.ByteBuffer with a capacity = Float/BYTES * m * n,
   . which will be used as-is for backing the matrix.
-  - a clojure sequence, which will be copied into a
-  . direct ByteBuffer that backs the new vector.
 
   (sge 2 3)
   => #<GeneralMatrix| float, COL, mxn: 2x3, ld:2>((0.0 0.0) (0.0 0.0) (0.0 0.0))<>
@@ -128,7 +131,13 @@
   (sge 3 2 (java.nio.ByteBuffer/allocateDirect 48))
   => #<GeneralMatrix| float, COL, mxn: 3x2, ld:3>((0.0 0.0 0.0) (0.0 0.0 0.0))<>
   "
-  ([^long m ^long n source]
-   (create-ge-matrix cblas-single m n source))
+  ([^long m ^long n source options]
+   (ge cblas-single m n source options))
+  ([^long m ^long n arg]
+   (if (map? arg)
+     (ge cblas-single m n arg)
+     (ge cblas-single m n arg nil)))
   ([^long m ^long n]
-   (create cblas-single m n)))
+   (ge cblas-single m n))
+  ([a]
+   (ge cblas-single a)))

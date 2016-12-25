@@ -15,9 +15,9 @@
     [f init g x y z] [f init g x y z v]))
 
 (defprotocol Factory
-  (create-vector [this n source options]);;TODO remove options
-  (create-ge [this m n source options])
-  (create-tr [this n source options])
+  (create-vector [this memory n options])
+  (create-ge [this memory m n options])
+  (create-tr [this memory n options])
   (vector-engine [this])
   (ge-engine [this])
   (tr-engine [this]))
