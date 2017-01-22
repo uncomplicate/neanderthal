@@ -291,7 +291,7 @@
   Applicative
   {:pure vector-pure}
   Magma
-  {:op vector-op})
+  {:op (constantly vector-op)})
 
 (extend-type clojure.lang.Sequential
   Container
@@ -572,7 +572,7 @@
   Applicative
   {:pure matrix-pure}
   Magma
-  {:op matrix-op})
+  {:op (constantly matrix-op)})
 
 (defmethod transfer! [RealGEMatrix RealGEMatrix]
   [source destination]

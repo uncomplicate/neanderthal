@@ -92,7 +92,7 @@
          (throw (IllegalArgumentException. (format DIMENSIONS_MSG (dim ~(first xs)))))))
     `(throw (UnsupportedOperationException. "Vector foldmap supports up to 4 vectors."))))
 
-(defn ^:private vector-op* [^Vector x & ws]
+(defn vector-op [^Vector x & ws]
   (let-release [res (vctr (factory x) (transduce (map dim) + (.dim x) ws))]
     (loop [pos 0 w x ws ws]
       (when w
@@ -101,16 +101,6 @@
           (throw (UnsupportedOperationException. (format INCOMPATIBLE_BLOCKS_MSG res w))))
         (recur (+ pos (dim w)) (first ws) (next ws))))
     res))
-
-(defn vector-op
-  ([^Vector x ^Vector y]
-   (vector-op* x y))
-  ([^Vector x ^Vector y ^Vector z]
-   (vector-op* x y z))
-  ([^Vector x ^Vector y ^Vector z ^Vector v]
-   (vector-op* x y z v))
-  ([^Vector x ^Vector y ^Vector z ^Vector v ws]
-   (apply vector-op* x y z v ws)))
 
 (defn vector-pure
   ([x ^double v]
@@ -176,7 +166,7 @@
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
 
-(defn matrix-op* [^GEMatrix a & bs]
+(defn matrix-op [^GEMatrix a & bs]
   (let [no-transp (= COLUMN_MAJOR (.order ^GEMatrix a))
         [m n] (if no-transp [mrows ncols] [ncols mrows])]
     (let-release [res ((if no-transp identity trans)
@@ -193,16 +183,6 @@
               (n a)
               bs)
       res)))
-
-(defn matrix-op
-  ([^Matrix a ^Matrix b]
-   (matrix-op* a b))
-  ([^Matrix a ^Matrix b ^Matrix c]
-   (matrix-op* a b c))
-  ([^Matrix a ^Matrix b ^Matrix c ^Matrix d]
-   (matrix-op* a b c d))
-  ([^Matrix a ^Matrix b ^Matrix c ^Vector d es]
-   (apply matrix-op* a b c d es)))
 
 (defn matrix-pure
   ([a ^double v]

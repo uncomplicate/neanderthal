@@ -15,8 +15,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [uncomplicate/commons "0.2.2"]
-                 [uncomplicate/fluokitten "0.5.1"]
-                 [uncomplicate/clojurecl "0.6.5"]
+                 [uncomplicate/fluokitten "0.6.0-SNAPSHOT"]
+                 [uncomplicate/clojurecl "0.7.0"]
                  [uncomplicate/neanderthal-native "0.9.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "0.9.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]
@@ -34,11 +34,6 @@
   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
-
-  #_(:aot [uncomplicate.neanderthal.protocols
-           uncomplicate.neanderthal.core
-           uncomplicate.neanderthal.impl.buffer-block
-           uncomplicate.neanderthal.impl.cblas])
 
   :profiles {:dev {:plugins [[lein-midje "3.2"]
                              [lein-codox "0.10.1"]]
