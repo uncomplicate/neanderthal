@@ -131,8 +131,7 @@
 ;; ============ Real Vector ====================================================
 
 (deftype RealBlockVector [^uncomplicate.neanderthal.protocols.Factory fact
-                          ^RealBufferAccessor da ^BLASPlus eng
-                          ^Class entry-type ^Boolean master
+                          ^RealBufferAccessor da ^BLASPlus eng ^Boolean master
                           ^ByteBuffer buf ^long n ^long strd]
   Object
   (hashCode [x]
@@ -152,7 +151,7 @@
           true))
       :default false))
   (toString [_]
-    (format "#RealBlockVector[%s, n:%d, stride:%d]" entry-type n strd))
+    (format "#RealBlockVector[%s, n:%d, stride:%d]" (.entryType da) n strd))
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -193,8 +192,6 @@
   (data-accessor [_]
     da)
   Block
-  (entryType [_]
-    entry-type)
   (buffer [_]
     buf)
   (offset [_]
@@ -282,8 +279,7 @@
 
 (defn real-block-vector [fact master buf n strd]
   (let [da (data-accessor fact)]
-    (RealBlockVector. fact da (vector-engine fact) (.entryType da)
-                      master buf n strd)))
+    (RealBlockVector. fact da (vector-engine fact) master buf n strd)))
 
 (extend RealBlockVector
   Functor
@@ -349,8 +345,7 @@
 (deftype RealGEMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDO set*
                        col-row* col* row*
                        ^uncomplicate.neanderthal.protocols.Factory fact
-                       ^RealBufferAccessor da ^BLAS eng
-                       ^Class entry-type ^Boolean master
+                       ^RealBufferAccessor da ^BLAS eng ^Boolean master
                        ^ByteBuffer buf ^long m ^long n
                        ^long ld ^long sd ^long fd ^long ord]
   Object
@@ -377,7 +372,7 @@
       :default false))
   (toString [this]
     (format "#RealGEMatrix[%s, mxn:%dx%d, ld:%d, ord%s]"
-            entry-type m n ld (dec-property ord)))
+            (.entryType da) m n ld (dec-property ord)))
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -420,8 +415,6 @@
   (id [a]
     (real-ge-matrix fact 0 0))
   GEMatrix
-  (entryType [_]
-    entry-type)
   (buffer [_]
     buf)
   (offset [_]
@@ -554,12 +547,10 @@
      (if (= COLUMN_MAJOR ord)
        (RealGEMatrix. no-trans-index no-trans-get no-trans-set col
                       straight-cut cross-cut fact da (ge-engine fact)
-                      (.entryType da) master buf
-                      m n (max (long ld) (long m)) m n ord)
+                      master buf m n (max (long ld) (long m)) m n ord)
        (RealGEMatrix. trans-index trans-get trans-set row cross-cut
                       straight-cut fact da (ge-engine fact)
-                      (.entryType da) master buf
-                      m n (max (long ld) (long n)) n m ord))))
+                      master buf m n (max (long ld) (long n)) n m ord))))
   ([fact m n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* (long m) (long n)))]
      (real-ge-matrix fact true buf m n m ord)))
@@ -605,8 +596,7 @@
                        ^IFn$LLL row-start* ^IFn$LLL row-len*
                        ^long diag-pad
                        ^uncomplicate.neanderthal.protocols.Factory fact
-                       ^RealBufferAccessor da ^BLAS eng
-                       ^Class entry-type ^Boolean master
+                       ^RealBufferAccessor da ^BLAS eng ^Boolean master
                        ^ByteBuffer buf ^long n ^long ld
                        ^long ord ^long fuplo ^long fdiag]
   Object
@@ -636,7 +626,7 @@
       :default false))
   (toString [a]
     (format "#RealTRMatrix[%s, mxn:%dx%d, ld:%d, ord%s, uplo%s, diag%s]"
-            entry-type n n ld (dec-property ord) (dec-property fuplo) (dec-property fdiag)))
+            (.entryType da) n n ld (dec-property ord) (dec-property fuplo) (dec-property fdiag)))
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -674,8 +664,6 @@
   (id [a]
     (real-tr-matrix fact 0))
   TRMatrix
-  (entryType [_]
-    entry-type)
   (buffer [_]
     buf)
   (offset [_]
@@ -776,8 +764,7 @@
                       (if left zero id)
                       (if left inc-id inv)
                       (if (= DIAG_UNIT diag) 1 0)
-                      fact da (tr-engine fact)
-                      (.entryType da) master
+                      fact da (tr-engine fact) master
                       buf n ld ord uplo diag)))
     ([fact n ord uplo diag]
      (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
