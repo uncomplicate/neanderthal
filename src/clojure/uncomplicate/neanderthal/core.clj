@@ -113,7 +113,7 @@
   ([factory m n source options]
    (let-release [res (if (and (< -1 (long m)) (< -1 (long n)))
                        (p/create-ge factory (.createDataSource (p/data-accessor factory) (* (long m) (long n)))
-                                    m n (fmap p/enc-property options))
+                                    m n options)
                        (throw (IllegalArgumentException.
                                (format "Dimensions m=%d, n=%d are not allowed." m n))))]
      (if source
@@ -133,7 +133,7 @@
   ([factory ^long n source options]
    (let-release [res (if (< -1 n)
                        (p/create-tr factory (.createDataSource (p/data-accessor factory) (* n n))
-                                    n (fmap p/enc-property options))
+                                    n options)
                        (throw (IllegalArgumentException.
                                (format "Dimension n=%d is not allowed." n))))]
      (if source
@@ -195,7 +195,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(3.0 4.0 5.0)<>
   "
   [^Vector x ^long k ^long l]
-  (if (and (<= (+ k l) (.dim x)))
+  (if (<= (+ k l) (.dim x))
     (.subvector x k l)
     (throw (IndexOutOfBoundsException.
             (format p/VECTOR_BOUNDS_MSG (+ k l) (.dim x))))))

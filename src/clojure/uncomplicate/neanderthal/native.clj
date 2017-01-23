@@ -105,9 +105,7 @@
   ([^long m ^long n source options]
    (ge cblas-double m n source options))
   ([^long m ^long n arg]
-   (if (map? arg)
-     (ge cblas-double m n arg)
-     (ge cblas-double m n arg nil)))
+   (ge cblas-double m n arg))
   ([^long m ^long n]
    (ge cblas-double m n))
   ([a]
@@ -134,10 +132,26 @@
   ([^long m ^long n source options]
    (ge cblas-single m n source options))
   ([^long m ^long n arg]
-   (if (map? arg)
-     (ge cblas-single m n arg)
-     (ge cblas-single m n arg nil)))
+   (ge cblas-single m n arg))
   ([^long m ^long n]
    (ge cblas-single m n))
   ([a]
    (ge cblas-single a)))
+
+(defn dtr
+  "TODO"
+  ([^long n source options]
+   (tr cblas-double n source options))
+  ([^long n arg]
+   (tr cblas-double n arg))
+  ([arg]
+   (tr cblas-double arg)))
+
+(defn ftr
+  "TODO"
+  ([^long n source options]
+   (tr cblas-single n source options))
+  ([^long n arg]
+   (tr cblas-single n arg))
+  ([arg]
+   (tr cblas-single arg)))

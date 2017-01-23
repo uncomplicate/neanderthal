@@ -33,7 +33,7 @@
            (zero a) => ac
            (identical? a (zero a)) => false)))
 
-(defn test-ge-matrix [factory]
+(defn test-ge [factory]
   (facts "General Matrix methods."
          (let [a (ge factory 2 3 [1 2 3 4 5 6])]
            (mrows a) => 2
@@ -284,20 +284,19 @@
 
 ;; ================= Real General Matrix functions =============================
 
-(defn test-matrix-constructor [factory]
-  (facts "Create a matrix."
+(defn test-ge-constructor [factory]
+  (facts "Create a general matrix."
          (let [a (ge factory 2 3 [1 2 3 4 5 6])]
            (ge factory 2 3 [1 2 3 4 5 6]) => a
            ;;(ge factory 2 3 (seq-to-buffer (data-accessor factory)
-                                                        ;;[1 2 3 4 5 6]))
+           ;;[1 2 3 4 5 6]))
            ;;=> a
            (ge factory 2 3 nil) => (zero a)
            ;;(ge factory 0 0 [])
            ;;=> (ge factory 0 0 (seq-to-buffer (data-accessor factory) []))
-
            )))
 
-(defn test-matrix [factory]
+(defn test-ge [factory]
   (facts "General Matrix methods."
          (ncols (ge factory 2 3 [1 2 3 4 5 6])) => 3
          (ncols (ge factory 0 0 [])) => 0
@@ -324,7 +323,7 @@
          (submatrix (ge factory 3 4 (range 12)) 1 1 3 3)
          => (throws IndexOutOfBoundsException)))
 
-(defn test-matrix-entry [factory]
+(defn test-ge-entry [factory]
   (facts "Matrix entry."
          (entry (ge factory 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
          (entry (ge factory 0 0) 0 0)
@@ -334,15 +333,15 @@
          (entry (ge factory 2 3 [1 2 3 4 5 6]) 2 1)
          => (throws IndexOutOfBoundsException)))
 
-(defn test-matrix-entry! [factory]
+(defn test-ge-entry! [factory]
   (facts "Matrix entry!."
          (entry (entry! (ge factory 2 3 [1 2 3 4 5 6]) 0 1 88.0) 0 1) => 88.0))
 
-(defn test-matrix-bulk-entry! [factory]
+(defn test-ge-bulk-entry! [factory]
   (facts "Matrix entry!."
          (sum (row (entry! (ge factory 2 3 [1 2 3 4 5 6]) 88.0) 1)) => 264.0))
 
-(defn test-matrix-copy [factory]
+(defn test-ge-copy [factory]
   (facts "BLAS 1 copy! general matrix"
          (let [a (ge factory 2 3)]
            (copy! (ge factory 2 3 [1 2 3 4 5 6]) a) => a
@@ -361,7 +360,7 @@
          (let [x (vctr factory 1 2)]
            (identical? (copy x) x) => false)))
 
-(defn test-matrix-scal [factory]
+(defn test-ge-scal [factory]
   (facts "BLAS 1 scal! general matrix"
          (let [x (ge factory 2 3 [1 2 3 4 5 6])]()
               (identical? (scal! 3 x) x) => true)
@@ -476,13 +475,26 @@
 
 ;; ====================== TR Matrix ============================
 
+(defn test-tr-constructor [factory]
+  (facts "Create a triangular matrix."
+         (let [a (tr factory 3 (range 6))]
+           (subtriangle (ge factory 3 3 [0 1 2 0 3 4 0 0 5])) => a
+           ;;(ge factory 2 3 (seq-to-buffer (data-accessor factory)
+           ;;[1 2 3 4 5 6]))
+           ;;=> a
+           (tr factory 3 nil) => (zero a)
+           ;;(ge factory 0 0 [])
+           ;;=> (ge factory 0 0 (seq-to-buffer (data-accessor factory) []))
+           )))
+
 (defn test-tr-entry [factory]
   (facts "TR Matrix entry."
-         (with-release [a-upper (tr factory 3 (range 9))]
-           (entry a-upper 0 1) => 3.0
+         (with-release [a-upper (tr factory 3 (range 6) {:uplo :upper})]
+           (entry a-upper 0 1) => 1.0
            (entry a-upper 1 0) => 0.0
-           (entry a-upper 1 1) => 4.0
+           (entry a-upper 1 1) => 2.0
            (entry a-upper 2 0) => 0.0
+           (entry a-upper 0 2) => 3.0
            (entry a-upper -1 2) => (throws IndexOutOfBoundsException)
            (entry a-upper 3 2) => (throws IndexOutOfBoundsException))))
 
@@ -490,7 +502,6 @@
 (defn test-all [factory]
   (do
     (test-group factory)
-    (test-ge-matrix factory)
     (test-vector-constructor factory)
     (test-vector factory)
     (test-vector-entry factory)
@@ -509,13 +520,14 @@
     (test-scal factory)
     (test-vector-copy factory)
     (test-axpy factory)
-    (test-matrix-constructor factory)
-    (test-matrix factory)
-    (test-matrix-entry factory)
-    (test-matrix-entry! factory)
-    (test-matrix-bulk-entry! factory)
-    (test-matrix-copy factory)
-    (test-matrix-scal factory)
+    (test-ge-constructor factory)
+    (test-ge factory)
+    (test-ge factory)
+    (test-ge-entry factory)
+    (test-ge-entry! factory)
+    (test-ge-bulk-entry! factory)
+    (test-ge-copy factory)
+    (test-ge-scal factory)
     (test-mv factory)
     (test-mv-transpose factory)
     (test-rank factory)

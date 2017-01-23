@@ -19,4 +19,5 @@
 
 ;;TODO move to test-all when OpenCL is implemented
 (real-test/test-tr cblas-double)
+(real-test/test-tr-constructor cblas-double)
 (real-test/test-tr-entry cblas-double)

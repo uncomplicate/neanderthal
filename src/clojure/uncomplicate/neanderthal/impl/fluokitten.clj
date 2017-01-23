@@ -25,14 +25,14 @@
 
 ;; ================== Fluokitten implementation  ===============================
 ;; ---------------------- Vector Fluokitten funcitions -------------------------
-(defn entry ^double [^RealVector x ^long i]
+(defn raw-entry ^double [^RealVector x ^long i]
   (.entry x i))
 
 (defmacro  invoke-entry [f i & xs]
-  `(.invokePrim ~f ~@(map #(list `entry % i) xs)))
+  `(.invokePrim ~f ~@(map #(list `raw-entry % i) xs)))
 
 (defmacro ^:private fn-entry [f i & xs]
-  `(~f ~@(map #(list `entry % i) xs)))
+  `(~f ~@(map #(list `raw-entry % i) xs)))
 
 (defmacro ^:private vector-reduce* [f init invoker g & xs]
   `(let [dim-x# (dim ~(first xs))]

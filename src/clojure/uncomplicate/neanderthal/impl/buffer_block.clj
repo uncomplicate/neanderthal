@@ -16,7 +16,7 @@
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [transfer! copy! col row mrows ncols]]
-             [real :refer [sum]]]
+             [real :refer [sum entry]]]
             [uncomplicate.neanderthal.impl.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
@@ -45,6 +45,11 @@
     (if (.isDirect buffer)
       (.clean (.cleaner ^DirectByteBuffer buffer)))
     true))
+
+(extend-type DirectByteBuffer
+  Releaseable
+  (release [this]
+    (clean-buffer this)))
 
 ;; ============ Real Buffer ====================================================
 
@@ -431,17 +436,13 @@
     fd)
   Seqable
   (seq [a]
-    (map #(seq (straight-cut fact buf ld sd fd %)) (range 0 fd)))
+    (map #(seq (col-row* a %)) (range 0 fd)))
   IFn$LLD
-  (invokePrim [a i j] ;;TODO extract with-check-bounds and use it in core too or call core/entry here!
-    (if (and (< -1 i m) (< -1 j n))
-      (.entry a i j)
-      (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j m n)))))
+  (invokePrim [a i j]
+    (entry a i j))
   IFn
   (invoke [a i j]
-    (if (and (< -1 (long i) m) (< -1 (long j) n))
-      (.entry a i j)
-      (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j m n)))))
+    (entry a i j))
   (invoke [a]
     n)
   IFn$L
@@ -573,15 +574,20 @@
 
 (defmethod transfer! [clojure.lang.Sequential RealGEMatrix]
   [source ^RealGEMatrix destination]
-  (let [m (.mrows destination)
-        n (.ncols destination)
+  (let [ld (.ld destination)
         sd (.sd destination)
-        d (* m n)]
-    (loop [i 0 src source]
-      (when (and src (< i d))
-        (.set destination (rem i sd) (quot i sd) (first src))
-        (recur (inc i) (next src))))
-    destination))
+        fd (.fd destination)
+        da (data-accessor destination)
+        buf (.buffer destination)]
+    (loop [j 0 src source]
+      (if (and src (< j fd))
+        (recur (inc j)
+               (loop [i 0 src src]
+                 (if (and src (< i sd))
+                   (do (.set ^RealBufferAccessor da buf (+ (* ld j) i) (first src))
+                       (recur (inc i) (next src)))
+                   src)))
+        destination))))
 
 (defmethod print-method RealGEMatrix
   [^RealGEMatrix a ^java.io.Writer w]
@@ -594,7 +600,7 @@
                        col-row* col* row*
                        ^IFn$LLL col-start* ^IFn$LLL col-len*
                        ^IFn$LLL row-start* ^IFn$LLL row-len*
-                       ^long diag-pad
+                       ^long diag-pad ^IFn$LLL default-entry*
                        ^uncomplicate.neanderthal.protocols.Factory fact
                        ^RealBufferAccessor da ^BLAS eng ^Boolean master
                        ^ByteBuffer buf ^long n ^long ld
@@ -609,9 +615,7 @@
       (identical? a b) true
       (and (instance? RealTRMatrix b) (compatible da b)
            (= n (mrows b))
-           (if (= fuplo (.uplo ^RealTRMatrix b))
-             (= fdiag (.diag ^RealTRMatrix b))
-             (not (= fdiag (.diag ^RealTRMatrix b)))))
+           (= fuplo (.uplo ^RealTRMatrix b)))
       (loop [j 0]
         (if (< j n)
           (let [end (.invokePrim end* n j)]
@@ -652,7 +656,7 @@
     (raw this fact))
   (host [this]
     (let-release [res (raw this)]
-      (.copy eng this res)));;implement TR.copy
+      (.copy eng this res)));;TODO implement TR.copy
   (native [this]
     this)
   (form [this]
@@ -684,17 +688,13 @@
     n)
   Seqable
   (seq [a]
-    (map #(seq (straight-cut fact buf ld n n %)) (range 0 n)));;TODO uplo
+    (map #(seq (col-row* a %)) (range 0 n)))
   IFn$LLD
-  (invokePrim [a i j];;TODO extract with-check-bounds
-    (if (and (< -1 i n) (< -1 j n))
-      (.entry a i j)
-      (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j n n)))))
+  (invokePrim [a i j]
+    (entry a i j))
   IFn
   (invoke [a i j]
-    (if (and (< -1 (long i) n) (< -1 (long j) n))
-      (.entry a i j)
-      (throw (IndexOutOfBoundsException. (format MAT_BOUNDS_MSG i j n n)))))
+    (entry a i j))
   (invoke [a]
     n)
   IFn$L
@@ -723,7 +723,10 @@
   (ncols [_]
     n)
   (entry [a i j]
-    (.get da buf (.invokePrim index* ld i j)))
+    (let [res (.invokePrim default-entry* i j)]
+      (if (= 2 res)
+        (.get da buf (.invokePrim index* ld i j))
+        res)))
   (boxedEntry [this i j]
     (.entry this i j))
   (row [a i]
@@ -732,8 +735,8 @@
                 (- (.invokePrim row-len* n i) diag-pad)))
   (col [a j]
     (.subvector ^Vector (col* fact buf ld n n j)
-                (+ (long (col-start* n j)) diag-pad)
-                (- (long (col-len* n j)) diag-pad)))
+                (+ (.invokePrim col-start* n j) diag-pad)
+                (- (.invokePrim col-len* n j) diag-pad)))
   (submatrix [a i j k l]
     (throw (UnsupportedOperationException. "TODO I should return banded matrix or GE.")))
   (transpose [a]
@@ -743,7 +746,15 @@
       end (fn ^long [^long n ^long i] n)
       id (fn ^long [^long n ^long i] i)
       inc-id (fn ^long [^long n ^long i] (inc i))
-      inv (fn ^long [^long n ^long i] (- n i))]
+      inv (fn ^long [^long n ^long i] (- n i))
+      upper-unit-entry (fn ^long [^long i ^long j]
+                         (inc (Integer/signum (- j i))))
+      lower-unit-entry (fn ^long [^long i ^long j]
+                         (inc (Integer/signum (- i j))))
+      upper-entry (fn ^long [^long i ^long j]
+                    (* 2 (Integer/signum (inc (Integer/signum (- j i))))))
+      lower-entry (fn ^long [^long i ^long j]
+                    (* 2 (Integer/signum (inc (Integer/signum (- i j))))))]
 
   (defn real-tr-matrix
     ([fact master buf n ld ord uplo diag]
@@ -752,8 +763,8 @@
            left (if no-trans (= LOWER uplo) (= UPPER uplo))
            da (data-accessor fact)]
        (RealTRMatrix. (if no-trans no-trans-index trans-index)
-                      (if no-trans no-trans-get trans-set)
                       (if no-trans no-trans-get trans-get)
+                      (if no-trans no-trans-set trans-set)
                       (if left (if non-unit id inc-id) zero)
                       (if left end (if non-unit inc-id id))
                       (if no-trans col row)
@@ -763,15 +774,17 @@
                       (if left inv inc-id)
                       (if left zero id)
                       (if left inc-id inv)
-                      (if (= DIAG_UNIT diag) 1 0)
+                      (if non-unit 0 1)
+                      (if (= UPPER uplo)
+                        (if non-unit upper-entry upper-unit-entry)
+                        (if non-unit lower-entry lower-unit-entry))
                       fact da (tr-engine fact) master
                       buf n ld ord uplo diag)))
     ([fact n ord uplo diag]
      (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
-       (real-tr-matrix fact true buf n ord uplo diag)))
+       (real-tr-matrix fact true buf n n ord uplo diag)))
     ([fact n]
      (real-tr-matrix fact n DEFAULT_TRANS DEFAULT_UPLO DEFAULT_DIAG))))
-
 
 (defmethod transfer! [RealTRMatrix RealTRMatrix]
   [source destination]
@@ -779,19 +792,23 @@
     (copy! source destination)
     destination))
 
-;;TODO
 (defmethod transfer! [clojure.lang.Sequential RealTRMatrix]
   [source ^RealTRMatrix destination]
-  (let [m (.mrows destination)
+  (let [ld (.stride destination)
         n (.ncols destination)
-        d (* m n)]
-    (loop [i 0 src source]
-      (if (and src (< i d))
-        (do
-          (if (= COLUMN_MAJOR (.order destination));;TODO check
-            (.set destination (rem i m) (quot i m) (first src))
-            (.set destination (rem i n) (quot i n) (first src)))
-          (recur (inc i) (next src)))
+        start* (.start_STAR_ destination)
+        end* (.end_STAR_ destination)
+        da (data-accessor destination)
+        buf (.buf destination)]
+    (loop [j 0 src source]
+      (if (and src (< j n))
+        (recur (inc j)
+               (let [end (.invokePrim ^IFn$LLL end* n j)]
+                 (loop [i (.invokePrim ^IFn$LLL start* n j) src src]
+                   (if (and src (< i end))
+                     (do (.set ^RealBufferAccessor da buf (+ (* ld j) i) (first src))
+                         (recur (inc i) (next src)))
+                     src))))
         destination))))
 
 (defmethod print-method RealTRMatrix
