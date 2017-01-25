@@ -8,9 +8,10 @@
 
 (ns uncomplicate.neanderthal.impl.cblas
   (:require [vertigo.bytes :refer [direct-buffer]]
+            [uncomplicate.commons.core :refer [with-release let-release]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [dim]]
+             [core :refer [dim copy]]
              [block :refer [order buffer offset stride]]]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
@@ -148,9 +149,11 @@
 (deftype DoubleVectorEngine []
   BLAS
   (swap [_ x y]
-    (CBLAS/dswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (CBLAS/dswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y))
+    x)
   (copy [_ x y]
-    (CBLAS/dcopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (CBLAS/dcopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y))
+    y)
   (dot [_ x y]
     (CBLAS/ddot (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y)))
   (nrm2 [_ x]
@@ -160,21 +163,28 @@
   (iamax [_ x]
     (CBLAS/idamax (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (rot [_ x y c s]
-    (CBLAS/drot (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y) c s))
+    (CBLAS/drot (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y) c s)
+    x)
   (rotg [_ x]
-    (vector-rotg CBLAS/drotg x))
+    (vector-rotg CBLAS/drotg x)
+    x)
   (rotm [_ x y p]
-    (vector-rotm CBLAS/drotm x y p))
+    (vector-rotm CBLAS/drotm x y p)
+    x)
   (rotmg [_ p args]
-    (vector-rotmg CBLAS/drotmg p args))
+    (vector-rotmg CBLAS/drotmg p args)
+    p)
   (scal [_ alpha x]
-    (CBLAS/dscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
+    (CBLAS/dscal (.dim ^Vector x) alpha (.buffer x) (.stride x))
+    x)
   (axpy [_ alpha x y]
     (CBLAS/daxpy (.dim ^Vector x)
-                 (double alpha) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+                 (double alpha) (.buffer x) (.stride x) (.buffer y) (.stride y))
+    y)
   BLASPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/dcopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
+    (CBLAS/dcopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y))
+    y)
   (sum [_ x]
     (CBLAS/dsum (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (imax [_ x]
@@ -185,9 +195,11 @@
 (deftype SingleVectorEngine []
   BLAS
   (swap [_ x y]
-    (CBLAS/sswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (CBLAS/sswap (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y))
+    x)
   (copy [_ x y]
-    (CBLAS/scopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y)))
+    (CBLAS/scopy (.dim ^Vector x) (.buffer x) 0 (.stride x) (.buffer y) 0 (.stride y))
+    y)
   (dot [_ x y]
     (CBLAS/dsdot (.dim x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y)))
   (nrm2 [_ x]
@@ -197,21 +209,28 @@
   (iamax [_ x]
     (CBLAS/isamax (.dim x) (.buffer ^Block x) (.stride ^Block x)))
   (rot [_ x y c s]
-    (CBLAS/srot (.dim x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y) c s))
+    (CBLAS/srot (.dim x) (.buffer ^Block x) (.stride ^Block x) (.buffer ^Block y) (.stride ^Block y) c s)
+    x)
   (rotg [_ x]
-    (vector-rotg CBLAS/srotg x))
+    (vector-rotg CBLAS/srotg x)
+    x)
   (rotm [_ x y p]
-    (vector-rotm CBLAS/srotm x y p))
+    (vector-rotm CBLAS/srotm x y p)
+    x)
   (rotmg [_ p args]
-    (vector-rotmg CBLAS/srotmg p args))
+    (vector-rotmg CBLAS/srotmg p args)
+    p)
   (scal [_ alpha x]
-    (CBLAS/sscal (.dim ^Vector x) alpha (.buffer x) (.stride x)))
+    (CBLAS/sscal (.dim ^Vector x) alpha (.buffer x) (.stride x))
+    x)
   (axpy [_ alpha x y]
     (CBLAS/saxpy (.dim ^Vector x)
-                 (float alpha) (.buffer x) (.stride x) (.buffer y) (.stride y)))
+                 (float alpha) (.buffer x) (.stride x) (.buffer y) (.stride y))
+    y)
   BLASPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/scopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y)))
+    (CBLAS/scopy lx (.buffer x) kx (.stride x) (.buffer y) ky (.stride y))
+    y)
   (sum [_ x]
     (CBLAS/ssum (.dim ^Vector x) (.buffer ^Block x) (.stride ^Block x)))
   (imax [_ x]
@@ -224,26 +243,37 @@
 (deftype DoubleGEEngine []
   BLAS
   (swap [_ a b]
-    (ge-swap-copy CBLAS/dswap ^GEMatrix a ^GEMatrix b))
+    (ge-swap-copy CBLAS/dswap ^GEMatrix a ^GEMatrix b)
+    a)
   (copy [_ a b]
-    (ge-swap-copy CBLAS/dcopy ^GEMatrix a ^GEMatrix b))
+    (ge-swap-copy CBLAS/dcopy ^GEMatrix a ^GEMatrix b)
+    b)
   (scal [_ alpha a]
-    (ge-scal ^BufferAccessor (data-accessor a) CBLAS/dscal alpha ^GEMatrix a))
+    (ge-scal ^BufferAccessor (data-accessor a) CBLAS/dscal alpha ^GEMatrix a)
+    a)
   (axpy [_ alpha a b]
-    (ge-axpy ^BufferAccessor (data-accessor a) CBLAS/daxpy alpha ^GEMatrix a ^GEMatrix b))
+    (ge-axpy ^BufferAccessor (data-accessor a) CBLAS/daxpy alpha ^GEMatrix a ^GEMatrix b)
+    b)
   (mv [_ alpha a x beta y]
     (CBLAS/dgemv (.order ^GEMatrix a) NO_TRANS
                  (.mrows ^GEMatrix a) (.ncols ^GEMatrix a)
                  alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
                  (.buffer ^Block x) (.stride ^Block x)
-                 beta (.buffer ^Block y) (.stride ^Block y)))
+                 beta (.buffer ^Block y) (.stride ^Block y))
+    y)
   (mv [this a x]
     (.mv this 1.0 a x 0.0 x))
   (rank [_ alpha x y a]
     (CBLAS/dger (.order ^GEMatrix a) (.mrows a) (.ncols a)
                 alpha (.buffer ^Block x) (.stride ^Block x)
                 (.buffer ^Block y) (.stride ^Block y)
-                (.buffer ^GEMatrix a) (.stride ^GEMatrix a)))
+                (.buffer ^GEMatrix a) (.stride ^GEMatrix a))
+    a)
+  (mm [this alpha a b _]
+    (if (instance? GEMatrix b)
+      (with-release [b-copy (copy b)]
+        (.mm this alpha a b-copy 0.0 b))
+      (.mm (engine b) alpha b a false)))
   (mm [_ alpha a b beta c]
     (CBLAS/dgemm (.order ^GEMatrix c)
                  (if (= (.order ^GEMatrix a) (.order ^GEMatrix c)) NO_TRANS TRANS)
@@ -251,30 +281,42 @@
                  (.mrows ^GEMatrix a) (.ncols ^GEMatrix b) (.ncols ^GEMatrix a)
                  alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
                  (.buffer ^GEMatrix b) (.stride ^GEMatrix b)
-                 beta (.buffer ^GEMatrix c) (.stride ^GEMatrix c))))
+                 beta (.buffer ^GEMatrix c) (.stride ^GEMatrix c))
+    c))
 
 (deftype SingleGEEngine []
   BLAS
   (swap [_ a b]
-    (ge-swap-copy CBLAS/sswap ^GEMatrix a ^GEMatrix b))
+    (ge-swap-copy CBLAS/sswap ^GEMatrix a ^GEMatrix b)
+    a)
   (copy [_ a b]
-    (ge-swap-copy CBLAS/scopy ^GEMatrix a ^GEMatrix b))
+    (ge-swap-copy CBLAS/scopy ^GEMatrix a ^GEMatrix b)
+    b)
   (scal [_ alpha a]
-    (ge-scal ^BufferAccessor (data-accessor a) CBLAS/sscal alpha ^GEMatrix a))
+    (ge-scal ^BufferAccessor (data-accessor a) CBLAS/sscal alpha ^GEMatrix a)
+    a)
   (axpy [_ alpha a b]
-    (ge-axpy ^BufferAccessor (data-accessor a) CBLAS/saxpy alpha ^GEMatrix a ^GEMatrix b))
+    (ge-axpy ^BufferAccessor (data-accessor a) CBLAS/saxpy alpha ^GEMatrix a ^GEMatrix b)
+    b)
   (mv [_ alpha a x beta y]
     (CBLAS/sgemv (.order ^GEMatrix a) NO_TRANS (.mrows a) (.ncols a)
                  alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
                  (.buffer ^Block x) (.stride ^Block x)
-                 beta (.buffer ^Block y) (.stride ^Block y)))
+                 beta (.buffer ^Block y) (.stride ^Block y))
+    y)
   (mv [this a x]
     (.mv this 1.0 a x 0.0 x))
   (rank [_ alpha x y a]
     (CBLAS/sger (.order ^GEMatrix a) (.mrows a) (.ncols a)
                 alpha (.buffer ^Block x) (.stride ^Block x)
                 (.buffer ^Block y) (.stride ^Block y)
-                (.buffer ^GEMatrix a) (.stride ^GEMatrix a)))
+                (.buffer ^GEMatrix a) (.stride ^GEMatrix a))
+    a)
+  (mm [this alpha a b _]
+    (if (instance? GEMatrix b)
+      (with-release [b-copy (copy b)]
+        (.mm this alpha a b-copy 0.0 b))
+      (.mm (engine b) alpha b a false)))
   (mm [_ alpha a b beta c]
     (CBLAS/sgemm (.order ^GEMatrix c)
                  (if (= (.order ^GEMatrix a) (.order ^GEMatrix c)) NO_TRANS TRANS)
@@ -282,55 +324,98 @@
                  (.mrows a) (.ncols b) (.ncols a)
                  alpha (.buffer ^GEMatrix a) (.stride ^GEMatrix a)
                  (.buffer ^GEMatrix b) (.stride ^GEMatrix b)
-                 beta (.buffer ^GEMatrix c) (.stride ^GEMatrix c))))
+                 beta (.buffer ^GEMatrix c) (.stride ^GEMatrix c))
+    c))
 
 ;; ================= Triangular Matrix Engines =================================
 
 (deftype DoubleTREngine [^DoubleVectorEngine vector-eng]
   BLAS
   (swap [_ a b]
-    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    a)
   (copy [_ a b]
-    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-copy vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    b)
   (scal [_ alpha a]
-    (tr-scal vector-eng alpha ^RealTRMatrix a))
+    (tr-scal vector-eng alpha ^RealTRMatrix a)
+    a)
   (axpy [_ alpha a b]
-    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b)
+    b)
+  (mv [this alpha a x beta y]
+    (if (= 0.0 (double beta))
+      (if (= 1.0 (double alpha))
+        (.mv this a x)
+        (.scal vector-eng alpha (.mv this a (.copy vector-eng x y))))
+      (with-release [x-copy (copy x)]
+        (.axpy vector-eng alpha (.mv this a x-copy)
+               (if (= 1.0 (double beta)) y (.scal vector-eng beta y))))))
   (mv [_ a x]
     (CBLAS/dtrmv (.order ^TRMatrix a) (.uplo ^TRMatrix a) NO_TRANS (.diag ^TRMatrix a)
                  (.ncols a)
-                 (.buffer ^TRMatrix a) (.stride ^TRMatrix a) (.buffer ^Block x) (.stride ^Block x)))
-  (mm [_ alpha a b right]
-    (CBLAS/dtrmm (.order ^GEMatrix b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
+                 (.buffer ^TRMatrix a) (.stride ^TRMatrix a) (.buffer ^Block x) (.stride ^Block x))
+    x)
+  (mm [this alpha a b beta c]
+    (if (= 0.0 (double beta))
+      (.mm this alpha a (.copy (engine b) b c) true)
+      (with-release [b-copy (copy b)
+                     eng (engine b)]
+        (.axpy eng 1.0 (.mm this alpha a b-copy true)
+               (if (= 1.0 (double beta)) c (.scal eng beta c))))))
+  (mm [_ alpha a b left]
+    (CBLAS/dtrmm (.order ^GEMatrix b) (if left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
                  (.uplo ^TRMatrix a)
                  (if (= (.order ^TRMatrix a) (.order ^GEMatrix b)) NO_TRANS TRANS)
                  (.diag ^TRMatrix a)
                  (.mrows b) (.ncols b)
                  alpha (.buffer ^TRMatrix a) (.stride ^TRMatrix a)
-                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b))))
+                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b))
+    b))
 
 (deftype SingleTREngine [^SingleVectorEngine vector-eng]
   BLAS
   (swap [_ a b]
-    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    a)
   (copy [_ a b]
-    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-copy vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    b)
   (scal [_ alpha a]
-    (tr-scal vector-eng alpha ^RealTRMatrix a))
+    (tr-scal vector-eng alpha ^RealTRMatrix a)
+    a)
   (axpy [_ alpha a b]
-    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b)
+    b)
+  (mv [this alpha a x beta y]
+    (if (= 0.0 (double beta))
+      (if (= 1.0 (double alpha))
+        (.mv this a x)
+        (.scal vector-eng alpha (.mv this a (.copy vector-eng x y))))
+      (with-release [x-copy (copy x)]
+        (.axpy vector-eng alpha (.mv this a x-copy)
+               (if (= 1.0 (double beta)) y (.scal vector-eng beta y))))))
   (mv [_ a x]
     (CBLAS/strmv (.order ^TRMatrix a) (.uplo ^TRMatrix a) NO_TRANS (.diag ^TRMatrix a)
                  (.ncols a)
-                 (.buffer ^TRMatrix a) (.stride ^TRMatrix a) (.buffer ^Block x) (.stride ^Block x)))
-  (mm [_ alpha a b right]
-    (CBLAS/strmm (.order ^GEMatrix b) (if right CBLAS/SIDE_RIGHT CBLAS/SIDE_LEFT)
+                 (.buffer ^TRMatrix a) (.stride ^TRMatrix a) (.buffer ^Block x) (.stride ^Block x))
+    x)
+  (mm [this alpha a b beta c]
+    (if (= 0.0 (double beta))
+      (.mm this alpha a (.copy (engine b) b c) true)
+      (with-release [b-copy (copy b)
+                     eng (engine b)]
+        (.axpy eng 1.0 (.mm this alpha a b-copy true)
+               (if (= 1.0 (double beta)) c (.scal eng beta c))))))
+  (mm [_ alpha a b left]
+    (CBLAS/strmm (.order ^GEMatrix b) (if left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
                  (.uplo ^TRMatrix a)
                  (if (= (.order ^TRMatrix a) (.order ^GEMatrix b)) NO_TRANS TRANS)
                  (.diag ^TRMatrix a)
                  (.mrows b) (.ncols b)
                  alpha (.buffer ^TRMatrix a) (.stride ^TRMatrix a)
-                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b))))
+                 (.buffer ^GEMatrix b) (.stride ^GEMatrix b))
+    b))
 
 ;; =============== Factories ==================================================
 

@@ -458,9 +458,7 @@
    (if (p/compatible x y)
      (if (and (<= -1.0 c 1.0) (<= -1.0 c 1.0)
               (f= 1.0 (+ (pow c 2) (pow s 2))))
-       (do
-         (.rot (p/engine x) x y c s)
-         x)
+       (.rot (p/engine x) x y c s)
        (throw (IllegalArgumentException. "c and s must be sin and cos.")))
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y c]
@@ -498,9 +496,7 @@
   "
   [^Vector x]
   (if (= 4 (.dim x))
-    (do
-      (.rotg (p/engine x) x)
-      x)
+    (.rotg (p/engine x) x)
     (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (.dim x))))))
 
 (defn rotmg!
@@ -510,9 +506,7 @@
   "
   [^Vector p ^Vector args]
   (if (and (p/compatible p args) (= 5 (.dim p)) (= 4 (.dim args)))
-    (do
-      (.rotmg (p/engine p) p args)
-      p)
+    (.rotmg (p/engine p) p args)
     (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG p args)))))
 
 (defn rotm!
@@ -520,9 +514,7 @@
   "
   [^Vector x ^Vector y ^Vector p]
   (if (and (p/compatible x y) (= (.dim x) (.dim y)) (= 5 (.dim p)))
-    (do
-      (.rotm (p/engine x) x y p)
-      x)
+    (.rotm (p/engine x) x y p)
     (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y p)))))
 
 (defn swp!
@@ -545,9 +537,7 @@
   (if (not (identical? x y))
     (if (and (= (p/form x) (p/form y)) (p/compatible x y))
       (if (= (ecount x) (ecount y))
-        (do
-          (.swap (p/engine x) x y)
-          x)
+        (.swap (p/engine x) x y)
         (throw (IllegalArgumentException.
                 (format p/DIMENSION_MSG (ecount x) (ecount y)))))
       (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
@@ -575,9 +565,7 @@
    (if (not (identical? x y))
      (if (and (= (p/form x) (p/form y)) (p/compatible x y))
        (if (= (ecount x) (ecount y))
-         (do
-           (.copy (p/engine x) x y)
-           y)
+         (.copy (p/engine x) x y)
          (throw (IllegalArgumentException.
                  (format p/DIMENSION_MSG (ecount x) (ecount y)))))
        (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
@@ -587,10 +575,8 @@
      (if (and (= (p/form x) (p/form y)) (p/compatible x y))
        (if (<= (long length) (min (- (ecount x) (long offset-x))
                                   (- (ecount y) (long offset-y))))
-         (do
-           (.subcopy ^BLASPlus (p/engine x) x y
-                     (long offset-x) (long length) (long offset-y))
-           y)
+         (.subcopy ^BLASPlus (p/engine x) x y
+                   (long offset-x) (long length) (long offset-y))
          (throw (IllegalArgumentException.
                  (format p/DIMENSION_MSG length
                          (min (- (ecount x) (long offset-x))
@@ -648,9 +634,7 @@
   "
   ([alpha x y]
    (if (and (= (p/form x) (p/form y)) (p/compatible x y) (= (ecount x) (ecount y)))
-     (do
-       (.axpy (p/engine x) alpha x y)
-       y)
+     (.axpy (p/engine x) alpha x y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
    (axpy! 1.0 x y))
@@ -739,9 +723,7 @@
    (if (and (= (p/form x) (p/form y)) (p/compatible a x) (p/compatible a y)
             (= (.ncols a) (.dim x))
             (= (.mrows a) (.dim y)))
-     (do
-       (.mv (p/engine a) alpha a x beta y)
-       y)
+     (.mv (p/engine a) alpha a x beta y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([alpha a x y]
    (mv! alpha a x 1.0 y))
@@ -749,9 +731,7 @@
    (mv! 1.0 a x 0.0 y))
   ([^Matrix a ^Vector x];;TODO docs
    (if (and (p/compatible a x) (= (.ncols a) (.dim x)))
-     (do
-       (.mv (p/engine a) a x)
-       x)
+     (.mv (p/engine a) a x)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG a x))))))
 
 (defn mv
@@ -786,9 +766,7 @@
    (if (and (= (p/form x) (p/form y)) (p/compatible a x) (p/compatible a y)
             (= (.mrows a) (.dim x))
             (= (.ncols a) (.dim y)))
-     (do
-       (.rank (p/engine a) alpha x y a)
-       a)
+     (.rank (p/engine a) alpha x y a)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([x y a]
    (rank! 1.0 x y a)))
@@ -838,36 +816,24 @@
   => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
-   (if (and (= (p/form a) (p/form b) (p/form c)) (p/compatible a b) (p/compatible a c))
+   (if (and (p/compatible a b) (p/compatible a c))
      (if (and (= (.ncols a) (.mrows b))
               (= (.mrows a) (.mrows c))
               (= (.ncols b) (.ncols c)))
-       (do
-         (if (= :GE (p/form b))
-           (.mm (p/engine a) alpha a b beta c)
-           (.mm (p/engine b) alpha b a beta c true))
-         c)
+       (.mm (p/engine a) alpha a b beta c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
-                       (.mrows a) (.ncols a)
-                       (.mrows b) (.ncols b)
-                       (.mrows c) (.ncols c)))))
+                       (.mrows a) (.ncols a) (.mrows b) (.ncols b) (.mrows c) (.ncols c)))))
      (throw (IllegalArgumentException.
              (format p/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
   ([alpha ^Matrix a ^Matrix b]
-   (if (and (or (= :GE (p/form a)) (= :GE (p/form b))) (p/compatible a b))
-     (if (and (= (.ncols a) (.mrows b)))
-       (do
-         (if (= :GE (p/form b))
-           (.mm (p/engine a) alpha a b false)
-           (.mm (p/engine b) alpha b a true))
-         b)
+   (if (p/compatible a b)
+     (if (= (.ncols a) (.mrows b))
+       (.mm (p/engine a) alpha a b true)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d."
-                       (.mrows a) (.ncols a)
-                       (.mrows b) (.ncols b)))))
-     (throw (IllegalArgumentException.
-             (format p/INCOMPATIBLE_BLOCKS_MSG a b)))))
+                       (.mrows a) (.ncols a) (.mrows b) (.ncols b)))))
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG a b)))))
   ([alpha a b c]
    (mm! alpha a b 1.0 c)))
 

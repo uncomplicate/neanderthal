@@ -13,6 +13,6 @@ public interface BLASPlus extends BLAS {
     Object sum (Vector x);
     long imax (Vector x);
     long imin (Vector x);
-    void subcopy (Block x, Block y, long kx, long lx, long ky);
+    Block subcopy (Block x, Block y, long kx, long lx, long ky);
 
 }

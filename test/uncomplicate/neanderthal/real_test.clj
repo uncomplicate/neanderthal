@@ -405,8 +405,8 @@
 
 ;; ====================== BLAS 3 ================================
 
-(defn test-mm [factory]
-  (facts "BLAS 3 mm!"
+(defn test-ge-mm [factory]
+  (facts "BLAS 3 GE mm!"
          (mm! 2.0 (ge factory 3 2 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
               3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws IllegalArgumentException)
 
@@ -420,16 +420,10 @@
               3.0 (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
 
          (mm! 2.0 (ge factory 3 5 (take 15 (repeat 1))) (ge factory 5 3 (take 15 (repeat 1)))
-              3.0 (ge factory 3 3 (take 9 (repeat 0)))) => (ge factory 3 3 (take 9 (repeat 10))))
+              3.0 (ge factory 3 3 (take 9 (repeat 0)))) => (ge factory 3 3 (take 9 (repeat 10)))
 
-  (facts "mm"
-         (mm (ge factory 3 2 (range 6)) (ge factory 2 3 (range 6)))
-         => (ge factory 3 3 [3 4 5 9 14 19 15 24 33])))
-
-(defn test-mm-row-major [factory]
-  (facts "BLAS 3 mm! transposed (row major)"
-         (mm! 2.0 (trans (ge factory 3 2 [1 3 5 2 4 6])) (trans (ge factory 2 3 [1 4 2 5 3 6]))
-              3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])))
+         (mm! 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order row})
+              3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [49 66 97 128])))
 
 ;; ====================== TR Matrix ============================
 
@@ -552,6 +546,27 @@
 
            (axpy 2 (tr factory 3 (range 1 7)) (tr factory 3 (range 2 8))) => (tr factory 3 (range 4 23 3)))))
 
+(defn test-tr-mm [factory]
+  (facts "BLAS 3 TR mm!"
+         (mm! 2.0 (tr factory 3 [1 2 3 4 5 6]) (tr factory 3 [1 2 3 4 5 6])
+              3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws IllegalArgumentException)
+
+         (mm! 2.0 (tr factory 3 [1 2 3 4 5 6]) (ge factory 2 3 [1 2 3 4 5 6])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws IllegalArgumentException)
+
+         (with-release [c (ge factory 2 2 [1 2 3 4])]
+           (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]) 3.0 c) => c)
+
+         (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
+              3.0 (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
+
+         (mm! 2.0 (ge factory 3 5 (take 15 (repeat 1))) (ge factory 5 3 (take 15 (repeat 1)))
+              3.0 (ge factory 3 3 (take 9 (repeat 0)))) => (ge factory 3 3 (take 9 (repeat 10))))
+
+  (facts "mm"
+         (mm (ge factory 3 2 (range 6)) (ge factory 2 3 (range 6)))
+         => (ge factory 3 3 [3 4 5 9 14 19 15 24 33])))
+
 ;; =========================================================================
 (defn test-all [factory]
   (do
@@ -586,5 +601,4 @@
     (test-ge-axpy factory)
     (test-ge-mv factory)
     (test-rank factory)
-    (test-mm factory)
-    (test-mm-row-major factory)))
+    (test-ge-mm factory)))

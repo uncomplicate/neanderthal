@@ -12,15 +12,15 @@ public interface BLAS {
 
     long iamax (Vector x);
 
-    void rotg (Vector x);
+    Vector rotg (Vector x);
 
-    void rotmg (Vector p, Vector args);
+    Vector rotmg (Vector p, Vector args);
 
-    void rotm (Vector x, Vector y, Block p);
+    Vector rotm (Vector x, Vector y, Block p);
 
-    void swap (Block x, Block y);
+    Block swap (Block x, Block y);
 
-    void copy (Block x, Block y);
+    Block copy (Block x, Block y);
 
     Object dot (Vector x, Vector y);
 
@@ -28,22 +28,20 @@ public interface BLAS {
 
     Object asum (Vector x);
 
-    void rot (Vector x, Vector y, double c, double s);
+    Vector rot (Vector x, Vector y, double c, double s);
 
-    void scal (Object alpha, Block x);
+    Block scal (Object alpha, Block x);
 
-    void axpy (Object alpha, Block x, Block y);
+    Block axpy (Object alpha, Block x, Block y);
 
-    void mv (Object alpha, Matrix a, Vector x, Object beta, Vector y);
+    Vector mv (Object alpha, Matrix a, Vector x, Object beta, Vector y);
 
-    void mv (Matrix a, Vector x);
+    Vector mv (Matrix a, Vector x);
 
-    void rank (Object alpha, Vector x, Vector y, Matrix a);
+    Matrix rank (Object alpha, Vector x, Vector y, Matrix a);
 
-    void mm (Object alpha, Matrix a, Matrix b, Object beta, Matrix c);
+    Matrix mm (Object alpha, Matrix a, Matrix b, Object beta, Matrix c);
 
-    void mm (Object alpha, Matrix a, Matrix b, Object beta, Matrix c, boolean right);
-
-    void mm (Object alpha, Matrix a, Matrix b, boolean right);
+    Matrix mm (Object alpha, Matrix a, Matrix b, boolean right);
 
 }
