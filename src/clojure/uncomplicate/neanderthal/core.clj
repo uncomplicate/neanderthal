@@ -349,10 +349,10 @@
   ([^Changeable v ^long i val]
    (.setBoxed v i val))
   ([^Matrix m ^long i ^long j val]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
+   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)) (.isAllowed ^Changeable m i j))
      (.setBoxed ^Changeable m i j val)
      (throw (IndexOutOfBoundsException.
-             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))));;TODO TR bounds
 
 (defn alter!
   "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result

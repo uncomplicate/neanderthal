@@ -12,6 +12,10 @@ import clojure.lang.IFn;
 
 public interface Changeable {
 
+    boolean isAllowed (long i, long j);
+
+    boolean isAllowed (long i);
+
     Changeable setBoxed (Number val);
 
     Changeable setBoxed (long i, long j, Number val);

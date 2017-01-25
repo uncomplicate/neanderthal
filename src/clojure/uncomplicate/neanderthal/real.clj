@@ -58,10 +58,10 @@
   ([^RealChangeable v ^long i ^double val]
    (.set v i val))
   ([^RealMatrix m ^long i ^long j ^double val]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
+   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)) (.isAllowed ^RealChangeable m i j))
      (.set ^RealChangeable m i j val)
      (throw (IndexOutOfBoundsException.
-             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))));;TODO TR bounds
 
 (defn dot
   "Primitive wrapper for core dot function."

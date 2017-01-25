@@ -17,7 +17,8 @@
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus DataAccessor BufferAccessor Block
-            Vector RealVector ContiguousBlock GEMatrix TRMatrix]))
+            Vector RealVector ContiguousBlock GEMatrix TRMatrix]
+           [uncomplicate.neanderthal.impl.buffer_block RealTRMatrix]))
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -58,7 +59,7 @@
             (recur (inc i) min-idx min-val)))
         min-idx))))
 
-;; =============== Common matrix macros and functions ==========================
+;; =============== Common GE matrix macros and functions ==========================
 
 (defn ^:private slice [^BufferAccessor da buff ^long k ^long l]
   (.slice da buff k l))
@@ -86,11 +87,12 @@
      (let [ld# (.stride ~a)
            sd# (.sd ~a)
            fd# (.fd ~a)
-           buff# (.buffer ~a)]
+           buff# (.buffer ~a)
+           da# ~da]
        (if (= sd# ld#)
          (~method (.count ~a) ~alpha buff# 1)
          (dotimes [i# fd#]
-           (~method sd# ~alpha (.slice ~da buff# (* ld# i#) sd#) 1))))))
+           (~method sd# ~alpha (.slice da# buff# (* ld# i#) sd#) 1))))))
 
 (defmacro ^:private ge-axpy [da method alpha a b]
   `(when (< 0 (.count ~a))
@@ -101,18 +103,45 @@
            ld-b# (.stride ~b)
            sd-b# (.sd ~b)
            fd-b# (.fd ~b)
-           buff-b# (.buffer ~b)]
+           buff-b# (.buffer ~b)
+           da# ~da]
        (if (= (.order ~a) (.order ~b))
          (if (= sd-a# sd-b# ld-a# ld-b#)
            (~method (.count ~a) ~alpha buff-a# 1 buff-b# 1)
            (dotimes [i# fd-a#]
              (~method sd-a# ~alpha
-              (.slice ~da buff-a# (* ld-a# i#) sd-a#) 1
-              (.slice ~da buff-b# (* ld-b# i#) sd-b#) 1)))
+              (.slice da# buff-a# (* ld-a# i#) sd-a#) 1
+              (.slice da# buff-b# (* ld-b# i#) sd-b#) 1)))
          (dotimes [i# fd-b#]
            (~method sd-a# ~alpha
-            (.slice ~da buff-a# i# (inc (* (dec fd-a#) ld-a#))) fd-a#
-            (.slice ~da buff-b# (* ld-b# i#) sd-b#) 1))))))
+            (.slice da# buff-a# i# (inc (* (dec fd-a#) ld-a#))) fd-a#
+            (.slice da# buff-b# (* ld-b# i#) sd-b#) 1))))))
+
+;; =============== Common TR matrix macros and functions ==========================
+
+(defmacro ^:private tr-swap [vector-engine a b]
+  `(when (< 0 (.count ~a))
+     (let [col-row# (.col_row_STAR_ ~a)]
+       (dotimes [i# (.sd ~a)]
+         (.swap ~vector-engine (col-row# ~a i#) (col-row# ~b i#))))))
+
+(defmacro ^:private tr-copy [vector-engine a b]
+  `(when (< 0 (.count ~a))
+     (let [col-row# (.col_row_STAR_ ~a)]
+       (dotimes [i# (.sd ~a)]
+         (.copy ~vector-engine (col-row# ~a i#) (col-row# ~b i#))))))
+
+(defmacro ^:private tr-scal [vector-engine alpha a]
+  `(when (< 0 (.count ~a))
+     (let [col-row# (.col_row_STAR_ ~a)]
+       (dotimes [i# (.sd ~a)]
+         (.scal ~vector-engine ~alpha (col-row# ~a i#))))))
+
+(defmacro ^:private tr-axpy [vector-engine alpha a b]
+  `(when (< 0 (.count ~a))
+     (let [col-row# (.col_row_STAR_ ~a)]
+       (dotimes [i# (.sd ~a)]
+         (.axpy ~vector-engine ~alpha (col-row# ~a i#) (col-row# ~b i#))))))
 
 ;; ============ Real Vector Engines ============================================
 
@@ -257,8 +286,16 @@
 
 ;; ================= Triangular Matrix Engines =================================
 
-(deftype DoubleTREngine []
+(deftype DoubleTREngine [^DoubleVectorEngine vector-eng]
   BLAS
+  (swap [_ a b]
+    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+  (copy [_ a b]
+    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+  (scal [_ alpha a]
+    (tr-scal vector-eng alpha ^RealTRMatrix a))
+  (axpy [_ alpha a b]
+    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b))
   (mv [_ a x]
     (CBLAS/dtrmv (.order ^TRMatrix a) (.uplo ^TRMatrix a) NO_TRANS (.diag ^TRMatrix a)
                  (.ncols a)
@@ -272,8 +309,16 @@
                  alpha (.buffer ^TRMatrix a) (.stride ^TRMatrix a)
                  (.buffer ^GEMatrix b) (.stride ^GEMatrix b))))
 
-(deftype SingleTREngine []
+(deftype SingleTREngine [^SingleVectorEngine vector-eng]
   BLAS
+  (swap [_ a b]
+    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+  (copy [_ a b]
+    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b))
+  (scal [_ alpha a]
+    (tr-scal vector-eng alpha ^RealTRMatrix a))
+  (axpy [_ alpha a b]
+    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b))
   (mv [_ a x]
     (CBLAS/strmv (.order ^TRMatrix a) (.uplo ^TRMatrix a) NO_TRANS (.diag ^TRMatrix a)
                  (.ncols a)
@@ -297,7 +342,7 @@
   (compatible [_ o]
     (compatible da o))
   Factory
-  (create-vector [this buf n _]
+   (create-vector [this buf n _]
     (if (and (<= 0 (long n) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
       (real-block-vector this true buf n 1)
@@ -329,13 +374,15 @@
     tr-eng))
 
 (def cblas-single
-  (->CblasFactory (->FloatBufferAccessor)
-                  (->SingleVectorEngine)
-                  (->SingleGEEngine)
-                  (->SingleTREngine)))
+  (let [float-vector-engine (->SingleVectorEngine)]
+    (->CblasFactory (->FloatBufferAccessor)
+                    float-vector-engine
+                    (->SingleGEEngine)
+                    (->SingleTREngine float-vector-engine))))
 
 (def cblas-double
-  (->CblasFactory (->DoubleBufferAccessor)
-                  (->DoubleVectorEngine)
-                  (->DoubleGEEngine)
-                  (->DoubleTREngine)))
+  (let [double-vector-engine (->DoubleVectorEngine)]
+    (->CblasFactory (->DoubleBufferAccessor)
+                    double-vector-engine
+                    (->DoubleGEEngine)
+                    (->DoubleTREngine double-vector-engine))))

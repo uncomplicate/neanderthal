@@ -449,6 +449,8 @@
   (invokePrim [a]
     n)
   RealChangeable
+  (isAllowed [a i j]
+    true)
   (set [a val]
     (dotimes [j fd]
       (dotimes [i sd]
@@ -701,12 +703,15 @@
   (invokePrim [a]
     n)
   RealChangeable
+  (isAllowed [a i j]
+    (= 2 (.invokePrim default-entry* i j)))
   (set [a val]
     (dotimes [j n]
       (let [end (.invokePrim end* n j)]
         (loop [i (.invokePrim start* n j)]
           (when (< i end)
-            (.set da buf (+ (* ld j) i) val)))))
+            (.set da buf (+ (* ld j) i) val)
+            (recur (inc i))))))
     a)
   (set [a i j val]
     (.set da buf (.invokePrim index* ld i j) val)

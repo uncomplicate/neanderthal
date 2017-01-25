@@ -138,7 +138,7 @@
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
 (defmacro matrix-reduce* [col-row j f init & as]
-  `(vector-reduce ~f ~init ~@(map #(list col-row % j) as)))
+  `(vector-reduce ~f ~init ~@(map #(list col-row % j) as)));;TODO invokePrim?
 
 (defmacro matrix-reduce-map* [col-row j f init g & as]
   `(vector-reduce-map ~f ~init ~g ~@(map #(list col-row % j) as)))
