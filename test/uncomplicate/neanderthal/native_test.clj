@@ -10,12 +10,12 @@
   (:require [uncomplicate.neanderthal.block-test :as block-test]
             [uncomplicate.neanderthal.real-test :as real-test]
             [uncomplicate.neanderthal.impl.cblas
-             :refer [cblas-single cblas-double]]))
+             :refer [cblas-float cblas-double]]))
 
 (block-test/test-all cblas-double)
-(block-test/test-all cblas-single)
+(block-test/test-all cblas-float)
 (real-test/test-all cblas-double)
-(real-test/test-all cblas-single)
+(real-test/test-all cblas-float)
 
 ;;TODO move to test-all when OpenCL is implemented
 (real-test/test-tr cblas-double)

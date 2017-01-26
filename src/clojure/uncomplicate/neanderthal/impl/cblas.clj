@@ -199,7 +199,7 @@
   (imin [_ x]
     (vector-imin ^RealBlockVector x)))
 
-(deftype SingleVectorEngine []
+(deftype FloatVectorEngine []
   BLAS
   (swap [_ x y]
     (CBLAS/sswap (.dim ^RealBlockVector x)
@@ -297,7 +297,7 @@
                  beta (.buffer ^GEMatrix c) (.stride ^GEMatrix c))
     c))
 
-(deftype SingleGEEngine []
+(deftype FloatGEEngine []
     BLAS
   (swap [_ a b]
     (ge-swap-copy CBLAS/sswap ^RealGEMatrix a ^RealGEMatrix b)
@@ -389,7 +389,7 @@
                  (.buffer ^GEMatrix b) (.stride ^GEMatrix b))
     b))
 
-(deftype SingleTREngine [^SingleVectorEngine vector-eng]
+(deftype FloatTREngine [^FloatVectorEngine vector-eng]
     BLAS
   (swap [_ a b]
     (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b)
@@ -476,12 +476,12 @@
   (tr-engine [_]
     tr-eng))
 
-(def cblas-single
-  (let [float-vector-engine (->SingleVectorEngine)]
+(def cblas-float
+  (let [float-vector-engine (->FloatVectorEngine)]
     (->CblasFactory (->FloatBufferAccessor)
                     float-vector-engine
-                    (->SingleGEEngine)
-                    (->SingleTREngine float-vector-engine))))
+                    (->FloatGEEngine)
+                    (->FloatTREngine float-vector-engine))))
 
 (def cblas-double
   (let [double-vector-engine (->DoubleVectorEngine)]

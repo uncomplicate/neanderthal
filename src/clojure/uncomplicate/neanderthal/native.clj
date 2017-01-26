@@ -11,11 +11,11 @@
   (:require [uncomplicate.neanderthal.core
              :refer [vctr ge tr]]
             [uncomplicate.neanderthal.impl.cblas
-             :refer [cblas-single cblas-double]]))
+             :refer [cblas-float cblas-double]]))
 
 ;; ============ Creating real constructs  ==============
 
-(defn sv
+(defn fv
   "Creates a native-backed float vector from source.
 
   Accepts the following source:
@@ -29,25 +29,25 @@
   . direct ByteBuffer that backs the new vector.
   - varargs will be treated as a clojure sequence.
 
-  (sv (java.nio.ByteBuffer/allocateDirect 16))
+  (fv (java.nio.ByteBuffer/allocateDirect 16))
   => #<RealBlockVector| float, n:4, stride:1>(0.0 0.0 0.0 0.0)<>
 
-  (sv 4)
+  (fv 4)
   => #<RealBlockVector| float, n:4, stride:1>(0.0 0.0 0.0 0.0)<>
 
-  (sv 12.4)
+  (fv 12.4)
   => #<RealBlockVector| float, n:1, stride:1>(12.399999618530273)<>
 
-  (sv (range 4))
+  (fv (range 4))
   => #<RealBlockVector| float, n:4, stride:1>(0.0 1.0 2.0 3.0)<>
 
-  (sv 1 2 3)
+  (fv 1 2 3)
   => #<RealBlockVector| float, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   ([source]
-   (vctr cblas-single source))
+   (vctr cblas-float source))
   ([x & xs]
-   (sv (cons x xs))))
+   (fv (cons x xs))))
 
 (defn dv
   "Creates a native-backed double vector from source.
@@ -111,7 +111,7 @@
   ([a]
    (ge cblas-double a)))
 
-(defn sge
+(defn fge
   "Creates a native-backed, dense, column-oriented float mxn matrix from source.
 
   If called with two arguments, creates a zero matrix with dimensions mxn.
@@ -120,23 +120,23 @@
   - java.nio.ByteBuffer with a capacity = Float/BYTES * m * n,
   . which will be used as-is for backing the matrix.
 
-  (sge 2 3)
+  (fge 2 3)
   => #<GeneralMatrix| float, COL, mxn: 2x3, ld:2>((0.0 0.0) (0.0 0.0) (0.0 0.0))<>
 
-  (sge 3 2 (range 6))
+  (fge 3 2 (range 6))
   => #<GeneralMatrix| float, COL, mxn: 3x2, ld:3>((0.0 1.0 2.0) (3.0 4.0 5.0))<>
 
-  (sge 3 2 (java.nio.ByteBuffer/allocateDirect 48))
+  (fge 3 2 (java.nio.ByteBuffer/allocateDirect 48))
   => #<GeneralMatrix| float, COL, mxn: 3x2, ld:3>((0.0 0.0 0.0) (0.0 0.0 0.0))<>
   "
   ([^long m ^long n source options]
-   (ge cblas-single m n source options))
+   (ge cblas-float m n source options))
   ([^long m ^long n arg]
-   (ge cblas-single m n arg))
+   (ge cblas-float m n arg))
   ([^long m ^long n]
-   (ge cblas-single m n))
+   (ge cblas-float m n))
   ([a]
-   (ge cblas-single a)))
+   (ge cblas-float a)))
 
 (defn dtr
   "TODO"
@@ -150,8 +150,8 @@
 (defn ftr
   "TODO"
   ([^long n source options]
-   (tr cblas-single n source options))
+   (tr cblas-float n source options))
   ([^long n arg]
-   (tr cblas-single n arg))
+   (tr cblas-float n arg))
   ([arg]
-   (tr cblas-single arg)))
+   (tr cblas-float arg)))
