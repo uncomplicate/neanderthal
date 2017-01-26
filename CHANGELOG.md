@@ -1,5 +1,21 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.9.0
+
+### Breaking changes:
+
+* Naming scheme changed from single to float for single-precision structures.
+* core constructor functions changed from create to vctr, ge, tr, etc.
+
+### New features:
+
+* Support for TR matrices.
+
+### Enhancements
+
+* Updated JOCLBlast dependency to 0.10.0.
+* Updated Fluokitten dependency to 0.6.0.
+
 ## 0.8.0
 
 ### Changes

@@ -361,12 +361,10 @@
 (defn test-ge-mv [factory]
   (facts "BLAS 2 GE mv!"
          (mv! 2.0 (ge factory 3 2 [1 2 3 4 5 6])
-              (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4]))
-         => (throws IllegalArgumentException)
+              (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4])) => (throws IllegalArgumentException)
 
          (with-release [y (vctr factory [1 2 3])]
-           (mv! 2 (ge factory 3 2 [1 2 3 4 5 6])
-                (vctr factory 1 2) 3 y) => y)
+           (mv! 2 (ge factory 3 2 [1 2 3 4 5 6]) (vctr factory 1 2) 3 y) => y)
 
          (mv! (ge factory 2 3 [1 10 2 20 3 30])
               (vctr factory 7 0 4) (vctr factory 0 0)) => (vctr factory 19 190)
@@ -546,26 +544,42 @@
 
            (axpy 2 (tr factory 3 (range 1 7)) (tr factory 3 (range 2 8))) => (tr factory 3 (range 4 23 3)))))
 
+(defn test-tr-mv [factory]
+  (facts "BLAS 2 TR mv!"
+         (mv! 2.0 (tr factory 2 [1 2 3 4])
+              (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4])) => (throws IllegalArgumentException)
+
+         (with-release [y (vctr factory [1 2 3])]
+           (mv! 2 (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3) 3 y) => y)
+
+         (mv! (tr factory 3 [1 10 2 20 3 30] {:order :row})
+              (vctr factory 7 0 4) (vctr factory 0 0 0)) => (vctr factory 7 70 260)
+
+         (mv! 2.0 (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper})
+              (vctr factory 1 2 3) 3.0 (vctr factory 1 2 3)) => (vctr factory 21 28 15)
+
+         (mv! 2.0 (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3) 0.0 (vctr factory 0 0 0))
+         => (mv 2.0 (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3))
+
+         (mv! (tr factory 3 [1 2 4 3 5 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 0 0 0))
+         => (mv! (tr factory 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3) (vctr factory 0 0 0))))
+
 (defn test-tr-mm [factory]
   (facts "BLAS 3 TR mm!"
          (mm! 2.0 (tr factory 3 [1 2 3 4 5 6]) (tr factory 3 [1 2 3 4 5 6])
-              3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws IllegalArgumentException)
+              3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)
 
-         (mm! 2.0 (tr factory 3 [1 2 3 4 5 6]) (ge factory 2 3 [1 2 3 4 5 6])
-              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws IllegalArgumentException)
+         (mm! 2.0 (tr factory 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (ge factory 3 2 [5 26 71 20 71 164])
 
          (with-release [c (ge factory 2 2 [1 2 3 4])]
-           (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]) 3.0 c) => c)
+           (mm! 2.0 (tr factory 2 [1 2 3 4]) c) => c)
 
-         (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
-              3.0 (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
-
-         (mm! 2.0 (ge factory 3 5 (take 15 (repeat 1))) (ge factory 5 3 (take 15 (repeat 1)))
-              3.0 (ge factory 3 3 (take 9 (repeat 0)))) => (ge factory 3 3 (take 9 (repeat 10))))
+         )
 
   (facts "mm"
-         (mm (ge factory 3 2 (range 6)) (ge factory 2 3 (range 6)))
-         => (ge factory 3 3 [3 4 5 9 14 19 15 24 33])))
+         (mm (tr factory 3 (range 6)) (ge factory 3 2 (range 6)))
+         => (ge factory 3 2 [0 3 14 0 15 47])))
 
 ;; =========================================================================
 (defn test-all [factory]
@@ -601,4 +615,5 @@
     (test-ge-axpy factory)
     (test-ge-mv factory)
     (test-rank factory)
-    (test-ge-mm factory)))
+    (test-ge-mm factory)
+    (test-tr-mm factory)))

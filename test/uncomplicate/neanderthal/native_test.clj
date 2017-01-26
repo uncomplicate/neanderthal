@@ -27,3 +27,5 @@
 (real-test/test-tr-swap cblas-double)
 (real-test/test-tr-scal cblas-double)
 (real-test/test-tr-axpy cblas-double)
+(real-test/test-tr-mv cblas-double)
+(real-test/test-tr-mm cblas-double)
