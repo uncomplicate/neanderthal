@@ -11,14 +11,15 @@
             [uncomplicate.commons.core :refer [with-release let-release]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [dim copy]]
+             [core :refer [dim copy copy!]]
              [block :refer [order buffer offset stride]]]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
-  (:import [uncomplicate.neanderthal CBLAS]
+  (:import [clojure.lang IFn$OLO]
+           [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus DataAccessor BufferAccessor Block
-            Vector RealVector ContiguousBlock GEMatrix TRMatrix]
+            Vector RealVector ContiguousBlock Matrix GEMatrix TRMatrix]
            [uncomplicate.neanderthal.impl.buffer_block
             RealBlockVector RealTRMatrix RealGEMatrix]))
 
@@ -61,7 +62,7 @@
             (recur (inc i) min-idx min-val)))
         min-idx))))
 
-;; =============== Common GE matrix macros and functions ==========================
+;; =============== Common GE matrix macros and functions =======================
 
 (defn ^:private slice [^BufferAccessor da buff ^long k ^long l]
   (.slice da buff k l))
@@ -119,31 +120,34 @@
             (.slice da# buff-a# i# (inc (* (dec fd-a#) ld-a#))) fd-a#
             (.slice da# buff-b# (* ld-b# i#) sd-b#) 1))))))
 
+
+(defn ge-mm [^BLAS eng alpha ^GEMatrix a ^Matrix b left]
+  (if left
+    (.mm (engine b) alpha b a false)
+    (throw (IllegalArgumentException.
+            (format "In-place mm! is not supported for GE matrices.")))))
+
 ;; =============== Common TR matrix macros and functions ==========================
 
-(defmacro ^:private tr-swap [vector-engine a b]
-  `(when (< 0 (.count ~a))
-     (let [col-row# (.col_row_STAR_ ~a)]
-       (dotimes [i# (.sd ~a)]
-         (.swap ~vector-engine (col-row# ~a i#) (col-row# ~b i#))))))
+(defn tr-swap [^BLAS vector-eng ^IFn$OLO col-row ^TRMatrix a ^TRMatrix b]
+  (when (< 0 (.count a))
+    (dotimes [i (.sd a)]
+      (.swap vector-eng (.invokePrim col-row a i) (.invokePrim col-row b i)))))
 
-(defmacro ^:private tr-copy [vector-engine a b]
-  `(when (< 0 (.count ~a))
-     (let [col-row# (.col_row_STAR_ ~a)]
-       (dotimes [i# (.sd ~a)]
-         (.copy ~vector-engine (col-row# ~a i#) (col-row# ~b i#))))))
+(defn tr-copy [^BLAS vector-eng ^IFn$OLO col-row ^TRMatrix a ^TRMatrix b]
+  (when (< 0 (.count a))
+    (dotimes [i (.sd a)]
+      (.copy vector-eng (.invokePrim col-row a i) (.invokePrim col-row b i)))))
 
-(defmacro ^:private tr-scal [vector-engine alpha a]
-  `(when (< 0 (.count ~a))
-     (let [col-row# (.col_row_STAR_ ~a)]
-       (dotimes [i# (.sd ~a)]
-         (.scal ~vector-engine ~alpha (col-row# ~a i#))))))
+(defn tr-scal [^BLAS vector-eng ^IFn$OLO col-row alpha ^TRMatrix a]
+  (when (< 0 (.count a))
+    (dotimes [i (.sd a)]
+      (.scal vector-eng alpha (.invokePrim col-row a i)))))
 
-(defmacro ^:private tr-axpy [vector-engine alpha a b]
-  `(when (< 0 (.count ~a))
-     (let [col-row# (.col_row_STAR_ ~a)]
-       (dotimes [i# (.sd ~a)]
-         (.axpy ~vector-engine ~alpha (col-row# ~a i#) (col-row# ~b i#))))))
+(defn tr-axpy [^BLAS vector-eng ^IFn$OLO col-row alpha ^TRMatrix a ^TRMatrix b]
+  (when (< 0 (.count a))
+    (dotimes [i (.sd a)]
+      (.axpy vector-eng alpha (.invokePrim col-row a i) (.invokePrim col-row b i)))))
 
 ;; ============ Real Vector Engines ============================================
 
@@ -275,18 +279,16 @@
                  beta (.buffer ^RealBlockVector y) (.stride ^Block y))
     y)
   (mv [this a x]
-    (.mv this 1.0 a x 0.0 x))
+    (throw (IllegalArgumentException.
+            (format "In-place mv! is not supported for GE matrices."))))
   (rank [_ alpha x y a]
     (CBLAS/dger (.order ^RealGEMatrix a) (.mrows a) (.ncols a)
                 alpha (.buffer ^RealBlockVector x) (.stride ^Block x)
                 (.buffer ^RealBlockVector y) (.stride ^Block y)
                 (.buffer ^GEMatrix a) (.stride ^GEMatrix a))
     a)
-  (mm [this alpha a b _]
-    (if (= RealGEMatrix (type b))
-      (with-release [b-copy (copy b)]
-        (.mm this alpha a b-copy 0.0 b))
-      (.mm (engine b) alpha b a false)))
+  (mm [this alpha a b left]
+    (ge-mm this alpha a b left))
   (mm [_ alpha a b beta c]
     (CBLAS/dgemm (.order ^RealGEMatrix c)
                  (if (= (.order ^RealGEMatrix a) (.order ^GEMatrix c)) NO_TRANS TRANS)
@@ -319,18 +321,16 @@
                  beta (.buffer ^RealBlockVector y) (.stride ^Block y))
     y)
   (mv [this a x]
-    (.mv this 1.0 a x 0.0 x))
+    (throw (IllegalArgumentException.
+            (format "In-place mv! is not supported for GE matrices."))))
   (rank [_ alpha x y a]
     (CBLAS/sger (.order ^RealGEMatrix a) (.mrows a) (.ncols a)
                 alpha (.buffer ^RealBlockVector x) (.stride ^Block x)
                 (.buffer ^RealBlockVector y) (.stride ^Block y)
                 (.buffer ^GEMatrix a) (.stride ^GEMatrix a))
     a)
-  (mm [this alpha a b _]
-    (if (= RealGEMatrix (type b))
-      (with-release [b-copy (copy b)]
-        (.mm this alpha a b-copy 0.0 b))
-      (.mm (engine b) alpha b a false)))
+  (mm [this alpha a b left]
+    (ge-mm this alpha a b left))
   (mm [_ alpha a b beta c]
     (CBLAS/sgemm (.order ^RealGEMatrix c)
                  (if (= (.order ^RealGEMatrix a) (.order ^GEMatrix c)) NO_TRANS TRANS)
@@ -346,26 +346,20 @@
 (deftype DoubleTREngine [^DoubleVectorEngine vector-eng]
   BLAS
   (swap [_ a b]
-    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-copy vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-copy vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal vector-eng alpha ^RealTRMatrix a)
+    (tr-scal vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-axpy vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-    (if (= 0.0 (double beta))
-      (if (= 1.0 (double alpha))
-        (.mv this a x)
-        (.scal vector-eng alpha
-               (.mv this a (.copy vector-eng x y))))
-      (with-release [x-copy (copy x)]
-        (.axpy vector-eng alpha (.mv this a x-copy)
-               (if (= 1.0 (double beta)) y (.scal vector-eng beta y))))))
+    (throw (IllegalArgumentException.
+            (format "Only in-place mv! is supported for TR matrices."))))
   (mv [_ a x]
     (CBLAS/dtrmv (.order ^RealTRMatrix a) (.uplo ^TRMatrix a) NO_TRANS
                  (.diag ^TRMatrix a) (.ncols a)
@@ -373,12 +367,8 @@
                  (.buffer ^RealBlockVector x) (.stride ^Block x))
     x)
   (mm [this alpha a b beta c]
-    (if (= 0.0 (double beta))
-      (.mm this alpha a (.copy (engine b) b c) true)
-      (with-release [b-copy (copy b)]
-        (let [eng (engine b)]
-          (.axpy eng 1.0 (.mm this alpha a b-copy true)
-                 (if (= 1.0 (double beta)) c (.scal eng beta c)))))))
+    (throw (IllegalArgumentException.
+            (format "Only in-place mm! is supported for TR matrices."))))
   (mm [_ alpha a b left]
     (CBLAS/dtrmm (.order ^RealGEMatrix b) (if left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
                  (.uplo ^RealTRMatrix a)
@@ -390,28 +380,22 @@
     b))
 
 (deftype FloatTREngine [^FloatVectorEngine vector-eng]
-    BLAS
+  BLAS
   (swap [_ a b]
-    (tr-swap vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-copy vector-eng ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-copy vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal vector-eng alpha ^RealTRMatrix a)
+    (tr-scal vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpy vector-eng alpha ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-axpy vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-    (if (= 0.0 (double beta))
-      (if (= 1.0 (double alpha))
-        (.mv this a x)
-        (.scal vector-eng alpha
-               (.mv this a (.copy vector-eng x y))))
-      (with-release [x-copy (copy x)]
-        (.axpy vector-eng alpha (.mv this a x-copy)
-               (if (= 1.0 (double beta)) y (.scal vector-eng beta y))))))
+    (throw (IllegalArgumentException.
+            (format "Only in-place mv! is supported for TR matrices."))))
   (mv [_ a x]
     (CBLAS/strmv (.order ^RealTRMatrix a) (.uplo ^TRMatrix a) NO_TRANS
                  (.diag ^TRMatrix a) (.ncols a)
@@ -419,12 +403,8 @@
                  (.buffer ^RealBlockVector x) (.stride ^Block x))
     x)
   (mm [this alpha a b beta c]
-    (if (= 0.0 (double beta))
-      (.mm this alpha a (.copy (engine b) b c) true)
-      (with-release [b-copy (copy b)]
-        (let [eng (engine b)]
-          (.axpy eng 1.0 (.mm this alpha a b-copy true)
-                 (if (= 1.0 (double beta)) c (.scal eng beta c)))))))
+    (throw (IllegalArgumentException.
+            (format "Only in-place mm! is supported for TR matrices."))))
   (mm [_ alpha a b left]
     (CBLAS/strmm (.order ^RealGEMatrix b) (if left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
                  (.uplo ^RealTRMatrix a)

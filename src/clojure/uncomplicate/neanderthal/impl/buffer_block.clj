@@ -177,8 +177,6 @@
       (.copy eng this res)))
   (native [this]
     this)
-  (form [this]
-    :vector)
   MemoryContext
   (compatible [_ y]
     (compatible da y))
@@ -406,8 +404,6 @@
       (.copy eng this res)))
   (native [this]
     this)
-  (form [this]
-    :GE)
   MemoryContext
   (compatible [_ b]
     (compatible da b))
@@ -661,8 +657,6 @@
       (.copy eng this res)));;TODO implement TR.copy
   (native [this]
     this)
-  (form [this]
-    :TR)
   MemoryContext
   (compatible [_ b]
     (compatible da b))

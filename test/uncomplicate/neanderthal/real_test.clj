@@ -174,7 +174,8 @@
 (defn test-vctr-copy [factory]
   (facts "BLAS 1 copy!"
          (with-release [y (vctr factory 3)]
-           (copy! (vctr factory [1 2 3]) y) => y
+           (identical? (copy! (vctr factory [1 2 3]) y) y) => true
+           (identical? (copy y) y) => false
            (copy (vctr factory [1 2 3])) => y)
 
          (copy! (vctr factory [10 20 30]) (vctr factory [1 2 3]))
@@ -183,10 +184,7 @@
          (copy! (vctr factory [1 2 3]) nil) => (throws IllegalArgumentException)
          (copy! (vctr factory [10 20 30]) (vctr factory [1])) => (throws IllegalArgumentException)
 
-         (copy (vctr factory 1 2)) => (vctr factory 1 2)
-
-         (with-release [x (vctr factory 1 2)]
-           (identical? (copy x) x) => false)))
+         (copy (vctr factory 1 2)) => (vctr factory 1 2)))
 
 (defn test-vctr-axpy [factory]
   (facts "BLAS 1 axpy!"
@@ -290,8 +288,8 @@
   (facts "BLAS 1 copy! GE matrix"
          (with-release [a (ge factory 2 3 (range 6))
                         b (ge factory 2 3 (range 7 13))]
-           (identical? (swp! a b) b) => false
-           (swp! a b) => (ge factory 2 3 (range 6))
+           (identical? (copy! a b) b) => true
+           (copy! a b) => (ge factory 2 3 (range 6))
            (copy (ge factory 2 3 (range 6))) => a)
 
          (copy! (ge factory 2 3 [10 20 30 40 50 60]) (ge factory 2 3 [1 2 3 4 5 6]))
@@ -364,7 +362,8 @@
               (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4])) => (throws IllegalArgumentException)
 
          (with-release [y (vctr factory [1 2 3])]
-           (mv! 2 (ge factory 3 2 [1 2 3 4 5 6]) (vctr factory 1 2) 3 y) => y)
+           (identical? (mv! 2 (ge factory 3 2 [1 2 3 4 5 6]) (vctr factory 1 2) 3 y) y))
+         => true
 
          (mv! (ge factory 2 3 [1 10 2 20 3 30])
               (vctr factory 7 0 4) (vctr factory 0 0)) => (vctr factory 19 190)
@@ -388,12 +387,17 @@
          => (vctr factory 272 293)
 
          (mv! (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 0 0))
-         => (mv! (ge factory 2 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3) (vctr factory 0 0))))
+         => (mv! (ge factory 2 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3) (vctr factory 0 0))
+
+         (mv 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 0 0))
+         => (vctr factory 22 28)))
 
 (defn test-rank [factory]
   (facts "BLAS 2 rank!"
          (with-release [a (ge factory 2 3)]
-           (rank! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) a) => a)
+           (identical? (rank! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) a) a))
+         => true
+
          (rank! (vctr factory 3 2 1 4) (vctr factory 1 2 3)
                 (ge factory 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
          => (ge factory 4 3 [4 4 4 8 8 6 4 10 12 10 5 13])
@@ -412,7 +416,8 @@
               3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws IllegalArgumentException)
 
          (with-release [c (ge factory 2 2 [1 2 3 4])]
-           (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]) 3.0 c) => c)
+           (identical? (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]) 3.0 c) c))
+         => true
 
          (mm! 2.0 (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
               3.0 (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
@@ -421,7 +426,13 @@
               3.0 (ge factory 3 3 (take 9 (repeat 0)))) => (ge factory 3 3 (take 9 (repeat 10)))
 
          (mm! 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order row})
-              3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [49 66 97 128])))
+              3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [49 66 97 128])
+
+         (mm 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order row})
+             3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [49 66 97 128])
+
+         (mm (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]))
+         => (throws IllegalArgumentException)))
 
 ;; ====================== TR Matrix ============================
 
@@ -481,7 +492,7 @@
   (facts "BLAS 1 copy! TR matrix"
          (with-release [a (tr factory 3)]
            (identical? (copy a) a) => false
-           (copy! (tr factory 3 [1 2 3 4 5 6]) a) => a
+           (identical? (copy! (tr factory 3 [1 2 3 4 5 6]) a) a) => true
            (copy (tr factory 3 [1 2 3 4 5 6])) => a)
 
          (copy! (tr factory 3 [10 20 30 40 50 60]) (tr factory 3 [1 2 3 4 5 6]))
@@ -494,7 +505,7 @@
    (facts
     "BLAS 1 swap! TR matrix"
     (with-release [a (tr factory 3 [1 2 3 4 5 6])]
-      (swp! a (tr factory 3)) => a
+      (identical? (swp! a (tr factory 3)) a) => true
       (swp! a (tr factory 3 [10 20 30 40 50 60])) => (tr factory 3 [10 20 30 40 50 60])
       (swp! a nil) => (throws IllegalArgumentException)
       (identical? (swp! a (tr factory 3 [10 20 30 40 50 60])) a) => true
@@ -550,36 +561,42 @@
               (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4])) => (throws IllegalArgumentException)
 
          (with-release [y (vctr factory [1 2 3])]
-           (mv! 2 (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3) 3 y) => y)
+           (identical? (mv! (tr factory 3 [1 2 3 4 5 6]) y) y)) => true
 
-         (mv! (tr factory 3 [1 10 2 20 3 30] {:order :row})
-              (vctr factory 7 0 4) (vctr factory 0 0 0)) => (vctr factory 7 70 260)
+         (mv! (tr factory 3 [1 10 2 20 3 30] {:order :row}) (vctr factory 7 0 4))
+         => (vctr factory 7 70 260)
 
-         (mv! 2.0 (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper})
-              (vctr factory 1 2 3) 3.0 (vctr factory 1 2 3)) => (vctr factory 21 28 15)
+         (mv! (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper})
+              (vctr factory 1 2 3)) => (vctr factory 9 11 3)
 
-         (mv! 2.0 (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3) 0.0 (vctr factory 0 0 0))
-         => (mv 2.0 (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3))
+         (mv! (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3))
+         => (mv (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3))
 
-         (mv! (tr factory 3 [1 2 4 3 5 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 0 0 0))
-         => (mv! (tr factory 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3) (vctr factory 0 0 0))))
+         (mv! (tr factory 3 [1 2 4 3 5 6] {:order :row}) (vctr factory 1 2 3))
+         => (mv! (tr factory 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3))))
 
 (defn test-tr-mm [factory]
   (facts "BLAS 3 TR mm!"
          (mm! 2.0 (tr factory 3 [1 2 3 4 5 6]) (tr factory 3 [1 2 3 4 5 6])
-              3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)
+              3.0 (tr factory 3 [1 2 3 4 5 6]))=> (throws IllegalArgumentException)
 
          (mm! 2.0 (tr factory 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
-              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (ge factory 3 2 [5 26 71 20 71 164])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws IllegalArgumentException)
 
          (with-release [c (ge factory 2 2 [1 2 3 4])]
-           (mm! 2.0 (tr factory 2 [1 2 3 4]) c) => c)
+           (identical? (mm! 2.0 (tr factory 2 [1 2 3 4]) c) c)) => true
 
-         )
+         (mm! 2.0 (ge factory 2 3 (range 6)) (tr factory 3 (range 6)))
+         => (mm! 2.0 (ge factory 2 3 (range 6)) (ge factory 3 3 [0 1 2 0 3 4 0 0 5]) 0.0 (ge factory 2 3))
 
-  (facts "mm"
          (mm (tr factory 3 (range 6)) (ge factory 3 2 (range 6)))
-         => (ge factory 3 2 [0 3 14 0 15 47])))
+         => (ge factory 3 2 [0 3 14 0 15 47])
+
+         (mm (ge factory 2 3 (range 6)) (tr factory 3 (range 6)))
+         => (ge factory 2 3 [10 13 22 29 20 25])
+
+         (mm 2.0 (tr factory 3 [1 2 3 4 5 6]) (tr factory 3 [1 2 3 4 5 6])
+             3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws IllegalArgumentException)))
 
 ;; =========================================================================
 (defn test-all [factory]

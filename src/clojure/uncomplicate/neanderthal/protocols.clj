@@ -43,8 +43,7 @@
   (raw [this] [this factory])
   (zero [this] [this factory])
   (host [this])
-  (native [this])
-  (form [this]))
+  (native [this]))
 
 (defprotocol DenseContainer
   (subband [this p q])

@@ -40,7 +40,7 @@
              [protocols :as p]
              [math :refer [f= pow sqrt]]
              [block :refer [buffer ecount]]])
-  (:import [uncomplicate.neanderthal.protocols Vector Matrix
+  (:import [uncomplicate.neanderthal.protocols Vector Matrix GEMatrix
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
 (defn vect?
@@ -352,7 +352,7 @@
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)) (.isAllowed ^Changeable m i j))
      (.setBoxed ^Changeable m i j val)
      (throw (IndexOutOfBoundsException.
-             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))));;TODO TR bounds
+             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn alter!
   "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result
@@ -535,7 +535,7 @@
   "
   [x y]
   (if (not (identical? x y))
-    (if (and (= (p/form x) (p/form y)) (p/compatible x y))
+    (if (p/compatible x y)
       (if (= (ecount x) (ecount y))
         (.swap (p/engine x) x y)
         (throw (IllegalArgumentException.
@@ -563,7 +563,7 @@
   "
   ([x y]
    (if (not (identical? x y))
-     (if (and (= (p/form x) (p/form y)) (p/compatible x y))
+     (if (p/compatible x y)
        (if (= (ecount x) (ecount y))
          (.copy (p/engine x) x y)
          (throw (IllegalArgumentException.
@@ -572,7 +572,7 @@
      y))
   ([x y offset-x length offset-y]
    (if (not (identical? x y))
-     (if (and (= (p/form x) (p/form y)) (p/compatible x y))
+     (if (p/compatible x y)
        (if (<= (long length) (min (- (ecount x) (long offset-x))
                                   (- (ecount y) (long offset-y))))
          (.subcopy ^BLASPlus (p/engine x) x y
@@ -633,7 +633,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
   "
   ([alpha x y]
-   (if (and (= (p/form x) (p/form y)) (p/compatible x y) (= (ecount x) (ecount y)))
+   (if (and  (p/compatible x y) (= (ecount x) (ecount y)))
      (.axpy (p/engine x) alpha x y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
@@ -720,9 +720,8 @@
   => #<RealBlockVector| double, n:3, stride:1>(15.0 22.5 30.0)<>
   "
   ([alpha ^Matrix a ^Vector x beta ^Vector y]
-   (if (and (= (p/form x) (p/form y)) (p/compatible a x) (p/compatible a y)
-            (= (.ncols a) (.dim x))
-            (= (.mrows a) (.dim y)))
+   (if (and (p/compatible a x) (p/compatible a y)
+            (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
      (.mv (p/engine a) alpha a x beta y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([alpha a x y]
@@ -736,15 +735,20 @@
 
 (defn mv
   "A pure version of mv! that returns the result
-  in a new vector instance. Computes alpha a * x."
+  in a new vector instance. Computes alpha * a * x."
+  ([alpha a x beta y]
+   (let-release [res (copy y)]
+     (mv! alpha a x beta res)))
+  ([alpha a x y]
+   (mv 1.0 a x 1.0 y))
   ([alpha a x]
-   (let-release [res (p/zero (col a 0))]
+   (let-release [res (p/raw (col a 0))]
      (mv! alpha a x 0.0 res)))
-  ([^Matrix a x]
-   (if (= :GE (p/form a))
+  ([a x]
+   (if (instance? GEMatrix a)
      (mv 1.0 a x)
      (let-release [res (copy x)]
-       (mv! a res)))))
+       (mv! a x)))))
 
 (defn rank!
   "BLAS 2: General rank-1 update.
@@ -763,7 +767,7 @@
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
-   (if (and (= (p/form x) (p/form y)) (p/compatible a x) (p/compatible a y)
+   (if (and (p/compatible a x) (p/compatible a y)
             (= (.mrows a) (.dim x))
             (= (.ncols a) (.dim y)))
      (.rank (p/engine a) alpha x y a)
@@ -776,7 +780,8 @@
   in a new matrix instance.
   "
   ([alpha x y a]
-   (rank! alpha x y (copy a)))
+   (let-release [res (copy a)]
+     (rank! alpha x y res)))
   ([alpha ^Vector x ^Vector y]
    (let-release [res (ge (p/factory x) (.dim x) (.dim y))]
      (rank! alpha x y res)))
@@ -826,6 +831,8 @@
                        (.mrows a) (.ncols a) (.mrows b) (.ncols b) (.mrows c) (.ncols c)))))
      (throw (IllegalArgumentException.
              (format p/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
+  ([alpha a b c]
+   (mm! alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
    (if (p/compatible a b)
      (if (= (.ncols a) (.mrows b))
@@ -834,16 +841,23 @@
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d."
                        (.mrows a) (.ncols a) (.mrows b) (.ncols b)))))
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG a b)))))
-  ([alpha a b c]
-   (mm! alpha a b 1.0 c)))
+  ([a b]
+   (mm! 1.0 a b)))
 
-(defn mm ;;TODO cover TR etc.
+(defn mm
   "A pure version of mm!, that returns the result
   in a new matrix instance.
   Computes alpha a * b"
+  ([alpha ^Matrix a ^Matrix b beta ^Matrix c]
+   (let-release [res (copy c)]
+     (mm! alpha a b beta res)))
+  ([alpha ^Matrix a ^Matrix b ^Matrix c]
+   (mm alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
-   (let-release [res (ge (p/factory a) (.mrows a) (.ncols b))]
-     (mm! alpha a b 0.0 res)))
+   (cond
+     (instance? GEMatrix b) (let-release [res (copy b)] (mm! alpha a res))
+     (instance? GEMatrix a) (let-release [res (copy a)] (mm! alpha res b))
+     :default (throw (IllegalArgumentException. "One of the matrices has to be GE."))))
   ([a b]
    (mm 1.0 a b)))
 
