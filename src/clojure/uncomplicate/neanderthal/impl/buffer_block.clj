@@ -21,7 +21,7 @@
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$OLLDO
-            IFn$LD IFn$LDD IFn$LLD IFn$L IFn$LLL IFn$OLLD IFn$OLLDD IFn$LLLL]
+            IFn$LD IFn$LDD IFn$LLD IFn$L IFn$LLL IFn$OLLD IFn$OLLDD IFn$LLLL IFn$OLO]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols
             BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor
@@ -34,9 +34,6 @@
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
-
-(defn ^:private consistent? [^Block a ^Block b]
-  (and (instance? (class a) b) (compatible (data-accessor a) b )))
 
 ;; ============ Realeaseable ===================================================
 
@@ -346,7 +343,7 @@
   (.set a j i val))
 
 (deftype RealGEMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDO set*
-                       col-row* col* row*
+                       ^IFn$OLO col-row* ^IFn$OLO col* ^IFn$OLO row*
                        ^uncomplicate.neanderthal.protocols.Factory fact
                        ^RealBufferAccessor da ^BLAS eng ^Boolean master
                        ^ByteBuffer buf ^long m ^long n
@@ -476,7 +473,8 @@
     (col* fact buf ld sd fd j))
   (submatrix [a i j k l]
     (real-ge-matrix fact false
-                    (.slice da buf (.invokePrim index* ld i j) (.invokePrim index* ld k (dec l)))
+                    (.slice da buf (.invokePrim index* ld i j)
+                            (.invokePrim index* ld k (dec l)))
                     k l ld ord))
   (transpose [a]
     (real-ge-matrix fact false buf n m ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
@@ -593,9 +591,9 @@
 
 ;; =================== Real Triangular Matrix ==================================
 
-(deftype RealTRMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDD set*
+(deftype RealTRMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDO set*
                        ^IFn$LLL start* ^IFn$LLL end*
-                       col-row* col* row*
+                       ^IFn$OLO col-row* ^IFn$OLO col* ^IFn$OLO row*
                        ^IFn$LLL col-start* ^IFn$LLL col-len*
                        ^IFn$LLL row-start* ^IFn$LLL row-len*
                        ^long diag-pad ^IFn$LLL default-entry*
@@ -613,7 +611,8 @@
       (identical? a b) true
       (and (instance? RealTRMatrix b) (compatible da b)
            (= n (mrows b))
-           (= fuplo (.uplo ^RealTRMatrix b)))
+           (= fuplo (.uplo ^RealTRMatrix b))
+           (= fdiag (.diag ^RealTRMatrix b)))
       (loop [j 0]
         (if (< j n)
           (let [end (.invokePrim end* n j)]
@@ -737,9 +736,20 @@
                 (+ (.invokePrim col-start* n j) diag-pad)
                 (- (.invokePrim col-len* n j) diag-pad)))
   (submatrix [a i j k l]
-    (throw (UnsupportedOperationException. "TODO I should return banded matrix or GE.")))
+    (throw (UnsupportedOperationException. "TODO I should return banded matrix or GE, or consider only TR submatrices valid.")))
   (transpose [a]
-    (real-tr-matrix fact false buf n ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR) fuplo fdiag)))
+    (real-tr-matrix fact false buf n ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR) fuplo fdiag))
+  PseudoFunctor
+  (fmap! [a f]
+    (tr-fmap* set* get* start* end* n ^IFn$DD f a))
+  (fmap! [a f b]
+    (tr-fmap* set* get* start* end* n ^IFn$DDD f a b))
+  (fmap! [a f b c]
+    (tr-fmap* set* get* start* end* n ^IFn$DDDD f a b c))
+  (fmap! [a f b c d]
+    (tr-fmap* set* get* start* end* n ^IFn$DDDDD f a b c d))
+  (fmap! [a f b c d es]
+    (tr-fmap* set* get* start* end* n f a b c d nil)))
 
 (let [zero (fn ^long [^long n ^long i] 0)
       end (fn ^long [^long n ^long i] n)

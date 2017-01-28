@@ -23,8 +23,8 @@
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
   "Matrices should have fitting dimensions.")
 
-;; ================== Fluokitten implementation  ===============================
-;; ---------------------- Vector Fluokitten funcitions -------------------------
+;; ==================== Vector Fluokitten funcitions =======================
+
 (defn raw-entry ^double [^RealVector x ^long i]
   (.entry x i))
 
@@ -108,7 +108,7 @@
   ([x ^double v ws]
    (throw (UnsupportedOperationException. "This operation would be slow on primitive vectors."))))
 
-;; ---------------------- Matrix Fluokitten funcitions -------------------------
+;; ==================== GE matrix Fluokitten funcitions ========================
 
 (defn check-matrix-dimensions
   ([^Matrix a]
@@ -138,10 +138,10 @@
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
 (defmacro matrix-reduce* [col-row j f init & as]
-  `(vector-reduce ~f ~init ~@(map #(list col-row % j) as)));;TODO invokePrim?
+  `(vector-reduce ~f ~init ~@(map #(list '.invokePrim col-row % j) as)))
 
 (defmacro matrix-reduce-map* [col-row j f init g & as]
-  `(vector-reduce-map ~f ~init ~g ~@(map #(list col-row % j) as)))
+  `(vector-reduce-map ~f ~init ~g ~@(map #(list '.invokePrim col-row % j) as)))
 
 (defmacro matrix-fold* [fd col-row f init & as]
   (if (< (count as) 5)
@@ -191,6 +191,23 @@
    (throw (UnsupportedOperationException.
            "This operation would be slow on primitive matrices."))))
 
+;; ============================ TR matrix fluokitten functions =================
+
+(defmacro tr-fmap* [set* get* start* end* n f & as]
+  (if (< (count as) 5)
+    `(do
+       (if (check-matrix-dimensions ~@as)
+         (dotimes [j# ~n]
+           (let [end# (.invokePrim ~end* ~n j#)]
+             (loop [i# (.invokePrim ~start* ~n j#)]
+               (when (< i# end#)
+                 (.invokePrim ~set* ~(first as) i# j# (invoke-matrix-entry ~get* ~f i# j# ~@as))
+                 (recur (inc i#))))))
+         (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
+       ~(first as))
+    `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
+
+;; ============================ Primitive function extensions ==================
 (extend-type IFn$DDD
   ReductionFunction
   (vector-reduce

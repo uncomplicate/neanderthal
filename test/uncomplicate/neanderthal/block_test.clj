@@ -207,20 +207,16 @@
            (fmap! f (fx)) => (fy)
            (fmap! f x) => x
 
-           (fmap! f (fx) (fy))
-           => (ge factory 2 3 [3 5 7 9 11 13])
+           (fmap! f (fx) (fy)) => (ge factory 2 3 [3 5 7 9 11 13])
            (fmap! f x (fy)) => x
 
-           (fmap! f (fx) (fy) (fy))
-           => (ge factory 2 3 [5 8 11 14 17 20])
+           (fmap! f (fx) (fy) (fy)) => (ge factory 2 3 [5 8 11 14 17 20])
            (fmap! f x (fy) (fy)) => x
 
-           (fmap! f (fx) (fy) (fy) (fy))
-           => (ge factory 2 3 [7 11 15 19 23 27])
+           (fmap! f (fx) (fy) (fy) (fy)) => (ge factory 2 3 [7 11 15 19 23 27])
            (fmap! f x (fy) (fy) (fy)) => x
 
-           (fmap! + (fx) (fy) (fy) (fy) [(fy)])
-           => (throws UnsupportedOperationException))))
+           (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws UnsupportedOperationException))))
 
 (defn test-fold-ge-matrix [factory]
   (let [x (ge factory 2 3 [1 2 3 4 5 6])
@@ -248,6 +244,32 @@
            (fold pf1o [] x y y) => [5.0 8.0 11.0 14.0 17.0 20.0]
 
            (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
+
+(defn test-functor-tr-matrix [factory]
+  (let [fx (fn [] (tr factory 3 [1 2 3 4 5 6]))
+        fy (fn [] (tr factory 3 [2 3 4 5 6 7]))
+        x (fx)
+        f (fn
+            (^double [^double x] (+ x 1.0))
+            (^double [^double x ^double y] (+ x y))
+            (^double [^double x ^double y ^double z] (+ x y z))
+            (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
+    (facts "Functor implementation for real general matrix"
+           (instance? clojure.lang.IFn$DD f) => true
+
+           (fmap! f (fx)) => (fy)
+           (fmap! f x) => x
+
+           (fmap! f (fx) (fy)) => (tr factory 3 [3 5 7 9 11 13])
+           (fmap! f x (fy)) => x
+
+           (fmap! f (fx) (fy) (fy)) => (tr factory 3 [5 8 11 14 17 20])
+           (fmap! f x (fy) (fy)) => x
+
+           (fmap! f (fx) (fy) (fy) (fy)) => (tr factory 3 [7 11 15 19 23 27])
+           (fmap! f x (fy) (fy) (fy)) => x
+
+           (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws UnsupportedOperationException))))
 
 (defn test-all [factory]
   (do
