@@ -254,7 +254,7 @@
             (^double [^double x ^double y] (+ x y))
             (^double [^double x ^double y ^double z] (+ x y z))
             (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
-    (facts "Functor implementation for real general matrix"
+    (facts "Functor implementation for real TR matrix"
            (instance? clojure.lang.IFn$DD f) => true
 
            (fmap! f (fx)) => (fy)
@@ -270,6 +270,33 @@
            (fmap! f x (fy) (fy) (fy)) => x
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws UnsupportedOperationException))))
+
+(defn test-fold-tr-matrix [factory]
+  (let [x (tr factory 3 [1 2 3 4 5 6])
+        *' (fn ^double [^double x ^double y] (double (* x y)))
+        +' (fn ^double [^double x ^double y] (double (+ x y)))]
+    (facts "Fold implementation for real TR matrix"
+           (fold x) => 21.0
+           (fold *' 1.0 x) => 720.0
+           (fold +' 0.0 x) => (fold x))))
+
+(defn test-reducible-tr-matrix [factory]
+  (let [x (tr factory 3 [1 2 3 4 5 6])
+        y (tr factory 3 [2 3 4 5 6 7])
+        pf1 (fn ^double [^double res ^double x] (+ x res))
+        pf1o (fn [res ^double x] (conj res x))]
+    (facts "Reducible implementation for real TR matrix"
+
+           (fold pf1 1.0 x) => 22.0
+           (fold pf1o [] x) => [1.0 2.0 3.0 4.0 5.0 6.0]
+
+           (fold pf1 1.0 x y) => 49.0
+           (fold pf1o [] x y) => [3.0 5.0 7.0 9.0 11.0 13.0]
+
+           (fold pf1 1.0 x y y) => 76.0
+           (fold pf1o [] x y y) => [5.0 8.0 11.0 14.0 17.0 20.0]
+
+           (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
 
 (defn test-all [factory]
   (do

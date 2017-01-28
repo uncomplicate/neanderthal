@@ -343,7 +343,7 @@
   (.set a j i val))
 
 (deftype RealGEMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDO set*
-                       ^IFn$OLO col-row* ^IFn$OLO col* ^IFn$OLO row*
+                       ^IFn$OLO col-row* col* row*
                        ^uncomplicate.neanderthal.protocols.Factory fact
                        ^RealBufferAccessor da ^BLAS eng ^Boolean master
                        ^ByteBuffer buf ^long m ^long n
@@ -593,7 +593,7 @@
 
 (deftype RealTRMatrix [^IFn$LLLL index* ^IFn$OLLD get* ^IFn$OLLDO set*
                        ^IFn$LLL start* ^IFn$LLL end*
-                       ^IFn$OLO col-row* ^IFn$OLO col* ^IFn$OLO row*
+                       ^IFn$OLO col-row* col* row*
                        ^IFn$LLL col-start* ^IFn$LLL col-len*
                        ^IFn$LLL row-start* ^IFn$LLL row-len*
                        ^long diag-pad ^IFn$LLL default-entry*
@@ -741,15 +741,59 @@
     (real-tr-matrix fact false buf n ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR) fuplo fdiag))
   PseudoFunctor
   (fmap! [a f]
-    (tr-fmap* set* get* start* end* n ^IFn$DD f a))
+    (tr-fmap set* get* start* end* n ^IFn$DD f a))
   (fmap! [a f b]
-    (tr-fmap* set* get* start* end* n ^IFn$DDD f a b))
+    (tr-fmap set* get* start* end* n ^IFn$DDD f a b))
   (fmap! [a f b c]
-    (tr-fmap* set* get* start* end* n ^IFn$DDDD f a b c))
+    (tr-fmap set* get* start* end* n ^IFn$DDDD f a b c))
   (fmap! [a f b c d]
-    (tr-fmap* set* get* start* end* n ^IFn$DDDDD f a b c d))
+    (tr-fmap set* get* start* end* n ^IFn$DDDDD f a b c d))
   (fmap! [a f b c d es]
-    (tr-fmap* set* get* start* end* n f a b c d nil)))
+    (tr-fmap set* get* start* end* n f a b c d nil))
+  Foldable
+  (fold [_]
+    (loop [j 0 acc 0.0]
+      (if (< j n)
+        (recur (inc j)
+               (double
+                (let [end (.invokePrim end* n j)]
+                  (loop [i (.invokePrim start* n j) acc acc]
+                    (if (< i end)
+                      (recur (inc i) (+ acc (.get da buf (+ (* ld j) i))))
+                      acc)))))
+        acc)))
+  (fold [a f init]
+    (matrix-fold* n col-row* f init a))
+  (fold [a f init b]
+    (matrix-fold* n col-row* f init a b))
+  (fold [a f init b c]
+    (matrix-fold* n col-row* f init a b c))
+  (fold [a f init b c d]
+    (matrix-fold* n col-row* f init a b c d))
+  (fold [a f init b c d es]
+    (matrix-fold* n col-row* f init a b c d es))
+  (foldmap [_ g]
+    (loop [j 0 acc 0.0]
+      (if (< j n)
+        (recur (inc j)
+               (double
+                (let [end (.invokePrim end* n j)]
+                  (loop [i (.invokePrim start* n j) acc acc]
+                    (if (< i end)
+                      (recur (inc i)
+                             (.invokePrim ^IFn$DD g (.get da buf (+ (* ld j) i))))
+                      acc)))))
+        acc)))
+  (foldmap [a g f init]
+    (matrix-foldmap* n col-row* f init ^IFn$DD g a))
+  (foldmap [a g f init b]
+    (matrix-foldmap* n col-row* f init ^IFn$DDD g a b))
+  (foldmap [a g f init b c]
+    (matrix-foldmap* n col-row* f init ^IFn$DDDD g a b c))
+  (foldmap [a g f init b c d]
+    (matrix-foldmap* n col-row* f init ^IFn$DDDDD g a b c d))
+  (foldmap [a g f init b c d es]
+    (matrix-foldmap* n col-row* f init g a b c d es)))
 
 (let [zero (fn ^long [^long n ^long i] 0)
       end (fn ^long [^long n ^long i] n)

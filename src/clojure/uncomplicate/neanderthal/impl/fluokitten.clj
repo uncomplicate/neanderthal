@@ -193,7 +193,7 @@
 
 ;; ============================ TR matrix fluokitten functions =================
 
-(defmacro tr-fmap* [set* get* start* end* n f & as]
+(defmacro tr-fmap [set* get* start* end* n f & as]
   (if (< (count as) 5)
     `(do
        (if (check-matrix-dimensions ~@as)
@@ -208,6 +208,7 @@
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
 ;; ============================ Primitive function extensions ==================
+
 (extend-type IFn$DDD
   ReductionFunction
   (vector-reduce
