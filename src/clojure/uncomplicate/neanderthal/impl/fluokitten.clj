@@ -165,10 +165,9 @@
          (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
-
 (defn matrix-op [^GEMatrix a & bs]
   (let [no-transp (= COLUMN_MAJOR (.order ^GEMatrix a))
-        [m n] (if no-transp [mrows ncols] [ncols mrows])]
+        [m n] (if no-transp [mrows ncols] [ncols mrows])];;TODO use col-row*?
     (let-release [res ((if no-transp identity trans)
                        (ge (factory a) (m a) (transduce (map n) + (n a) bs)))]
       (.copy ^BLASPlus (engine a) a

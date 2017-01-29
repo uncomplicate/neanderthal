@@ -603,8 +603,7 @@
                        ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
-    #_(tr-matrix-fold* fd col-row* hash* (-> (hash :RealTRMatrix) (hash-combine n))
-                       (.submatrix this 0 0 (min 16 n) (min 16 n))));;TODO check fluokitten and triangle and do with submatrix
+    (matrix-fold* n col-row* hash* (-> (hash :RealTRMatrix) (hash-combine n)) this));; TODO do with suubmatrix (.submatrix this 0 0 (min 16 n) (min 16 n))
   (equals [a b]
     (cond
       (nil? b) false
