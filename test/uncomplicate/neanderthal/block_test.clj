@@ -64,7 +64,9 @@
            (release a) => true
            (release a) => true)))
 
-(defn test-ifn-vector [factory]
+;; ================= Vector  ========================================
+
+(defn test-vctr-ifn [factory]
   (facts "IFn implementation for real block vector"
          (let [x (vctr factory [1 2 3 4])]
            (x 2) => 3.0
@@ -73,7 +75,7 @@
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LD x 0) => 1.0)))
 
-(defn test-op-vector [factory]
+(defn test-vctr-op [factory]
   (with-release [x (vctr factory [1 2 3])
                  y (vctr factory [4 5])
                  z (vctr factory [])
@@ -95,7 +97,7 @@
      v4 => t4
      v5 => t5)))
 
-(defn test-functor-vector [factory]
+(defn test-vctr-functor [factory]
   (let [fx (fn [] (vctr factory [1 2 3 4]))
         fy (fn [] (vctr factory [2 3 4 5 6]))
         x (fx)
@@ -123,7 +125,7 @@
            (fmap! + (fx) (fy) (fy) (fy) [(fy)])
            => (throws UnsupportedOperationException))))
 
-(defn test-fold-vector [factory]
+(defn test-vctr-fold [factory]
   (let [x (vctr factory [1 2 3 4])
         *' (fn ^double [^double x ^double y]
              (* x y))
@@ -135,7 +137,7 @@
            (fold *' 1.0 x) => 24.0
            (fold +' 0.0 x) => (fold x))))
 
-(defn test-reducible-vector [factory]
+(defn test-vctr-reducible [factory]
   (let [y (vctr factory [2 3 4 5 6])
         x (vctr factory [1 2 3 4])
         pf1 (fn ^double [^double res ^double x] (+ x res))
@@ -156,12 +158,14 @@
 
            (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
 
-(defn test-seq-vector [factory]
+(defn test-vctr-seq [factory]
   (facts "Vector as a sequence"
          (seq (vctr factory [1 2 3])) => '(1.0 2.0 3.0)
          (seq (row (ge factory 2 3 (range 6)) 1)) => '(1.0 3.0 5.0)))
 
-(defn test-ifn-ge-matrix [factory]
+;; ================= GE matrix ========================================
+
+(defn test-ge-ifn [factory]
   (facts "IFn implementation for double general matrix"
          (let [x (ge factory 2 3 [1 2 3 4 5 6])]
            (x 1 2) => 6.0
@@ -170,7 +174,7 @@
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LLD x 0 0) => 1.0)))
 
-(defn test-op-ge-matrix [factory]
+(defn test-ge-op [factory]
   (facts
    "GeneralMatrix should be a Monoid."
    (with-release [x (ge factory 2 3 (range 6))
@@ -192,7 +196,7 @@
      v4 => t4
      v5 => t5)))
 
-(defn test-functor-ge-matrix [factory]
+(defn test-ge-functor [factory]
   (let [fx (fn [] (ge factory 2 3 [1 2 3 4 5 6]))
         fy (fn [] (ge factory 2 3 [2 3 4 5 6 7]))
         x (fx)
@@ -201,7 +205,7 @@
             (^double [^double x ^double y] (+ x y))
             (^double [^double x ^double y ^double z] (+ x y z))
             (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
-    (facts "Functor implementation for real general matrix"
+    (facts "Functor implementation for real GE matrix"
            (instance? clojure.lang.IFn$DD f) => true
 
            (fmap! f (fx)) => (fy)
@@ -218,21 +222,21 @@
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws UnsupportedOperationException))))
 
-(defn test-fold-ge-matrix [factory]
+(defn test-ge-fold [factory]
   (let [x (ge factory 2 3 [1 2 3 4 5 6])
         *' (fn ^double [^double x ^double y] (double (* x y)))
         +' (fn ^double [^double x ^double y] (double (+ x y)))]
-    (facts "Fold implementation for real general matrix"
+    (facts "Fold implementation for real GE matrix"
            (fold x) => 21.0
            (fold *' 1.0 x) => 720.0
            (fold +' 0.0 x) => (fold x))))
 
-(defn test-reducible-ge-matrix [factory]
+(defn test-ge-reducible [factory]
   (let [x (ge factory 2 3 [1 2 3 4 5 6])
         y (ge factory 2 3 [2 3 4 5 6 7])
         pf1 (fn ^double [^double res ^double x] (+ x res))
         pf1o (fn [res ^double x] (conj res x))]
-    (facts "Reducible implementation for real general matrix"
+    (facts "Reducible implementation for real GE matrix"
 
            (fold pf1 1.0 x) => 22.0
            (fold pf1o [] x) => [1.0 2.0 3.0 4.0 5.0 6.0]
@@ -245,7 +249,19 @@
 
            (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
 
-(defn test-functor-tr-matrix [factory]
+
+(defn test-ge-seq [factory]
+  (facts "GE matrix as a sequence"
+
+         (seq (ge factory 2 3 (range 6) {:order :column}))
+         => (list (list 0.0 1.0) (list 2.0 3.0) (list 4.0 5.0))
+
+         (seq (ge factory 2 3 (range 6) {:order :row}))
+         => (list (list 0.0 1.0 2.0) (list 3.0 4.0 5.0))))
+
+;; ================= TR matrix ========================================
+
+(defn test-tr-functor [factory]
   (let [fx (fn [] (tr factory 3 [1 2 3 4 5 6]))
         fy (fn [] (tr factory 3 [2 3 4 5 6 7]))
         x (fx)
@@ -271,7 +287,7 @@
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws UnsupportedOperationException))))
 
-(defn test-fold-tr-matrix [factory]
+(defn test-tr-fold [factory]
   (let [x (tr factory 3 [1 2 3 4 5 6])
         *' (fn ^double [^double x ^double y] (double (* x y)))
         +' (fn ^double [^double x ^double y] (double (+ x y)))]
@@ -280,7 +296,7 @@
            (fold *' 1.0 x) => 720.0
            (fold +' 0.0 x) => (fold x))))
 
-(defn test-reducible-tr-matrix [factory]
+(defn test-tr-reducible [factory]
   (let [x (tr factory 3 [1 2 3 4 5 6])
         y (tr factory 3 [2 3 4 5 6 7])
         pf1 (fn ^double [^double res ^double x] (+ x res))
@@ -298,19 +314,44 @@
 
            (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
 
+(defn test-tr-seq [factory]
+  (facts "TR matrix as a sequence"
+
+         (seq (tr factory 3 (range 1 7) {:order :column}))
+         => (list (list 1.0 2.0 3.0) (list 4.0 5.0) (list 6.0))
+
+         (seq (tr factory 3 (range 1 7) {:order :column :uplo :upper}))
+         => (list (list 1.0) (list 2.0 3.0) (list 4.0 5.0 6.0))
+
+         (seq (tr factory 3 (range 1 7) {:order :column :uplo :upper :diag :unit}))
+         => (list (list) (list 1.0) (list 2.0 3.0))
+
+         (seq (tr factory 3 (range 1 7) {:order :row}))
+         => (list (list 1.0) (list 2.0 3.0) (list 4.0 5.0 6.0))
+
+         (seq (tr factory 3 (range 1 7) {:order :row :uplo :upper}))
+         => (list (list 1.0 2.0 3.0) (list 4.0 5.0) (list 6.0))
+
+         (seq (tr factory 3 (range 1 7) {:order :row :uplo :upper :diag :unit}))
+         => (list (list 1.0 2.0) (list 3.0) (list))
+
+         (seq (tr factory 3 (range 1 7) {:order :row :uplo :lower :diag :unit}))
+         => (list (list) (list 1.0) (list 2.0 3.0))))
+
 (defn test-all [factory]
   (do
     (test-create factory)
     (test-equality factory)
     (test-release factory)
-    (test-ifn-vector factory)
-    (test-op-vector factory)
-    (test-functor-vector factory)
-    (test-fold-vector factory)
-    (test-reducible-vector factory)
-    (test-seq-vector factory)
-    (test-ifn-ge-matrix factory)
-    (test-op-ge-matrix factory)
-    (test-functor-ge-matrix factory)
-    (test-fold-ge-matrix factory)
-    (test-reducible-ge-matrix factory)))
+    (test-vctr-ifn factory)
+    (test-vctr-op factory)
+    (test-vctr-functor factory)
+    (test-vctr-fold factory)
+    (test-vctr-reducible factory)
+    (test-vctr-seq factory)
+    (test-ge-ifn factory)
+    (test-ge-op factory)
+    (test-ge-functor factory)
+    (test-ge-fold factory)
+    (test-ge-reducible factory)
+    (test-ge-seq factory)))

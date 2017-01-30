@@ -15,9 +15,9 @@
     [f init g x y z] [f init g x y z v]))
 
 (defprotocol Factory
-  (create-vector [this memory n options])
-  (create-ge [this memory m n options])
-  (create-tr [this memory n options])
+  (create-vector [this memory n])
+  (create-ge [this memory m n ord])
+  (create-tr [this memory n ord uplo diag])
   (vector-engine [this])
   (ge-engine [this])
   (tr-engine [this]))

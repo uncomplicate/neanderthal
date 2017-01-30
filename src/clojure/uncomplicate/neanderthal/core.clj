@@ -102,7 +102,7 @@
   "TODO"
   ([factory source]
    (cond
-     (integer? source) (p/create-vector factory (.createDataSource (p/data-accessor factory) source) source nil)
+     (integer? source) (p/create-vector factory (.createDataSource (p/data-accessor factory) source) source)
      (number? source) (.set ^RealChangeable (vctr factory 1) 0 source)
      :default (transfer factory source)))
   ([factory x & xs]
@@ -111,14 +111,14 @@
 (defn ge
   "TODO"
   ([factory m n source options]
-   (let-release [res (if (and (< -1 (long m)) (< -1 (long n)))
-                       (p/create-ge factory (.createDataSource (p/data-accessor factory) (* (long m) (long n)))
-                                    m n options)
-                       (throw (IllegalArgumentException.
-                               (format "Dimensions m=%d, n=%d are not allowed." m n))))]
-     (if source
-       (transfer! source res)
-       res)))
+   (if (and (< -1 (long m)) (< -1 (long n)))
+     (let-release [res (p/create-ge
+                        factory
+                        (.createDataSource (p/data-accessor factory)
+                                           (* (long m) (long n)))
+                        m n (p/enc-order (:order options)))]
+       (if source (transfer! source res) res))
+     (throw (IllegalArgumentException. (format "Dimensions m=%d, n=%d are not allowed." m n)))))
   ([factory ^long m ^long n arg]
    (if (or (not arg) (map? arg))
      (ge factory m n nil arg)
@@ -131,14 +131,16 @@
 (defn tr
   "TODO"
   ([factory ^long n source options]
-   (let-release [res (if (< -1 n)
-                       (p/create-tr factory (.createDataSource (p/data-accessor factory) (* n n))
-                                    n options)
-                       (throw (IllegalArgumentException.
-                               (format "Dimension n=%d is not allowed." n))))]
-     (if source
-       (transfer! source res)
-       res)))
+   (if (< -1 n)
+     (let [ord (p/enc-order (:order options))
+           uplo (p/enc-uplo (:uplo options))
+           diag (p/enc-diag (:diag options))]
+       (let-release [res (p/create-tr
+                          factory
+                          (.createDataSource (p/data-accessor factory) (* n n))
+                          n ord uplo diag)]
+         (if source (transfer! source res) res)))
+     (throw (IllegalArgumentException. (format "Dimension n=%d is not allowed." n)))))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
      (tr factory n nil arg)

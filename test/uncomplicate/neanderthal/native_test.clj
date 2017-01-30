@@ -18,8 +18,10 @@
 (real-test/test-all cblas-float)
 
 ;;TODO move to test-all when OpenCL is implemented
-(block-test/test-functor-tr-matrix cblas-double)
-(block-test/test-fold-tr-matrix cblas-double)
+(block-test/test-tr-functor cblas-double)
+(block-test/test-tr-fold cblas-double)
+(block-test/test-tr-reducible cblas-double)
+(block-test/test-tr-seq cblas-double)
 
 (real-test/test-tr cblas-double)
 (real-test/test-tr-constructor cblas-double)
