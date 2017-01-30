@@ -607,7 +607,8 @@
                        ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
-    (matrix-fold n col-row* hash* (-> (hash :RealTRMatrix) (hash-combine n)) this));; TODO do with suubmatrix (.submatrix this 0 0 (min 16 n) (min 16 n))
+    (matrix-fold n col-row* hash* (-> (hash :RealTRMatrix) (hash-combine n))
+                 (.submatrix this 0 0 (min 16 n) (min 16 n))))
   (equals [a b]
     (cond
       (nil? b) false
@@ -656,7 +657,7 @@
     (raw this fact))
   (host [this]
     (let-release [res (raw this)]
-      (.copy eng this res)));;TODO implement TR.copy
+      (.copy eng this res)))
   (native [this]
     this)
   MemoryContext
@@ -739,7 +740,12 @@
       (.subvector ^Vector (col* fact buf ld n n j)
                   start (- (.invokePrim col-end* n j) start))))
   (submatrix [a i j k l]
-    (throw (UnsupportedOperationException. "TODO I should return banded matrix or GE, or consider only TR submatrices valid.")))
+    (if (and (= i j) (= k l))
+      (real-tr-matrix fact false
+                      (.slice da buf (.invokePrim index* ld i j)
+                              (.invokePrim index* ld k (dec l)))
+                      k ld ord fuplo fdiag))
+    (throw (UnsupportedOperationException. "Submatrix of a TR matrix has to be triangular.")))
   (transpose [a]
     (real-tr-matrix fact false buf n ld
                     (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
