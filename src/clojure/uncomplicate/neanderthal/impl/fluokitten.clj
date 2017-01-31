@@ -93,7 +93,7 @@
   (let-release [res (vctr (factory x) (transduce (map dim) + (.dim x) ws))]
     (loop [pos 0 w x ws ws]
       (when w
-        (if (compatible res w)
+        (if (compatible? res w)
           (.subcopy ^BLASPlus (engine w) w res 0 (dim w) pos)
           (throw (UnsupportedOperationException. (format INCOMPATIBLE_BLOCKS_MSG res w))))
         (recur (+ pos (dim w)) (first ws) (next ws))))
@@ -159,7 +159,7 @@
       (.copy ^BLASPlus (engine a) a
              (.submatrix ^Matrix res 0 0 (.mrows a) (.ncols a)))
       (reduce (fn ^long [^long pos ^Matrix w]
-                (if (compatible res w)
+                (if (compatible? res w)
                   (.copy ^BLASPlus (engine w) w
                          (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))
                   (throw (IllegalArgumentException.

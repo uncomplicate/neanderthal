@@ -72,7 +72,7 @@
   (data-accessor [this]
     this)
   MemoryContext
-  (compatible [this o]
+  (compatible? [this o]
     (let [da (data-accessor o)]
       (or (identical? this da) (instance? FloatBufferAccessor da))))
   BufferAccessor
@@ -112,7 +112,7 @@
   (data-accessor [this]
     this)
   MemoryContext
-  (compatible [this o]
+  (compatible? [this o]
     (let [da (data-accessor o)]
       (or (identical? this da) (instance? DoubleBufferAccessor da))))
   BufferAccessor
@@ -143,7 +143,7 @@
     (cond
       (nil? y) false
       (identical? x y) true
-      (and (instance? RealBlockVector y) (compatible da y)
+      (and (instance? RealBlockVector y) (compatible? da y)
            (= n (.dim ^RealBlockVector y)))
       (loop [i 0]
         (if (< i n)
@@ -175,9 +175,9 @@
   (native [this]
     this)
   MemoryContext
-  (compatible [_ y]
-    (compatible da y))
-  (fit [_ y]
+  (compatible? [_ y]
+    (compatible? da y))
+  (fits? [_ y]
     (= n (.dim ^Vector y)))
   Monoid
   (id [x]
@@ -363,7 +363,7 @@
     (cond
       (nil? b) false
       (identical? a b) true
-      (and (instance? RealGEMatrix b) (compatible da b)
+      (and (instance? RealGEMatrix b) (compatible? da b)
            (= m (mrows b)) (= n (ncols b)))
       (loop [j 0]
         (if (< j fd)
@@ -408,9 +408,9 @@
   (native [this]
     this)
   MemoryContext
-  (compatible [_ b]
-    (compatible da b))
-  (fit [_ b]
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [_ b]
     (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
   DenseContainer
   (subtriangle [_ uplo diag];;TODO remove and introduce new function similar to copy that reuses memory
@@ -617,7 +617,7 @@
     (cond
       (nil? b) false
       (identical? a b) true
-      (and (instance? RealTRMatrix b) (compatible da b)
+      (and (instance? RealTRMatrix b) (compatible? da b)
            (= n (mrows b))
            (= fuplo (.uplo ^RealTRMatrix b))
            (= fdiag (.diag ^RealTRMatrix b)))
@@ -665,9 +665,9 @@
   (native [this]
     this)
   MemoryContext
-  (compatible [_ b]
-    (compatible da b))
-  (fit [_ b]
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [_ b]
     (= n (.mrows ^TRMatrix b)))
   Monoid
   (id [a]

@@ -33,8 +33,8 @@
   (data-accessor ^DataAccessor [this]))
 
 (defprotocol MemoryContext
-  (compatible [this other])
-  (fit [this other]))
+  (compatible? [this other])
+  (fits? [this other]))
 
 (defprotocol Mappable
   (map-memory [this] [this flags])

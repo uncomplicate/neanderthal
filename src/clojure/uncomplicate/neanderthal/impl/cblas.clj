@@ -407,8 +407,8 @@
   (data-accessor [_]
     da)
   MemoryContext
-  (compatible [_ o]
-    (compatible da o))
+  (compatible? [_ o]
+    (compatible? da o))
   Factory
    (create-vector [this buf n]
     (if (and (<= 0 (long n) (.count da buf))

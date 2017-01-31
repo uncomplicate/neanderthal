@@ -385,7 +385,7 @@
   (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
   "
   [^Vector x ^Vector y]
-  (if (and (p/compatible x y) (p/fit x y))
+  (if (and (p/compatible? x y) (p/fits? x y))
     (.dot (p/engine x) x y)
     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
 
@@ -457,7 +457,7 @@
   "BLAS 1: Apply plane rotation.
   "
   ([^Vector x ^Vector y ^double c ^double s]
-   (if (and (p/compatible x y))
+   (if (and (p/compatible? x y))
      (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0)
               (f= 1.0 (+ (pow c 2) (pow s 2))))
        (.rot (p/engine x) x y c s)
@@ -505,7 +505,7 @@
   "BLAS 1: Apply modified plane rotation.
   "
   [^Vector x ^Vector y ^Vector param]
-  (if (and (p/compatible x y) (p/compatible x param) (p/fit x y) (< 4 (.dim param)))
+  (if (and (p/compatible? x y) (p/compatible? x param) (p/fits? x y) (< 4 (.dim param)))
     (.rotm (p/engine x) x y param)
     (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y param)))))
 
@@ -516,7 +516,7 @@
   - param must be a vector of at least 5 entries
   "
   [^Vector d1d2xy ^Vector param]
-  (if (and (p/compatible d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
+  (if (and (p/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
     (.rotmg (p/engine param) d1d2xy param)
     (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG d1d2xy param)))))
 
@@ -539,7 +539,7 @@
   "
   [x y]
   (if (not (identical? x y))
-    (if (and (p/compatible x y) (p/fit x y))
+    (if (and (p/compatible? x y) (p/fits? x y))
       (.swap (p/engine x) x y)
       (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
     x))
@@ -564,13 +564,13 @@
   "
   ([x y]
    (if (not (identical? x y))
-     (if (and (p/compatible x y) (p/fit x y))
+     (if (and (p/compatible? x y) (p/fits? x y))
        (.copy (p/engine x) x y)
        (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
      y))
   ([x y offset-x length offset-y]
    (if (not (identical? x y))
-     (if (p/compatible x y)
+     (if (p/compatible? x y)
        (if (<= (long length) (min (- (ecount x) (long offset-x))
                                   (- (ecount y) (long offset-y))))
          (.subcopy ^BLASPlus (p/engine x) x y
@@ -631,7 +631,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
   "
   ([alpha x y]
-   (if (and  (p/compatible x y) (p/fit x y))
+   (if (and  (p/compatible? x y) (p/fits? x y))
      (.axpy (p/engine x) alpha x y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
@@ -718,7 +718,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(15.0 22.5 30.0)<>
   "
   ([alpha ^Matrix a ^Vector x beta ^Vector y]
-   (if (and (p/compatible a x) (p/compatible a y)
+   (if (and (p/compatible? a x) (p/compatible? a y)
             (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
      (.mv (p/engine a) alpha a x beta y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
@@ -727,7 +727,7 @@
   ([a x y]
    (mv! 1.0 a x 0.0 y))
   ([^Matrix a ^Vector x];;TODO docs
-   (if (and (p/compatible a x) (= (.ncols a) (.dim x)))
+   (if (and (p/compatible? a x) (= (.ncols a) (.dim x)))
      (.mv (p/engine a) a x)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG a x))))))
 
@@ -765,7 +765,7 @@
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
-   (if (and (p/compatible a x) (p/compatible a y)
+   (if (and (p/compatible? a x) (p/compatible? a y)
             (= (.mrows a) (.dim x))
             (= (.ncols a) (.dim y)))
      (.rank (p/engine a) alpha x y a)
@@ -819,7 +819,7 @@
   => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
-   (if (and (p/compatible a b) (p/compatible a c))
+   (if (and (p/compatible? a b) (p/compatible? a c))
      (if (and (= (.ncols a) (.mrows b))
               (= (.mrows a) (.mrows c))
               (= (.ncols b) (.ncols c)))
@@ -832,7 +832,7 @@
   ([alpha a b c]
    (mm! alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
-   (if (p/compatible a b)
+   (if (p/compatible? a b)
      (if (= (.ncols a) (.mrows b))
        (.mm (p/engine a) alpha a b true)
        (throw (IllegalArgumentException.
