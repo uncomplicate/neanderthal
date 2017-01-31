@@ -177,6 +177,8 @@
   MemoryContext
   (compatible [_ y]
     (compatible da y))
+  (fit [_ y]
+    (= n (.dim ^Vector y)))
   Monoid
   (id [x]
     (real-block-vector fact 0))
@@ -408,6 +410,8 @@
   MemoryContext
   (compatible [_ b]
     (compatible da b))
+  (fit [_ b]
+    (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
   DenseContainer
   (subtriangle [_ uplo diag];;TODO remove and introduce new function similar to copy that reuses memory
     (let [k (min m n)
@@ -663,6 +667,8 @@
   MemoryContext
   (compatible [_ b]
     (compatible da b))
+  (fit [_ b]
+    (= n (.mrows ^TRMatrix b)))
   Monoid
   (id [a]
     (real-tr-matrix fact 0))

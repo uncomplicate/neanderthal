@@ -33,7 +33,8 @@
   (data-accessor ^DataAccessor [this]))
 
 (defprotocol MemoryContext
-  (compatible [this other]))
+  (compatible [this other])
+  (fit [this other]))
 
 (defprotocol Mappable
   (map-memory [this] [this flags])
@@ -156,15 +157,15 @@
 (def ^{:no-doc true :const true} PRIMITIVE_FN_MSG
   "I cannot accept function of this type as an argument.")
 
-(def ^{:no-doc true :const true} ROTMG_COND_MSG
-  "Arguments p and args must be compatible.
-  p must have dimension 5 and args must have dimension 4.
-  p: %s;
-  args: %s ")
-
 (def ^{:no-doc true :const true} ROTM_COND_MSG
-  "Arguments x and y must be compatible and have the same dimensions.
-  argument p must have dimension 5.
+  "Arguments x and y must be compatible and have equeal dimensions.
+  argument param must have dimension at least 5.
   x: %s;
   y: %s;
-  p: %s")
+  param: %s")
+
+(def ^{:no-doc true :const true} ROTMG_COND_MSG
+  "Arguments d1d2xy and param must be compatible.
+  param must have dimension at least 5 and d1d2xy at least 4.
+  d1d2xy: %s;
+  param: %s ")

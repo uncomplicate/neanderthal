@@ -12,12 +12,6 @@ public interface BLAS {
 
     long iamax (Vector x);
 
-    Vector rotg (Vector x);
-
-    Vector rotmg (Vector p, Vector args);
-
-    Vector rotm (Vector x, Vector y, Block p);
-
     Block swap (Block x, Block y);
 
     Block copy (Block x, Block y);
@@ -29,6 +23,12 @@ public interface BLAS {
     Object asum (Vector x);
 
     Vector rot (Vector x, Vector y, double c, double s);
+
+    Vector rotg (Vector abcs);
+
+    Vector rotm (Vector x, Vector y, Vector params);
+
+    Vector rotmg (Vector d1d2xy, Vector param);
 
     Block scal (Object alpha, Block x);
 

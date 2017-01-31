@@ -40,7 +40,7 @@
              [protocols :as p]
              [math :refer [f= pow sqrt]]
              [block :refer [buffer ecount]]])
-  (:import [uncomplicate.neanderthal.protocols Vector Matrix GEMatrix
+  (:import [uncomplicate.neanderthal.protocols Vector RealVector Matrix GEMatrix
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
 (defn vect?
@@ -385,7 +385,7 @@
   (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
   "
   [^Vector x ^Vector y]
-  (if (and (p/compatible x y) (= (.dim x) (.dim y)))
+  (if (and (p/compatible x y) (p/fit x y))
     (.dot (p/engine x) x y)
     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
 
@@ -457,16 +457,16 @@
   "BLAS 1: Apply plane rotation.
   "
   ([^Vector x ^Vector y ^double c ^double s]
-   (if (p/compatible x y)
-     (if (and (<= -1.0 c 1.0) (<= -1.0 c 1.0)
+   (if (and (p/compatible x y))
+     (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0)
               (f= 1.0 (+ (pow c 2) (pow s 2))))
        (.rot (p/engine x) x y c s)
        (throw (IllegalArgumentException. "c and s must be sin and cos.")))
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
-  ([x y c]
+  ([x y ^double c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
-(defn rotg!
+(defn rotg!;;TODO docs
   "BLAS 1: Generate plane rotation.
 
   # Description:
@@ -496,28 +496,30 @@
   For a detailed description see
   http://www.mathkeisan.com/usersguide/man/drotg.html
   "
-  [^Vector x]
-  (if (= 4 (.dim x))
-    (.rotg (p/engine x) x)
-    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (.dim x))))))
+  [^Vector abcs]
+  (if (< 3 (.dim abcs))
+    (.rotg (p/engine abcs) abcs)
+    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (.dim abcs))))))
+
+(defn rotm!;;TODO docs
+  "BLAS 1: Apply modified plane rotation.
+  "
+  [^Vector x ^Vector y ^Vector param]
+  (if (and (p/compatible x y) (p/compatible x param) (p/fit x y) (< 4 (.dim param)))
+    (.rotm (p/engine x) x y param)
+    (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y param)))))
 
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
-  - p must be a vector of exactly 5 entries
-  - args must be a vector of exactly 4 entries
-  "
-  [^Vector p ^Vector args]
-  (if (and (p/compatible p args) (= 5 (.dim p)) (= 4 (.dim args)))
-    (.rotmg (p/engine p) p args)
-    (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG p args)))))
 
-(defn rotm!
-  "BLAS 1: Apply modified plane rotation.
+  - d1d2xy must be a vector of at least 4 entries
+  - param must be a vector of at least 5 entries
   "
-  [^Vector x ^Vector y ^Vector p]
-  (if (and (p/compatible x y) (= (.dim x) (.dim y)) (= 5 (.dim p)))
-    (.rotm (p/engine x) x y p)
-    (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y p)))))
+  [^Vector d1d2xy ^Vector param]
+  (if (and (p/compatible d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
+    (.rotmg (p/engine param) d1d2xy param)
+    (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG d1d2xy param)))))
+
 
 (defn swp!
   "BLAS 1: Swap vectors or matrices.
@@ -537,11 +539,8 @@
   "
   [x y]
   (if (not (identical? x y))
-    (if (p/compatible x y)
-      (if (= (ecount x) (ecount y))
-        (.swap (p/engine x) x y)
-        (throw (IllegalArgumentException.
-                (format p/DIMENSION_MSG (ecount x) (ecount y)))))
+    (if (and (p/compatible x y) (p/fit x y))
+      (.swap (p/engine x) x y)
       (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
     x))
 
@@ -565,11 +564,8 @@
   "
   ([x y]
    (if (not (identical? x y))
-     (if (p/compatible x y)
-       (if (= (ecount x) (ecount y))
-         (.copy (p/engine x) x y)
-         (throw (IllegalArgumentException.
-                 (format p/DIMENSION_MSG (ecount x) (ecount y)))))
+     (if (and (p/compatible x y) (p/fit x y))
+       (.copy (p/engine x) x y)
        (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
      y))
   ([x y offset-x length offset-y]
@@ -635,7 +631,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
   "
   ([alpha x y]
-   (if (and  (p/compatible x y) (= (ecount x) (ecount y)))
+   (if (and  (p/compatible x y) (p/fit x y))
      (.axpy (p/engine x) alpha x y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]

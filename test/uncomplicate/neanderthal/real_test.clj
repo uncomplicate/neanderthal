@@ -114,7 +114,8 @@
   (facts "BLAS 1 rot!"
          (with-release [x (vctr factory [1 2 3 4 5])
                         y (vctr factory [-1 -2 -3 -4 -5])]
-           (do (rot! x y 1 0) [x y]) => [(vctr factory 1 2 3 4 5) (vctr factory -1 -2 -3 -4 -5)]
+           (do (rot! x y 1 0) [x y])
+           => [(vctr factory 1 2 3 4 5) (vctr factory -1 -2 -3 -4 -5)]
 
            (do (rot! x y 0.5 (/ (sqrt 3) 2.0)) [x y]
                (+ (double (nrm2 (axpy -1 x (vctr factory
@@ -131,7 +132,7 @@
                                                  -6.830127018922193))))))
            => (roughly 0 1e-6)
 
-           (rot! x y (/ (sqrt 3) 2.0)  0.5) => x
+           (rot! x y (/ (sqrt 3) 2.0) 0.5) => x
            (rot! x (vctr factory 1) 0.5 0.5) => (throws IllegalArgumentException)
            (rot! x y 300 0.3) => (throws IllegalArgumentException)
            (rot! x y 0.5 0.5) => (throws IllegalArgumentException))))
