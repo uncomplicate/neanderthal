@@ -113,6 +113,8 @@ sudo pacman -Suy atlas-lapack
 ```
 or your distribution's equivalent. It is fine as an easy way to get started, but does not offer full performance.
 
+Ubuntu users - make sure to read [this blog post](https://bigsolutions.io/2017/02/01/how-to-run-neanderthal-with-atlas-blas-from-ubuntu-repositories/).
+
 #### Windows - non-optimized, but easy way
 
 Find a previously compiled libatlas.dll and put it on your path (through Control Panel's Environment Variables or just
