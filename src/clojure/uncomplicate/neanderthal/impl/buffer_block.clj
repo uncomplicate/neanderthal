@@ -668,7 +668,8 @@
   (compatible? [_ b]
     (compatible? da b))
   (fits? [_ b]
-    (= n (.mrows ^TRMatrix b)))
+    (and (= n (.mrows ^TRMatrix b))
+         (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
   Monoid
   (id [a]
     (real-tr-matrix fact 0))

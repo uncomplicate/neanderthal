@@ -14,7 +14,7 @@
              [core :refer [dim copy copy!]]
              [block :refer [order buffer offset stride]]]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
-  (:import [clojure.lang IFn$OLO]
+  (:import [clojure.lang IFn$OLO IFn$LLL]
            [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.protocols
@@ -78,23 +78,21 @@
   `(when (< 0 (.count ~a))
      (let [ld-a# (.stride ~a)
            sd-a# (.sd ~a)
-           fd-a# (.fd ~a)
            offset-a# (.offset ~a)
            buff-a# (.buffer ~a)
            ld-b# (.stride ~b)
-           sd-b# (.sd ~b)
            fd-b# (.fd ~b)
            offset-b# (.offset ~b)
            buff-b# (.buffer ~b)]
        (if (= (.order ~a) (.order ~b))
-         (if (= sd-a# sd-b# ld-a# ld-b#)
-           (~method (.count ~a) buff-a# offset-a#  1 buff-b# offset-b# 1)
-           (dotimes [i# fd-a#]
-             (~method sd-a# buff-a# (+ offset-a# (* ld-a# i#)) 1
-              buff-b# (+ offset-b# (* ld-b# i#)) 1)))
-         (dotimes [i# fd-a#]
-           (~method sd-a# buff-a# (+ offset-a# (* ld-a# i#)) 1
-            buff-b# (+ offset-b# i#) fd-b#))))))
+         (if (= sd-a# (.sd ~b) ld-a# ld-b#)
+           (~method (.count ~a) buff-a# offset-a# 1 buff-b# offset-b# 1)
+           (dotimes [j# (.fd ~a)]
+             (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
+              buff-b# (+ offset-b# (* ld-b# j#)) 1)))
+         (dotimes [j# (.fd ~a)]
+           (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
+            buff-b# (+ offset-b# j#) fd-b#))))))
 
 (defmacro ^:private ge-scal [method alpha a]
   `(when (< 0 (.count ~a))
@@ -104,8 +102,8 @@
            buff# (.buffer ~a)]
        (if (= sd# ld#)
          (~method (.count ~a) ~alpha buff# offset# 1)
-         (dotimes [i# (.fd ~a)]
-           (~method sd# ~alpha buff# (+ offset# (* ld# i#)) 1))))))
+         (dotimes [j# (.fd ~a)]
+           (~method sd# ~alpha buff# (+ offset# (* ld# j#)) 1))))))
 
 (defmacro ^:private ge-axpy [method alpha a b]
   `(when (< 0 (.count ~a))
@@ -122,14 +120,14 @@
        (if (= (.order ~a) (.order ~b))
          (if (= sd-a# sd-b# ld-a# ld-b#)
            (~method (.count ~a) ~alpha buff-a# offset-a# 1 buff-b# offset-b# 1)
-           (dotimes [i# fd-a#]
+           (dotimes [j# fd-a#]
              (~method sd-a# ~alpha
-              buff-a# (+ offset-a# (* ld-a# i#)) 1
-              buff-b# (+ offset-b# (* ld-b# i#)) 1)))
-         (dotimes [i# fd-b#]
+              buff-a# (+ offset-a# (* ld-a# j#)) 1
+              buff-b# (+ offset-b# (* ld-b# j#)) 1)))
+         (dotimes [j# fd-b#]
            (~method sd-a# ~alpha
-            buff-a# (+ offset-a# i#) fd-a#
-            buff-b# (+ offset-b# (* ld-b# i#)) 1))))))
+            buff-a# (+ offset-a# j#) fd-a#
+            buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
 
 (defmacro ^:private ge-mv
   ([method alpha a x beta y]
@@ -157,25 +155,60 @@
 
 ;; =============== Common TR matrix macros and functions ==========================
 
-(defn tr-swap [^BLAS vector-eng ^IFn$OLO col-row ^TRMatrix a ^TRMatrix b]
-  (when (< 0 (.count a))
-    (dotimes [i (.sd a)]
-      (.swap vector-eng (.invokePrim col-row a i) (.invokePrim col-row b i)))))
+(defmacro tr-swap-copy [start* end* method a b]
+  `(when (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (dotimes [j# n#]
+           (let [start# (.invokePrim ~start* n# j#)
+                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+             (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
+         (dotimes [j# n#]
+           (let [start# (.invokePrim ~start* n# j#)
+                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+             (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+              buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
 
-(defn tr-copy [^BLAS vector-eng ^IFn$OLO col-row ^TRMatrix a ^TRMatrix b]
-  (when (< 0 (.count a))
-    (dotimes [i (.sd a)]
-      (.copy vector-eng (.invokePrim col-row a i) (.invokePrim col-row b i)))))
+(defmacro ^:private tr-scal [start* end* method alpha a]
+  `(when (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld# (.stride ~a)
+           offset# (.offset ~a)
+           buff# (.buffer ~a)]
+       (dotimes [j# n#]
+         (let [start# (.invokePrim ~start* n# j#)
+               n-j# (- (.invokePrim ~end* n# j#) start#)]
+           (~method n-j# ~alpha buff# (+ offset# (* ld# j#) start#) 1))))))
 
-(defn tr-scal [^BLAS vector-eng ^IFn$OLO col-row alpha ^TRMatrix a]
-  (when (< 0 (.count a))
-    (dotimes [i (.sd a)]
-      (.scal vector-eng alpha (.invokePrim col-row a i)))))
-
-(defn tr-axpy [^BLAS vector-eng ^IFn$OLO col-row alpha ^TRMatrix a ^TRMatrix b]
-  (when (< 0 (.count a))
-    (dotimes [i (.sd a)]
-      (.axpy vector-eng alpha (.invokePrim col-row a i) (.invokePrim col-row b i)))))
+(defmacro ^:private tr-axpy [start* end* method alpha a b]
+  `(when (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (dotimes [j# n#]
+           (let [start# (.invokePrim ~start* n# j#)
+                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+             (~method n-j# ~alpha
+              buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
+         (dotimes [j# n#]
+           (let [start# (.invokePrim ~start* n# j#)
+                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+             (~method n-j# ~alpha
+              buff-a# (+ offset-a# j# (* ld-a# start#)) n#
+              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
 
 (defmacro ^:private tr-mv
   ([method a x]
@@ -350,19 +383,23 @@
 
 ;; ================= Triangular Matrix Engines =================================
 
-(deftype DoubleTREngine [^DoubleVectorEngine vector-eng]
+(deftype DoubleTREngine []
   BLAS
   (swap [_ a b]
-    (tr-swap vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
+    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+                  CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-copy vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
+    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+                  CBLAS/dcopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a)
+    (tr-scal ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+             CBLAS/dscal alpha ^RealTRMatrix a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpy vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a ^RealTRMatrix b)
+    (tr-axpy  ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+              CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
     (tr-mv))
@@ -375,19 +412,23 @@
     (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
     b))
 
-(deftype FloatTREngine [^FloatVectorEngine vector-eng]
+(deftype FloatTREngine []
   BLAS
   (swap [_ a b]
-    (tr-swap vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
+    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+                  CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-copy vector-eng (.col_row_STAR_ ^RealTRMatrix a) a ^RealTRMatrix b)
+    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+                  CBLAS/scopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a)
+    (tr-scal ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+             CBLAS/sscal alpha ^RealTRMatrix a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpy vector-eng (.col_row_STAR_ ^RealTRMatrix a) alpha a ^RealTRMatrix b)
+    (tr-axpy  ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
+              CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
     (tr-mv))
@@ -439,15 +480,9 @@
     tr-eng))
 
 (def cblas-float
-  (let [float-vector-engine (->FloatVectorEngine)]
-    (->CblasFactory (->FloatBufferAccessor)
-                    float-vector-engine
-                    (->FloatGEEngine)
-                    (->FloatTREngine float-vector-engine))))
+  (->CblasFactory (->FloatBufferAccessor) (->FloatVectorEngine)
+                  (->FloatGEEngine) (->FloatTREngine)))
 
 (def cblas-double
-  (let [double-vector-engine (->DoubleVectorEngine)]
-    (->CblasFactory (->DoubleBufferAccessor)
-                    double-vector-engine
-                    (->DoubleGEEngine)
-                    (->DoubleTREngine double-vector-engine))))
+  (->CblasFactory (->DoubleBufferAccessor) (->DoubleVectorEngine)
+                  (->DoubleGEEngine) (->DoubleTREngine)))
