@@ -8,11 +8,13 @@
 
 package uncomplicate.neanderthal.protocols;
 
-import java.nio.ByteBuffer;
+public interface RealOrderNavigator {
 
-public interface BufferAccessor extends DataAccessor {
+    long sd (long m, long n);
+    long fd (long m, long n);
+    long index (long ofst, long ld, long i, long j);
+    double get (RealMatrix a, long i, long j);
+    RealChangeable set (RealChangeable a, long i, long j, double val);
+    Vector stripe (Matrix a, long j);
 
-    Object toSeq (ByteBuffer buf, long offset, long stride);
-
-    ByteBuffer slice (ByteBuffer buf, long k, long l);
 }

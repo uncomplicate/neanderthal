@@ -631,7 +631,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
   "
   ([alpha x y]
-   (if (and  (p/compatible? x y) (p/fits? x y))
+   (if (and (p/compatible? x y) (p/fits? x y))
      (.axpy (p/engine x) alpha x y)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]

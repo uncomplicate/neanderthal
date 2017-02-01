@@ -454,21 +454,21 @@
    (create-vector [this buf n]
     (if (and (<= 0 (long n) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (real-block-vector this true buf n 1)
+      (real-block-vector this true buf n 0 1)
       (throw (IllegalArgumentException.
               (format "I can not create an %d element vector from %d-element %s."
                       n (.count da buf) (class buf))))))
   (create-ge [this buf m n ord]
     (if (and (<= 0 (* (long m) (long n)) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (real-ge-matrix this true buf m n 0 ord)
+      (real-ge-matrix this true buf m n 0 0 ord)
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d general matrix from %s."
                       m n (type buf))))))
   (create-tr [this buf n ord uplo diag]
     (if (and (<= 0 (* (long n) (long n)) (.count da buf))
              (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (real-tr-matrix this true buf n (max (long n) 1) ord uplo diag)
+      (real-tr-matrix this true buf n 0 (max (long n) 1) ord uplo diag)
       (throw (IllegalArgumentException.
               (format "I do not know how to create a %dx%d triangular matrix from %s."
                       n n (type buf))))))

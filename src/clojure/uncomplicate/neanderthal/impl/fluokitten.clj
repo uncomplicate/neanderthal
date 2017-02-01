@@ -120,40 +120,40 @@
    (and (<= (.ncols a) (min (.ncols b) (.ncols c) (.ncols d)))
         (<= (.mrows a) (min (.mrows b) (.ncols c) (.ncols d))))))
 
-(defmacro invoke-matrix-entry [get* f i j & as]
-  `(.invokePrim ~f ~@(map #(list '.invokePrim get* % i j) as)))
+(defmacro invoke-matrix-entry [navigator f i j & as]
+  `(.invokePrim ~f ~@(map #(list '.get navigator % i j) as)))
 
-(defmacro matrix-reduce [col-row j f init & as]
-  `(vector-reduce ~f ~init ~@(map #(list '.invokePrim col-row % j) as)))
+(defmacro matrix-reduce [navigator j f init & as]
+  `(vector-reduce ~f ~init ~@(map #(list '.stripe navigator % j) as)))
 
-(defmacro matrix-reduce-map [col-row j f init g & as]
-  `(vector-reduce-map ~f ~init ~g ~@(map #(list '.invokePrim col-row % j) as)))
+(defmacro matrix-reduce-map [navigator j f init g & as]
+  `(vector-reduce-map ~f ~init ~g ~@(map #(list '.stripe navigator % j) as)))
 
-(defmacro matrix-fold [fd col-row f init & as]
+(defmacro matrix-fold [navigator fd f init & as]
   (if (< (count as) 5)
     `(do
        (if (check-matrix-dimensions ~@as)
          (loop [j# 0 acc# ~init]
            (if (< j# ~fd)
-             (recur (inc j#) (matrix-reduce ~col-row j# ~f acc# ~@as))
+             (recur (inc j#) (matrix-reduce ~navigator j# ~f acc# ~@as))
              acc#))
          (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
-(defmacro matrix-foldmap [fd col-row f init g & as]
+(defmacro matrix-foldmap [navigator fd f init g & as]
   (if (< (count as) 5)
     `(do
        (if (check-matrix-dimensions ~@as)
          (loop [j# 0 acc# ~init]
            (if (< j# ~fd)
-             (recur (inc j#) (matrix-reduce-map ~col-row j# ~f acc# ~g ~@as))
+             (recur (inc j#) (matrix-reduce-map ~navigator j# ~f acc# ~g ~@as))
              acc#))
          (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
 (defn matrix-op [^ContiguousBlock a & bs]
   (let [no-transp (= COLUMN_MAJOR (.order a))
-        [m n] (if no-transp [mrows ncols] [ncols mrows])];;TODO use col-row*?
+        [m n] (if no-transp [mrows ncols] [ncols mrows])];;TODO use navigator?
     (let-release [res ((if no-transp identity trans)
                        (ge (factory a) (m a) (transduce (map n) + (n a) bs)))]
       (.copy ^BLASPlus (engine a) a
@@ -178,20 +178,22 @@
 
 ;; ==================== GE matrix Fluokitten funcitions ========================
 
-(defmacro ge-fmap [set* get* fd sd f & as]
+(defmacro ge-fmap [navigator fd sd f & as]
   (if (< (count as) 5)
     `(do
        (if (check-matrix-dimensions ~@as)
          (dotimes [j# ~fd]
            (dotimes [i# ~sd]
-             (.invokePrim ~set* ~(first as) i# j# (invoke-matrix-entry ~get* ~f i# j# ~@as))))
+             (.set ~navigator ~(first as) i# j#
+                   (invoke-matrix-entry ~navigator ~f i# j# ~@as))))
          (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
        ~(first as))
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
 ;; ============================ TR matrix fluokitten functions =================
 
-(defmacro tr-fmap [set* get* start* end* n f & as]
+(defmacro tr-fmap
+  [navigator start* end* n f & as]
   (if (< (count as) 5)
     `(do
        (if (check-matrix-dimensions ~@as)
@@ -199,7 +201,8 @@
            (let [end# (.invokePrim ~end* ~n j#)]
              (loop [i# (.invokePrim ~start* ~n j#)]
                (when (< i# end#)
-                 (.invokePrim ~set* ~(first as) i# j# (invoke-matrix-entry ~get* ~f i# j# ~@as))
+                 (.set ~navigator ~(first as) i# j#
+                       (invoke-matrix-entry ~navigator ~f i# j# ~@as))
                  (recur (inc i#))))))
          (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
        ~(first as))

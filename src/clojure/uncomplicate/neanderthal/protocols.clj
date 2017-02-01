@@ -121,23 +121,23 @@
 (def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG
   "Operation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s")
+  \n1: %s
+  \n2: %s")
 
 (def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG_3
   "Operation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s
-  3: %s")
+  \n1: %s
+  \n2: %s
+  \n3: %s")
 
 (def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG_4
   "Operation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
-  1: %s
-  2: %s
-  3: %s
-  4: %s")
+  \n1: %s
+  \n2: %s
+  \n3: %s
+  \n4: %s")
 
 (def ^{:no-doc true :const true} ROW_COL_MSG
   "Required %s %d is higher than the %s count %d.")
@@ -160,12 +160,12 @@
 (def ^{:no-doc true :const true} ROTM_COND_MSG
   "Arguments x and y must be compatible and have equeal dimensions.
   argument param must have dimension at least 5.
-  x: %s;
-  y: %s;
-  param: %s")
+  \nx: %s;
+  \ny: %s;
+  \nparam: %s")
 
 (def ^{:no-doc true :const true} ROTMG_COND_MSG
   "Arguments d1d2xy and param must be compatible.
   param must have dimension at least 5 and d1d2xy at least 4.
-  d1d2xy: %s;
-  param: %s ")
+  \nd1d2xy: %s;
+  \nparam: %s ")
