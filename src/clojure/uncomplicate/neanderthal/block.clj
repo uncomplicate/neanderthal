@@ -7,10 +7,8 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.block
+  (:require [uncomplicate.neanderthal.protocols :refer [dec-property]])
   (:import [uncomplicate.neanderthal.protocols Block ContiguousBlock]))
-
-(defn entry-type [^Block x]
-  (.entryType x))
 
 (defn buffer [^Block x]
   (.buffer x))
@@ -22,7 +20,7 @@
   (.stride x))
 
 (defn order ^long [^ContiguousBlock x]
-  (.order x))
+  (dec-property (.order x)))
 
 (defn block? [x]
   (instance? Block x))

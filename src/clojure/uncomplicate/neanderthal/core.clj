@@ -39,7 +39,7 @@
             [uncomplicate.neanderthal
              [protocols :as p]
              [math :refer [f= pow sqrt]]
-             [block :refer [buffer ecount]]])
+             [block :refer [ecount]]])
   (:import [uncomplicate.neanderthal.protocols Vector RealVector Matrix GEMatrix
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
@@ -149,10 +149,6 @@
    (if (number? source)
      (tr factory source nil nil)
      (tr factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
-
-(defn init-zero [x]
-  (.initialize (p/data-accessor x) (buffer x))
-  x)
 
 ;; ================= Container  ================================================
 

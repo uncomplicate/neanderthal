@@ -12,11 +12,9 @@
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [vctr ge copy trans dim ncols mrows col row]]
-             [real :refer [sum]]])
-  (:import [clojure.lang IFn IFn$D IFn$DD IFn$LD IFn$DDD IFn$LDD IFn$DDDD
-            IFn$LDDD IFn$DDDDD IFn$DLDD IFn$DLDDD IFn$LDDDD IFn$DO IFn$ODO
-            IFn$OLDO IFn$ODDO IFn$OLDDO IFn$ODDDO]
+             [core :refer [vctr ge copy copy! dim ncols]]])
+  (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
+            IFn$DLDD IFn$ODO IFn$OLDO]
            [uncomplicate.neanderthal.protocols  Block ContiguousBlock
             BLASPlus RealVector RealMatrix Vector Matrix GEMatrix RealChangeable]))
 
@@ -152,22 +150,16 @@
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
 (defn matrix-op [^ContiguousBlock a & bs]
-  (let [no-transp (= COLUMN_MAJOR (.order a))
-        [m n] (if no-transp [mrows ncols] [ncols mrows])];;TODO use navigator?
-    (let-release [res ((if no-transp identity trans)
-                       (ge (factory a) (m a) (transduce (map n) + (n a) bs)))]
-      (.copy ^BLASPlus (engine a) a
-             (.submatrix ^Matrix res 0 0 (.mrows a) (.ncols a)))
-      (reduce (fn ^long [^long pos ^Matrix w]
-                (if (compatible? res w)
-                  (.copy ^BLASPlus (engine w) w
-                         (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))
-                  (throw (IllegalArgumentException.
-                          (format INCOMPATIBLE_BLOCKS_MSG res w))))
-                (+ pos (long (n w))))
-              (n a)
-              bs)
-      res)))
+  (let-release [res (ge (factory a)
+                        (.mrows a) (transduce (map ncols) + (.ncols a) bs)
+                        {:order (dec-property (.order a))})]
+    (loop [pos 0 ^ContiguousBlock w a ws bs]
+      (when w
+        (if (compatible? res w)
+          (copy! w (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))
+          (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG res w))))
+        (recur (+ pos (.ncols w)) (first ws) (next ws))))
+    res))
 
 (defn matrix-pure
   ([a ^double v]
@@ -193,13 +185,13 @@
 ;; ============================ TR matrix fluokitten functions =================
 
 (defmacro tr-fmap
-  [navigator start* end* n f & as]
+  [navigator stripe-nav n f & as]
   (if (< (count as) 5)
     `(do
        (if (check-matrix-dimensions ~@as)
          (dotimes [j# ~n]
-           (let [end# (.invokePrim ~end* ~n j#)]
-             (loop [i# (.invokePrim ~start* ~n j#)]
+           (let [end# (.end ~stripe-nav ~n j#)]
+             (loop [i# (.start ~stripe-nav ~n j#)]
                (when (< i# end#)
                  (.set ~navigator ~(first as) i# j#
                        (invoke-matrix-entry ~navigator ~f i# j# ~@as))

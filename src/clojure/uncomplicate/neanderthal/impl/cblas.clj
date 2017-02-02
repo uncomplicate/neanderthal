@@ -10,16 +10,12 @@
   (:require [vertigo.bytes :refer [direct-buffer]]
             [uncomplicate.commons.core :refer [with-release let-release]]
             [uncomplicate.neanderthal
-             [protocols :refer :all]
-             [core :refer [dim copy copy!]]
-             [block :refer [order buffer offset stride]]]
+             [protocols :refer :all]]
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
-  (:import [clojure.lang IFn$OLO IFn$LLL]
-           [uncomplicate.neanderthal CBLAS]
+  (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer DirectByteBuffer]
-           [uncomplicate.neanderthal.protocols
-            BLAS BLASPlus DataAccessor BufferAccessor Block
-            Vector RealVector ContiguousBlock Matrix GEMatrix TRMatrix]
+           [uncomplicate.neanderthal.protocols BLAS BLASPlus
+            DataAccessor BufferAccessor StripeNavigator Block RealVector]
            [uncomplicate.neanderthal.impl.buffer_block
             RealBlockVector RealTRMatrix RealGEMatrix]))
 
@@ -155,7 +151,7 @@
 
 ;; =============== Common TR matrix macros and functions ==========================
 
-(defmacro tr-swap-copy [start* end* method a b]
+(defmacro tr-swap-copy [stripe-nav method a b]
   `(when (< 0 (.count ~a))
      (let [n# (.fd ~a)
            ld-a# (.stride ~a)
@@ -166,28 +162,28 @@
            buff-b# (.buffer ~b)]
        (if (= (.order ~a) (.order ~b))
          (dotimes [j# n#]
-           (let [start# (.invokePrim ~start* n# j#)
-                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
              (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
          (dotimes [j# n#]
-           (let [start# (.invokePrim ~start* n# j#)
-                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
              (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
 
-(defmacro ^:private tr-scal [start* end* method alpha a]
+(defmacro ^:private tr-scal [stripe-nav method alpha a]
   `(when (< 0 (.count ~a))
      (let [n# (.fd ~a)
            ld# (.stride ~a)
            offset# (.offset ~a)
            buff# (.buffer ~a)]
        (dotimes [j# n#]
-         (let [start# (.invokePrim ~start* n# j#)
-               n-j# (- (.invokePrim ~end* n# j#) start#)]
+         (let [start# (.start ~stripe-nav n# j#)
+               n-j# (- (.end ~stripe-nav n# j#) start#)]
            (~method n-j# ~alpha buff# (+ offset# (* ld# j#) start#) 1))))))
 
-(defmacro ^:private tr-axpy [start* end* method alpha a b]
+(defmacro ^:private tr-axpy [stripe-nav method alpha a b]
   `(when (< 0 (.count ~a))
      (let [n# (.fd ~a)
            ld-a# (.stride ~a)
@@ -198,14 +194,14 @@
            buff-b# (.buffer ~b)]
        (if (= (.order ~a) (.order ~b))
          (dotimes [j# n#]
-           (let [start# (.invokePrim ~start* n# j#)
-                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
              (~method n-j# ~alpha
               buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
          (dotimes [j# n#]
-           (let [start# (.invokePrim ~start* n# j#)
-                 n-j# (- (.invokePrim ~end* n# j#) start#)]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
              (~method n-j# ~alpha
               buff-a# (+ offset-a# j# (* ld-a# start#)) n#
               buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
@@ -386,20 +382,16 @@
 (deftype DoubleTREngine []
   BLAS
   (swap [_ a b]
-    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-                  CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-                  CBLAS/dcopy ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dcopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-             CBLAS/dscal alpha ^RealTRMatrix a)
+    (tr-scal ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dscal alpha ^RealTRMatrix a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpy  ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-              CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-axpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
     (tr-mv))
@@ -415,20 +407,16 @@
 (deftype FloatTREngine []
   BLAS
   (swap [_ a b]
-    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-                  CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-swap-copy ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-                  CBLAS/scopy ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/scopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-             CBLAS/sscal alpha ^RealTRMatrix a)
+    (tr-scal ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sscal alpha ^RealTRMatrix a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpy  ^IFn$LLL (.start_STAR_ ^RealTRMatrix a) ^IFn$LLL (.end_STAR_ ^RealTRMatrix a)
-              CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-axpy ^StripeNavigator  (.stripe-nav ^RealTRMatrix a) CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
     (tr-mv))

@@ -15,18 +15,18 @@
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
              [protocols :refer :all]
-             [core :refer [transfer! copy! col row mrows ncols]]
-             [real :refer [sum entry]]]
+             [core :refer [transfer! copy!]]
+             [real :refer [entry]]]
             [uncomplicate.neanderthal.impl.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
-           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$OLLDO
-            IFn$LD IFn$LDD IFn$LLD IFn$L IFn$LLL IFn$OLLD IFn$OLLDD IFn$LLLLL IFn$OLO]
+           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
+            IFn$LD IFn$LLD IFn$L]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.protocols
-            BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor
-            Vector Matrix RealVector RealMatrix RealChangeable
-            Block GEMatrix TRMatrix RealOrderNavigator]))
+            BLAS BLASPlus RealBufferAccessor BufferAccessor DataAccessor Block
+            Vector Matrix RealVector RealMatrix GEMatrix TRMatrix  RealChangeable
+            RealOrderNavigator UploNavigator StripeNavigator]))
 
 (declare real-block-vector)
 (declare real-ge-matrix)
@@ -591,10 +591,7 @@
 ;; =================== Real Triangular Matrix ==================================
 
 (deftype RealTRMatrix [^RealOrderNavigator navigator
-                       ^IFn$LLL start* ^IFn$LLL end*
-                       ^IFn$LLL col-start* ^IFn$LLL col-end*
-                       ^IFn$LLL row-start* ^IFn$LLL row-end*
-                       ^IFn$LLL default-entry*
+                       ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
                        ^uncomplicate.neanderthal.protocols.Factory fact
                        ^RealBufferAccessor da ^BLAS eng ^Boolean master
                        ^ByteBuffer buf ^long n ^long ofst ^long ld
@@ -613,8 +610,8 @@
             ld-b (.ld ^RealTRMatrix b)]
         (loop [j 0]
           (if (< j n)
-            (let [end (.invokePrim end* n j)]
-              (and (loop [i (.invokePrim start* n j)]
+            (let [end (.end stripe-nav n j)]
+              (and (loop [i (.start stripe-nav n j)]
                      (if (< i end)
                        (and (= (.get da buf (+ ofst (* ld j) i))
                                (.get da buf-b (.index navigator ofst-b ld-b i j)))
@@ -699,11 +696,11 @@
     n)
   RealChangeable
   (isAllowed [a i j]
-    (= 2 (.invokePrim default-entry* i j)))
+    (= 2 (.defaultEntry uplo-nav i j)))
   (set [a val]
     (dotimes [j n]
-      (let [end (.invokePrim end* n j)]
-        (loop [i (.invokePrim start* n j)]
+      (let [end (.end stripe-nav n j)]
+        (loop [i (.start stripe-nav n j)]
           (when (< i end)
             (.set da buf (+ ofst (* ld j) i) val)
             (recur (inc i))))))
@@ -723,20 +720,20 @@
   (ncols [_]
     n)
   (entry [a i j]
-    (let [res (.invokePrim default-entry* i j)]
+    (let [res (.defaultEntry uplo-nav i j)]
       (if (= 2 res)
         (.get da buf (.index navigator ofst ld i j))
         res)))
   (boxedEntry [this i j]
     (.entry this i j))
   (row [a i]
-    (let [start (.invokePrim row-start* n i)]
-      (real-block-vector fact false buf (- (.invokePrim row-end* n i) start)
+    (let [start (.rowStart uplo-nav n i)]
+      (real-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
                          (.index navigator ofst ld i start)
                          (if (= ROW_MAJOR ord) 1 ld))))
   (col [a j]
-    (let [start (.invokePrim col-start* n j)]
-      (real-block-vector fact false buf (- (.invokePrim col-end* n j) start)
+    (let [start (.colStart uplo-nav n j)]
+      (real-block-vector fact false buf (- (.colEnd uplo-nav n j) start)
                          (.index navigator ofst ld start j)
                          (if (= COLUMN_MAJOR ord) 1 ld))))
   (submatrix [a i j k l]
@@ -750,23 +747,23 @@
                     (if (= LOWER fuplo) UPPER LOWER) fdiag))
   PseudoFunctor
   (fmap! [a f]
-    (tr-fmap navigator start* end* n ^IFn$DD f a))
+    (tr-fmap navigator stripe-nav n ^IFn$DD f a))
   (fmap! [a f b]
-    (tr-fmap navigator start* end* n ^IFn$DDD f a b))
+    (tr-fmap navigator stripe-nav n ^IFn$DDD f a b))
   (fmap! [a f b c]
-    (tr-fmap navigator start* end* n ^IFn$DDDD f a b c))
+    (tr-fmap navigator stripe-nav n ^IFn$DDDD f a b c))
   (fmap! [a f b c d]
-    (tr-fmap navigator start* end* n ^IFn$DDDDD f a b c d))
+    (tr-fmap navigator stripe-nav n ^IFn$DDDDD f a b c d))
   (fmap! [a f b c d es]
-    (tr-fmap navigator start* end* n f a b c d nil))
+    (tr-fmap navigator stripe-nav n f a b c d nil))
   Foldable
   (fold [_]
     (loop [j 0 acc 0.0]
       (if (< j n)
         (recur (inc j)
                (double
-                (let [end (.invokePrim end* n j)]
-                  (loop [i (.invokePrim start* n j) acc acc]
+                (let [end (.end stripe-nav n j)]
+                  (loop [i (.start stripe-nav n j) acc acc]
                     (if (< i end)
                       (recur (inc i) (+ acc (.get da buf (+ ofst (* ld j) i))))
                       acc)))))
@@ -786,8 +783,8 @@
       (if (< j n)
         (recur (inc j)
                (double
-                (let [end (.invokePrim end* n j)]
-                  (loop [i (.invokePrim start* n j) acc acc]
+                (let [end (.end stripe-nav n j)]
+                  (loop [i (.start stripe-nav n j) acc acc]
                     (if (< i end)
                       (recur (inc i)
                              (.invokePrim ^IFn$DD g (.get da buf (+ ofst (* ld j) i))))
@@ -812,47 +809,116 @@
   Magma
   {:op (constantly matrix-op)})
 
-(let [zero (fn ^long [^long n ^long i] 0)
-      n* (fn ^long [^long n ^long i] n)
-      i* (fn ^long [^long n ^long i] i)
-      inc-i* (fn ^long [^long n ^long i] (inc i))
-      upper-unit-entry (fn ^long [^long i ^long j]
-                         (inc (Integer/signum (- j i))))
-      lower-unit-entry (fn ^long [^long i ^long j]
-                         (inc (Integer/signum (- i j))))
-      upper-entry (fn ^long [^long i ^long j]
-                    (* 2 (Integer/signum (inc (Integer/signum (- j i))))))
-      lower-entry (fn ^long [^long i ^long j]
-                    (* 2 (Integer/signum (inc (Integer/signum (- i j))))))]
+(deftype NonUnitLowerNavigator []
+  UploNavigator
+  (colStart [_ _ i]
+    i)
+  (colEnd [_ n _]
+    n)
+  (rowStart [_ _ _]
+    0)
+  (rowEnd [_ n i]
+    (inc i))
+  (defaultEntry [_ i j]
+    (* 2 (Long/signum (inc (Long/signum (- i j)))))))
 
-  (defn real-tr-matrix
-    ([fact master buf n ofst ld ord uplo diag]
-     (let [non-unit (= DIAG_NON_UNIT diag)
-           da (data-accessor fact)
-           start* (if non-unit i* inc-i*)
-           end* (if non-unit inc-i* i*)]
-       (if (= LOWER uplo)
-         (let [default-entry (if non-unit lower-entry lower-unit-entry)]
-           (if (= COLUMN_MAJOR ord)
-             (RealTRMatrix. col-navigator start* n* start* n* zero end*
-                            default-entry fact da (tr-engine fact) master
-                            buf n ofst ld ord uplo diag)
-             (RealTRMatrix. row-navigator zero end* start* n* zero end*
-                            default-entry fact da (tr-engine fact) master
-                            buf n ofst ld ord uplo diag)))
-         (let [default-entry (if non-unit upper-entry upper-unit-entry)]
-           (if (= COLUMN_MAJOR ord)
-             (RealTRMatrix. col-navigator zero end* zero end* start* n*
-                            default-entry fact da (tr-engine fact) master
-                            buf n ofst ld ord uplo diag)
-             (RealTRMatrix. row-navigator start* n* zero end* start* n*
-                            default-entry fact da (tr-engine fact) master
-                            buf n ofst ld ord uplo diag))))))
-    ([fact n ord uplo diag]
-     (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
-       (real-tr-matrix fact true buf n 0 n ord uplo diag)))
-    ([fact n]
-     (real-tr-matrix fact n DEFAULT_TRANS DEFAULT_UPLO DEFAULT_DIAG))))
+(deftype UnitLowerNavigator []
+  UploNavigator
+  (colStart [_ _ i]
+    (inc i))
+  (colEnd [_ n _]
+    n)
+  (rowStart [_ _ _]
+    0)
+  (rowEnd [_ _ i]
+    i)
+  (defaultEntry [_ i j]
+    (inc (Long/signum (- i j)))))
+
+(deftype NonUnitUpperNavigator []
+  UploNavigator
+  (colStart [_ _ _]
+    0)
+  (colEnd [_ _ i]
+    (inc i))
+  (rowStart [_ _ i]
+    i)
+  (rowEnd [_ n _]
+    n)
+  (defaultEntry [_ i j]
+    (* 2 (Long/signum (inc (Long/signum (- j i)))))))
+
+(deftype UnitUpperNavigator []
+  UploNavigator
+  (colStart [_ _ _]
+    0)
+  (colEnd [_ _ i]
+    i)
+  (rowStart [_ _ i]
+    (inc i))
+  (rowEnd [_ n _]
+    n)
+  (defaultEntry [_ i j]
+    (inc (Long/signum (- j i)))))
+
+(def non-unit-upper-nav (NonUnitUpperNavigator.))
+(def unit-upper-nav (UnitUpperNavigator.))
+(def non-unit-lower-nav (NonUnitLowerNavigator.))
+(def unit-lower-nav (UnitLowerNavigator.))
+
+(deftype UnitTopNavigator []
+  StripeNavigator
+  (start [_ _ _]
+    0)
+  (end [_ _ i]
+    i))
+
+(deftype NonUnitTopNavigator []
+  StripeNavigator
+  (start [_ _ i]
+    0)
+  (end [_ _ i]
+    (inc i)))
+
+(deftype UnitBottomNavigator []
+  StripeNavigator
+  (start [_ _ i]
+    (inc i))
+  (end [_ n _]
+    n))
+
+(deftype NonUnitBottomNavigator []
+  StripeNavigator
+  (start [_ _ i]
+    i)
+  (end [_ n _]
+    n))
+
+(def non-unit-top-navigator (NonUnitTopNavigator.))
+(def unit-top-navigator (UnitTopNavigator.))
+(def non-unit-bottom-navigator (NonUnitBottomNavigator.))
+(def unit-bottom-navigator (UnitBottomNavigator.))
+
+(defn real-tr-matrix
+  ([fact master buf n ofst ld ord uplo diag]
+   (let [unit (= DIAG_UNIT diag)
+         lower (= LOWER uplo)
+         column (= COLUMN_MAJOR ord)
+         bottom (if lower column (not column))
+         order-nav (if column col-navigator row-navigator)
+         uplo-nav (if lower
+                    (if unit unit-lower-nav non-unit-lower-nav)
+                    (if unit unit-upper-nav non-unit-upper-nav))
+         stripe-nav (if bottom
+                      (if unit unit-bottom-navigator non-unit-bottom-navigator)
+                      (if unit unit-top-navigator non-unit-top-navigator))]
+     (RealTRMatrix. order-nav uplo-nav stripe-nav fact (data-accessor fact)
+                    (tr-engine fact) master buf n ofst (max (long ld) (long n)) ord uplo diag)))
+  ([fact n ord uplo diag]
+   (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
+     (real-tr-matrix fact true buf n 0 n ord uplo diag)))
+  ([fact n]
+   (real-tr-matrix fact n DEFAULT_TRANS DEFAULT_UPLO DEFAULT_DIAG)))
 
 (defmethod transfer! [RealTRMatrix RealTRMatrix]
   [source destination]
@@ -865,15 +931,14 @@
   (let [ofst (.ofst destination)
         ld (.ld destination)
         n (.n destination)
-        start* (.start_STAR_ destination)
-        end* (.end_STAR_ destination)
+        stripe-nav ^StripeNavigator (.stripe-nav destination)
         da (data-accessor destination)
         buf (.buf destination)]
     (loop [j 0 src source]
       (if (and src (< j n))
         (recur (inc j)
-               (let [end (.invokePrim ^IFn$LLL end* n j)]
-                 (loop [i (.invokePrim ^IFn$LLL start* n j) src src]
+               (let [end (.end stripe-nav n j)]
+                 (loop [i (.start stripe-nav n j) src src]
                    (if (and src (< i end))
                      (do (.set ^RealBufferAccessor da buf (+ ofst (* ld j) i) (first src))
                          (recur (inc i) (next src)))

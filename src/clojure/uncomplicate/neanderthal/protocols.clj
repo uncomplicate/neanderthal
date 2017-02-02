@@ -50,6 +50,17 @@
   (subband [this p q])
   (subtriangle [this uplo diag]))
 
+(definterface UploNavigator
+  (^long colStart [^long n ^long i])
+  (^long colEnd [^long n ^long i])
+  (^long rowStart [^long n ^long i])
+  (^long rowEnd [^long n ^long i])
+  (^long defaultEntry [^long i ^long j]))
+
+(definterface StripeNavigator
+  (^long start [^long n ^long j])
+  (^long end [^long n ^long j]))
+
 (def ^:const ROW_MAJOR 101)
 (def ^:const COLUMN_MAJOR 102)
 (def ^:const DEFAULT_ORDER COLUMN_MAJOR)
