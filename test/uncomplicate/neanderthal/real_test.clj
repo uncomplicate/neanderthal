@@ -433,7 +433,7 @@
              3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [49 66 97 128])
 
          (mm (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]))
-         => (throws IllegalArgumentException)))
+         => (ge factory 2 2 (list 22.0 28.0 49.0 64.0))))
 
 ;; ====================== TR Matrix ============================
 

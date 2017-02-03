@@ -63,7 +63,7 @@ it is absolutely necessary.
 
 The typical workflow woud be: prepare the input data in your Clojure program and
 send it to the device. Then, call many Neanderthal and ClojureCL functions that
-work with that data without transferring it back. Only transfer the final result.
+41work with that data without transferring it back. Only transfer the final result.
 
 You'll still write your algorithms in Clojure as any normal Clojure code,
 you just have to be aware that the data is actually on the device, and that the
@@ -90,7 +90,7 @@ $code"
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
-            #_[criterium.core :refer [quick-bench with-progress-reporting]]
+            ;;[criterium.core :refer [quick-bench with-progress-reporting]]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl.core
              :refer [with-default finish!]]
@@ -300,7 +300,7 @@ hold 4GB of data (it has 4GB total memory)."
 "$text
 
 CPU: 134 ms
-GPU: 16 ms
+GPU: 11 ms
 
 Not bad, but still less than 10x faster. Linear 1D operations are simply so
 easy on computation that GPU can not show it's power. They are still useful, though. If
@@ -337,7 +337,7 @@ demanding enough."
 "$text
 
 CPU: 15.4 ms
-GPU: 1.13 ms
+GPU: 1.01 ms
 
 That's a 15x win for the GPU. Nothing too much, but still ok. Let's try matrix
 multiplication and see how that goes.
@@ -366,7 +366,7 @@ demanding enough."
 
 "$text
 
-CPU: 17678 ms
+CPU: 16301 ms
 GPU: 293 ms
 
 That's almost 60x faster than the CPU! But, still, shouldn't it be even faster?

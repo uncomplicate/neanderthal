@@ -15,7 +15,7 @@ computations on.
 Neanderthal supports any pluggable infrastructure ([GPU computation is already
 available!](/articles/tutorial_native.html)), and the default is to use vectors
 and matrices backed by direct byte buffers, that can be sent to native libraries
-via JNI without copying overhead.
+or GPU via JNI without copying overhead.
 
 ### Creating Vectors and Matrices
 
@@ -34,6 +34,7 @@ $code"
   (:require [midje.sweet :refer :all]
             [uncomplicate.fluokitten.core :refer [fmap! fold]]
             [uncomplicate.neanderthal
+             [block :refer [buffer]]
              [core :refer :all]
              [native :refer :all]])
   (:import [java.nio ByteBuffer ByteOrder]))
@@ -41,10 +42,10 @@ $code"
 "$text
 
 Creation functions follow the BLAS naming scheme:
-d for doubles, s for floats, c for complex, ge for general dense matrix etc:
+d for doubles, f for floats (instead of BLAS's s), c for complex, ge for general dense matrix etc:
 
 - `dv` creates a vector of doubles
-- `sv` creates a vector of floats
+- `fv` creates a vector of floats
 - `dge` creates a matrix of doubles
 etc.
 
@@ -53,8 +54,7 @@ are used in exactly the same way, except for the constructors. Single precision
 does not matter much on the CPU (other that the performance of BLAS computations
 may be up to 2x faster and they use 2x less storage space) but on the GPU it is
 the preferred format, since current consumer-grade GPUs usually offer pro-grade
-performance in single precision while being crippled for double precision 8x or
-more.
+performance in single precision while being crippled for double precision 8x or, recently, 32x.
 
 All numbers in Neanderthal, both the data it holds and numbers that
 the functions return are **primitive** where it matters (more about that later).
@@ -68,42 +68,44 @@ $code"
  (dv 10) => (dv (repeat 10 0))
  (dv 10.0) => (dv [10])
  (dv '(1 2 3 4 5 6)) => (dv 1 2 3 4 5 6)
- (dv (ByteBuffer/allocateDirect 80)) => (dv (repeat 10 0)))
+ (dv (dv (repeat 10 0))) => (dv (repeat 10 0)))
 
 (facts
  "And here is how you create double general dense matrices."
  (dge 2 3) => (dge 2 3 (repeat 6 0))
  (dge 3 2 [1 2 3 4 5 6]) => (dge 3 2 '(1 2 3 4 5 6))
- (dge 2 3 (ByteBuffer/allocateDirect 48)) => (dge 2 3 (repeat 6 0)))
+ (dge 2 3 (dge 2 3 (repeat 6 0))) => (dge 2 3 (repeat 6 0)))
 
 "$text
 
 ### Neanderthal keeps data in direct byte buffers
 
-Usually, these functions accept a previously allocated `ByteBuffer`, optionally
-populated with data. Please note that non-buffer input source (numbers, varargs,
+Please note that a non-buffer input source (numbers, varargs,
 sequences) is suitable only as a convenience for smallish data and test code.
 Be careful about the performance when working with large data, though
-- sequences are slow and contain boxed numbers!
+- sequences are slow and contain boxed numbers! Thus, the preferred way
+for fast population of your matrices is to create a raw matrix, and use entry!,
+or to extract its raw ByteBuffer, and work on it **carefully**.
 
-It is awkward and cumbersome to work with buffers directly. You should take care
+It is awkward and cumbersome to directly work with buffers. You should take care
 of endianess: java uses BIG_ENDIAN, while Intel processors and most native
 platform natively support LITTLE_ENDIAN. If you pre-load your data in buffers,
 you, or the library you use, have to take care of using the proper native
-endianess. Also take care to revert the buffer position to 0. Vertigo library
-might help with this, and Neanderthal does not care how you prepare the buffers
+endianess. Also take care to revert the buffer position to 0. Neanderthal does not care how you prepare the buffers
 as long as the data is prepared well. You can use some of the existing libraries that
 work with native buffers (Vertigo, etc.), check out Neanderthal API to see what
 utilities are currently available, or roll your own.
 
-Matrix data is also kept in one-dimensional byte buffer, and NOT in a object
+Matrix data is also kept in a one-dimensional byte buffer, and NOT in a object
 buffer or array that holds raw buffers, for performance reasons. By default,
 when used in 2D matrices, Neanderthal treats a 1D buffer as a sequence of columns.
 Column-oriented order is commonly used in numerical software, contrary to
 row-oriented order used by the C language. Java uses neither; 2D arrays are
 arrays of array references, and this difference has a huge performance impact.
-Neanderthal abstract all these performance optimizations away, and you do not
+Neanderthal abstracts all these performance optimizations away, and you do not
 need to care about this, unless you write a pluggable Neanderthal implementation.
+When you need to harness other structures, Neanderthal's constructors take
+additional options, though!
 
 The same ByteBuffer can hold data for vectors as well as matrices.
 
@@ -115,16 +117,14 @@ in raw byte buffers."
  (let [entry-width Double/BYTES
        m 2
        n 3
-       empty-buf (ByteBuffer/allocateDirect (* m n entry-width))
-       endianess-buf (.order ^ByteBuffer empty-buf (ByteOrder/nativeOrder))
-       filled-buf (loop [i 0 buf endianess-buf]
+       empty-matrix (dge m n)
+       empty-buf (buffer empty-matrix)
+       filled-buf (loop [i 0 buf empty-buf]
                     (if (< i (* m n))
                       (recur (inc i) (.putDouble ^ByteBuffer buf (double i)))
                       buf))
        rewind-buf (.position ^ByteBuffer filled-buf 0)]
-   (dv rewind-buf) => (dv (range (* m n)))
-   (dge 2 3 rewind-buf) => (dge 2 3 (range (* m n)))
-   (dge 2 3 rewind-buf) =not=> (dge 3 2 rewind-buf)))
+   empty-matrix => (dge 2 3 (range (* m n)))))
 
 "$text
 
@@ -159,7 +159,7 @@ BLAS standard."
  (sum (dv 1 2 -5)) => -2.0)
 
 (facts
- "BLAS 1 dot: Dot product is a sum of the scalar productsof respective entries
+ "BLAS 1 dot: Dot product is a sum of the scalar products of respective entries
 of two vectors."
  (dot (dv 1 2 3) (dv 1 3 5)) => 22.0)
 
@@ -287,7 +287,7 @@ simpler and less useful operation."
    c => (dge 2 1 [37 49.5])))
 
 (facts
- "Some of BLAS 1 functions, such as copy!, and swp!, axpy!, work with matrices."
+ "Some of BLAS 1 functions, such as copy!, and swp!, axpy!, also work with matrices."
  (let [a (dge 2 3 (range 6))
        b (dge 2 3)]
    (swp! a b) => a
@@ -383,7 +383,7 @@ Fortunataly, Neanderthal comes with its own map and reduce functions that:
 
 This way, we get the full elegance of map and reduce with the speed (almost) as
 fast as looping on primitive arrays with primitive functions. See the benchmarks
-for performance details, here we only demonstrate how these are used.
+for performance details; here we only demonstrate how these are used.
 
 $code"
 
@@ -417,7 +417,7 @@ once these functions are implemented.
 
 ## Can Neanderthal Go Even Faster?
 
-Yes, it can, and MUCH. Neanderthal have a pluggable infrastructure, and
+Yes, it can, MUCH faster. Neanderthal have a pluggable infrastructure, and
 already comes with a GPU engine that can process your data on graphic cards
 orders of magnitude faster than on the CPU. Check out the [GPU tutorial](tutorial_opencl.html)!
 

@@ -7,6 +7,7 @@
 * Naming scheme changed from single to float for single-precision structures.
 * sv and sge from the native namespace renamed to fv and fge.
 * core constructor functions changed from create to vctr, ge, tr, etc.
+* Core constructors no longer accept raw buffers.
 
 ### New features:
 

@@ -9,11 +9,9 @@
 (ns uncomplicate.neanderthal.examples.codingthematrix.ch02-test
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
-             [core :refer :all]
+             [core :refer [dim vect? axpy! axpy xpy zero ax copy subvector]]
+             [real :refer [entry dot]]
              [native :refer [dv dge]]]))
-
-(def unchecked *unchecked-math*)
-(set! *unchecked-math* false)
 
 (facts
  "2.1 What is a Vector?"
@@ -60,7 +58,7 @@
  (ax 2 (dv 5 4 10)) => (dv 10 8 20)
  (ax 2 (ax 3 (dv 1 2 3))) => (ax (* 2 3) (dv 1 2 3))
 
- (take 3 (map #(ax (/ % 10) (dv 3 2)) (range 11)))
+ (take 3 (map #(ax (/ (double %) 10) (dv 3 2)) (range 11)))
  => [(dv 0 0) (dv 0.30000000000000004 0.2)
      (dv 0.6000000000000001 0.4)] )
 
@@ -123,6 +121,4 @@
 
 (facts "2.10.4 Printing vectors"
        (pr-str (dv 2 3 4))
-       => "#RealBlockVector[double, n:3, stride:1](2.0 3.0 4.0)")
-
-(set! *unchecked-math* unchecked)
+       => "#RealBlockVector[double, n:3, offset: 0, stride:1](2.0 3.0 4.0)")

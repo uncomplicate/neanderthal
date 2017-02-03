@@ -40,7 +40,7 @@
              [protocols :as p]
              [math :refer [f= pow sqrt]]
              [block :refer [ecount]]])
-  (:import [uncomplicate.neanderthal.protocols Vector RealVector Matrix GEMatrix
+  (:import [uncomplicate.neanderthal.protocols Vector RealVector Matrix GEMatrix TRMatrix
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
 (defn vect?
@@ -112,6 +112,12 @@
   ([factory x & xs]
    (vctr factory (cons x xs))))
 
+(defn vctr?
+  "TODO
+  "
+  [x]
+  (instance? Vector x))
+
 (defn ge
   "TODO"
   ([factory m n source options]
@@ -130,6 +136,18 @@
    (ge factory m n nil nil))
   ([factory ^Matrix a]
    (ge factory (.mrows a) (.ncols a) a nil)))
+
+(defn ge?
+  "TODO
+  "
+  [x]
+  (instance? GEMatrix x))
+
+(defn tr?
+  "TODO
+  "
+  [x]
+  (instance? TRMatrix x))
 
 (defn tr
   "TODO"
@@ -431,93 +449,6 @@
   ^long [x]
   (.imin ^BLASPlus (p/engine x) x))
 
-(defn scal!
-  "BLAS 1: Scale vector.
-
-  Computes x = ax
-  where:
-  - x is a vector,
-  - a is a scalar.
-
-  Multiplies vector x by scalar alpha, i.e scales the vector.
-  After scal!, x will be changed.
-
-  (scal! 1.5  (dv 1 2 3))
-  => #<RealBlockVector| double, n:3, stride:1>(1.5 3.0 4.5)<>
-  "
-  [alpha x]
-  (do
-    (.scal (p/engine x) alpha x)
-    x))
-
-(defn rot!
-  "BLAS 1: Apply plane rotation.
-  "
-  ([^Vector x ^Vector y ^double c ^double s]
-   (if (and (p/compatible? x y))
-     (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0)
-              (f= 1.0 (+ (pow c 2) (pow s 2))))
-       (.rot (p/engine x) x y c s)
-       (throw (IllegalArgumentException. "c and s must be sin and cos.")))
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
-  ([x y ^double c]
-   (rot! x y c (sqrt (- 1.0 (pow c 2))))))
-
-(defn rotg!;;TODO docs
-  "BLAS 1: Generate plane rotation.
-
-  # Description:
-
-  Computes  the  elements  of  a Givens plane rotation matrix:
-  .           __    __     __ __    __ __
-  .           | c  s |     | a |    | r |
-  .           |-s  c | *   | b | =  | 0 |
-  .           --    --     -- --    -- --
-
-  where  r = +- sqrt ( a**2 + b**2 )
-  and    c**2 + s**2 = 1.
-
-  a, b, c, s are the four entries in the vector x.
-
-  This rotation can be used to selectively introduce zero elements
-  into a matrix.
-
-  # Arguments:
-
-  x: contains a, b, c, and s arguments (see the description).
-  .  Has to have exactly these four entries, and must have stride = 1.
-
-  # Result:
-
-  x with the elements changed to be r, z, c, s.
-  For a detailed description see
-  http://www.mathkeisan.com/usersguide/man/drotg.html
-  "
-  [^Vector abcs]
-  (if (< 3 (.dim abcs))
-    (.rotg (p/engine abcs) abcs)
-    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (.dim abcs))))))
-
-(defn rotm!;;TODO docs
-  "BLAS 1: Apply modified plane rotation.
-  "
-  [^Vector x ^Vector y ^Vector param]
-  (if (and (p/compatible? x y) (p/compatible? x param) (p/fits? x y) (< 4 (.dim param)))
-    (.rotm (p/engine x) x y param)
-    (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y param)))))
-
-(defn rotmg!
-  "BLAS 1: Generate modified plane rotation.
-
-  - d1d2xy must be a vector of at least 4 entries
-  - param must be a vector of at least 5 entries
-  "
-  [^Vector d1d2xy ^Vector param]
-  (if (and (p/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
-    (.rotmg (p/engine param) d1d2xy param)
-    (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG d1d2xy param)))))
-
-
 (defn swp!
   "BLAS 1: Swap vectors or matrices.
   Swaps the entries of containers x and y. x and y must have
@@ -592,6 +523,97 @@
   ([x offset length]
    (let-release [res (vctr (p/factory x) length)]
      (copy! x res offset length 0))))
+
+(defn scal!
+  "BLAS 1: Scale vector.
+
+  Computes x = ax
+  where:
+  - x is a vector,
+  - a is a scalar.
+
+  Multiplies vector x by scalar alpha, i.e scales the vector.
+  After scal!, x will be changed.
+
+  (scal! 1.5  (dv 1 2 3))
+  => #<RealBlockVector| double, n:3, stride:1>(1.5 3.0 4.5)<>
+  "
+  [alpha x]
+  (.scal (p/engine x) alpha x)
+  x)
+
+(defn scal
+  "TODO"
+  [alpha x]
+  (let-release [res (copy x)]
+    (scal! alpha res)))
+
+(defn rot!
+  "BLAS 1: Apply plane rotation.
+  "
+  ([^Vector x ^Vector y ^double c ^double s]
+   (if (and (p/compatible? x y))
+     (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0)
+              (f= 1.0 (+ (pow c 2) (pow s 2))))
+       (.rot (p/engine x) x y c s)
+       (throw (IllegalArgumentException. "c and s must be sin and cos.")))
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
+  ([x y ^double c]
+   (rot! x y c (sqrt (- 1.0 (pow c 2))))))
+
+(defn rotg!;;TODO docs
+  "BLAS 1: Generate plane rotation.
+
+  # Description:
+
+  Computes  the  elements  of  a Givens plane rotation matrix:
+  .           __    __     __ __    __ __
+  .           | c  s |     | a |    | r |
+  .           |-s  c | *   | b | =  | 0 |
+  .           --    --     -- --    -- --
+
+  where  r = +- sqrt ( a**2 + b**2 )
+  and    c**2 + s**2 = 1.
+
+  a, b, c, s are the four entries in the vector x.
+
+  This rotation can be used to selectively introduce zero elements
+  into a matrix.
+
+  # Arguments:
+
+  x: contains a, b, c, and s arguments (see the description).
+  .  Has to have exactly these four entries, and must have stride = 1.
+
+  # Result:
+
+  x with the elements changed to be r, z, c, s.
+  For a detailed description see
+  http://www.mathkeisan.com/usersguide/man/drotg.html
+  "
+  [^Vector abcs]
+  (if (< 3 (.dim abcs))
+    (.rotg (p/engine abcs) abcs)
+    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (.dim abcs))))))
+
+(defn rotm!;;TODO docs
+  "BLAS 1: Apply modified plane rotation.
+  "
+  [^Vector x ^Vector y ^Vector param]
+  (if (and (p/compatible? x y) (p/compatible? x param) (p/fits? x y) (< 4 (.dim param)))
+    (.rotm (p/engine x) x y param)
+    (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y param)))))
+
+(defn rotmg!
+  "BLAS 1: Generate modified plane rotation.
+
+  - d1d2xy must be a vector of at least 4 entries
+  - param must be a vector of at least 5 entries
+  "
+  [^Vector d1d2xy ^Vector param]
+  (if (and (p/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
+    (.rotmg (p/engine param) d1d2xy param)
+    (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG d1d2xy param)))))
 
 (defn axpy!
   "BLAS 1: Vector scale and add. Also works on matrices.
@@ -677,7 +699,8 @@
 (defn xpy
   "Sums containers x, y & zs. The result is a new vector instance."
   ([x y]
-   (axpy! 1.0 x (copy y)))
+   (let-release [res (copy y)]
+     (axpy! 1.0 x res)))
   ([x y & zs]
    (let-release [cy (copy y)]
      (loop [res (axpy! 1.0 x cy) s zs]
@@ -849,10 +872,14 @@
   ([alpha ^Matrix a ^Matrix b ^Matrix c]
    (mm alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
-   (cond
-     (instance? GEMatrix b) (let-release [res (copy b)] (mm! alpha a res))
-     (instance? GEMatrix a) (let-release [res (copy a)] (mm! alpha res b))
-     :default (throw (IllegalArgumentException. "One of the matrices has to be GE."))))
+   (if (instance? GEMatrix b)
+     (if (instance? GEMatrix a)
+       (let-release [res (ge (p/factory b) (.mrows a) (.ncols b))]
+         (mm! alpha a b 1.0 res))
+       (let-release [res (copy b)]
+         (mm! alpha a res)))
+     (let-release [res (copy a)]
+       (mm! alpha res b))))
   ([a b]
    (mm 1.0 a b)))
 

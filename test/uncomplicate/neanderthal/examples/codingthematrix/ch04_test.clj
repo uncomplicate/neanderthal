@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.examples.codingthematrix.ch04-test
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
-             [core :refer :all]
+             [core :refer [row col mrows ncols entry trans mv ax xpy]]
              [native :refer [dv dge]]]))
 
 (facts
