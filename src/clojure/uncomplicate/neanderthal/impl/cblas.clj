@@ -14,39 +14,36 @@
             [uncomplicate.neanderthal.impl.buffer-block :refer :all])
   (:import [uncomplicate.neanderthal CBLAS]
            [java.nio ByteBuffer DirectByteBuffer]
-           [uncomplicate.neanderthal.protocols BLAS BLASPlus
-            DataAccessor BufferAccessor StripeNavigator Block RealVector]
-           [uncomplicate.neanderthal.impl.buffer_block
-            RealBlockVector RealTRMatrix RealGEMatrix]))
+           [uncomplicate.neanderthal.protocols BLAS BLASPlus DataAccessor BufferAccessor
+            StripeNavigator Block RealVector]
+           [uncomplicate.neanderthal.impl.buffer_block RealBlockVector RealTRMatrix RealGEMatrix]))
 
 ;; =============== Common vector engine  macros and functions ==================
 
-(defmacro vector-rotm [method x y param]
-  `(if (= 1 (.stride ~param))
-     (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
-      (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
-     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~param))))))
+(defmacro ^:private vector-rot
+  ([method x y c s]
+   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y) ~c ~s)))
 
-(defmacro vector-rotmg [method d1d2xy param]
+(defmacro ^:private vector-rotm [method x y param]
+  `(when (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
+     (if (= 1 (.stride ~param))
+       (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
+        (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
+       (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~param)))))))
+
+(defmacro ^:private vector-rotmg [method d1d2xy param]
   `(if (= 1 (.stride ~param))
      (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param))
      (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~param))))))
 
-(defmacro vector-method
+(defmacro ^:private vector-method
   ([method x]
    `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)))
   ([method x y]
-   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
-     (.buffer ~y) (.offset ~y) (.stride ~y)))
+   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y)))
   ([method x y z]
-   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
-     (.buffer ~y) (.offset ~y) (.stride ~y)
+   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y)
      (.buffer ~z) (.offset ~z) (.stride ~z))))
-
-(defmacro vector-rot
-  ([method x y c s]
-   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
-     (.buffer ~y) (.offset ~y) (.stride ~y) ~c ~s)))
 
 (defn ^:private vector-imax [^RealVector x]
   (let [cnt (.dim x)]
@@ -84,11 +81,9 @@
          (if (= sd-a# (.sd ~b) ld-a# ld-b#)
            (~method (.count ~a) buff-a# offset-a# 1 buff-b# offset-b# 1)
            (dotimes [j# (.fd ~a)]
-             (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
-              buff-b# (+ offset-b# (* ld-b# j#)) 1)))
+             (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# (* ld-b# j#)) 1)))
          (dotimes [j# (.fd ~a)]
-           (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
-            buff-b# (+ offset-b# j#) fd-b#))))))
+           (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) fd-b#))))))
 
 (defmacro ^:private ge-scal [method alpha a]
   `(when (< 0 (.count ~a))
@@ -117,13 +112,9 @@
          (if (= sd-a# sd-b# ld-a# ld-b#)
            (~method (.count ~a) ~alpha buff-a# offset-a# 1 buff-b# offset-b# 1)
            (dotimes [j# fd-a#]
-             (~method sd-a# ~alpha
-              buff-a# (+ offset-a# (* ld-a# j#)) 1
-              buff-b# (+ offset-b# (* ld-b# j#)) 1)))
+             (~method sd-a# ~alpha buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# (* ld-b# j#)) 1)))
          (dotimes [j# fd-b#]
-           (~method sd-a# ~alpha
-            buff-a# (+ offset-a# j#) fd-a#
-            buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
+           (~method sd-a# ~alpha buff-a# (+ offset-a# j#) fd-a# buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
 
 (defmacro ^:private ge-mv
   ([method alpha a x beta y]
@@ -144,14 +135,13 @@
       (throw (IllegalArgumentException. "In-place mm! is not supported for GE matrices."))))
   ([method alpha a b beta c]
    `(~method (.order ~c)
-     (if (= (.order ~a) (.order ~c)) NO_TRANS TRANS)
-     (if (= (.order ~b) (.order ~c)) NO_TRANS TRANS)
+     (if (= (.order ~a) (.order ~c)) NO_TRANS TRANS) (if (= (.order ~b) (.order ~c)) NO_TRANS TRANS)
      (.mrows ~a) (.ncols ~b) (.ncols ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
      (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c))))
 
 ;; =============== Common TR matrix macros and functions ==========================
 
-(defmacro tr-swap-copy [stripe-nav method a b]
+(defmacro ^:private tr-swap-copy [stripe-nav method a b]
   `(when (< 0 (.count ~a))
      (let [n# (.fd ~a)
            ld-a# (.stride ~a)
@@ -255,8 +245,7 @@
     (CBLAS/dscal (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x))
     x)
   (axpy [_ alpha x y]
-    (CBLAS/daxpy (.dim ^RealBlockVector x)
-                 (double alpha) (.buffer x) (.offset x) (.stride x)
+    (CBLAS/daxpy (.dim ^RealBlockVector x) (double alpha) (.buffer x) (.offset x) (.stride x)
                  (.buffer ^RealBlockVector y) (.offset y) (.stride y))
     y)
   BLASPlus
@@ -303,8 +292,7 @@
     (CBLAS/sscal (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x))
     x)
   (axpy [_ alpha x y]
-    (CBLAS/saxpy (.dim ^RealBlockVector x)
-                 (double alpha) (.buffer x) (.offset x) (.stride x)
+    (CBLAS/saxpy (.dim ^RealBlockVector x) (double alpha) (.buffer x) (.offset x) (.stride x)
                  (.buffer ^RealBlockVector y) (.offset y) (.stride y))
     y)
   BLASPlus
@@ -431,7 +419,7 @@
 
 ;; =============== Factories ==================================================
 
-(deftype CblasFactory [^DataAccessor da ^BLAS vector-eng ^BLAS ge-eng ^BLAS tr-eng]
+(deftype CblasFactory [^DataAccessor da ^BLASPlus vector-eng ^BLAS ge-eng ^BLAS tr-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -439,27 +427,12 @@
   (compatible? [_ o]
     (compatible? da o))
   Factory
-   (create-vector [this buf n]
-    (if (and (<= 0 (long n) (.count da buf))
-             (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (real-block-vector this true buf n 0 1)
-      (throw (IllegalArgumentException.
-              (format "I can not create an %d element vector from %d-element %s."
-                      n (.count da buf) (class buf))))))
-  (create-ge [this buf m n ord]
-    (if (and (<= 0 (* (long m) (long n)) (.count da buf))
-             (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (real-ge-matrix this true buf m n 0 0 ord)
-      (throw (IllegalArgumentException.
-              (format "I do not know how to create a %dx%d general matrix from %s."
-                      m n (type buf))))))
-  (create-tr [this buf n ord uplo diag]
-    (if (and (<= 0 (* (long n) (long n)) (.count da buf))
-             (instance? ByteBuffer buf) (.isDirect ^ByteBuffer buf))
-      (real-tr-matrix this true buf n 0 (max (long n) 1) ord uplo diag)
-      (throw (IllegalArgumentException.
-              (format "I do not know how to create a %dx%d triangular matrix from %s."
-                      n n (type buf))))))
+  (create-vector [this n _]
+    (real-block-vector this n))
+  (create-ge [this m n ord _]
+    (real-ge-matrix this m n ord))
+  (create-tr [this n ord uplo diag _]
+    (real-tr-matrix this n ord uplo diag))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]

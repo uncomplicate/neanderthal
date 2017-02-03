@@ -14,7 +14,7 @@
                  [uncomplicate/fluokitten "0.5.1"]
                  [uncomplicate/neanderthal "0.9.0-SNAPSHOT"]]
 
-  :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+  :jvm-opts ^:replace ["-Dserver -Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
 
   :global-vars {*warn-on-reflection* true

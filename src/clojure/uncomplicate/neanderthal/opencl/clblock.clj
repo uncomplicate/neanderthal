@@ -9,25 +9,25 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.opencl.clblock
   (:require [uncomplicate.commons.core
-             :refer [Releaseable release let-release wrap-float wrap-double]]
-            [uncomplicate.fluokitten.protocols :refer [Magma Monoid]]
+             :refer [Releaseable release let-release with-release wrap-float wrap-double]]
+            [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal
              [protocols :refer :all]
              [core :refer [transfer! copy!]]]
             [uncomplicate.neanderthal.impl.fluokitten
-             :refer [vector-op matrix-op]]
+             :refer [vector-op matrix-op vector-pure matrix-pure]]
             [uncomplicate.neanderthal.impl.buffer-block
-             :refer [->RealBlockVector ->RealGeneralMatrix]]
-            [uncomplicate.neanderthal.impl.cblas :refer
-             [cblas-single cblas-double]])
-  (:import [clojure.lang IFn IFn$L]
+             :refer [real-block-vector real-ge-matrix real-tr-matrix col-navigator row-navigator
+                     non-unit-upper-nav unit-upper-nav non-unit-lower-nav unit-lower-nav
+                     non-unit-top-navigator unit-top-navigator non-unit-bottom-navigator unit-bottom-navigator]]
+            [uncomplicate.neanderthal.impl.cblas :refer [cblas-float cblas-double]])
+  (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD]
            [uncomplicate.clojurecl.core CLBuffer]
-           [uncomplicate.neanderthal.protocols
-            BLAS Vector RealVector Matrix RealMatrix RealChangeable
-            Block DataAccessor]
-           [uncomplicate.neanderthal.impl.buffer_block
-            RealBlockVector RealGeneralMatrix]))
+           [uncomplicate.neanderthal.protocols BLAS BLASPlus DataAccessor Block Vector
+            RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable
+            RealOrderNavigator UploNavigator StripeNavigator]
+           [uncomplicate.neanderthal.impl.buffer_block RealBlockVector RealGEMatrix]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -51,6 +51,12 @@
 (defprotocol CLAccessor
   (get-queue [this]))
 
+;; ================== Declarations ============================================
+
+(declare cl-block-vector)
+(declare cl-ge-matrix)
+(declare cl-tr-matrix)
+
 ;; ================== Accessors ================================================
 
 (deftype TypedCLAccessor [ctx queue et ^long w array-fn wrap-fn host-fact]
@@ -63,12 +69,12 @@
     (quot (long (size b)) w))
   (createDataSource [_ n]
     (cl-buffer ctx (* w (max 1 (long n))) :read-write))
-  (initialize [_ cl-buf]
-    (enq-fill! queue cl-buf (array-fn 1))
-    cl-buf)
-  (initialize [_ cl-buf v]
-    (enq-fill! queue cl-buf (wrap-fn v))
-    cl-buf)
+  (initialize [_ buf]
+    (enq-fill! queue buf (array-fn 1))
+    buf)
+  (initialize [_ buf v]
+    (enq-fill! queue buf (wrap-fn v))
+    buf)
   (wrapPrim [_ s]
     (wrap-fn s))
   CLAccessor
@@ -81,7 +87,7 @@
   (data-accessor [this]
     this)
   MemoryContext
-  (compatible [this o]
+  (compatible? [this o]
     (let [da (data-accessor o)]
       (or
        (identical? this o)
@@ -96,12 +102,10 @@
     host-fact))
 
 (defn cl-float-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
-                     float-array wrap-float cblas-single))
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float cblas-float))
 
 (defn cl-double-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
-                     double-array wrap-double cblas-double))
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double cblas-double))
 
 ;; ================== Non-blas kernels =========================================
 (defprotocol BlockEngine
@@ -110,46 +114,44 @@
 ;; =============================================================================
 
 (deftype CLBlockVector [^uncomplicate.neanderthal.protocols.Factory fact
-                        ^DataAccessor claccessor ^BLAS eng
-                        ^Class entry-type master ^CLBuffer cl-buf
-                        ^long n ^long ofst ^long strd]
+                        ^DataAccessor da ^BLASPlus eng master
+                        ^CLBuffer buf^long n ^long ofst ^long strd]
   Object
-  (hashCode [this]
-    (-> (hash :CLBlockVector) (hash-combine n)
-        (hash-combine (.nrm2 eng this))))
+  (hashCode [x]
+    (-> (hash :CLBlockVector) (hash-combine n) (hash-combine (.nrm2 eng x))))
   (equals [x y]
     (cond
       (nil? y) false
       (identical? x y) true
-      (and (compatible x y) (= n (.dim ^Vector y)))
+      (and (instance? CLBlockVector y) (compatible? x y) (fits? x y))
       (equals-block eng x y)
       :default false))
   (toString [this]
-    (format "#CLBlockVector[%s, n:%d, offset:%d stride:%d]"
-            entry-type n ofst strd))
+    (format "#CLBlockVector[%s, n:%d, offset:%d stride:%d]" (.entryType da) n ofst strd))
   Releaseable
   (release [_]
     (if (compare-and-set! master true false)
-      (release cl-buf)
+      (release buf)
       true))
   Container
   (raw [_]
-    (create-vector fact n (.createDataSource claccessor n) nil))
+    (cl-block-vector fact n))
   (raw [_ fact]
-    (create-vector fact n (.createDataSource (data-accessor fact) n) nil))
-  (zero [this]
-    (zero this fact))
-  (zero [this fact]
-    (let-release [r (raw this fact)]
-      (.initialize (data-accessor fact) (.buffer ^Block r))
-      r))
-  (host [this]
-    (cl-to-host this (raw this (native-factory this))))
-  (native [this]
-    (host this))
-  Monoid
-  (id [x]
-    (create-vector fact 0 (.createDataSource claccessor 0) nil))
+    (create-vector fact n false))
+  (zero [x]
+    (zero x fact))
+  (zero [_ fact]
+    (create-vector fact n true))
+  (host [x]
+    (let-release [res (create-vector (native-factory da) n false)]
+      (cl-to-host x res)))
+  (native [x]
+    (host x))
+  MemoryContext
+  (compatible? [_ y]
+    (compatible? da y))
+  (fits? [_ y]
+    (= n (.dim ^Vector y)))
   EngineProvider
   (engine [_]
     eng)
@@ -157,19 +159,13 @@
   (factory [_]
     fact)
   (native-factory [_]
-    (native-factory claccessor))
+    (native-factory da))
   DataAccessorProvider
   (data-accessor [_]
-    claccessor)
-  MemoryContext
-  (compatible [_ y]
-    (and (instance? CLBlockVector y)
-         (compatible claccessor (data-accessor y))))
+    da)
   Block
-  (entryType [_]
-    entry-type)
   (buffer [_]
-    cl-buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -177,23 +173,28 @@
   (count [_]
     n)
   IFn
+  (invoke [x i]
+    (.entry x i))
   (invoke [x]
     n)
+  IFn$LD
+  (invokePrim [x i]
+    (.entry x i))
   IFn$L
   (invokePrim [x]
     n)
   RealChangeable
   (set [x val]
     (if (and (= 0 ofst) (= 1 strd))
-      (.initialize claccessor cl-buf val)
+      (.initialize da buf val)
       (throw (IllegalArgumentException. INEFFICIENT_STRIDE_MSG)))
     x)
   (set [_ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   (setBoxed [x val]
     (.set x val))
-  (setBoxed [_ _ _]
-    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (setBoxed [x i val]
+    (.set x i val))
   (alter [_ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   RealVector
@@ -201,30 +202,46 @@
     n)
   (entry [_ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
-  (boxedEntry [_ _]
-    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
-  (subvector [this k l]
-    (CLBlockVector. fact claccessor eng entry-type (atom false) cl-buf l (+ ofst k) strd))
+  (boxedEntry [x i]
+    (.entry x i))
+  (subvector [_ k l]
+    (cl-block-vector fact (atom false) buf l (+ ofst (* k strd)) strd))
+  Monoid
+  (id [x]
+    (cl-block-vector fact 0))
+  Foldable
+  (fold [x]
+    (.sum eng x))
   Mappable
-  (map-memory [this flags]
-    (let [host-fact (native-factory this)
-          acc (data-accessor host-fact)
-          queue (get-queue claccessor)
-          mapped-buf (enq-map-buffer! queue cl-buf true
-                                      (* ofst (.entryWidth claccessor))
-                                      (* strd n (.entryWidth claccessor))
-                                      flags nil nil)]
+  (map-memory [_ flags]
+    (let [host-fact (native-factory da)
+          queue (get-queue da)
+          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
+                                      (* strd n (.entryWidth da)) flags nil nil)]
       (try
-        (->RealBlockVector host-fact acc (vector-engine host-fact)
-                           (.entryType acc) true mapped-buf n strd)
-        (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
-  (unmap [this mapped]
-    (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
-    this))
+        (real-block-vector host-fact true mapped-buf n 0 strd)
+        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
+  (unmap [x mapped]
+    (enq-unmap! (get-queue da) buf (.buffer ^Block mapped))
+    x))
+
+(defn cl-block-vector
+  ([fact master ^CLBuffer buf n ofst strd]
+   (let [da (data-accessor fact)]
+     (if (and (<= 0 n (.count da buf)))
+       (CLBlockVector. fact da (vector-engine fact) (atom master) buf n ofst strd)
+       (throw (IllegalArgumentException.
+               (format "I can not create an %d element vector from %d-element %s."
+                       n (.count da buf) (class buf)))))))
+  ([fact n]
+   (let-release [buf (.createDataSource (data-accessor fact) n)]
+     (cl-block-vector fact true buf n 0 1))))
 
 (extend CLBlockVector
+  Applicative
+  {:pure vector-pure}
   Magma
-  {:op vector-op})
+  {:op (constantly vector-op)})
 
 (defmethod print-method CLBlockVector
   [x ^java.io.Writer w]
@@ -244,32 +261,34 @@
 
 (defmethod transfer! [clojure.lang.Sequential CLBlockVector]
   [source ^CLBlockVector destination]
-  (let-release [host (raw destination (native-factory destination))]
+  (with-release [host (raw destination (native-factory destination))]
     (host-to-cl (transfer! source host) destination)))
 
 ;; ================== CL Matrix ============================================
 
-(deftype CLGeneralMatrix [^uncomplicate.neanderthal.protocols.Factory fact
-                          ^DataAccessor claccessor ^BLAS eng
-                          ^Class entry-type master ^CLBuffer cl-buf
-                          ^long m ^long n ^long ofst ^long ld ^long ord]
+(deftype CLGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.protocols.Factory fact
+                     ^DataAccessor da ^BLAS eng master ^CLBuffer buf ^long m ^long n
+                     ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
-  (hashCode [this]
-    (-> (hash :CLGeneralMatrix) (hash-combine m) (hash-combine n)))
+  (hashCode [a]
+    (let [h (-> (hash :CLGEMatrix) (hash-combine m) (hash-combine n))]
+      (if (< 0 sd)
+        (let-release [x (.stripe navigator a 0)] (hash-combine h (.nrm2 eng x)))
+        h)))
   (equals [a b]
     (cond
       (nil? b) false
       (identical? a b) true
-      (and (compatible a b) (= m (.mrows ^Matrix b)) (= n (.ncols ^Matrix b)))
+      (and (instance? CLGEMatrix b) (compatible? a b) (fits? a b))
       (equals-block eng a b)
       :default false))
-  (toString [this]
-    (format "#CLGeneralMatrix[%s, %s, mxn: %dx%d, offset:%d, ld:%d>]"
-            entry-type "COL" m n ofst ld))
+  (toString [_]
+    (format "#CLGEMatrix[%s, mxn:%dx%d, order%s, offset:%d, ld:%d]"
+            (.entryType da) m n (dec-property ord) ofst ld))
   Releaseable
   (release [_]
     (if (compare-and-set! master true false)
-      (release cl-buf)
+      (release buf)
       true))
   EngineProvider
   (engine [_]
@@ -278,37 +297,35 @@
   (factory [_]
     fact)
   (native-factory [_]
-    (native-factory claccessor))
+    (native-factory da))
   DataAccessorProvider
   (data-accessor [_]
-    claccessor)
-  MemoryContext
-  (compatible [_ b]
-    (and (or (instance? CLGeneralMatrix b) (instance? CLBlockVector b))
-         (compatible claccessor (data-accessor b))))
+    da)
   Container
   (raw [_]
-    (create-matrix fact m n (.createDataSource claccessor (* m n)) ord))
+    (cl-ge-matrix fact m n ord))
   (raw [_ fact]
-    (create-matrix fact m n (.createDataSource (data-accessor fact) (* m n)) ord))
-  (zero [this]
-    (zero this fact))
-  (zero [this fact]
-    (let-release [r (raw this fact)]
-      (.initialize (data-accessor fact) (.buffer ^Block r))
-      r))
-  (host [this]
-    (cl-to-host this (raw this (native-factory this))))
+    (create-ge fact m n ord false))
+  (zero [a]
+    (zero a fact))
+  (zero [_ fact]
+    (create-ge fact m n ord true))
+  (host [a]
+    (let-release [res (create-ge (native-factory da) m n ord false)]
+      (cl-to-host a res)))
   (native [this]
     (host this))
-  Monoid
-  (id [a]
-    (create-matrix fact 0 0 (.createDataSource claccessor 0) nil))
-  Block
-  (entryType [_]
-    entry-type)
+  DenseContainer
+  (subtriangle [_ uplo diag];;TODO remove and introduce new function similar to copy that reuses memory (view x :tr)
+    (cl-tr-matrix fact false buf (min m n) 0 ld ord uplo diag))
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [_ b]
+    (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
+  GEMatrix
   (buffer [_]
-    cl-buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -317,18 +334,29 @@
     ord)
   (count [_]
     (* m n))
+  (sd [_]
+    sd)
+  (fd [_]
+    fd)
+  IFn$LLD
+  (invokePrim [a i j]
+    (.entry a i j))
   IFn
+  (invoke [a i j]
+    (.entry a i j))
   (invoke [a]
-    n)
+    sd)
   IFn$L
   (invokePrim [a]
-    n)
+    sd)
   RealChangeable
+  (isAllowed [a i j]
+    true)
   (set [a val]
-    (if (and (= ld (if (column-major? a) m n))
+    (if (and (= ld sd)
              (= 0 ofst)
-             (= (* m n) (.count claccessor cl-buf)))
-      (.initialize claccessor cl-buf val)
+             (= (* m n) (.count da buf)))
+      (.initialize da buf val)
       (throw (IllegalArgumentException. INEFFICIENT_STRIDE_MSG)))
     a)
   (set [_ _ _ _]
@@ -336,12 +364,9 @@
   (setBoxed [a val]
     (.set a val))
   (setBoxed [a i j val]
-    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+    (.set a i j val))
   (alter [a i j f]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
-  DenseContainer
-  (is-ge [_]
-    true)
   RealMatrix
   (mrows [_]
     m)
@@ -349,88 +374,67 @@
     n)
   (entry [_ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
-  (boxedEntry [_ _ _]
-    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (boxedEntry [a i j]
+    (.entry a i j))
   (row [a i]
-    (if (column-major? a)
-      (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type (atom false) cl-buf n (+ ofst i) ld)
-      (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type (atom false) cl-buf n (+ ofst (* ld i)) 1)))
+    (cl-block-vector fact false buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
   (col [a j]
-    (if (column-major? a)
-      (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type (atom false) cl-buf m (+ ofst (* ld j)) 1)
-      (CLBlockVector. fact claccessor (vector-engine fact)
-                      entry-type (atom false) cl-buf m (+ ofst j) ld)))
+    (cl-block-vector fact false buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
   (submatrix [a i j k l]
-    (let [o (if (column-major? a) (+ ofst (* j ld) i) (+ ofst (* i ld) j))]
-      (CLGeneralMatrix. fact claccessor eng
-                        entry-type (atom false) cl-buf k l o ld ord)))
+    (cl-ge-matrix fact false buf k l (.index navigator ofst ld i j) ld ord))
   (transpose [a]
-    (CLGeneralMatrix. fact claccessor eng
-                      entry-type (atom false) cl-buf n m ofst ld
-                      (if (column-major? a) ROW_MAJOR COLUMN_MAJOR)))
+    (cl-ge-matrix fact false buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+  Monoid
+  (id [a]
+    (cl-ge-matrix fact 0 0))
   Mappable
   (map-memory [a flags]
-    (let [host-fact (native-factory a)
-          acc (data-accessor host-fact)
-          queue (get-queue claccessor)
-          mapped-buf (enq-map-buffer! queue cl-buf true
-                                      (* ofst (.entryWidth claccessor))
-                                      (* (if (column-major? a) n m)
-                                         ld (.entryWidth claccessor))
-                                      flags nil nil)]
+    (let [host-fact (native-factory da)
+          queue (get-queue da)
+          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
+                                      (* fd ld (.entryWidth da)) flags nil nil)]
       (try
-        (->RealGeneralMatrix host-fact acc (matrix-engine host-fact)
-                             (.entryType acc) true mapped-buf m n ld ord)
-        (catch Exception e (enq-unmap! queue cl-buf mapped-buf)))))
+        (real-ge-matrix host-fact true mapped-buf m n 0 ld ord)
+        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (get-queue claccessor) cl-buf (.buffer ^Block mapped))
+    (enq-unmap! (get-queue da) buf (.buffer ^Block mapped))
     this))
 
-(extend CLGeneralMatrix
+(defn cl-ge-matrix
+  ([fact master buf m n ofst ld ord]
+   (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
+     (CLGEMatrix. (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
+                  (ge-engine fact) (atom master) buf m n ofst (max (long ld) (.sd navigator m n))
+                  (.sd navigator m n) (.fd navigator m n) ord)))
+  ([fact ^long m ^long n ord]
+   (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
+     (cl-ge-matrix fact true buf m n 0 m ord)))
+  ([fact ^long m ^long n]
+   (cl-ge-matrix fact m n DEFAULT_ORDER)))
+
+(extend CLGEMatrix
+  Applicative
+  {:pure matrix-pure}
   Magma
-  {:op matrix-op})
+  {:op (constantly matrix-op)})
 
-(defmethod transfer! [CLGeneralMatrix CLGeneralMatrix]
-  [source destination]
-  (copy! source destination))
-
-(defmethod transfer! [CLGeneralMatrix RealGeneralMatrix]
-  [source destination]
-  (cl-to-host source destination))
-
-(defmethod transfer! [RealGeneralMatrix CLGeneralMatrix]
-  [source destination]
-  (host-to-cl source destination))
-
-(defmethod transfer! [clojure.lang.Sequential CLGeneralMatrix]
-  [source destination]
-  (let-release [host (raw destination (native-factory destination))]
-    (host-to-cl (transfer! source host) destination)))
-
-(defmethod print-method CLGeneralMatrix
+(defmethod print-method CLGEMatrix
   [x ^java.io.Writer w]
   (.write w (str x)))
 
-(defn create-cl-vector [factory vector-eng ^long n buf]
-  (let [claccessor (data-accessor factory)]
-    (if (and (<= 0 n (.count claccessor buf)) (instance? CLBuffer buf))
-      (->CLBlockVector factory claccessor vector-eng (.entryType claccessor)
-                       (atom true) buf n 0 1)
-      (throw (IllegalArgumentException.
-              (format "I can not create an %d element vector from %d-element %s."
-                      n (.count claccessor buf) (class buf)))))))
+(defmethod transfer! [CLGEMatrix CLGEMatrix]
+  [source destination]
+  (copy! source destination))
 
-(defn create-cl-ge-matrix [factory matrix-eng m n buf ord]
-  (let [claccessor (data-accessor factory)]
-    (if (and (<= 0 (* (long m) (long n)) (.count claccessor buf))
-             (instance? CLBuffer buf))
-      (let [ord (or ord DEFAULT_ORDER)
-            ld (max (long (if (= COLUMN_MAJOR ord) m n)) 1)]
-        (->CLGeneralMatrix factory claccessor matrix-eng (.entryType claccessor)
-                           (atom true) buf m n 0 ld ord))
-      (throw (IllegalArgumentException.
-              (format "I do not know how to create a %dx%d matrix from %s."
-                      m n (type buf)))))))
+(defmethod transfer! [CLGEMatrix RealGEMatrix]
+  [source destination]
+  (cl-to-host source destination))
+
+(defmethod transfer! [RealGEMatrix CLGEMatrix]
+  [source destination]
+  (host-to-cl source destination))
+
+(defmethod transfer! [clojure.lang.Sequential CLGEMatrix]
+  [source destination]
+  (with-release [host (raw destination (native-factory destination))]
+    (host-to-cl (transfer! source host) destination)))

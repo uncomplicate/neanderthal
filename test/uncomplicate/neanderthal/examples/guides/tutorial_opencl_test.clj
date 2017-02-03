@@ -1,4 +1,4 @@
-"
+ "
 ---
 title: 'Tutorial - Matrix Computations on the GPU in Clojure (in TFLOPS!)'
 Author: Dragan Djuric
@@ -96,7 +96,7 @@ $code"
              :refer [with-default finish!]]
             [uncomplicate.neanderthal
              [core :refer [asum dot axpy! mv! mm! transfer! copy]]
-             [native :refer [sv sge]]
+             [native :refer [fv fge]]
              [opencl :refer [with-default-engine clv clge]]]))
 
 "$text
@@ -119,7 +119,7 @@ $code\""
     (facts "We'll write our GPU code here, but for now here is only the plain
 CPU stuff you recognize from the plain Neanderthal tutorial."
 
-           (asum (sv 1 -2 3)) => 6.0)))
+           (asum (fv 1 -2 3)) => 6.0)))
 
 "$text
 
@@ -131,7 +131,7 @@ $code"
 
 (with-default
   (with-default-engine
-    (with-release [gpu-x (transfer! (sv 1 -2 3) (clv 3))]
+    (with-release [gpu-x (transfer! (fv 1 -2 3) (clv 3))]
       (facts
        "Create a vector on the device, write into it the data from the host vector
 and compute the sum of absolute values."
@@ -157,7 +157,7 @@ with doubles. Most of the time you do not even need double precision, but when
 you do, you need to shell more $$$ for the professional grade products such as
 FirePro and Tesla. Neanderthal supports doubles just the same.
 
-2. Write the data from an ordinary vector `(sv 1 -2 3)` to the GPU. That data
+2. Write the data from an ordinary vector `(fv 1 -2 3)` to the GPU. That data
 needs to travel from Java to raw memory and from raw memory, over PCIe bus,
 to the GPU memory. That is a lot of steps, and Neanderthal does all these with
 only one physical copying, but anyway, that data needs to travel and it takes
@@ -183,7 +183,7 @@ $code"
 
 (with-default
   (with-default-engine
-    (with-release [host-x (sv 1 -2 3)
+    (with-release [host-x (fv 1 -2 3)
                    gpu-x (clv 1 -2 3)]
       (facts
        "Compare the speed of computing small vectors on CPU and GPU"
@@ -215,7 +215,7 @@ $code"
 (with-default
   (with-default-engine
     (let [cnt (long (Math/pow 2 20))]
-      (with-release [host-x (sv (range cnt))
+      (with-release [host-x (fv (range cnt))
                      gpu-x (transfer! host-x (clv cnt))]
         (facts
          "Let's try with 2^20. That's more than a million."
@@ -245,7 +245,7 @@ $code"
     ;; it to complain about insufficient memory, but this is probably a temporary issue.
 
     (let [cnt (long (Math/pow 2 28))]
-      (with-release [host-x (sv (range cnt))
+      (with-release [host-x (fv (range cnt))
                      gpu-x (transfer! host-x (clv cnt))]
         (facts
          "Let's try with 2^28. That's 1GB, half the maximum that Java buffers can
@@ -280,7 +280,7 @@ $code"
 (with-default
   (with-default-engine
     (let [cnt (long (Math/pow 2 28))]
-      (with-release [host-x (sv (range cnt))
+      (with-release [host-x (fv (range cnt))
                      host-y (copy host-x)
                      gpu-x (transfer! host-x (clv cnt))
                      gpu-y (copy gpu-x)]
@@ -316,8 +316,8 @@ $code"
 (with-default
   (with-default-engine
     (let [cnt 8192]
-      (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
-                     host-x (sv (range cnt))
+      (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
+                     host-x (fv (range cnt))
                      host-y (copy host-x)
                      gpu-a (transfer! host-a (clge cnt cnt))
                      gpu-x (transfer! host-x (clv cnt))
@@ -347,7 +347,7 @@ $code"
 (with-default
   (with-default-engine
     (let [cnt 8192]
-      (with-release [host-a (sge cnt cnt (range (* cnt cnt)))
+      (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
                      host-b (copy host-a)
                      host-c (copy host-a)
                      gpu-a (transfer! host-a (clge cnt cnt))

@@ -84,7 +84,8 @@
   "
   ([factory x]
    (let-release [res (p/raw x factory)]
-     (transfer! x res)))
+     (transfer! x res)
+     res))
   ([x]
    (p/host x)))
 
@@ -102,7 +103,10 @@
   "TODO"
   ([factory source]
    (cond
-     (integer? source) (p/create-vector factory (.createDataSource (p/data-accessor factory) source) source)
+     (integer? source) (if (<= 0 (long source))
+                         (p/create-vector factory source true)
+                         (throw (IllegalArgumentException.
+                                 (format "Vector dimension must be at least 0, but is: %d" source))))
      (number? source) (.set ^RealChangeable (vctr factory 1) 0 source)
      :default (transfer factory source)))
   ([factory x & xs]
@@ -111,14 +115,13 @@
 (defn ge
   "TODO"
   ([factory m n source options]
-   (if (and (< -1 (long m)) (< -1 (long n)))
-     (let-release [res (p/create-ge
-                        factory
-                        (.createDataSource (p/data-accessor factory)
-                                           (* (long m) (long n)))
-                        m n (p/enc-order (:order options)))]
-       (if source (transfer! source res) res))
-     (throw (IllegalArgumentException. (format "Dimensions m=%d, n=%d are not allowed." m n)))))
+   (if (and (<= 0 (long m)) (<= 0 (long n)))
+     (let-release [res (p/create-ge factory m n (p/enc-order (:order options)) true)]
+       (if source
+         (transfer! source res)
+         res))
+     (throw (IllegalArgumentException.
+             (format "GE matrix dimensions must be at least 0x0, but are: %dx%d" m n)))))
   ([factory ^long m ^long n arg]
    (if (or (not arg) (map? arg))
      (ge factory m n nil arg)
@@ -131,16 +134,14 @@
 (defn tr
   "TODO"
   ([factory ^long n source options]
-   (if (< -1 n)
-     (let [ord (p/enc-order (:order options))
-           uplo (p/enc-uplo (:uplo options))
-           diag (p/enc-diag (:diag options))]
-       (let-release [res (p/create-tr
-                          factory
-                          (.createDataSource (p/data-accessor factory) (* n n))
-                          n ord uplo diag)]
-         (if source (transfer! source res) res)))
-     (throw (IllegalArgumentException. (format "Dimension n=%d is not allowed." n)))))
+   (if (<= 0 n)
+     (let-release [res (p/create-tr factory n (p/enc-order (:order options))
+                                    (p/enc-uplo (:uplo options)) (p/enc-diag (:diag options)) true)]
+       (if source
+         (transfer! source res)
+         res))
+     (throw (IllegalArgumentException.
+             (format "TR matrix dimensions must be at least 0x0, but are: %dx%d" n n)))))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
      (tr factory n nil arg)

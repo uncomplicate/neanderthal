@@ -15,18 +15,17 @@
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal
              [protocols :as p]
-             [core :refer [vect? matrix? transfer!
-                           create create-vector create-ge-matrix]]]
+             [core :refer [vect? matrix? transfer! vctr ge tr]]]
             [uncomplicate.neanderthal.impl.cblas
-             :refer [cblas-single cblas-double]]
+             :refer [cblas-float cblas-double]]
             [uncomplicate.neanderthal.opencl
              [clblock :refer [->TypedCLAccessor cl-to-host host-to-cl]]
-             [clblast :refer [clblast-double clblast-single]]])
+             [clblast :refer [clblast-double clblast-float]]])
   (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
 
 (def ^:dynamic *opencl-factory*)
 
-(def opencl-single clblast-single)
+(def opencl-float clblast-float)
 
 (def opencl-double clblast-double)
 
@@ -35,7 +34,7 @@
   and binds *opencl-factory* to it. Enables the use of clv and clge in body.
 
   (with-default
-    (with-engine clblast-single *command-queue*
+    (with-engine clblast-float *command-queue*
       (with-release [gpu-x (clv (range 3))]
         (sum gpu-x))))
   "
@@ -46,9 +45,9 @@
         (finally (release *opencl-factory*))))))
 
 (defmacro with-default-engine
-  "Creates a concrete single-precision CLBlast OpenCL factory that executes
+  "Creates a concrete float-precision CLBlast OpenCL factory that executes
   in the default context and queue, and binds *opencl-factory* to it.
-  clv and clge in its body will create single-precision blocks.
+  clv and clge in its body will create float-precision blocks.
 
   (with-default
     (with-default-engine
@@ -56,7 +55,7 @@
         (sum gpu-x))))
   "
   [& body]
-  `(binding [*opencl-factory* (opencl-single *context* *command-queue*)]
+  `(binding [*opencl-factory* (opencl-float *context* *command-queue*)]
      (try
        ~@body
        (finally (release *opencl-factory*)))))
@@ -68,7 +67,7 @@
   (clv 3)
   "
   ([source]
-   (create-vector *opencl-factory* source))
+   (vctr *opencl-factory* source))
   ([x & xs]
    (clv (cons x xs))))
 
@@ -78,7 +77,11 @@
 
   (clge 2 3)
   "
-  ([^long m ^long n source]
-   (create-ge-matrix *opencl-factory* m n source))
+  ([^long m ^long n source options]
+   (ge *opencl-factory* m n source options))
+  ([^long m ^long n arg]
+   (ge *opencl-factory* m n arg))
   ([^long m ^long n]
-   (create *opencl-factory* m n)))
+   (ge *opencl-factory* m n))
+  ([a]
+   (ge *opencl-factory* a)))

@@ -15,9 +15,9 @@
     [f init g x y z] [f init g x y z v]))
 
 (defprotocol Factory
-  (create-vector [this memory n])
-  (create-ge [this memory m n ord])
-  (create-tr [this memory n ord uplo diag])
+  (create-vector [this n init])
+  (create-ge [this m n ord init])
+  (create-tr [this n ord uplo diag init])
   (vector-engine [this])
   (ge-engine [this])
   (tr-engine [this]))
@@ -124,59 +124,59 @@
   (if (= :unit diag) 132 131))
 
 (def ^{:no-doc true :const true} MAT_BOUNDS_MSG
-  "Requested entry %d, %d is out of bounds of matrix %d x %d.")
+  "\nRequested entry %d, %d is out of bounds of matrix %d x %d.\n")
 
 (def ^{:no-doc true :const true} VECTOR_BOUNDS_MSG
-  "Requested dim %d is out of bounds of vector dim %d.")
+  "\nRequested dim %d is out of bounds of vector dim %d.\n")
 
 (def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG
-  "Operation is not permited on objects with incompatible buffers,
+  "\nOperation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
   \n1: %s
-  \n2: %s")
+  \n2: %s\n")
 
 (def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG_3
-  "Operation is not permited on objects with incompatible buffers,
+  "\nOperation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
   \n1: %s
   \n2: %s
-  \n3: %s")
+  \n3: %s\n")
 
 (def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG_4
-  "Operation is not permited on objects with incompatible buffers,
+  "\nOperation is not permited on objects with incompatible buffers,
   or dimensions that are incompatible in the context of the operation.
   \n1: %s
   \n2: %s
   \n3: %s
-  \n4: %s")
+  \n4: %s\n")
 
 (def ^{:no-doc true :const true} ROW_COL_MSG
-  "Required %s %d is higher than the %s count %d.")
+  "\nRequired %s %d is higher than the %s count %d.\n")
 
 (def ^{:no-doc true :const true} DIMENSION_MSG
-  "Incompatible dimensions - expected:%d, actual:%d.")
+  "\nIncompatible dimensions - expected:%d, actual:%d.\n")
 
 (def ^{:no-doc true :const true} STRIDE_MSG
-  "Incompatible stride - expected:%d, actual:%d.")
+  "\nIncompatible stride - expected:%d, actual:%d.\n")
 
 (def ^{:no-doc true :const true} ILLEGAL_SOURCE_MSG
-  "%d is not a valid data source for %s.")
+  "\n%d is not a valid data source for %s.\n")
 
 (def ^{:no-doc true :const true} DIMENSIONS_MSG
-  "Vector dimensions should be %d.")
+  "\nVector dimensions should be %d.\n")
 
 (def ^{:no-doc true :const true} PRIMITIVE_FN_MSG
-  "I cannot accept function of this type as an argument.")
+  "\nI cannot accept function of this type as an argument.\n")
 
 (def ^{:no-doc true :const true} ROTM_COND_MSG
-  "Arguments x and y must be compatible and have equeal dimensions.
+  "\nArguments x and y must be compatible and have equeal dimensions.
   argument param must have dimension at least 5.
   \nx: %s;
   \ny: %s;
-  \nparam: %s")
+  \nparam: %s\n")
 
 (def ^{:no-doc true :const true} ROTMG_COND_MSG
-  "Arguments d1d2xy and param must be compatible.
+  "\nArguments d1d2xy and param must be compatible.
   param must have dimension at least 5 and d1d2xy at least 4.
   \nd1d2xy: %s;
-  \nparam: %s ")
+  \nparam: %s\n")
