@@ -369,6 +369,8 @@ demanding enough."
 CPU: 16301 ms
 GPU: 293 ms
 
+Note: Nvidia GTX 1080: 220 ms.
+
 That's almost 60x faster than the CPU! But, still, shouldn't it be even faster?
 You've probably seen those benchmarks with 1000x speed improvements!
 

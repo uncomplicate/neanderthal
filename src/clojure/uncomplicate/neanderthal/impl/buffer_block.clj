@@ -288,19 +288,19 @@
   (seq [_]
     (take n (.toSeq da buf ofst strd)))
   Container
-  (raw [this]
+  (raw [_]
     (real-block-vector fact n))
   (raw [_ fact]
     (create-vector fact n false))
-  (zero [this]
+  (zero [_]
     (real-block-vector fact n))
-  (zero [this fact]
+  (zero [_ fact]
     (create-vector fact n true))
   (host [x]
     (let-release [res (raw x)]
       (.copy eng x res)))
-  (native [this]
-    this)
+  (native [x]
+    x)
   MemoryContext
   (compatible? [_ y]
     (compatible? da y))
@@ -442,11 +442,9 @@
                        ^RealBufferAccessor da ^BLAS eng ^Boolean master ^ByteBuffer buf ^long m ^long n
                        ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
-  (hashCode [this]
-    (let [h (-> (hash :RealGEMatrix) (hash-combine m) (hash-combine n))]
-      (if (< 0 sd)
-        (let-release [x (.stripe navigator this 0)] (hash-combine h (.nrm2 eng x)))
-        h)))
+  (hashCode [a]
+    (-> (hash :RealGEMatrix) (hash-combine m) (hash-combine n)
+        (hash-combine (.nrm2 eng (.stripe navigator a 0)))))
   (equals [a b]
     (cond
       (nil? b) false
@@ -462,7 +460,7 @@
                (recur (inc j)))
           true))
       :default false))
-  (toString [this]
+  (toString [a]
     (format "#RealGEMatrix[%s, mxn:%dx%d, order%s, offset:%d, ld:%d]"
             (.entryType da) m n (dec-property ord) ofst ld))
   Releaseable
@@ -485,17 +483,17 @@
   Container
   (raw [_]
     (real-ge-matrix fact m n ord))
-  (raw [this fact]
+  (raw [_ fact]
     (create-ge fact m n ord false))
-  (zero [this]
+  (zero [_]
     (real-ge-matrix fact m n ord))
-  (zero [this fact]
+  (zero [_ fact]
     (create-ge fact m n ord true))
   (host [a]
     (let-release [res (raw a)]
       (.copy eng a res)))
-  (native [this]
-    this)
+  (native [a]
+    a)
   DenseContainer
   (subtriangle [_ uplo diag];;TODO remove and introduce new function similar to copy that reuses memory (view x :tr)
     (real-tr-matrix fact false buf (min m n) 0 ld ord uplo diag))
@@ -674,9 +672,8 @@
                        ^BLAS eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long ld
                        ^long ord ^long fuplo ^long fdiag]
   Object
-  (hashCode [this]
-    (matrix-fold navigator n hash* (-> (hash :RealTRMatrix) (hash-combine n))
-                 (.submatrix this 0 0 (min 16 n) (min 16 n))))
+  (hashCode [a]
+    (-> (hash :RealTRMatrix) (hash-combine n) (hash-combine (.nrm2 eng (.stripe navigator a 0)))))
   (equals [a b]
     (cond
       (nil? b) false
@@ -718,16 +715,16 @@
   (raw [_]
     (real-tr-matrix fact n ord fuplo fdiag))
   (raw [_ fact]
-    (real-tr-matrix fact n ord fuplo fdiag))
-  (zero [this]
-    (raw this))
-  (zero [this fact]
-    (raw this fact))
-  (host [this]
-    (let-release [res (raw this)]
-      (.copy eng this res)))
-  (native [this]
-    this)
+    (create-tr fact n ord fuplo fdiag false))
+  (zero [a]
+    (raw a))
+  (zero [_ fact]
+    (create-tr fact n ord fuplo fdiag true))
+  (host [a]
+    (let-release [res (raw a)]
+      (.copy eng a res)))
+  (native [a]
+    a)
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -799,8 +796,8 @@
       (if (= 2 res)
         (.get da buf (.index navigator ofst ld i j))
         res)))
-  (boxedEntry [this i j]
-    (.entry this i j))
+  (boxedEntry [a i j]
+    (.entry a i j))
   (row [a i]
     (let [start (.rowStart uplo-nav n i)]
       (real-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
@@ -900,6 +897,10 @@
   ([fact n]
    (real-tr-matrix fact n DEFAULT_ORDER DEFAULT_UPLO DEFAULT_DIAG)))
 
+(defmethod print-method RealTRMatrix
+  [^RealTRMatrix a ^java.io.Writer w]
+  (.write w (format "%s%s" (str a) (pr-str (take 100 (seq a))))))
+
 (defmethod transfer! [RealTRMatrix RealTRMatrix]
   [source destination]
   (do
@@ -924,7 +925,3 @@
                          (recur (inc i) (next src)))
                      src))))
         destination))))
-
-(defmethod print-method RealTRMatrix
-  [^RealTRMatrix a ^java.io.Writer w]
-  (.write w (format "%s%s" (str a) (pr-str (take 100 (seq a))))))

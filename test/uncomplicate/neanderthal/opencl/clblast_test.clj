@@ -4,7 +4,7 @@
              :refer [with-default *command-queue*]]
             [uncomplicate.fluokitten.core :refer [op]]
             [uncomplicate.neanderthal
-             [opencl :refer [with-engine *opencl-factory*]]
+             [opencl :refer [with-engine *opencl-factory* clge]]
              [block-test :as block-test]
              [real-test :as real-test]
              [opencl-test :as opencl-test]]
@@ -35,7 +35,15 @@
   (real-test/test-ge-axpy factory)
   (real-test/test-ge-mv factory)
   (real-test/test-rank factory)
-  (real-test/test-ge-mm factory))
+  (real-test/test-ge-mm factory)
+  (real-test/test-tr factory)
+  (real-test/test-tr-constructor factory)
+  (real-test/test-tr-copy factory)
+  (real-test/test-tr-swap factory)
+  (real-test/test-tr-scal factory)
+  (real-test/test-tr-axpy factory)
+  (real-test/test-tr-mv factory)
+  (real-test/test-tr-mm factory))
 
 (defn block-tests [factory]
   (block-test/test-equality factory)

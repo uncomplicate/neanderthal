@@ -22,8 +22,8 @@
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
   (:import [org.jocl.blast CLBlast CLBlastStatusCode]
            [uncomplicate.neanderthal.protocols BLAS BLASPlus Vector Matrix Block DataAccessor
-            RealOrderNavigator]
-           [uncomplicate.neanderthal.opencl.clblock CLBlockVector CLGEMatrix]))
+            RealOrderNavigator StripeNavigator]
+           [uncomplicate.neanderthal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
 ;; =============== OpenCL and CLBlast error handling functions =================
 
@@ -50,7 +50,7 @@
         (= 0 (aget res 0))))
     (= 0 (.dim y))))
 
-(defn ^:private equals-block-matrix [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
+(defn ^:private equals-block-ge [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
   (if (< 0 (.count a))
     (if (and (= (.order a) (.order b)) (= (.sd a) (.sd b) (.ld a) (.ld b)))
       (with-release [equals-matrix-kernel (kernel prog "equals_matrix")
@@ -187,8 +187,7 @@
         ~queue nil)
        nil)))
 
-
-;; =============== Common matrix engine  macros and functions ==================
+;; =============== Common GE matrix macros and functions =======================
 
 (defmacro ^:private ge-swap-copy [queue method a b]
   `(when (< 0 (.count ~a))
@@ -303,6 +302,98 @@
          ~queue nil)
         nil))))
 
+;; =============== Common TR matrix macros and functions ==========================
+
+(defmacro ^:private tr-swap-copy [queue stripe-nav method a b]
+  `(when (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (cl-mem (.buffer ~a))
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (cl-mem (.buffer ~b))]
+       (if (= (.order ~a) (.order ~b))
+         (dotimes [j# n#]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+             (with-check error
+               (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+                buff-b# (+ offset-b# (* ld-b# j#) start#) 1 ~queue nil)
+               nil)))
+         (dotimes [j# n#]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+             (with-check error
+               (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+                buff-b# (+ offset-b# j# (* ld-b# start#)) n# ~queue nil)
+               nil)))))))
+
+(defmacro ^:private tr-scal [queue stripe-nav method alpha a]
+  `(when (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld# (.stride ~a)
+           offset# (.offset ~a)
+           buff# (cl-mem (.buffer ~a))]
+       (dotimes [j# n#]
+         (let [start# (.start ~stripe-nav n# j#)
+               n-j# (- (.end ~stripe-nav n# j#) start#)]
+           (with-check error
+             (~method n-j# ~alpha buff# (+ offset# (* ld# j#) start#) 1 ~queue nil)
+             nil))))))
+
+(defmacro ^:private tr-axpy [queue stripe-nav method alpha a b]
+  `(when (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (cl-mem (.buffer ~a))
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (cl-mem (.buffer ~b))]
+       (if (= (.order ~a) (.order ~b))
+         (dotimes [j# n#]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+             (with-check error
+               (~method n-j# ~alpha
+                buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+                buff-b# (+ offset-b# (* ld-b# j#) start#) 1
+                ~queue nil)
+               nil)))
+         (dotimes [j# n#]
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+             (with-check error
+               (~method n-j# ~alpha
+                buff-a# (+ offset-a# j# (* ld-a# start#)) n#
+                buff-b# (+ offset-b# (* ld-b# j#) start#) 1
+                ~queue nil)
+               nil)))))))
+
+(defmacro ^:private tr-mv
+  ([queue method a x]
+   `(with-check error
+      (~method (.order ~a) (.uplo ~a) NO_TRANS (.diag ~a) (.ncols ~a)
+       (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+       (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
+       ~queue nil)
+      nil))
+  ([]
+   `(throw (IllegalArgumentException. "Only in-place mv! is supported for TR matrices."))))
+
+(defmacro ^:private tr-mm
+  ([queue method alpha a b left]
+   `(with-check error
+      (~method (.order ~b) (if ~left LEFT RIGHT) (.uplo ~a)
+       (if (= (.order ~a) (.order ~b)) NO_TRANS TRANS) (.diag ~a) (.mrows ~b) (.ncols ~b)
+       ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+       (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+       ~queue nil)
+      nil))
+  ([]
+   `(throw (IllegalArgumentException. "Only in-place mm! is supported for TR matrices."))))
+
 ;; =============== CLBlast based engines =======================================
 
 (deftype DoubleVectorEngine [ctx queue prog]
@@ -406,7 +497,7 @@
     true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-block-matrix ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
+    (equals-block-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
   BLAS
   (swap [_ a b]
     (ge-swap-copy queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
@@ -440,7 +531,7 @@
     true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-block-matrix ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
+    (equals-block-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
   BLAS
   (swap [_ a b]
     (ge-swap-copy queue CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
@@ -468,7 +559,73 @@
     (ge-mm queue CLBlast/CLBlastSgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
     c))
 
-(deftype CLFactory [ctx queue prog ^DataAccessor da ^BLASPlus vector-eng ^BLAS ge-eng]
+(deftype DoubleTREngine [ctx queue prog]
+  BlockEngine
+  (equals-block [_ a b]
+    #_(equals-block-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b)
+    (= (host a) (host b)));;TODO
+  BLAS
+  (swap [_ a b]
+    (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
+                  CLBlast/CLBlastDswap ^CLTRMatrix a ^CLTRMatrix b)
+    a)
+  (copy [_ a b]
+    (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
+                  CLBlast/CLBlastDcopy ^CLTRMatrix a ^CLTRMatrix b)
+    b)
+  (scal [_ alpha a]
+    (tr-scal queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
+             CLBlast/CLBlastDscal alpha ^CLTRMatrix a)
+    a)
+  (axpy [_ alpha a b]
+    (tr-axpy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
+             CLBlast/CLBlastDaxpy alpha ^CLTRMatrix a ^CLTRMatrix b)
+    b)
+  (mv [this alpha a x beta y]
+    (tr-mv))
+  (mv [_ a x]
+    (tr-mv queue CLBlast/CLBlastDtrmv ^CLTRMatrix a ^CLBlockVector x)
+    x)
+  (mm [this alpha a b beta c]
+    (tr-mm))
+  (mm [_ alpha a b left]
+    (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
+    b))
+
+(deftype FloatTREngine [ctx queue prog]
+  BlockEngine
+  (equals-block [_ a b]
+    #_(equals-block-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b)
+    (= (host a) (host b)))
+  BLAS
+  (swap [_ a b]
+    (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
+                  CLBlast/CLBlastSswap ^CLTRMatrix a ^CLTRMatrix b)
+    a)
+  (copy [_ a b]
+    (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
+                  CLBlast/CLBlastScopy ^CLTRMatrix a ^CLTRMatrix b)
+    b)
+  (scal [_ alpha a]
+    (tr-scal queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
+             CLBlast/CLBlastSscal alpha ^CLTRMatrix a)
+    a)
+  (axpy [_ alpha a b]
+    (tr-axpy queue ^StripeNavigator  (.stripe-nav ^CLTRMatrix a)
+             CLBlast/CLBlastSaxpy alpha ^CLTRMatrix a ^CLTRMatrix b)
+    b)
+  (mv [this alpha a x beta y]
+    (tr-mv))
+  (mv [_ a x]
+    (tr-mv queue CLBlast/CLBlastStrmv ^CLTRMatrix a ^CLBlockVector x)
+    x)
+  (mm [this alpha a b beta c]
+    (tr-mm))
+  (mm [_ alpha a b left]
+    (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
+    b))
+
+(deftype CLFactory [ctx queue prog ^DataAccessor da ^BLASPlus vector-eng ^BLAS ge-eng ^BLAS tr-eng]
   Releaseable
   (release [_]
     (try
@@ -495,14 +652,16 @@
         (.initialize da (.buffer ^Block res)))
       res))
   (create-tr [this n ord uplo diag init]
-    (let-release [res (cl-tr-matrix)]
+    (let-release [res (cl-tr-matrix this n ord uplo diag)]
       (when init
         (.initialize da (.buffer ^Block res)))
       res))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
-    ge-eng))
+    ge-eng)
+  (tr-engine [_]
+    tr-eng))
 
 (let [src [(slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/equals.cl"))]]
 
@@ -513,11 +672,13 @@
       (->CLFactory ctx queue prog
                    (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
                                       double-array wrap-double cblas-double)
-                   (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog))))
+                   (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
+                   (->DoubleTREngine ctx queue prog))))
 
   (defn clblast-float [ctx queue]
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
       (->CLFactory ctx queue prog
                    (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
                                       float-array wrap-float cblas-float)
-                   (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)))))
+                   (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)
+                   (->FloatTREngine ctx queue prog)))))
