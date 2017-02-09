@@ -339,8 +339,7 @@
     n)
   RealChangeable
   (set [x val]
-    (dotimes [i n]
-      (.set da buf (+ ofst (* strd i)) val))
+    (.set eng val x)
     x)
   (set [x i val]
     (.set da buf (+ ofst (* strd i)) val)
@@ -439,7 +438,7 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.protocols.Factory fact
-                       ^RealBufferAccessor da ^BLAS eng ^Boolean master ^ByteBuffer buf ^long m ^long n
+                       ^RealBufferAccessor da ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long m ^long n
                        ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [a]
@@ -532,9 +531,7 @@
   (isAllowed [a i j]
     true)
   (set [a val]
-    (dotimes [j fd]
-      (dotimes [i sd]
-        (.set da buf (+ ofst (* ld j) i) val)))
+    (.set eng val a)
     a)
   (set [a i j val]
     (.set da buf (.index navigator ofst ld i j) val)
@@ -669,7 +666,7 @@
 
 (deftype RealTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
                        ^uncomplicate.neanderthal.protocols.Factory fact ^RealBufferAccessor da
-                       ^BLAS eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long ld
+                       ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long ld
                        ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [a]
@@ -770,12 +767,7 @@
   (isAllowed [a i j]
     (= 2 (.defaultEntry uplo-nav i j)))
   (set [a val]
-    (dotimes [j n]
-      (let [end (.end stripe-nav n j)]
-        (loop [i (.start stripe-nav n j)]
-          (when (< i end)
-            (.set da buf (+ ofst (* ld j) i) val)
-            (recur (inc i))))))
+    (.set eng val a)
     a)
   (set [a i j val]
     (.set da buf (.index navigator ofst ld i j) val)

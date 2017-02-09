@@ -655,16 +655,18 @@
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
    (axpy! 1.0 x y))
-  ([x y z & zs]
-   (if (number? x)
-     (loop [res (axpy! x y z) s zs]
-       (if-let [v (first s)]
-         (let [r (rest s)]
-           (if (number? v)
-             (recur (axpy! v (first r) res) (rest r))
-             (recur (axpy! 1.0 v res) r)))
-         res))
-     (apply axpy! 1.0 x y z zs))))
+  ([alpha x y & zs]
+   (if (number? alpha)
+     (do (axpy! alpha x y)
+         (loop [z (first zs) zs (rest zs)]
+           (if z
+             (if (number? z)
+               (do (axpy! z (first zs) y) (recur (second zs) (rest (rest zs))))
+               (do (axpy! 1.0 z y) (recur (first zs) (rest zs))))
+             y)))
+     (apply axpy! 1.0 alpha x y zs))))
+
+(declare axpby!)
 
 (defn axpy
   "A pure variant of axpy! that does not change any of the arguments.
@@ -682,8 +684,8 @@
   ([x y z w & ws]
    (if (number? x)
      (if (number? z)
-       (let-release [res (zero y)]
-         (apply axpy! x y res z w ws))
+       (let-release [res (copy w)]
+         (apply axpby! x y z res ws))
        (let-release [res (copy z)]
          (apply axpy! x y res w ws)))
      (apply axpy 1.0 x y z w ws))))
@@ -707,6 +709,27 @@
        (if s
          (recur (axpy! 1.0 (first s) res) (next s))
          res)))))
+
+(defn axpby!
+  "TODO"
+  ([alpha x beta y]
+   (if (and (p/compatible? x y) (p/fits? x y))
+     (.axpby ^BLASPlus (p/engine x) alpha x beta y)
+     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
+  ([x beta y]
+   (axpby! 1.0 x beta y))
+  ([x y]
+   (axpy! 1.0 x y))
+  ([alpha x beta y & zs]
+   (if (number? alpha)
+     (do (axpby! alpha x beta y)
+         (loop [z (first zs) zs (rest zs)]
+           (if z
+             (if (number? z)
+               (do (axpy! z (first zs) y) (recur (second zs) (rest (rest zs))))
+               (do (axpy! 1.0 z y) (recur (first zs) (rest zs))))
+             y)))
+     (apply axpby! 1.0 alpha x beta y zs))))
 
 ;;============================== BLAS 2 ========================================
 

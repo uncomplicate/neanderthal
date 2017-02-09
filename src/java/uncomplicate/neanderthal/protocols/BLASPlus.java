@@ -15,4 +15,6 @@ public interface BLASPlus extends BLAS {
     long imin (Vector x);
     Block subcopy (Block x, Block y, long kx, long lx, long ky);
 
+    Block set (Object alpha, Block x);
+    Block axpby (Object alpha, Block x, Object beta, Block y);
 }

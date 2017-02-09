@@ -215,6 +215,33 @@
            (axpy! 2 (vctr factory 1 2 3) y
                   (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
 
+  (facts "BLAS 1 axpby!"
+         (with-release [y (vctr factory [1 2 3])]
+           (axpby! 2.0 (vctr factory [10 20 30]) 2.0 y) => (vctr factory [22 44 66])
+           (identical? (axpby! 3.0 (vctr factory [1 2 3]) 2.0 y) y) => true
+           (axpby! 2.0 (vctr factory [1 2]) 2.0 y) => (throws IllegalArgumentException)
+
+           (axpby! (vctr factory [10 20 30]) 2.0 (vctr factory [1 2 3]))
+           => (vctr factory [12 24 36]))
+
+         (axpby! 2 (vctr factory 1 2 3) 2 (vctr factory 1 2 3)
+                (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7))
+         => (vctr factory 26 35 44)
+
+         (axpby! 2 (vctr factory 1 2 3) 2 (vctr factory 1 2 3) (vctr factory 2 3 4) 4.0)
+         => (throws IllegalArgumentException)
+
+         (axpby! (vctr factory 1 2 3) 2.0 (vctr factory 1 2 3)
+                 (vctr factory 1 2 3) (vctr factory 1 2 3)
+                 (vctr factory 1 2 3))
+         => (axpy! 6 (vctr factory 1 2 3) (vctr factory 3))
+
+         (axpy! 4 "af" (vctr factory 1 2 3) 3 "b" "c") => (throws IllegalArgumentException)
+
+         (with-release [y (vctr factory [1 2 3])]
+           (axpby! 2 (vctr factory 1 2 3) 2.0 y
+                  (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
+
   (facts "BLAS1 axpy"
          (with-release [y (vctr factory [1 2 3])]
            (axpy 2.0 (vctr factory [10 20 30])) => (throws IllegalArgumentException)
