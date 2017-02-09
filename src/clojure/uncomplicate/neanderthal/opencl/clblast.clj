@@ -20,50 +20,19 @@
             [uncomplicate.neanderthal [protocols :refer :all]]
             [uncomplicate.neanderthal.impl.cblas :refer [cblas-float cblas-double]]
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
-  (:import [org.jocl.blast CLBlast Transpose]
+  (:import [org.jocl.blast CLBlast CLBlastStatusCode]
            [uncomplicate.neanderthal.protocols BLAS BLASPlus Vector Matrix Block DataAccessor
             RealOrderNavigator]
            [uncomplicate.neanderthal.opencl.clblock CLBlockVector CLGEMatrix]))
 
 ;; =============== OpenCL and CLBlast error handling functions =================
 
-(defn ^:private dec-clblast-error
-  "Decodes CLBlast error code to a meaningful string.
-  If called with a number that is not recognized as an existing OpenCL error,
-  returns nil."
-  [^long code]
-  (case code
-    -1024 "kNotImplemented"
-    -1022 "kInvalidMatrixA"
-    -1021 "kInvalidMatrixB"
-    -1020 "kInvalidMatrixC"
-    -1019 "kInvalidVectorX"
-    -1018 "kInvalidVectorY"
-    -1017 "kInvalidDimension"
-    -1016 "kInvalidLeadDimA"
-    -1015 "kInvalidLeadDimB"
-    -1014 "kInvalidLeadDimC"
-    -1013 "kInvalidIncrementX"
-    -1012 "kInvalidIncrementY"
-    -1011 "kInsufficientMemoryA"
-    -1010 "kInsufficientMemoryB"
-    -1009 "kInsufficientMemoryC"
-    -1008 "kInsufficientMemoryX"
-    -1007 "kInsufficientMemoryY"
-    -2048 "kKernelLaunchError"
-    -2047 "kKernelRunError"
-    -2046 "kInvalidLocalMemUsage"
-    -2045 "kNoHalfPrecision"
-    -2044 "kNoDoublePrecision"
-    -2043 "kInvalidVectorDot"
-    -2042 "kInsufficientMemoryDot"
-    nil))
-
 (defn ^:private error [^long err-code details]
-  (if-let [err (dec-clblast-error err-code)]
-    (ex-info (format "CLBlast error: %s." err) {:name err :code err-code :type :clblast-error :details details})
-    (let [err (dec-error err-code)]
-      (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
+  (if (< -10000 err-code -1003)
+     (let [err (CLBlastStatusCode/stringFor err-code)]
+       (ex-info (format "CLBlast error: %s." err) {:name err :code err-code :type :clblast-error :details details}))
+     (let [err (dec-error err-code)]
+       (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -296,7 +265,7 @@
   ([queue method alpha a x beta y]
    `(when (< 0 (.count ~a))
       (with-check error
-        (~method (.order ~a) Transpose/kNo (.mrows ~a) (.ncols ~a)
+        (~method (.order ~a) NO_TRANS (.mrows ~a) (.ncols ~a)
          ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
          (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
          ~beta (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
@@ -325,8 +294,8 @@
    `(when (< 0 (.count ~a))
       (with-check error
         (~method (.order ~c)
-         (if (= (.order ~a) (.order ~c)) Transpose/kNo Transpose/kYes)
-         (if (= (.order ~b) (.order ~c)) Transpose/kNo Transpose/kYes)
+         (if (= (.order ~a) (.order ~c)) NO_TRANS TRANS)
+         (if (= (.order ~b) (.order ~c)) NO_TRANS TRANS)
          (.mrows ~a) (.ncols ~b) (.ncols ~a)
          ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
          (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
