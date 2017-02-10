@@ -8,8 +8,9 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.opencl.clblock
-  (:require [uncomplicate.commons.core
-             :refer [Releaseable release let-release with-release wrap-float wrap-double]]
+  (:require [uncomplicate.commons
+             [core :refer [Releaseable release let-release with-release wrap-float wrap-double
+                           Mappable mmap unmap]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal
@@ -37,13 +38,13 @@
   "This operation would be inefficient because it uses memory transfer. Please use transfer! of map-memory to be reminded of that.")
 
 (defn cl-to-host [cl host]
-  (let [mapped-host (map-memory cl :read)]
+  (let [mapped-host (mmap cl :read)]
     (try
       (copy! mapped-host host)
       (finally (unmap cl mapped-host)))))
 
 (defn host-to-cl [host cl]
-  (let [mapped-host (map-memory cl :write-invalidate-region)]
+  (let [mapped-host (mmap cl :write-invalidate-region)]
     (try
       (copy! host mapped-host)
       cl
@@ -213,7 +214,7 @@
   (fold [x]
     (.sum eng x))
   Mappable
-  (map-memory [_ flags]
+  (mmap [_ flags]
     (let [host-fact (native-factory da)
           queue (get-queue da)
           mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
@@ -386,7 +387,7 @@
   (id [a]
     (cl-ge-matrix fact 0 0))
   Mappable
-  (map-memory [a flags]
+  (mmap [a flags]
     (let [host-fact (native-factory da)
           queue (get-queue da)
           mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
@@ -562,7 +563,7 @@
     (cl-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
                   (if (= LOWER fuplo) UPPER LOWER) fdiag))
   Mappable
-  (map-memory [a flags]
+  (mmap [a flags]
     (let [host-fact (native-factory da)
           queue (get-queue da)
           mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))

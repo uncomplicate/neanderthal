@@ -36,10 +36,6 @@
   (compatible? [this other])
   (fits? [this other]))
 
-(defprotocol Mappable
-  (map-memory [this] [this flags])
-  (unmap [this mapped]))
-
 (defprotocol Container
   (raw [this] [this factory])
   (zero [this] [this factory])

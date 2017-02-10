@@ -214,8 +214,7 @@
   [^Vector x ^long k ^long l]
   (if (<= (+ k l) (.dim x))
     (.subvector x k l)
-    (throw (IndexOutOfBoundsException.
-            (format p/VECTOR_BOUNDS_MSG (+ k l) (.dim x))))))
+    (throw (IndexOutOfBoundsException. (format p/VECTOR_BOUNDS_MSG (+ k l) (.dim x))))))
 
 ;; ================= Matrix =======================
 
@@ -250,8 +249,7 @@
   [^Matrix m ^long i]
   (if (< -1 i (.mrows m))
     (.row m i)
-    (throw (IndexOutOfBoundsException.
-            (format p/ROW_COL_MSG "row" i "row" (.mrows m))))))
+    (throw (IndexOutOfBoundsException. (format p/ROW_COL_MSG "row" i "row" (.mrows m))))))
 
 (defn col
   "Returns the j-th column of the matrix m as a vector.
@@ -269,8 +267,7 @@
   [^Matrix m ^long j]
   (if (< -1 j (.ncols m))
     (.col m j)
-    (throw (IndexOutOfBoundsException.
-            (format p/ROW_COL_MSG "col" j "col" (.ncols m))))))
+    (throw (IndexOutOfBoundsException. (format p/ROW_COL_MSG "col" j "col" (.ncols m))))))
 
 (defn cols
   "Returns a lazy sequence of vectors that represent
@@ -307,8 +304,7 @@
             (<= 0 (long j) (+ (long j) (long l)) (.ncols a)))
      (.submatrix a i j k l)
      (throw (IndexOutOfBoundsException.
-             (format "Submatrix %d,%d %d,%d is out of bounds of %dx%d."
-                     i j k l (.mrows a) (.ncols a))))))
+             (format "Submatrix %d,%d %d,%d is out of bounds of %dx%d." i j k l (.mrows a) (.ncols a))))))
   ([^Matrix a k l]
    (submatrix a 0 0 k l)))
 
@@ -347,8 +343,7 @@
   ([^Matrix m ^long i ^long j]
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.boxedEntry m i j)
-     (throw (IndexOutOfBoundsException.
-             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+     (throw (IndexOutOfBoundsException. (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn entry!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
@@ -368,8 +363,7 @@
   ([^Matrix m ^long i ^long j val]
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)) (.isAllowed ^Changeable m i j))
      (.setBoxed ^Changeable m i j val)
-     (throw (IndexOutOfBoundsException.
-             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+     (throw (IndexOutOfBoundsException. (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn alter!
   "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result
@@ -388,8 +382,7 @@
   ([^Matrix m ^long i ^long j f]
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.alter ^Changeable m i j f)
-     (throw (IndexOutOfBoundsException.
-             (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+     (throw (IndexOutOfBoundsException. (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 ;;================== BLAS 1 =======================
 
@@ -499,14 +492,11 @@
   ([x y offset-x length offset-y]
    (if (not (identical? x y))
      (if (p/compatible? x y)
-       (if (<= (long length) (min (- (ecount x) (long offset-x))
-                                  (- (ecount y) (long offset-y))))
-         (.subcopy ^BLASPlus (p/engine x) x y
-                   (long offset-x) (long length) (long offset-y))
+       (if (<= (long length) (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y))))
+         (.subcopy ^BLASPlus (p/engine x) x y (long offset-x) (long length) (long offset-y))
          (throw (IllegalArgumentException.
                  (format p/DIMENSION_MSG length
-                         (min (- (ecount x) (long offset-x))
-                              (- (ecount y) (long offset-y)))))))
+                         (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y)))))))
        (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
      y)))
 
@@ -553,8 +543,7 @@
   "
   ([^Vector x ^Vector y ^double c ^double s]
    (if (and (p/compatible? x y))
-     (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0)
-              (f= 1.0 (+ (pow c 2) (pow s 2))))
+     (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0) (f= 1.0 (+ (pow c 2) (pow s 2))))
        (.rot (p/engine x) x y c s)
        (throw (IllegalArgumentException. "c and s must be sin and cos.")))
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
@@ -808,9 +797,7 @@
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
-   (if (and (p/compatible? a x) (p/compatible? a y)
-            (= (.mrows a) (.dim x))
-            (= (.ncols a) (.dim y)))
+   (if (and (p/compatible? a x) (p/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
      (.rank (p/engine a) alpha x y a)
      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([x y a]
@@ -863,9 +850,7 @@
   "
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
    (if (and (p/compatible? a b) (p/compatible? a c))
-     (if (and (= (.ncols a) (.mrows b))
-              (= (.mrows a) (.mrows c))
-              (= (.ncols b) (.ncols c)))
+     (if (and (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
        (.mm (p/engine a) alpha a b beta c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
