@@ -82,6 +82,17 @@
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
 
+(defn ^:private ge-set [ctx queue prog alpha ^CLGEMatrix a]
+  (if (< 0 (.count a))
+    (let [da (data-accessor a)]
+      (if (and (= (.ld a) (.sd a)) (= 0 (.offset a))
+               (= (* (.mrows a) (.ncols a)) (.count da (.buffer a))))
+        (.initialize da (.buffer a) alpha)
+        (with-release [ge-set-kernel (kernel prog "ge_set")]
+          (set-args! ge-set-kernel (.wrapPrim da alpha)
+                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a)))
+          (enq-nd! queue ge-set-kernel (work-size-2d (.sd a) (.fd a))))))))
+
 ;; =============== Common vector engine  macros and functions ==================
 
 ;; NOTE: rotXX methods are not supported by CLBlast yet
@@ -607,7 +618,7 @@
     true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
+    (equals-ge ctx queue prog a b))
   BLAS
   (swap [_ a b]
     (ge-swap queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
@@ -636,7 +647,7 @@
     c)
   BLASPlus
   (set [_ alpha a]
-    #_(ge-scal-set queue CLBlast/CLBlastDset alpha ^CLGEMatrix a);;TODO CLBlast
+    (ge-set ctx queue prog alpha a)
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby queue CLBlast/CLBlastDaxpy CLBlast/CLBlastDscal alpha ^CLGEMatrix a beta ^CLGEMatrix b)
@@ -648,7 +659,7 @@
     true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
+    (equals-ge ctx queue prog a b))
   BLAS
   (swap [_ a b]
     (ge-swap queue CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
@@ -677,7 +688,7 @@
     c)
   BLASPlus
   (set [_ alpha a]
-    #_(ge-scal-set queue CLBlast/CLBlastSset alpha ^CLGEMatrix a);;TODO CLBlast
+    (ge-set ctx queue prog alpha a)
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby queue CLBlast/CLBlastSaxpy CLBlast/CLBlastSscal alpha ^CLGEMatrix a beta ^CLGEMatrix b)
@@ -686,7 +697,7 @@
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    (equals-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b))
+    (equals-tr ctx queue prog a b))
   BLAS
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
@@ -728,7 +739,7 @@
 (deftype FloatTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    (equals-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b))
+    (equals-tr ctx queue prog a b))
   BLAS
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
@@ -805,7 +816,7 @@
   (tr-engine [_]
     tr-eng))
 
-(let [src [(slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/equals.cl"))]]
+(let [src [(slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/blas-plus.cl"))]]
 
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 

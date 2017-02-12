@@ -87,3 +87,7 @@ __kernel void equals_tr_top_transp (__global uint* eq_flag, const uint unit,
         }
     }
 }
+
+__kernel void ge_set (const REAL val, __global REAL* a, const uint offset_a, const uint ld_a) {
+    a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] = val;
+}

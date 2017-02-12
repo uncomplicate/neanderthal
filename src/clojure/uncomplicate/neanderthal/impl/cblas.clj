@@ -483,7 +483,7 @@
     (tr-scal-set ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sscal alpha ^RealTRMatrix a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpy ^StripeNavigator  (.stripe-nav ^RealTRMatrix a) CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-axpy ^StripeNavigator  (.stripe-nav ^RealTRMatrix a) CBLAS/saxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
     (tr-mv))

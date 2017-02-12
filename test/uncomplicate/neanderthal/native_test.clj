@@ -14,23 +14,9 @@
 
 (block-test/test-all cblas-double)
 (block-test/test-all cblas-float)
+(block-test/test-host cblas-double)
+(block-test/test-host cblas-float)
 (real-test/test-all cblas-double)
 (real-test/test-all cblas-float)
-
-;;TODO move to test-all when OpenCL is implemented
-(block-test/test-tr-functor cblas-double)
-(block-test/test-tr-fold cblas-double)
-(block-test/test-tr-reducible cblas-double)
-(block-test/test-tr-seq cblas-double)
-
-(real-test/test-tr cblas-double)
-(real-test/test-tr-constructor cblas-double)
-(real-test/test-tr-entry cblas-double)
-(real-test/test-tr-entry! cblas-double)
-(real-test/test-tr-bulk-entry! cblas-double)
-(real-test/test-tr-copy cblas-double)
-(real-test/test-tr-swap cblas-double)
-(real-test/test-tr-scal cblas-double)
-(real-test/test-tr-axpy cblas-double)
-(real-test/test-tr-mv cblas-double)
-(real-test/test-tr-mm cblas-double)
+(real-test/test-host cblas-double)
+(real-test/test-host cblas-float)

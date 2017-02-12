@@ -268,7 +268,7 @@
 ;; ================== CL Matrix ============================================
 
 (deftype CLGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.protocols.Factory fact
-                     ^DataAccessor da ^BLAS eng master ^CLBuffer buf ^long m ^long n
+                     ^DataAccessor da ^BLASPlus eng master ^CLBuffer buf ^long m ^long n
                      ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [a]
@@ -352,11 +352,7 @@
   (isAllowed [a i j]
     true)
   (set [a val]
-    (if (and (= ld sd)
-             (= 0 ofst)
-             (= (* m n) (.count da buf)))
-      (.initialize da buf val)
-      (throw (IllegalArgumentException. INEFFICIENT_STRIDE_MSG)))
+    (.set eng val a)
     a)
   (set [_ _ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
@@ -442,7 +438,7 @@
 
 (deftype CLTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
                      ^uncomplicate.neanderthal.protocols.Factory fact ^DataAccessor da
-                     ^BLAS eng master ^CLBuffer buf ^long n ^long ofst ^long ld
+                     ^BLASPlus eng master ^CLBuffer buf ^long n ^long ofst ^long ld
                      ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
