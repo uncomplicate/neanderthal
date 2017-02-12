@@ -22,7 +22,7 @@
             [uncomplicate.neanderthal.opencl.clblock :refer :all])
   (:import [org.jocl.blast CLBlast CLBlastStatusCode]
            [uncomplicate.neanderthal.protocols BLAS BLASPlus Vector Matrix Block DataAccessor
-            RealOrderNavigator StripeNavigator]
+            StripeNavigator]
            [uncomplicate.neanderthal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
 ;; =============== OpenCL and CLBlast error handling functions =================
@@ -34,9 +34,7 @@
      (let [err (dec-error err-code)]
        (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
 
-;; =============== Common vector engine  macros and functions ==================
-
-(defn ^:private equals-block-vector [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
+(defn ^:private equals-vector [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
   (if (< 0 (.dim x))
     (with-release [equals-vector-kernel (kernel prog "equals_vector")
                    eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
@@ -50,27 +48,41 @@
         (= 0 (aget res 0))))
     (= 0 (.dim y))))
 
-(defn ^:private equals-block-ge [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
+(defn ^:private equals-ge [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
   (if (< 0 (.count a))
-    (if (and (= (.order a) (.order b)) (= (.sd a) (.sd b) (.ld a) (.ld b)))
-      (with-release [equals-matrix-kernel (kernel prog "equals_matrix")
-                     eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
-        (let [res (wrap-int 0)]
-          (enq-fill! queue eq-flag-buf res)
-          (set-args! equals-matrix-kernel eq-flag-buf
-                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
-                     (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
-          (enq-nd! queue equals-matrix-kernel (work-size-2d (.mrows a) (.ncols a)))
-          (enq-read! queue eq-flag-buf res)
-          (= 0 (aget res 0))))
-      (let [fd (.fd a)
-            order-nav ^RealOrderNavigator (.navigator a)]
-        (loop [j 0]
-          (if (< j fd);;TODO do this directly with buffers, offsets, and equals-block-vector parts
-            (and (= (.stripe order-nav a j) (.stripe order-nav b j))
-                 (recur (inc j)))
-            true))))
+    (with-release [equals-matrix-kernel (kernel prog (if (= (.order a) (.order b))
+                                                       "equals_ge_no_transp"
+                                                       "equals_ge_transp"))
+                   eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
+      (let [res (wrap-int 0)]
+        (enq-fill! queue eq-flag-buf res)
+        (set-args! equals-matrix-kernel eq-flag-buf
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
+        (enq-nd! queue equals-matrix-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-read! queue eq-flag-buf res)
+        (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
+
+(defn ^:private equals-tr [ctx queue prog ^CLTRMatrix a ^CLTRMatrix b]
+  (if (< 0 (.count a))
+    (let [res (wrap-int 0)
+          bottom (if (= (.order a) COLUMN_MAJOR) (= (.uplo a) LOWER) (= (.uplo a) UPPER))
+          kernel-name (if (= (.order a) (.order b))
+                        (if bottom "equals_tr_bottom" "equals_tr_top")
+                        (if bottom "equals_tr_bottom_transp" "equals_tr_top_transp"))]
+      (with-release [equals-matrix-kernel (kernel prog kernel-name)
+                     eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
+        (enq-fill! queue eq-flag-buf res)
+        (set-args! equals-matrix-kernel eq-flag-buf (wrap-int (.diag a))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
+        (enq-nd! queue equals-matrix-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-read! queue eq-flag-buf res)
+        (= 0 (aget res 0))))
+    (= 0 (.mrows b) (.ncols b))))
+
+;; =============== Common vector engine  macros and functions ==================
 
 ;; NOTE: rotXX methods are not supported by CLBlast yet
 ;; These signatures might change a bit once they are supported
@@ -478,7 +490,7 @@
     true)
   BlockEngine
   (equals-block [_ x y]
-    (equals-block-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
+    (equals-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
   BLAS
   (swap [_ x y]
     (vector-method queue CLBlast/CLBlastDswap ^CLBlockVector x ^CLBlockVector y)
@@ -533,7 +545,7 @@
     true)
   BlockEngine
   (equals-block [_ x y]
-    (equals-block-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
+    (equals-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
   BLAS
   (swap [_ x y]
     (vector-method queue CLBlast/CLBlastSswap ^CLBlockVector x ^CLBlockVector y)
@@ -587,7 +599,7 @@
     true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-block-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
+    (equals-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
   BLAS
   (swap [_ a b]
     (ge-swap-copy queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
@@ -628,7 +640,7 @@
     true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-block-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
+    (equals-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
   BLAS
   (swap [_ a b]
     (ge-swap-copy queue CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
@@ -666,8 +678,7 @@
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    #_(equals-block-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b)
-    (= (host a) (host b)));;TODO
+    (equals-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b))
   BLAS
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
@@ -709,8 +720,7 @@
 (deftype FloatTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    #_(equals-block-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b)
-    (= (host a) (host b)))
+    (equals-tr ctx queue prog ^CLTRMatrix a ^CLTRMatrix b))
   BLAS
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
