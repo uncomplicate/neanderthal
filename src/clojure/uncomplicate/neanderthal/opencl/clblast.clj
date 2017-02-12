@@ -211,7 +211,7 @@
 
 ;; =============== Common GE matrix macros and functions =======================
 
-(defmacro ^:private ge-swap-copy [queue method a b]
+(defmacro ^:private ge-swap [queue method a b]
   `(when (< 0 (.count ~a))
      (let [ld-a# (.stride ~a)
            sd-a# (.sd ~a)
@@ -237,6 +237,14 @@
              (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) fd-b#
               ~queue nil)
              nil))))))
+
+(defmacro ^:private ge-copy [queue method a b]
+  `(when (< 0 (.count ~a))
+     (with-check error
+       (~method (.order ~a) (if (= (.order ~a) (.order ~b)) NO_TRANS TRANS) (.mrows ~a) (.ncols ~a)
+        1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.ld ~a) (cl-mem (.buffer ~b)) (.offset ~b) (.ld ~b)
+        ~queue nil)
+       nil)))
 
 (defmacro ^:private ge-scal-set [queue method alpha a]
   `(when (< 0 (.count ~a))
@@ -602,10 +610,10 @@
     (equals-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
   BLAS
   (swap [_ a b]
-    (ge-swap-copy queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
+    (ge-swap queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-swap-copy queue CLBlast/CLBlastDcopy ^CLGEMatrix a ^CLGEMatrix b)
+    (ge-copy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a ^CLGEMatrix b)
     b)
   (scal [_ alpha a]
     (ge-scal-set queue CLBlast/CLBlastDscal alpha ^CLGEMatrix a)
@@ -643,10 +651,10 @@
     (equals-ge ctx queue prog ^CLGEMatrix a ^CLGEMatrix b))
   BLAS
   (swap [_ a b]
-    (ge-swap-copy queue CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
+    (ge-swap queue CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-swap-copy queue CLBlast/CLBlastScopy ^CLGEMatrix a ^CLGEMatrix b)
+    (ge-copy queue CLBlast/CLBlastSomatcopy ^CLGEMatrix a ^CLGEMatrix b)
     b)
   (scal [_ alpha a]
     (ge-scal-set queue CLBlast/CLBlastSscal alpha ^CLGEMatrix a)
