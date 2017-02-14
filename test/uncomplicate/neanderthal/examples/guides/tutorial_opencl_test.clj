@@ -220,7 +220,7 @@ $code"
         (facts
          "Let's try with 2^20. That's more than a million."
 
-         (asum host-x) => (float 5.49754798E11)
+         (asum host-x) => (float 5.49755322E11)
          #_(println "CPU:")
          #_(with-progress-reporting (quick-bench (asum host-x)))
 
@@ -239,7 +239,7 @@ A million is still smallish, though. Let's get serious. Let's give a vector of
 
 $code"
 
-(with-default
+#_(with-default
   (with-default-engine
     ;; I had to change it to 2^28 because a recent update for my GPU driver caused
     ;; it to complain about insufficient memory, but this is probably a temporary issue.
@@ -254,14 +254,14 @@ currently handle. Java 9 would hopefully increase that."
          ;; note the less precise result in the CPU vector. That's because single
          ;; precision floats are not precise enough for so many accumulations.
          ;; In real life, sometimes you must use doubles in such cases.
-         (asum host-x) => (float 3.6780519E16)
-         #_(println "CPU:")
-         #_(with-progress-reporting (quick-bench (asum host-x)))
+         (asum host-x) => (float 3.6077906E16)
+         (println "CPU:")
+         (with-progress-reporting (quick-bench (asum host-x)))
 
          ;; GPU engine uses doubles for this accumulation, so the result is more precise.
          (asum gpu-x) => (float 3.60287949E16)
-         #_(println "GPU:")
-         #_(with-progress-reporting (quick-bench (do (asum gpu-x) (finish!)))))))))
+         (println "GPU:")
+         (with-progress-reporting (quick-bench (do (asum gpu-x) (finish!)))))))))
 
 "$text
 
@@ -277,7 +277,7 @@ that the main constraint is memory throughput, not computing power.
 
 $code"
 
-(with-default
+#_(with-default
   (with-default-engine
     (let [cnt (long (Math/pow 2 28))]
       (with-release [host-x (fv (range cnt))
@@ -290,12 +290,12 @@ I'll set them to 1GB each because my GPU does not have enough memory to
 hold 4GB of data (it has 4GB total memory)."
 
          (axpy! 3 host-x host-y) => host-y
-         #_(println "CPU:")
-         #_(with-progress-reporting (quick-bench (axpy! 3 host-x host-y)))
+         (println "CPU:")
+         (with-progress-reporting (quick-bench (axpy! 3 host-x host-y)))
 
          (axpy! 3 gpu-x gpu-y) => gpu-y
-         #_(println "GPU:")
-         #_(with-progress-reporting (quick-bench (do (axpy! 3 gpu-x gpu-y) (finish!)))))))))
+         (println "GPU:")
+         (with-progress-reporting (quick-bench (do (axpy! 3 gpu-x gpu-y) (finish!)))))))))
 
 "$text
 
@@ -313,7 +313,7 @@ We'll do a matrix - vector multiplication.
 
 $code"
 
-(with-default
+#_(with-default
   (with-default-engine
     (let [cnt 8192]
       (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
@@ -327,12 +327,12 @@ $code"
 demanding enough."
 
          (mv! 3 host-a host-x 2 host-y) => host-y
-         #_(println "CPU:")
-         #_(with-progress-reporting (quick-bench (mv! 3 host-a host-x 2 host-y)))
+         (println "CPU:")
+         (with-progress-reporting (quick-bench (mv! 3 host-a host-x 2 host-y)))
 
          (mv! 3 gpu-a gpu-x 2 gpu-y) => gpu-y
-         #_(println "GPU:")
-         #_(with-progress-reporting (quick-bench (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish!)))))))))
+         (println "GPU:")
+         (with-progress-reporting (quick-bench (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish!)))))))))
 
 "$text
 
@@ -344,7 +344,7 @@ multiplication and see how that goes.
 
 $code"
 
-(with-default
+#_(with-default
   (with-default-engine
     (let [cnt 8192]
       (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
@@ -357,12 +357,12 @@ $code"
          "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
 
-         #_(println "CPU:")
-         ;;(time (mm! 3 host-a host-b 2 host-c)) => host-c
+         (println "CPU:")
+         (time (mm! 3 host-a host-b 2 host-c)) => host-c
          (mm! 3 gpu-a gpu-b 2 gpu-c) => gpu-c
-         #_(finish!)
-         #_(println "GPU:")
-         #_(time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))))))))
+         (finish!)
+         (println "GPU:")
+         (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))))))))
 
 "$text
 
