@@ -314,25 +314,25 @@ We'll do a matrix - vector multiplication.
 $code"
 
 #_(with-default
-  (with-default-engine
-    (let [cnt 8192]
-      (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
-                     host-x (fv (range cnt))
-                     host-y (copy host-x)
-                     gpu-a (transfer! host-a (clge cnt cnt))
-                     gpu-x (transfer! host-x (clv cnt))
-                     gpu-y (copy gpu-x)]
-        (facts
-         "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
+    (with-default-engine
+      (let [cnt 8192]
+        (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
+                       host-x (fv (range cnt))
+                       host-y (copy host-x)
+                       gpu-a (transfer! host-a (clge cnt cnt))
+                       gpu-x (transfer! host-x (clv cnt))
+                       gpu-y (copy gpu-x)]
+          (facts
+           "Matrix-vector multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
 
-         (mv! 3 host-a host-x 2 host-y) => host-y
-         (println "CPU:")
-         (with-progress-reporting (quick-bench (mv! 3 host-a host-x 2 host-y)))
+           (mv! 3 host-a host-x 2 host-y) => host-y
+           (println "CPU:")
+           (with-progress-reporting (quick-bench (mv! 3 host-a host-x 2 host-y)))
 
-         (mv! 3 gpu-a gpu-x 2 gpu-y) => gpu-y
-         (println "GPU:")
-         (with-progress-reporting (quick-bench (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish!)))))))))
+           (mv! 3 gpu-a gpu-x 2 gpu-y) => gpu-y
+           (println "GPU:")
+           (with-progress-reporting (quick-bench (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish!)))))))))
 
 "$text
 

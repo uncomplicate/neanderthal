@@ -6,15 +6,10 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-public interface BLASPlus extends BLAS {
+public interface RealVector extends Vector {
 
-    Object sum (Vector x);
-    long imax (Vector x);
-    long imin (Vector x);
-    Block subcopy (Block x, Block y, long kx, long lx, long ky);
+    double entry (long i);
 
-    Block set (Object alpha, Block x);
-    Block axpby (Object alpha, Block x, Object beta, Block y);
 }

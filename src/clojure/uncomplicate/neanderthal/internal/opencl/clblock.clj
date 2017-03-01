@@ -7,29 +7,29 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.opencl.clblock
+    uncomplicate.neanderthal.internal.opencl.clblock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release wrap-float wrap-double
                            Mappable mmap unmap]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal
-             [protocols :refer :all]
              [core :refer [transfer! copy!]]
-             [real :refer [entry]]]
-            [uncomplicate.neanderthal.impl.fluokitten
-             :refer [vector-op matrix-op vector-pure matrix-pure]]
-            [uncomplicate.neanderthal.impl.buffer-block
-             :refer [real-block-vector real-ge-matrix real-tr-matrix col-navigator row-navigator
-                     non-unit-upper-nav unit-upper-nav non-unit-lower-nav unit-lower-nav
-                     non-unit-top-navigator unit-top-navigator non-unit-bottom-navigator unit-bottom-navigator]]
-            [uncomplicate.neanderthal.impl.cblas :refer [cblas-float cblas-double]])
+             [real :refer [entry]]
+             [native :refer [native-float native-double]]]
+            [uncomplicate.neanderthal.internal.api :refer :all]
+            [uncomplicate.neanderthal.internal.host
+             [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
+             [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix col-navigator
+                                   row-navigator non-unit-upper-nav unit-upper-nav non-unit-lower-nav
+                                   unit-lower-nav non-unit-top-navigator unit-top-navigator
+                                   non-unit-bottom-navigator unit-bottom-navigator]]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD]
            [uncomplicate.clojurecl.core CLBuffer]
-           [uncomplicate.neanderthal.protocols BLAS BLASPlus DataAccessor Block Vector
+           [uncomplicate.neanderthal.internal.api BLAS BLASPlus DataAccessor Block Vector
             RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable
             RealOrderNavigator UploNavigator StripeNavigator]
-           [uncomplicate.neanderthal.impl.buffer_block RealBlockVector RealGEMatrix RealTRMatrix]))
+           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix RealTRMatrix]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -104,17 +104,17 @@
     host-fact))
 
 (defn cl-float-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float cblas-float))
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float native-float))
 
 (defn cl-double-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double cblas-double))
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double native-double))
 
 (defprotocol BlockEngine
   (equals-block [_ cl-x cl-y]))
 
 ;; =============================================================================
 
-(deftype CLBlockVector [^uncomplicate.neanderthal.protocols.Factory fact
+(deftype CLBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact
                         ^DataAccessor da ^BLASPlus eng master
                         ^CLBuffer buf^long n ^long ofst ^long strd]
   Object
@@ -267,7 +267,7 @@
 
 ;; ================== CL Matrix ============================================
 
-(deftype CLGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.protocols.Factory fact
+(deftype CLGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
                      ^DataAccessor da ^BLASPlus eng master ^CLBuffer buf ^long m ^long n
                      ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
@@ -437,7 +437,7 @@
 ;; ============ OpenCL Triangular Matrix =======================================
 
 (deftype CLTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
-                     ^uncomplicate.neanderthal.protocols.Factory fact ^DataAccessor da
+                     ^uncomplicate.neanderthal.internal.api.Factory fact ^DataAccessor da
                      ^BLASPlus eng master ^CLBuffer buf ^long n ^long ofst ^long ld
                      ^long ord ^long fuplo ^long fdiag]
   Object

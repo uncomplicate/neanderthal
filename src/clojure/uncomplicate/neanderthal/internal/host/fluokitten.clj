@@ -6,16 +6,15 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.impl.fluokitten
+(ns uncomplicate.neanderthal.internal.host.fluokitten
   (:refer-clojure :exclude [accessor])
   (:require [uncomplicate.commons.core :refer [let-release]]
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
-            [uncomplicate.neanderthal
-             [protocols :refer :all]
-             [core :refer [vctr ge copy copy! dim ncols]]])
+            [uncomplicate.neanderthal.core :refer [vctr ge copy copy! dim ncols]]
+            [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
             IFn$DLDD IFn$ODO IFn$OLDO]
-           [uncomplicate.neanderthal.protocols  Block ContiguousBlock
+           [uncomplicate.neanderthal.internal.api  Block ContiguousBlock
             BLASPlus RealVector RealMatrix Vector Matrix GEMatrix RealChangeable]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG

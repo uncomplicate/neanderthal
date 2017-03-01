@@ -6,14 +6,8 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-public interface ContiguousBlock extends Block, Matrix {
-
-    long sd ();
-
-    long fd ();
-
-    long order ();
+public interface GEMatrix extends Block, ContiguousBlock {
 
 }

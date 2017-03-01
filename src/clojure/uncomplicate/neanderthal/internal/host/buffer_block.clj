@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.impl.buffer-block
+(ns uncomplicate.neanderthal.internal.host.buffer-block
   (:require [vertigo
              [core :refer [wrap]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
@@ -14,15 +14,15 @@
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
-             [protocols :refer :all]
              [core :refer [transfer! copy!]]
              [real :refer [entry]]]
-            [uncomplicate.neanderthal.impl.fluokitten :refer :all]
+            [uncomplicate.neanderthal.internal.api :refer :all]
+            [uncomplicate.neanderthal.internal.host.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L]
            [vertigo.bytes ByteSeq]
-           [uncomplicate.neanderthal.protocols BLAS BLASPlus RealBufferAccessor BufferAccessor
+           [uncomplicate.neanderthal.internal.api BLAS BLASPlus RealBufferAccessor BufferAccessor
             DataAccessor Block Vector Matrix RealVector RealMatrix GEMatrix TRMatrix  RealChangeable
             RealOrderNavigator UploNavigator StripeNavigator]))
 
@@ -264,7 +264,7 @@
 
 ;; ============ Real Vector ====================================================
 
-(deftype RealBlockVector [^uncomplicate.neanderthal.protocols.Factory fact ^RealBufferAccessor da
+(deftype RealBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact ^RealBufferAccessor da
                           ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
@@ -437,7 +437,7 @@
 
 ;; =================== Real Matrix =============================================
 
-(deftype RealGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.protocols.Factory fact
+(deftype RealGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
                        ^RealBufferAccessor da ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long m ^long n
                        ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
@@ -665,7 +665,7 @@
 ;; =================== Real Triangular Matrix ==================================
 
 (deftype RealTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
-                       ^uncomplicate.neanderthal.protocols.Factory fact ^RealBufferAccessor da
+                       ^uncomplicate.neanderthal.internal.api.Factory fact ^RealBufferAccessor da
                        ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long ld
                        ^long ord ^long fuplo ^long fdiag]
   Object

@@ -6,14 +6,15 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-public interface Vector {
+public interface RealOrderNavigator {
 
-    long dim ();
-
-    Object boxedEntry (long i);
-
-    Vector subvector (long k, long l);
+    long sd (long m, long n);
+    long fd (long m, long n);
+    long index (long ofst, long ld, long i, long j);
+    double get (RealMatrix a, long i, long j);
+    RealChangeable set (RealChangeable a, long i, long j, double val);
+    Vector stripe (Matrix a, long j);
 
 }

@@ -6,10 +6,13 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-public interface RealVector extends Vector {
+import java.nio.ByteBuffer;
 
-    double entry (long i);
+public interface BufferAccessor extends DataAccessor {
 
+    Object toSeq (ByteBuffer buf, long offset, long stride);
+
+    ByteBuffer slice (ByteBuffer buf, long k, long l);
 }

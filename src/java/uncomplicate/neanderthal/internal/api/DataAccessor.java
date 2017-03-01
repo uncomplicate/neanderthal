@@ -6,16 +6,24 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-import clojure.lang.IFn;
+import java.nio.ByteBuffer;
 
-public interface RealChangeable extends Changeable {
+public interface DataAccessor {
 
-    RealChangeable set (double val);
+    Object entryType ();
 
-    RealChangeable set (long i, long j, double val);
+    long entryWidth ();
 
-    RealChangeable set (long i, double val);
+    long count (Object data);
+
+    Object createDataSource (long n);
+
+    Object initialize (Object data);
+
+    Object initialize (Object data, Object value);
+
+    Object wrapPrim (double data);
 
 }

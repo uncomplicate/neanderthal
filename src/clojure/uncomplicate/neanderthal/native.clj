@@ -8,12 +8,14 @@
 
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.native
-  (:require [uncomplicate.neanderthal.core
-             :refer [vctr ge tr]]
-            [uncomplicate.neanderthal.impl.cblas
-             :refer [cblas-float cblas-double]]))
+  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr]]
+            [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double]]))
 
 ;; ============ Creating real constructs  ==============
+
+(def native-float mkl-float)
+
+(def native-double mkl-double)
 
 (defn fv
   "Creates a native-backed float vector from source.
@@ -45,7 +47,7 @@
   => #<RealBlockVector| float, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   ([source]
-   (vctr cblas-float source))
+   (vctr mkl-float source))
   ([x & xs]
    (fv (cons x xs))))
 
@@ -79,7 +81,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   ([source]
-   (vctr cblas-double source))
+   (vctr mkl-double source))
   ([x & xs]
    (dv (cons x xs))))
 
@@ -103,13 +105,13 @@
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((0.0 0.0 0.0) (0.0 0.0 0.0))<>
   "
   ([^long m ^long n source options]
-   (ge cblas-double m n source options))
+   (ge mkl-double m n source options))
   ([^long m ^long n arg]
-   (ge cblas-double m n arg))
+   (ge mkl-double m n arg))
   ([^long m ^long n]
-   (ge cblas-double m n))
+   (ge mkl-double m n))
   ([a]
-   (ge cblas-double a)))
+   (ge mkl-double a)))
 
 (defn fge
   "Creates a native-backed, dense, column-oriented float mxn matrix from source.
@@ -130,28 +132,28 @@
   => #<GeneralMatrix| float, COL, mxn: 3x2, ld:3>((0.0 0.0 0.0) (0.0 0.0 0.0))<>
   "
   ([^long m ^long n source options]
-   (ge cblas-float m n source options))
+   (ge mkl-float m n source options))
   ([^long m ^long n arg]
-   (ge cblas-float m n arg))
+   (ge mkl-float m n arg))
   ([^long m ^long n]
-   (ge cblas-float m n))
+   (ge mkl-float m n))
   ([a]
-   (ge cblas-float a)))
+   (ge mkl-float a)))
 
 (defn dtr
   "TODO"
   ([^long n source options]
-   (tr cblas-double n source options))
+   (tr mkl-double n source options))
   ([^long n arg]
-   (tr cblas-double n arg))
+   (tr mkl-double n arg))
   ([arg]
-   (tr cblas-double arg)))
+   (tr mkl-double arg)))
 
 (defn ftr
   "TODO"
   ([^long n source options]
-   (tr cblas-float n source options))
+   (tr mkl-float n source options))
   ([^long n arg]
-   (tr cblas-float n arg))
+   (tr mkl-float n arg))
   ([arg]
-   (tr cblas-float arg)))
+   (tr mkl-float arg)))

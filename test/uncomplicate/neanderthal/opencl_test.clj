@@ -10,11 +10,11 @@
   (:require [midje.sweet :refer :all]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.neanderthal
-             [protocols :refer [native-factory data-accessor]]
              [core :refer :all]
              [opencl :refer :all]
-             [math :refer [pow]]])
-  (:import [uncomplicate.neanderthal.protocols Block]))
+             [math :refer [pow]]
+             [block :refer [buffer]]]
+            [uncomplicate.neanderthal.internal.api :refer [native-factory data-accessor]]))
 
 (defn test-clblock [ocl-factory]
   (let [host-factory (native-factory (data-accessor ocl-factory))
@@ -138,9 +138,6 @@
                     cl-y (transfer! host-y (row cl-y-master 1))]
 
        (native (mv! 10 cl-a cl-x 100 cl-y)) => (mv! 10 host-a host-x 100 host-y)))))
-
-(defn buffer [^Block b]
-  (.buffer b))
 
 (defn test-blas3 [ocl-factory]
   (facts

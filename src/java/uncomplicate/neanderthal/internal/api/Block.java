@@ -6,22 +6,16 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-public interface Matrix {
+public interface Block {
 
-    long mrows ();
+    Object buffer ();
 
-    long ncols ();
+    long offset ();
 
-    Vector row (long i);
+    long stride ();
 
-    Vector col (long j);
-
-    Object boxedEntry (long i, long j);
-
-    Matrix transpose ();
-
-    Matrix submatrix (long i, long j, long k, long l);
+    long count ();
 
 }

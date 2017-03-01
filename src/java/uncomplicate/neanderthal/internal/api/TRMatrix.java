@@ -6,10 +6,11 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-public interface RealMatrix extends Matrix {
+public interface TRMatrix extends Block, ContiguousBlock {
 
-    double entry (long i, long j);
+    long uplo ();
 
+    long diag ();
 }

@@ -6,16 +6,14 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-public interface Block {
+import java.nio.ByteBuffer;
 
-    Object buffer ();
+public interface RealBufferAccessor extends BufferAccessor {
 
-    long offset ();
+    double get (ByteBuffer buf, long index);
 
-    long stride ();
-
-    long count ();
+    void set (ByteBuffer buf, long index, double value);
 
 }

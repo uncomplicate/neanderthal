@@ -7,8 +7,8 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.block
-  (:require [uncomplicate.neanderthal.protocols :refer [dec-property]])
-  (:import [uncomplicate.neanderthal.protocols Block ContiguousBlock]))
+  (:require [uncomplicate.neanderthal.internal.api :refer [dec-property]])
+  (:import [uncomplicate.neanderthal.internal.api Block ContiguousBlock]))
 
 (defn buffer [^Block x]
   (.buffer x))

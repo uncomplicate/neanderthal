@@ -6,24 +6,23 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-import java.nio.ByteBuffer;
+import clojure.lang.IFn;
 
-public interface DataAccessor {
+public interface Changeable {
 
-    Object entryType ();
+    boolean isAllowed (long i, long j);
 
-    long entryWidth ();
+    boolean isAllowed (long i);
 
-    long count (Object data);
+    Changeable setBoxed (Number val);
 
-    Object createDataSource (long n);
+    Changeable setBoxed (long i, long j, Number val);
 
-    Object initialize (Object data);
+    Changeable setBoxed (long i, Number val);
 
-    Object initialize (Object data, Object value);
+    Changeable alter (long i, IFn fn);
 
-    Object wrapPrim (double data);
-
+    Changeable alter (long i, long j, IFn fn);
 }

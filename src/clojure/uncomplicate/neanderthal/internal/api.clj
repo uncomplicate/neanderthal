@@ -6,8 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.protocols
-  (:import [uncomplicate.neanderthal.protocols Block]))
+(ns uncomplicate.neanderthal.internal.api)
 
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])

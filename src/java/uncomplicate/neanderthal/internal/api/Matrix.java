@@ -6,23 +6,22 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-import clojure.lang.IFn;
+public interface Matrix {
 
-public interface Changeable {
+    long mrows ();
 
-    boolean isAllowed (long i, long j);
+    long ncols ();
 
-    boolean isAllowed (long i);
+    Vector row (long i);
 
-    Changeable setBoxed (Number val);
+    Vector col (long j);
 
-    Changeable setBoxed (long i, long j, Number val);
+    Object boxedEntry (long i, long j);
 
-    Changeable setBoxed (long i, Number val);
+    Matrix transpose ();
 
-    Changeable alter (long i, IFn fn);
+    Matrix submatrix (long i, long j, long k, long l);
 
-    Changeable alter (long i, long j, IFn fn);
 }

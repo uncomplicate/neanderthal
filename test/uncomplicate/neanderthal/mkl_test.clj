@@ -6,17 +6,16 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.native-test
+(ns uncomplicate.neanderthal.mkl-test
   (:require [uncomplicate.neanderthal.block-test :as block-test]
             [uncomplicate.neanderthal.real-test :as real-test]
-            [uncomplicate.neanderthal.impl.cblas
-             :refer [cblas-float cblas-double]]))
+            [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double]]))
 
-(block-test/test-all cblas-double)
-(block-test/test-all cblas-float)
-(block-test/test-host cblas-double)
-(block-test/test-host cblas-float)
-(real-test/test-all cblas-double)
-(real-test/test-all cblas-float)
-(real-test/test-host cblas-double)
-(real-test/test-host cblas-float)
+(block-test/test-all mkl-double)
+(block-test/test-all mkl-float)
+(block-test/test-host mkl-double)
+(block-test/test-host mkl-float)
+(real-test/test-all mkl-double)
+(real-test/test-all mkl-float)
+(real-test/test-host mkl-double)
+(real-test/test-host mkl-float)

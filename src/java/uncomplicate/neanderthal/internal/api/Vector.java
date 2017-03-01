@@ -6,13 +6,14 @@
 //   the terms of this license.
 //   You must not remove this notice, or any other, from this software.
 
-package uncomplicate.neanderthal.protocols;
+package uncomplicate.neanderthal.internal.api;
 
-import java.nio.ByteBuffer;
+public interface Vector {
 
-public interface BufferAccessor extends DataAccessor {
+    long dim ();
 
-    Object toSeq (ByteBuffer buf, long offset, long stride);
+    Object boxedEntry (long i);
 
-    ByteBuffer slice (ByteBuffer buf, long k, long l);
+    Vector subvector (long k, long l);
+
 }

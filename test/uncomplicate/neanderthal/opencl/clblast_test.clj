@@ -8,8 +8,7 @@
              [block-test :as block-test]
              [real-test :as real-test]
              [opencl-test :as opencl-test]]
-            [uncomplicate.neanderthal.opencl.clblast
-             :refer [clblast-float clblast-double]]))
+            [uncomplicate.neanderthal.internal.opencl.clblast :refer [clblast-float clblast-double]]))
 
 (with-default
   (with-engine clblast-float *command-queue*

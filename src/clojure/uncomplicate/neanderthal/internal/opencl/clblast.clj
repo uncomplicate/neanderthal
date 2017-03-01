@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.opencl.clblast
+    uncomplicate.neanderthal.internal.opencl.clblast
   (:refer-clojure :exclude [accessor])
   (:require [clojure.java.io :as io]
             [uncomplicate.commons.core
@@ -17,13 +17,13 @@
              [constants :refer [dec-error]]
              [utils :refer [with-check]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
-            [uncomplicate.neanderthal [protocols :refer :all]]
-            [uncomplicate.neanderthal.impl.cblas :refer [cblas-float cblas-double]]
-            [uncomplicate.neanderthal.opencl.clblock :refer :all])
+            [uncomplicate.neanderthal.native :refer [native-float native-double]]
+            [uncomplicate.neanderthal.internal.api :refer :all]
+            [uncomplicate.neanderthal.internal.opencl.clblock :refer :all])
   (:import [org.jocl.blast CLBlast CLBlastStatusCode]
-           [uncomplicate.neanderthal.protocols BLAS BLASPlus Vector Matrix Block DataAccessor
+           [uncomplicate.neanderthal.internal.api BLAS BLASPlus Vector Matrix Block DataAccessor
             StripeNavigator]
-           [uncomplicate.neanderthal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
+           [uncomplicate.neanderthal.internal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
 ;; =============== OpenCL and CLBlast error handling functions =================
 
@@ -824,7 +824,7 @@
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)]
       (->CLFactory ctx queue prog
                    (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
-                                      double-array wrap-double cblas-double)
+                                      double-array wrap-double native-double)
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
                    (->DoubleTREngine ctx queue prog))))
 
@@ -832,6 +832,6 @@
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
       (->CLFactory ctx queue prog
                    (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
-                                      float-array wrap-float cblas-float)
+                                      float-array wrap-float native-float)
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)
                    (->FloatTREngine ctx queue prog)))))

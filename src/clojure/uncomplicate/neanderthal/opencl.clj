@@ -13,15 +13,11 @@
             [uncomplicate.clojurecl
              [core :refer [*context* *command-queue* cl-buffer?]]
              [info :refer [queue-context]]]
-            [uncomplicate.neanderthal
-             [protocols :as p]
-             [core :refer [vect? matrix? transfer! vctr ge tr]]]
-            [uncomplicate.neanderthal.impl.cblas
-             :refer [cblas-float cblas-double]]
-            [uncomplicate.neanderthal.opencl
+            [uncomplicate.neanderthal.core :refer [vect? matrix? transfer! vctr ge tr]]
+            [uncomplicate.neanderthal.internal.opencl
              [clblock :refer [->TypedCLAccessor cl-to-host host-to-cl]]
              [clblast :refer [clblast-double clblast-float]]])
-  (:import [uncomplicate.neanderthal.protocols Block DataAccessor]))
+  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
 
 (def ^:dynamic *opencl-factory*)
 

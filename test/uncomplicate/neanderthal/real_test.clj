@@ -10,15 +10,9 @@
   (:require [midje.sweet :refer [facts throws => roughly]]
             [uncomplicate.commons.core :refer [release with-release]]
             [uncomplicate.neanderthal
-             [protocols :refer [data-accessor]]
              [core :refer :all]
-             [math :refer :all]])
-  (:import [uncomplicate.neanderthal.protocols RealBufferAccessor]))
-
-(defn seq-to-buffer [^RealBufferAccessor acc s]
-  (with-release [b (.createDataSource acc (count s))]
-    (reduce (fn [^long i ^double e] (do (.set acc b i e) (inc i))) 0 s)
-    b))
+             [math :refer :all]]
+            [uncomplicate.neanderthal.internal.api :refer [data-accessor]]))
 
 (defn test-group [factory]
   (facts "Group methods."

@@ -37,14 +37,14 @@
   (:require [uncomplicate.commons.core :refer [release let-release]]
             [uncomplicate.fluokitten.core :refer [fmap]]
             [uncomplicate.neanderthal
-             [protocols :as p]
              [math :refer [f= pow sqrt]]
-             [block :refer [ecount]]])
-  (:import [uncomplicate.neanderthal.protocols Vector RealVector Matrix GEMatrix TRMatrix
+             [block :refer [ecount]]]
+            [uncomplicate.neanderthal.internal.api :as api])
+  (:import [uncomplicate.neanderthal.internal.api Vector RealVector Matrix GEMatrix TRMatrix
             BLAS BLASPlus Changeable RealChangeable DataAccessor]))
 
 (defn vect?
-  "Returns true if x implements uncomplicate.neanderthal.protocols.Vector.
+  "Returns true if x implements uncomplicate.neanderthal.internal.api.Vector.
   (vect? (dv 1 2 3)) => true
   (vect? [1 2 3]) => false
   "
@@ -52,7 +52,7 @@
   (instance? Vector x))
 
 (defn matrix?
-  "Returns true if x implements uncomplicate.neanderthal.protocols.Matrix.
+  "Returns true if x implements uncomplicate.neanderthal.internal.api.Matrix.
   (matrix? (dge 3 2 [1 2 3 4 5 6])) => true
   (matrix? [[1 2] [3 4] [5 6]]) => false
   "
@@ -83,11 +83,11 @@
   (transfer (sv [1 2 3]))
   "
   ([factory x]
-   (let-release [res (p/raw x factory)]
+   (let-release [res (api/raw x factory)]
      (transfer! x res)
      res))
   ([x]
-   (p/host x)))
+   (api/host x)))
 
 (defn native
   "Ensures that the data x is in the native main memory,
@@ -97,14 +97,14 @@
     (identical? (native v) v)) => true
   "
   [x]
-  (p/native x))
+  (api/native x))
 
 (defn vctr
   "TODO"
   ([factory source]
    (cond
      (integer? source) (if (<= 0 (long source))
-                         (p/create-vector factory source true)
+                         (api/create-vector factory source true)
                          (throw (IllegalArgumentException.
                                  (format "Vector dimension must be at least 0, but is: %d" source))))
      (number? source) (.set ^RealChangeable (vctr factory 1) 0 source)
@@ -122,7 +122,7 @@
   "TODO"
   ([factory m n source options]
    (if (and (<= 0 (long m)) (<= 0 (long n)))
-     (let-release [res (p/create-ge factory m n (p/enc-order (:order options)) true)]
+     (let-release [res (api/create-ge factory m n (api/enc-order (:order options)) true)]
        (if source
          (transfer! source res)
          res))
@@ -153,8 +153,8 @@
   "TODO"
   ([factory ^long n source options]
    (if (<= 0 n)
-     (let-release [res (p/create-tr factory n (p/enc-order (:order options))
-                                    (p/enc-uplo (:uplo options)) (p/enc-diag (:diag options)) true)]
+     (let-release [res (api/create-tr factory n (api/enc-order (:order options))
+                                    (api/enc-uplo (:uplo options)) (api/enc-diag (:diag options)) true)]
        (if source
          (transfer! source res)
          res))
@@ -175,17 +175,17 @@
   "Returns an uninitialized instance of the same type and dimension(s)
   as x, which can be neanderthal container."
   ([x]
-   (p/raw x))
+   (api/raw x))
   ([factory x]
-   (p/raw x factory)))
+   (api/raw x factory)))
 
 (defn zero
   "Returns an instance of the same type and dimension(s) as the container x,
   filled with 0."
   ([x]
-   (p/zero x))
+   (api/zero x))
   ([factory x]
-   (p/zero x factory)))
+   (api/zero x factory)))
 
 ;; ================= Vector ====================================================
 
@@ -214,7 +214,7 @@
   [^Vector x ^long k ^long l]
   (if (<= (+ k l) (.dim x))
     (.subvector x k l)
-    (throw (IndexOutOfBoundsException. (format p/VECTOR_BOUNDS_MSG (+ k l) (.dim x))))))
+    (throw (IndexOutOfBoundsException. (format api/VECTOR_BOUNDS_MSG (+ k l) (.dim x))))))
 
 ;; ================= Matrix =======================
 
@@ -249,7 +249,7 @@
   [^Matrix m ^long i]
   (if (< -1 i (.mrows m))
     (.row m i)
-    (throw (IndexOutOfBoundsException. (format p/ROW_COL_MSG "row" i "row" (.mrows m))))))
+    (throw (IndexOutOfBoundsException. (format api/ROW_COL_MSG "row" i "row" (.mrows m))))))
 
 (defn col
   "Returns the j-th column of the matrix m as a vector.
@@ -267,7 +267,7 @@
   [^Matrix m ^long j]
   (if (< -1 j (.ncols m))
     (.col m j)
-    (throw (IndexOutOfBoundsException. (format p/ROW_COL_MSG "col" j "col" (.ncols m))))))
+    (throw (IndexOutOfBoundsException. (format api/ROW_COL_MSG "col" j "col" (.ncols m))))))
 
 (defn cols
   "Returns a lazy sequence of vectors that represent
@@ -311,11 +311,11 @@
 (defn subtriangle
   "TODO"
   ([a]
-   (p/subtriangle a p/DEFAULT_UPLO p/DEFAULT_DIAG))
+   (api/subtriangle a api/DEFAULT_UPLO api/DEFAULT_DIAG))
   ([^Matrix a options]
-   (let [uplo (p/enc-uplo (:uplo options))
-         diag (p/enc-diag (:diag options))]
-     (p/subtriangle a uplo diag))))
+   (let [uplo (api/enc-uplo (:uplo options))
+         diag (api/enc-diag (:diag options))]
+     (api/subtriangle a uplo diag))))
 
 (defn trans
   "Transposes matrix m, i.e returns a matrix that has
@@ -343,7 +343,7 @@
   ([^Matrix m ^long i ^long j]
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.boxedEntry m i j)
-     (throw (IndexOutOfBoundsException. (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn entry!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
@@ -363,7 +363,7 @@
   ([^Matrix m ^long i ^long j val]
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)) (.isAllowed ^Changeable m i j))
      (.setBoxed ^Changeable m i j val)
-     (throw (IndexOutOfBoundsException. (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 (defn alter!
   "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result
@@ -382,7 +382,7 @@
   ([^Matrix m ^long i ^long j f]
    (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
      (.alter ^Changeable m i j f)
-     (throw (IndexOutOfBoundsException. (format p/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
 
 ;;================== BLAS 1 =======================
 
@@ -393,9 +393,9 @@
   (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
   "
   [^Vector x ^Vector y]
-  (if (and (p/compatible? x y) (p/fits? x y))
-    (.dot (p/engine x) x y)
-    (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
+  (if (and (api/compatible? x y) (api/fits? x y))
+    (.dot (api/engine x) x y)
+    (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn nrm2
   "BLAS 1: Euclidean norm.
@@ -404,7 +404,7 @@
   (nrm2 (dv 1 2 3)) => 3.7416573867739413
   "
   [x]
-  (.nrm2 (p/engine x) x))
+  (.nrm2 (api/engine x) x))
 
 (defn asum
   "BLAS 1: Sum absolute values.
@@ -413,7 +413,7 @@
   (asum (dv -1 2 -3)) => 6.0
   "
   [x]
-  (.asum (p/engine x) x))
+  (.asum (api/engine x) x))
 
 (defn iamax
   "BLAS 1: The index of the largest absolute value.
@@ -422,7 +422,7 @@
   (iamax (dv 1 -3 2)) => 1
   "
   ^long [x]
-  (.iamax (p/engine x) x))
+  (.iamax (api/engine x) x))
 
 (defn imax
   "BLAS 1+: The index of the largest value.
@@ -431,7 +431,7 @@
   (imax (dv 1 -3 2)) => 2
   "
   ^long [x]
-  (.imax ^BLASPlus (p/engine x) x))
+  (.imax ^BLASPlus (api/engine x) x))
 
 (defn imin
   "BLAS 1+: The index of the smallest value.
@@ -440,7 +440,7 @@
   (imin (dv 1 -3 2)) => 2
   "
   ^long [x]
-  (.imin ^BLASPlus (p/engine x) x))
+  (.imin ^BLASPlus (api/engine x) x))
 
 (defn swp!
   "BLAS 1: Swap vectors or matrices.
@@ -460,9 +460,9 @@
   "
   [x y]
   (if (not (identical? x y))
-    (if (and (p/compatible? x y) (p/fits? x y))
-      (.swap (p/engine x) x y)
-      (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
+    (if (and (api/compatible? x y) (api/fits? x y))
+      (.swap (api/engine x) x y)
+      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
     x))
 
 (defn copy!
@@ -485,19 +485,19 @@
   "
   ([x y]
    (if (not (identical? x y))
-     (if (and (p/compatible? x y) (p/fits? x y))
-       (.copy (p/engine x) x y)
-       (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
+     (if (and (api/compatible? x y) (api/fits? x y))
+       (.copy (api/engine x) x y)
+       (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
      y))
   ([x y offset-x length offset-y]
    (if (not (identical? x y))
-     (if (p/compatible? x y)
+     (if (api/compatible? x y)
        (if (<= (long length) (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y))))
-         (.subcopy ^BLASPlus (p/engine x) x y (long offset-x) (long length) (long offset-y))
+         (.subcopy ^BLASPlus (api/engine x) x y (long offset-x) (long length) (long offset-y))
          (throw (IllegalArgumentException.
-                 (format p/DIMENSION_MSG length
+                 (format api/DIMENSION_MSG length
                          (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y)))))))
-       (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y))))
+       (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
      y)))
 
 (defn copy
@@ -508,10 +508,10 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
   ([x]
-   (let-release [res (p/raw x)]
+   (let-release [res (api/raw x)]
      (copy! x res)))
   ([x offset length]
-   (let-release [res (vctr (p/factory x) length)]
+   (let-release [res (vctr (api/factory x) length)]
      (copy! x res offset length 0))))
 
 (defn scal!
@@ -529,7 +529,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.5 3.0 4.5)<>
   "
   [alpha x]
-  (.scal (p/engine x) alpha x)
+  (.scal (api/engine x) alpha x)
   x)
 
 (defn scal
@@ -542,11 +542,11 @@
   "BLAS 1: Apply plane rotation.
   "
   ([^Vector x ^Vector y ^double c ^double s]
-   (if (and (p/compatible? x y))
+   (if (and (api/compatible? x y))
      (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0) (f= 1.0 (+ (pow c 2) (pow s 2))))
-       (.rot (p/engine x) x y c s)
+       (.rot (api/engine x) x y c s)
        (throw (IllegalArgumentException. "c and s must be sin and cos.")))
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
+     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y ^double c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
@@ -582,16 +582,16 @@
   "
   [^Vector abcs]
   (if (< 3 (.dim abcs))
-    (.rotg (p/engine abcs) abcs)
-    (throw (IllegalArgumentException. (format p/DIMENSION_MSG 4 (.dim abcs))))))
+    (.rotg (api/engine abcs) abcs)
+    (throw (IllegalArgumentException. (format api/DIMENSION_MSG 4 (.dim abcs))))))
 
 (defn rotm!;;TODO docs
   "BLAS 1: Apply modified plane rotation.
   "
   [^Vector x ^Vector y ^Vector param]
-  (if (and (p/compatible? x y) (p/compatible? x param) (p/fits? x y) (< 4 (.dim param)))
-    (.rotm (p/engine x) x y param)
-    (throw (IllegalArgumentException. (format p/ROTM_COND_MSG x y param)))))
+  (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
+    (.rotm (api/engine x) x y param)
+    (throw (IllegalArgumentException. (format api/ROTM_COND_MSG x y param)))))
 
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
@@ -600,9 +600,9 @@
   - param must be a vector of at least 5 entries
   "
   [^Vector d1d2xy ^Vector param]
-  (if (and (p/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
-    (.rotmg (p/engine param) d1d2xy param)
-    (throw (IllegalArgumentException. (format p/ROTMG_COND_MSG d1d2xy param)))))
+  (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
+    (.rotmg (api/engine param) d1d2xy param)
+    (throw (IllegalArgumentException. (format api/ROTMG_COND_MSG d1d2xy param)))))
 
 (defn axpy!
   "BLAS 1: Vector scale and add. Also works on matrices.
@@ -639,9 +639,9 @@
   => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
   "
   ([alpha x y]
-   (if (and (p/compatible? x y) (p/fits? x y))
-     (.axpy (p/engine x) alpha x y)
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
+   (if (and (api/compatible? x y) (api/fits? x y))
+     (.axpy (api/engine x) alpha x y)
+     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
    (axpy! 1.0 x y))
   ([alpha x y & zs]
@@ -702,9 +702,9 @@
 (defn axpby!
   "TODO"
   ([alpha x beta y]
-   (if (and (p/compatible? x y) (p/fits? x y))
-     (.axpby ^BLASPlus (p/engine x) alpha x beta y)
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG x y)))))
+   (if (and (api/compatible? x y) (api/fits? x y))
+     (.axpby ^BLASPlus (api/engine x) alpha x beta y)
+     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x beta y]
    (axpby! 1.0 x beta y))
   ([x y]
@@ -750,18 +750,18 @@
   => #<RealBlockVector| double, n:3, stride:1>(15.0 22.5 30.0)<>
   "
   ([alpha ^Matrix a ^Vector x beta ^Vector y]
-   (if (and (p/compatible? a x) (p/compatible? a y)
+   (if (and (api/compatible? a x) (api/compatible? a y)
             (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
-     (.mv (p/engine a) alpha a x beta y)
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
+     (.mv (api/engine a) alpha a x beta y)
+     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([alpha a x y]
    (mv! alpha a x 1.0 y))
   ([a x y]
    (mv! 1.0 a x 0.0 y))
   ([^Matrix a ^Vector x];;TODO docs
-   (if (and (p/compatible? a x) (= (.ncols a) (.dim x)))
-     (.mv (p/engine a) a x)
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG a x))))))
+   (if (and (api/compatible? a x) (= (.ncols a) (.dim x)))
+     (.mv (api/engine a) a x)
+     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG a x))))))
 
 (defn mv
   "A pure version of mv! that returns the result
@@ -772,7 +772,7 @@
   ([alpha a x y]
    (mv 1.0 a x 1.0 y))
   ([alpha a x]
-   (let-release [res (p/raw (col a 0))]
+   (let-release [res (api/raw (col a 0))]
      (mv! alpha a x 0.0 res)))
   ([a x]
    (if (instance? GEMatrix a)
@@ -797,9 +797,9 @@
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
-   (if (and (p/compatible? a x) (p/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
-     (.rank (p/engine a) alpha x y a)
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
+   (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
+     (.rank (api/engine a) alpha x y a)
+     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([x y a]
    (rank! 1.0 x y a)))
 
@@ -811,7 +811,7 @@
    (let-release [res (copy a)]
      (rank! alpha x y res)))
   ([alpha ^Vector x ^Vector y]
-   (let-release [res (ge (p/factory x) (.dim x) (.dim y))]
+   (let-release [res (ge (api/factory x) (.dim x) (.dim y))]
      (rank! alpha x y res)))
   ([x y]
    (rank 1.0 x y)))
@@ -849,24 +849,24 @@
   => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
-   (if (and (p/compatible? a b) (p/compatible? a c))
+   (if (and (api/compatible? a b) (api/compatible? a c))
      (if (and (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
-       (.mm (p/engine a) alpha a b beta c)
+       (.mm (api/engine a) alpha a b beta c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
                        (.mrows a) (.ncols a) (.mrows b) (.ncols b) (.mrows c) (.ncols c)))))
      (throw (IllegalArgumentException.
-             (format p/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
+             (format api/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
   ([alpha a b c]
    (mm! alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
-   (if (p/compatible? a b)
+   (if (api/compatible? a b)
      (if (= (.ncols a) (.mrows b))
-       (.mm (p/engine a) alpha a b true)
+       (.mm (api/engine a) alpha a b true)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d."
                        (.mrows a) (.ncols a) (.mrows b) (.ncols b)))))
-     (throw (IllegalArgumentException. (format p/INCOMPATIBLE_BLOCKS_MSG a b)))))
+     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG a b)))))
   ([a b]
    (mm! 1.0 a b)))
 
@@ -882,7 +882,7 @@
   ([alpha ^Matrix a ^Matrix b]
    (if (instance? GEMatrix b)
      (if (instance? GEMatrix a)
-       (let-release [res (ge (p/factory b) (.mrows a) (.ncols b))]
+       (let-release [res (ge (api/factory b) (.mrows a) (.ncols b))]
          (mm! alpha a b 1.0 res))
        (let-release [res (copy b)]
          (mm! alpha a res)))
@@ -899,4 +899,4 @@
   (sum (dv -1 2 -3)) => -2.0
   "
   [x]
-  (.sum ^BLASPlus (p/engine x) x))
+  (.sum ^BLASPlus (api/engine x) x))
