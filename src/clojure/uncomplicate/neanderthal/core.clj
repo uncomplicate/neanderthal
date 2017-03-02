@@ -41,7 +41,7 @@
              [block :refer [ecount]]]
             [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api Vector RealVector Matrix GEMatrix TRMatrix
-            BLAS BLASPlus Changeable RealChangeable DataAccessor]))
+            Changeable RealChangeable DataAccessor]))
 
 (defn vect?
   "Returns true if x implements uncomplicate.neanderthal.internal.api.Vector.
@@ -394,7 +394,7 @@
   "
   [^Vector x ^Vector y]
   (if (and (api/compatible? x y) (api/fits? x y))
-    (.dot (api/engine x) x y)
+    (api/dot (api/engine x) x y)
     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
 
 (defn nrm2
@@ -404,7 +404,7 @@
   (nrm2 (dv 1 2 3)) => 3.7416573867739413
   "
   [x]
-  (.nrm2 (api/engine x) x))
+  (api/nrm2 (api/engine x) x))
 
 (defn asum
   "BLAS 1: Sum absolute values.
@@ -413,7 +413,7 @@
   (asum (dv -1 2 -3)) => 6.0
   "
   [x]
-  (.asum (api/engine x) x))
+  (api/asum (api/engine x) x))
 
 (defn iamax
   "BLAS 1: The index of the largest absolute value.
@@ -422,7 +422,7 @@
   (iamax (dv 1 -3 2)) => 1
   "
   ^long [x]
-  (.iamax (api/engine x) x))
+  (api/iamax (api/engine x) x))
 
 (defn imax
   "BLAS 1+: The index of the largest value.
@@ -431,7 +431,7 @@
   (imax (dv 1 -3 2)) => 2
   "
   ^long [x]
-  (.imax ^BLASPlus (api/engine x) x))
+  (api/imax (api/engine x) x))
 
 (defn imin
   "BLAS 1+: The index of the smallest value.
@@ -440,7 +440,7 @@
   (imin (dv 1 -3 2)) => 2
   "
   ^long [x]
-  (.imin ^BLASPlus (api/engine x) x))
+  (api/imin (api/engine x) x))
 
 (defn swp!
   "BLAS 1: Swap vectors or matrices.
@@ -461,7 +461,7 @@
   [x y]
   (if (not (identical? x y))
     (if (and (api/compatible? x y) (api/fits? x y))
-      (.swap (api/engine x) x y)
+      (api/swap (api/engine x) x y)
       (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
     x))
 
@@ -486,14 +486,14 @@
   ([x y]
    (if (not (identical? x y))
      (if (and (api/compatible? x y) (api/fits? x y))
-       (.copy (api/engine x) x y)
+       (api/copy (api/engine x) x y)
        (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
      y))
   ([x y offset-x length offset-y]
    (if (not (identical? x y))
      (if (api/compatible? x y)
        (if (<= (long length) (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y))))
-         (.subcopy ^BLASPlus (api/engine x) x y (long offset-x) (long length) (long offset-y))
+         (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
          (throw (IllegalArgumentException.
                  (format api/DIMENSION_MSG length
                          (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y)))))))
@@ -529,7 +529,7 @@
   => #<RealBlockVector| double, n:3, stride:1>(1.5 3.0 4.5)<>
   "
   [alpha x]
-  (.scal (api/engine x) alpha x)
+  (api/scal (api/engine x) alpha x)
   x)
 
 (defn scal
@@ -544,7 +544,7 @@
   ([^Vector x ^Vector y ^double c ^double s]
    (if (and (api/compatible? x y))
      (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0) (f= 1.0 (+ (pow c 2) (pow s 2))))
-       (.rot (api/engine x) x y c s)
+       (api/rot (api/engine x) x y c s)
        (throw (IllegalArgumentException. "c and s must be sin and cos.")))
      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y ^double c]
@@ -582,7 +582,7 @@
   "
   [^Vector abcs]
   (if (< 3 (.dim abcs))
-    (.rotg (api/engine abcs) abcs)
+    (api/rotg (api/engine abcs) abcs)
     (throw (IllegalArgumentException. (format api/DIMENSION_MSG 4 (.dim abcs))))))
 
 (defn rotm!;;TODO docs
@@ -590,7 +590,7 @@
   "
   [^Vector x ^Vector y ^Vector param]
   (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
-    (.rotm (api/engine x) x y param)
+    (api/rotm (api/engine x) x y param)
     (throw (IllegalArgumentException. (format api/ROTM_COND_MSG x y param)))))
 
 (defn rotmg!
@@ -601,7 +601,7 @@
   "
   [^Vector d1d2xy ^Vector param]
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
-    (.rotmg (api/engine param) d1d2xy param)
+    (api/rotmg (api/engine param) d1d2xy param)
     (throw (IllegalArgumentException. (format api/ROTMG_COND_MSG d1d2xy param)))))
 
 (defn axpy!
@@ -640,7 +640,7 @@
   "
   ([alpha x y]
    (if (and (api/compatible? x y) (api/fits? x y))
-     (.axpy (api/engine x) alpha x y)
+     (api/axpy (api/engine x) alpha x y)
      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x y]
    (axpy! 1.0 x y))
@@ -703,7 +703,7 @@
   "TODO"
   ([alpha x beta y]
    (if (and (api/compatible? x y) (api/fits? x y))
-     (.axpby ^BLASPlus (api/engine x) alpha x beta y)
+     (api/axpby (api/engine x) alpha x beta y)
      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
   ([x beta y]
    (axpby! 1.0 x beta y))
@@ -752,7 +752,7 @@
   ([alpha ^Matrix a ^Vector x beta ^Vector y]
    (if (and (api/compatible? a x) (api/compatible? a y)
             (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
-     (.mv (api/engine a) alpha a x beta y)
+     (api/mv (api/engine a) alpha a x beta y)
      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([alpha a x y]
    (mv! alpha a x 1.0 y))
@@ -760,7 +760,7 @@
    (mv! 1.0 a x 0.0 y))
   ([^Matrix a ^Vector x];;TODO docs
    (if (and (api/compatible? a x) (= (.ncols a) (.dim x)))
-     (.mv (api/engine a) a x)
+     (api/mv (api/engine a) a x)
      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG a x))))))
 
 (defn mv
@@ -798,7 +798,7 @@
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
    (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
-     (.rank (api/engine a) alpha x y a)
+     (api/rank (api/engine a) alpha x y a)
      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([x y a]
    (rank! 1.0 x y a)))
@@ -851,7 +851,7 @@
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
    (if (and (api/compatible? a b) (api/compatible? a c))
      (if (and (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
-       (.mm (api/engine a) alpha a b beta c)
+       (api/mm (api/engine a) alpha a b beta c)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
                        (.mrows a) (.ncols a) (.mrows b) (.ncols b) (.mrows c) (.ncols c)))))
@@ -862,7 +862,7 @@
   ([alpha ^Matrix a ^Matrix b]
    (if (api/compatible? a b)
      (if (= (.ncols a) (.mrows b))
-       (.mm (api/engine a) alpha a b true)
+       (api/mm (api/engine a) alpha a b true)
        (throw (IllegalArgumentException.
                (format "Incompatible dimensions - a:%dx%d, b:%dx%d."
                        (.mrows a) (.ncols a) (.mrows b) (.ncols b)))))
@@ -899,4 +899,4 @@
   (sum (dv -1 2 -3)) => -2.0
   "
   [x]
-  (.sum ^BLASPlus (api/engine x) x))
+  (api/sum (api/engine x) x))

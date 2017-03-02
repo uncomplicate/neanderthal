@@ -26,7 +26,7 @@
                                    non-unit-bottom-navigator unit-bottom-navigator]]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD]
            [uncomplicate.clojurecl.core CLBuffer]
-           [uncomplicate.neanderthal.internal.api BLAS BLASPlus DataAccessor Block Vector
+           [uncomplicate.neanderthal.internal.api DataAccessor Block Vector
             RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable
             RealOrderNavigator UploNavigator StripeNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix RealTRMatrix]))
@@ -115,11 +115,10 @@
 ;; =============================================================================
 
 (deftype CLBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact
-                        ^DataAccessor da ^BLASPlus eng master
-                        ^CLBuffer buf^long n ^long ofst ^long strd]
+                        ^DataAccessor da eng master ^CLBuffer buf^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
-    (-> (hash :CLBlockVector) (hash-combine n) (hash-combine (.nrm2 eng x))))
+    (-> (hash :CLBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))))
   (equals [x y]
     (cond
       (nil? y) false
@@ -212,7 +211,7 @@
     (cl-block-vector fact 0))
   Foldable
   (fold [x]
-    (.sum eng x))
+    (sum eng x))
   Mappable
   (mmap [_ flags]
     (let [host-fact (native-factory da)
@@ -268,12 +267,12 @@
 ;; ================== CL Matrix ============================================
 
 (deftype CLGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
-                     ^DataAccessor da ^BLASPlus eng master ^CLBuffer buf ^long m ^long n
+                     ^DataAccessor da eng master ^CLBuffer buf ^long m ^long n
                      ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [a]
     (-> (hash :CLGEMatrix) (hash-combine m) (hash-combine n)
-        (hash-combine (.nrm2 eng (.stripe navigator a 0)))))
+        (hash-combine (nrm2 eng (.stripe navigator a 0)))))
   (equals [a b]
     (cond
       (nil? b) false
@@ -352,7 +351,7 @@
   (isAllowed [a i j]
     true)
   (set [a val]
-    (.set eng val a)
+    (set-all eng val a)
     a)
   (set [_ _ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
@@ -438,11 +437,11 @@
 
 (deftype CLTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
                      ^uncomplicate.neanderthal.internal.api.Factory fact ^DataAccessor da
-                     ^BLASPlus eng master ^CLBuffer buf ^long n ^long ofst ^long ld
+                     eng master ^CLBuffer buf ^long n ^long ofst ^long ld
                      ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
-    (-> (hash :CLTRMatrix) (hash-combine n) (hash-combine (.nrm2 eng (.stripe navigator this 0)))))
+    (-> (hash :CLTRMatrix) (hash-combine n) (hash-combine (nrm2 eng (.stripe navigator this 0)))))
   (equals [a b]
     (cond
       (nil? b) false

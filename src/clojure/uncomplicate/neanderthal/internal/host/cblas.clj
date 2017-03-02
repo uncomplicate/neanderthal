@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.cblas
-  (:require [uncomplicate.neanderthal.internal.api :refer [engine STRIDE_MSG]])
+  (:require [uncomplicate.neanderthal.internal.api :refer [engine STRIDE_MSG mm]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
            [uncomplicate.neanderthal.internal.api RealVector]))
 
@@ -144,7 +144,7 @@
 (defmacro ge-mm
   ([alpha a b left]
    `(if ~left
-      (.mm (engine ~b) ~alpha ~b ~a false)
+      (mm (engine ~b) ~alpha ~b ~a false)
       (throw (IllegalArgumentException. "In-place mm! is not supported for GE matrices."))))
   ([method alpha a b beta c]
    `(~method (.order ~c)

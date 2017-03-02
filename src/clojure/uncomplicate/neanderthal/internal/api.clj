@@ -8,10 +8,34 @@
 
 (ns uncomplicate.neanderthal.internal.api)
 
+(defprotocol BLAS
+  (iamax [this ^Vector x])
+  (swap [this x y])
+  (copy [this x y])
+  (dot [this x y])
+  (nrm2 [this x])
+  (asum [this x])
+  (rot [this x y c s])
+  (rotg [this abcs])
+  (rotm [this x y params])
+  (rotmg [this d1d2xy param])
+  (scal [this alpha x])
+  (axpy [this alpha x y])
+  (mv [this alpha a x beta y] [this a x])
+  (rank [this alpha x y a])
+  (mm [this alpha a b beta c] [this alpha a b right]))
+
+(defprotocol BLASPlus
+  (sum [this x])
+  (imax [this x])
+  (imin [this x])
+  (subcopy [this x y kx lx ky])
+  (set-all [this alpha x])
+  (axpby [this alpha x beta y]))
+
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
-  (vector-reduce-map [f init g x] [f init g x y]
-    [f init g x y z] [f init g x y z v]))
+  (vector-reduce-map [f init g x] [f init g x y] [f init g x y z] [f init g x y z v]))
 
 (defprotocol Factory
   (create-vector [this n init])
@@ -22,7 +46,7 @@
   (tr-engine [this]))
 
 (defprotocol EngineProvider
-  (engine ^BLAS [this]))
+  (engine [this]))
 
 (defprotocol FactoryProvider
   (factory [this])

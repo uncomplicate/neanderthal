@@ -15,8 +15,7 @@
              [cblas :refer :all]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL]
            [java.nio ByteBuffer DirectByteBuffer]
-           [uncomplicate.neanderthal.internal.api BLAS BLASPlus DataAccessor BufferAccessor
-            StripeNavigator Block RealVector]
+           [uncomplicate.neanderthal.internal.api DataAccessor BufferAccessor StripeNavigator Block RealVector]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealTRMatrix RealGEMatrix]))
 
 ;; ============ Real Vector Engines ============================================
@@ -50,16 +49,18 @@
     (vector-rotmg CBLAS/drotmg ^RealBlockVector d1d2xy ^RealBlockVector param)
     param)
   (scal [_ alpha x]
-    (CBLAS/dscal (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x))
+    (CBLAS/dscal (.dim ^RealBlockVector x)
+                 alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
     x)
   (axpy [_ alpha x y]
-    (CBLAS/daxpy (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x)
-                 (.buffer ^RealBlockVector y) (.offset y) (.stride y))
+    (CBLAS/daxpy (.dim ^RealBlockVector x)
+                 alpha  (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
   BLASPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ kx (.offset x)) (.stride x)
-                 (.buffer ^RealBlockVector y) (+ ky (.offset y)) (.stride y))
+    (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (vector-method CBLAS/dsum ^RealBlockVector x))
@@ -67,16 +68,16 @@
     (vector-imax ^RealBlockVector x))
   (imin [_ x]
     (vector-imin ^RealBlockVector x))
-  (set [_ alpha x]
-    (MKL/dset (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x))
+  (set-all [_ alpha x]
+    (MKL/dset (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
     x)
   (axpby [_ alpha x beta y]
-    (MKL/daxpby (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x)
-                  beta (.buffer ^RealBlockVector y) (.offset y) (.stride y))
+    (MKL/daxpby (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
+                beta (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y))
 
 (deftype FloatVectorEngine []
-    BLAS
+  BLAS
   (swap [_ x y]
     (vector-method CBLAS/sswap ^RealBlockVector x ^RealBlockVector y)
     x)
@@ -104,16 +105,18 @@
     (vector-rotmg CBLAS/srotmg ^RealBlockVector d1d2xy ^RealBlockVector param)
     param)
   (scal [_ alpha x]
-    (CBLAS/sscal (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x))
+    (CBLAS/sscal (.dim ^RealBlockVector x)
+                 alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
     x)
   (axpy [_ alpha x y]
-    (CBLAS/saxpy (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x)
-                 (.buffer ^RealBlockVector y) (.offset y) (.stride y))
+    (CBLAS/saxpy (.dim ^RealBlockVector x)
+                 alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
   BLASPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ kx (.offset x)) (.stride x)
-                 (.buffer ^RealBlockVector y) (+ ky (.offset y)) (.stride y))
+    (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (vector-method CBLAS/ssum ^RealBlockVector x))
@@ -121,12 +124,12 @@
     (vector-imax ^RealBlockVector x))
   (imin [_ x]
     (vector-imin ^RealBlockVector x))
-  (set [_ alpha x]
-    (MKL/sset (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x))
+  (set-all [_ alpha x]
+    (MKL/sset (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
     x)
   (axpby [_ alpha x beta y]
-    (MKL/saxpby (.dim ^RealBlockVector x) alpha (.buffer x) (.offset x) (.stride x)
-                  beta (.buffer ^RealBlockVector y) (.offset y) (.stride y))
+    (MKL/saxpby (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
+                beta (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y))
 
 ;; ================= General Matrix Engines ====================================
@@ -146,20 +149,20 @@
     (ge-axpy CBLAS/daxpy alpha ^RealGEMatrix a ^RealGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
-    (ge-mv CBLAS/dgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
-    y)
+   (ge-mv CBLAS/dgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
+   y)
   (mv [this a x]
-    (ge-mv))
+   (ge-mv))
   (rank [_ alpha x y a]
     (ge-rank CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
   (mm [_ alpha a b left]
-    (ge-mm alpha a b left))
+   (ge-mm alpha a b left))
   (mm [_ alpha a b beta c]
-    (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
-    c)
+   (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
+   c)
   BLASPlus
-  (set [_ alpha a]
+  (set-all [_ alpha a]
     (ge-scal-set MKL/dset alpha ^RealGEMatrix a)
     a)
   (axpby [_ alpha a beta b]
@@ -167,7 +170,7 @@
     b))
 
 (deftype FloatGEEngine []
-    BLAS
+  BLAS
   (swap [_ a b]
     (ge-swap-copy CBLAS/sswap ^RealGEMatrix a ^RealGEMatrix b)
     a)
@@ -181,20 +184,20 @@
     (ge-axpy CBLAS/saxpy alpha ^RealGEMatrix a ^RealGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
-    (ge-mv CBLAS/sgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
-    y)
+   (ge-mv CBLAS/sgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
+   y)
   (mv [this a x]
-    (ge-mv))
+   (ge-mv))
   (rank [_ alpha x y a]
     (ge-rank CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
   (mm [_ alpha a b left]
-    (ge-mm alpha a b left))
+   (ge-mm alpha a b left))
   (mm [_ alpha a b beta c]
-    (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
-    c)
+   (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
+   c)
   BLASPlus
-  (set [_ alpha a]
+  (set-all [_ alpha a]
     (ge-scal-set MKL/sset alpha ^RealGEMatrix a)
     a)
   (axpby [_ alpha a beta b]
@@ -218,17 +221,17 @@
     (tr-axpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-    (tr-mv))
+   (tr-mv))
   (mv [_ a x]
-    (tr-mv CBLAS/dtrmv ^RealTRMatrix a ^RealBlockVector x)
-    x)
+   (tr-mv CBLAS/dtrmv ^RealTRMatrix a ^RealBlockVector x)
+   x)
   (mm [this alpha a b beta c]
-    (tr-mm))
+   (tr-mm))
   (mm [_ alpha a b left]
-    (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
-    b)
+   (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
+   b)
   BLASPlus
-  (set [_ alpha a]
+  (set-all [_ alpha a]
     (tr-scal-set ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/dset alpha ^RealTRMatrix a)
     a)
   (axpby [_ alpha a beta b]
@@ -251,17 +254,17 @@
     (tr-axpy ^StripeNavigator  (.stripe-nav ^RealTRMatrix a) CBLAS/saxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-    (tr-mv))
+   (tr-mv))
   (mv [_ a x]
-    (tr-mv CBLAS/strmv ^RealTRMatrix a ^RealBlockVector x)
-    x)
+   (tr-mv CBLAS/strmv ^RealTRMatrix a ^RealBlockVector x)
+   x)
   (mm [this alpha a b beta c]
-    (tr-mm))
+   (tr-mm))
   (mm [_ alpha a b left]
-    (tr-mm CBLAS/strmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
-    b)
+   (tr-mm CBLAS/strmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
+   b)
   BLASPlus
-  (set [_ alpha a]
+  (set-all [_ alpha a]
     (tr-scal-set ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/sset alpha ^RealTRMatrix a)
     a)
   (axpby [_ alpha a beta b]
@@ -271,7 +274,7 @@
 
 ;; =============== Factories ==================================================
 
-(deftype CblasFactory [^DataAccessor da ^BLASPlus vector-eng ^BLAS ge-eng ^BLAS tr-eng]
+(deftype CblasFactory [^DataAccessor da vector-eng ge-eng tr-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)

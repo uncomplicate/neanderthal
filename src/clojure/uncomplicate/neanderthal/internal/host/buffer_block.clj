@@ -22,7 +22,7 @@
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L]
            [vertigo.bytes ByteSeq]
-           [uncomplicate.neanderthal.internal.api BLAS BLASPlus RealBufferAccessor BufferAccessor
+           [uncomplicate.neanderthal.internal.api RealBufferAccessor BufferAccessor
             DataAccessor Block Vector Matrix RealVector RealMatrix GEMatrix TRMatrix  RealChangeable
             RealOrderNavigator UploNavigator StripeNavigator]))
 
@@ -265,10 +265,10 @@
 ;; ============ Real Vector ====================================================
 
 (deftype RealBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact ^RealBufferAccessor da
-                          ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long strd]
+                          eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
-    (-> (hash :RealBlockVector) (hash-combine n) (hash-combine (.nrm2 eng x))))
+    (-> (hash :RealBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))))
   (equals [x y]
     (cond
       (nil? y) false
@@ -298,7 +298,7 @@
     (create-vector fact n true))
   (host [x]
     (let-release [res (raw x)]
-      (.copy eng x res)))
+      (copy eng x res)))
   (native [x]
     x)
   MemoryContext
@@ -339,7 +339,7 @@
     n)
   RealChangeable
   (set [x val]
-    (.set eng val x)
+    (set-all eng val x)
     x)
   (set [x i val]
     (.set da buf (+ ofst (* strd i)) val)
@@ -375,7 +375,7 @@
     (vector-fmap f x y z v ws))
   Foldable
   (fold [x]
-    (.sum eng x))
+    (sum eng x))
   (fold [x f init]
     (vector-fold f init x))
   (fold [x f init y]
@@ -438,12 +438,12 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
-                       ^RealBufferAccessor da ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long m ^long n
+                       ^RealBufferAccessor da eng ^Boolean master ^ByteBuffer buf ^long m ^long n
                        ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [a]
     (-> (hash :RealGEMatrix) (hash-combine m) (hash-combine n)
-        (hash-combine (.nrm2 eng (.stripe navigator a 0)))))
+        (hash-combine (nrm2 eng (.stripe navigator a 0)))))
   (equals [a b]
     (cond
       (nil? b) false
@@ -490,7 +490,7 @@
     (create-ge fact m n ord true))
   (host [a]
     (let-release [res (raw a)]
-      (.copy eng a res)))
+      (copy eng a res)))
   (native [a]
     a)
   DenseContainer
@@ -531,7 +531,7 @@
   (isAllowed [a i j]
     true)
   (set [a val]
-    (.set eng val a)
+    (set-all eng val a)
     a)
   (set [a i j val]
     (.set da buf (.index navigator ofst ld i j) val)
@@ -666,11 +666,11 @@
 
 (deftype RealTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
                        ^uncomplicate.neanderthal.internal.api.Factory fact ^RealBufferAccessor da
-                       ^BLASPlus eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long ld
+                       eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long ld
                        ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [a]
-    (-> (hash :RealTRMatrix) (hash-combine n) (hash-combine (.nrm2 eng (.stripe navigator a 0)))))
+    (-> (hash :RealTRMatrix) (hash-combine n) (hash-combine (nrm2 eng (.stripe navigator a 0)))))
   (equals [a b]
     (cond
       (nil? b) false
@@ -719,7 +719,7 @@
     (create-tr fact n ord fuplo fdiag true))
   (host [a]
     (let-release [res (raw a)]
-      (.copy eng a res)))
+      (copy eng a res)))
   (native [a]
     a)
   MemoryContext
@@ -767,7 +767,7 @@
   (isAllowed [a i j]
     (= 2 (.defaultEntry uplo-nav i j)))
   (set [a val]
-    (.set eng val a)
+    (set-all eng val a)
     a)
   (set [a i j val]
     (.set da buf (.index navigator ofst ld i j) val)

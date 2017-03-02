@@ -11,11 +11,14 @@
   (:require [uncomplicate.commons.core :refer [let-release]]
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal.core :refer [vctr ge copy copy! dim ncols]]
-            [uncomplicate.neanderthal.internal.api :refer :all])
+            [uncomplicate.neanderthal.internal.api
+             :refer [factory compatible? engine raw subcopy
+                     ReductionFunction vector-reduce vector-reduce-map
+                     DIMENSIONS_MSG INCOMPATIBLE_BLOCKS_MSG dec-property]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
             IFn$DLDD IFn$ODO IFn$OLDO]
            [uncomplicate.neanderthal.internal.api  Block ContiguousBlock
-            BLASPlus RealVector RealMatrix Vector Matrix GEMatrix RealChangeable]))
+            RealVector RealMatrix Vector Matrix GEMatrix RealChangeable]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
   "Matrices should have fitting dimensions.")
@@ -91,7 +94,7 @@
     (loop [pos 0 w x ws ws]
       (when w
         (if (compatible? res w)
-          (.subcopy ^BLASPlus (engine w) w res 0 (dim w) pos)
+          (subcopy (engine w) w res 0 (dim w) pos)
           (throw (UnsupportedOperationException. (format INCOMPATIBLE_BLOCKS_MSG res w))))
         (recur (+ pos (dim w)) (first ws) (next ws))))
     res))
