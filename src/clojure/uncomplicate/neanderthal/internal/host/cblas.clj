@@ -76,7 +76,7 @@
            (dotimes [j# (.fd ~a)]
              (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# (* ld-b# j#)) 1)))
          (dotimes [j# (.fd ~a)]
-           (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) fd-b#))))))
+           (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) ld-b#))))))
 
 (defmacro ge-scal-set [method alpha a]
   `(when (< 0 (.count ~a))
@@ -88,6 +88,21 @@
          (~method (.count ~a) ~alpha buff# offset# 1)
          (dotimes [j# (.fd ~a)]
            (~method sd# ~alpha buff# (+ offset# (* ld# j#)) 1))))))
+
+(defmacro ge-asum [method a]
+  `(if (< 0 (.count ~a))
+     (let [ld# (.stride ~a)
+           sd# (.sd ~a)
+           fd# (.fd ~a)
+           offset# (.offset ~a)
+           buff# (.buffer ~a)]
+       (if (= sd# ld#)
+         (~method (.count ~a) buff# offset# 1)
+         (loop [j# 0 acc# 0.0]
+           (if (< j# fd#)
+             (recur (inc j#) (+ acc# (~method sd# buff# (+ offset# (* ld# j#)) 1)))
+             acc#))))
+     0.0))
 
 (defmacro ge-axpy [method alpha a b]
   `(when (< 0 (.count ~a))
@@ -107,7 +122,7 @@
            (dotimes [j# fd-a#]
              (~method sd-a# ~alpha buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# (* ld-b# j#)) 1)))
          (dotimes [j# fd-b#]
-           (~method sd-a# ~alpha buff-a# (+ offset-a# j#) fd-a# buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
+           (~method sd-b# ~alpha buff-a# (+ offset-a# j#) ld-a# buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
 
 (defmacro ge-axpby [method alpha a beta b]
   `(when (< 0 (.count ~a))
@@ -127,7 +142,7 @@
            (dotimes [j# fd-a#]
              (~method sd-a# ~alpha buff-a# (+ offset-a# (* ld-a# j#)) 1 ~beta buff-b# (+ offset-b# (* ld-b# j#)) 1)))
          (dotimes [j# fd-b#]
-           (~method sd-a# ~alpha buff-a# (+ offset-a# j#) fd-a# ~beta buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
+           (~method sd-b# ~alpha buff-a# (+ offset-a# j#) ld-a# ~beta buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
 
 (defmacro ge-mv
   ([method alpha a x beta y]

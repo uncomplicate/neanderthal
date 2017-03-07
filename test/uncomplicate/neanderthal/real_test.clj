@@ -12,7 +12,7 @@
             [uncomplicate.neanderthal
              [core :refer :all]
              [math :refer :all]]
-            [uncomplicate.neanderthal.internal.api :refer [data-accessor]]))
+            [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]]))
 
 (defn test-group [factory]
   (facts "Group methods."
@@ -286,7 +286,7 @@
          (submatrix (ge factory 3 4 (range 12)) 3 4) => (ge factory 3 4 (range 12))
          (submatrix (ge factory 3 4 (range 12)) 1 1 3 3) => (throws IndexOutOfBoundsException)
 
-         (trans (ge factory 2 3 (range 6))) => (ge factory 3 2 [0 2 4 1 3 5] {:order row})))
+         (trans (ge factory 2 3 (range 6))) => (ge factory 3 2 (range 6) {:order :row})))
 
 (defn test-ge-entry [factory]
   (facts "GE matrix entry."
@@ -309,25 +309,30 @@
 (defn test-ge-copy [factory]
   (facts "BLAS 1 copy! GE matrix"
          (with-release [a (ge factory 2 3 (range 6))
-                        b (ge factory 2 3 (range 7 13))]
+                        b (ge factory 2 3 (range 7 13))
+                        b-row (ge factory 2 3 {:order :row})]
            (identical? (copy! a b) b) => true
            (copy! a b) => (ge factory 2 3 (range 6))
-           (copy (ge factory 2 3 (range 6))) => a)
+           (copy (ge factory 2 3 (range 6))) => a
+           (copy! a b-row) => a)
 
          (copy! (ge factory 2 3 [10 20 30 40 50 60]) (ge factory 2 3 [1 2 3 4 5 6]))
          => (ge factory 2 3 [10 20 30 40 50 60])
 
          (copy! (ge factory 2 3 [1 2 3 4 5 6]) nil) => (throws IllegalArgumentException)
 
-         (copy! (ge factory 2 3 [10 20 30 40 50 60]) (ge factory 2 2))
-         => (throws IllegalArgumentException)))
+         (copy! (ge factory 2 3 [10 20 30 40 50 60]) (ge factory 2 2)) => (throws IllegalArgumentException)))
 
 (defn test-ge-swap [factory]
   (facts
    "BLAS 1 swap! GE matrix"
-   (with-release [a (ge factory 2 3 [1 2 3 4 5 6])]
+   (with-release [a (ge factory 2 3 [1 2 3 4 5 6])
+                  b (ge factory 2 3 (range 7 13))
+                  b-row (ge factory 2 3 [7 9 11 8 10 12] {:order :row})]
      (swp! a (ge factory 2 3)) => a
      (swp! a (ge factory 2 3 [10 20 30 40 50 60])) => (ge factory 2 3 [10 20 30 40 50 60])
+     (swp! a b-row) => b
+
      (swp! a nil) => (throws IllegalArgumentException)
      (identical? (swp! a (ge factory 2 3 [10 20 30 40 50 60])) a) => true
      (swp! a (ge factory 1 2 [10 20])) => (throws IllegalArgumentException))))
@@ -341,7 +346,9 @@
 
 (defn test-ge-axpy [factory]
   (facts "BLAS 1 axpy! GE matrix"
-         (with-release [a (ge factory 3 2 (range 6))]
+         (with-release [a (ge factory 3 2 (range 6))
+                        b (ge factory 3 2 [0 3 1 4 2 5] {:order :row})]
+           (axpy! -1 a b) => (ge factory 3 2)
            (axpy! 2.0 (ge factory 3 2 (range 0 60 10)) a) => (ge factory 3 2 (range 0 121 21))
            (identical? (axpy! 3.0 (ge factory 3 2 (range 6)) a) a) => true
            (axpy! 2.0 (ge factory 2 3 (range 1 7)) a) => (throws IllegalArgumentException)
@@ -512,10 +519,13 @@
 
 (defn test-tr-copy [factory]
   (facts "BLAS 1 copy! TR matrix"
-         (with-release [a (tr factory 3)]
+         (with-release [a (tr factory 3)
+                        b (tr factory 3 (range 6) {:order :column})
+                        b-row (tr factory 3 (range 6) {:order :row})]
            (identical? (copy a) a) => false
            (identical? (copy! (tr factory 3 [1 2 3 4 5 6]) a) a) => true
-           (copy (tr factory 3 [1 2 3 4 5 6])) => a)
+           (copy (tr factory 3 [1 2 3 4 5 6])) => a
+           (copy! b b-row) => b)
 
          (copy! (tr factory 3 [10 20 30 40 50 60]) (tr factory 3 [1 2 3 4 5 6]))
          => (tr factory 3 [10 20 30 40 50 60])
@@ -620,6 +630,38 @@
          (mm 2.0 (tr factory 3 [1 2 3 4 5 6]) (tr factory 3 [1 2 3 4 5 6])
              3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws IllegalArgumentException)))
 
+;; ==================== LAPACK tests =======================================
+
+(defn test-ge-sv [factory]
+  (facts
+   "LAPACK GE sv!"
+
+   (with-release [a (ge factory 5 5 [6.80, -2.11,  5.66,  5.97,  8.23,
+                                     -6.05, -3.30,  5.36, -4.44,  1.08,
+                                     -0.45,  2.58, -2.70,  0.27,  9.04,
+                                     8.32,  2.71,  4.35, -7.17,  2.14,
+                                     -9.67, -5.14, -7.26,  6.08, -6.87])
+                  b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
+                                     -1.56,  4.00, -8.67,  1.75,  2.86,
+                                     9.81, -4.09, -4.57, -8.61,  8.99])
+                  ipiv (vctr (index-factory factory) 5)
+                  solution (ge factory 5 3 [-0.80  -0.39   0.96
+                                            -0.70  -0.55   0.22
+                                            0.59   0.84   1.90
+                                            1.32  -0.10   5.36
+                                            0.57   0.11   4.04]
+                               {:order :row})
+                  lu (ge factory 5 5 [8.23   1.08   9.04   2.14  -6.87
+                                      0.83  -6.94  -7.92   6.55  -3.99
+                                      0.69  -0.67 -14.18   7.24  -5.19
+                                      0.73   0.75   0.02 -13.82  14.19
+                                      -0.26   0.44  -0.59  -0.34  -3.43]
+                         {:order :row})]
+
+     (sv! a b ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
+     (asum (axpy! -1 a lu)) => :lu-diff
+     (asum (axpy! -1 b solution)) => :sol-diff)))
+
 ;; =========================================================================
 (defn test-all [factory]
   (test-group factory)
@@ -665,4 +707,5 @@
   (test-ge-entry! factory)
   (test-tr-entry factory)
   (test-tr-entry! factory)
-  (test-tr-bulk-entry! factory))
+  (test-tr-bulk-entry! factory)
+  (test-ge-sv factory))

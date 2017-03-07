@@ -12,11 +12,105 @@
             [uncomplicate.neanderthal.internal.api :refer :all]
             [uncomplicate.neanderthal.internal.host
              [buffer-block :refer :all]
-             [cblas :refer :all]])
-  (:import [uncomplicate.neanderthal.internal.host CBLAS MKL]
+             [cblas :refer :all]
+             [lapack :refer :all]])
+  (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor BufferAccessor StripeNavigator Block RealVector]
-           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealTRMatrix RealGEMatrix]))
+           [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
+            RealTRMatrix RealGEMatrix]))
+
+;; ============ Integer Vector Engines ============================================
+
+(deftype LongVectorEngine []
+  BLAS
+  (swap [_ x y]
+    (vector-method CBLAS/dswap ^IntegerBlockVector x ^IntegerBlockVector y)
+    x)
+  (copy [_ x y]
+    (vector-method CBLAS/dcopy ^IntegerBlockVector x ^IntegerBlockVector y)
+    y)
+  (dot [_ x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm2 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (asum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (iamax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rot [_ x y c s]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotg [_ abcs]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotm [_ x y param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotmg [_ d1d2xy param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (scal [_ alpha x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (axpy [_ alpha x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  BLASPlus
+  (subcopy [_ x y kx lx ky]
+    (CBLAS/dcopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+    y)
+  (sum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imin [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (set-all [_ alpha x]
+    (MKL/dset (.dim ^IntegerBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
+    x)
+  (axpby [_ alpha x beta y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
+
+(deftype IntVectorEngine []
+  BLAS
+  (swap [_ x y]
+    (vector-method CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
+    x)
+  (copy [_ x y]
+    (vector-method CBLAS/scopy ^IntegerBlockVector x ^IntegerBlockVector y)
+    y)
+  (dot [_ x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm2 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (asum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (iamax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rot [_ x y c s]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotg [_ abcs]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotm [_ x y param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotmg [_ d1d2xy param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (scal [_ alpha x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (axpy [_ alpha x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  BLASPlus
+  (subcopy [_ x y kx lx ky]
+    (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+    y)
+  (sum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imin [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (set-all [_ alpha x]
+    (MKL/sset (.dim ^IntegerBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
+    x)
+  (axpby [_ alpha x beta y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
 
 ;; ============ Real Vector Engines ============================================
 
@@ -145,6 +239,8 @@
   (scal [_ alpha a]
     (ge-scal-set CBLAS/dscal alpha ^RealGEMatrix a)
     a)
+  (asum [_ a]
+    (ge-asum CBLAS/dasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpy CBLAS/daxpy alpha ^RealGEMatrix a ^RealGEMatrix b)
     b)
@@ -167,7 +263,10 @@
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby MKL/daxpby alpha ^RealGEMatrix a beta ^RealGEMatrix b)
-    b))
+    b)
+  Lapack
+  (sv [_ a b ipiv]
+    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
 
 (deftype FloatGEEngine []
   BLAS
@@ -180,6 +279,8 @@
   (scal [_ alpha a]
     (ge-scal-set CBLAS/sscal alpha ^RealGEMatrix a)
     a)
+  (asum [_ a]
+    (ge-asum CBLAS/sasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpy CBLAS/saxpy alpha ^RealGEMatrix a ^RealGEMatrix b)
     b)
@@ -202,7 +303,10 @@
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby MKL/saxpby alpha ^RealGEMatrix a beta ^RealGEMatrix b)
-    b))
+    b)
+  Lapack
+  (sv [_ a b ipiv]
+    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
 
 ;; ================= Triangular Matrix Engines =================================
 
@@ -274,10 +378,17 @@
 
 ;; =============== Factories ==================================================
 
-(deftype CblasFactory [^DataAccessor da vector-eng ge-eng tr-eng]
+(deftype CblasRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
+  FactoryProvider
+  (factory [this]
+    this)
+  (native-factory [this]
+    this)
+  (index-factory [this]
+    @index-fact)
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
@@ -295,10 +406,40 @@
   (tr-engine [_]
     tr-eng))
 
-(def mkl-float
-  (->CblasFactory (->FloatBufferAccessor) (->FloatVectorEngine)
-                  (->FloatGEEngine) (->FloatTREngine)))
+(deftype CblasIntegerFactory [index-fact ^DataAccessor da vector-eng]
+  DataAccessorProvider
+  (data-accessor [_]
+    da)
+  FactoryProvider
+  (factory [this]
+    this)
+  (native-factory [this]
+    this)
+  (index-factory [this]
+    @index-fact)
+  MemoryContext
+  (compatible? [_ o]
+    (compatible? da o))
+  Factory
+  (create-vector [this n _]
+    (integer-block-vector this n))
+  (vector-engine [_]
+    vector-eng))
 
-(def mkl-double
-  (->CblasFactory (->DoubleBufferAccessor) (->DoubleVectorEngine)
-                  (->DoubleGEEngine) (->DoubleTREngine)))
+(let [index-fact (volatile! nil)]
+
+  (def mkl-int
+    (->CblasIntegerFactory index-fact int-accessor (->IntVectorEngine)))
+
+  (def mkl-long
+    (->CblasIntegerFactory index-fact long-accessor (->LongVectorEngine)))
+
+  (def mkl-float
+    (->CblasRealFactory index-fact float-accessor
+                        (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine)))
+
+  (def mkl-double
+    (->CblasRealFactory index-fact double-accessor
+                        (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine)))
+
+  (vreset! index-fact mkl-int))

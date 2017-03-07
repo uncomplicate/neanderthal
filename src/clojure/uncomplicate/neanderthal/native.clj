@@ -9,13 +9,31 @@
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.native
   (:require [uncomplicate.neanderthal.core :refer [vctr ge tr]]
-            [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double]]))
+            [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 ;; ============ Creating real constructs  ==============
 
 (def native-float mkl-float)
 
 (def native-double mkl-double)
+
+(def native-int mkl-int)
+
+(def native-long mkl-long)
+
+(defn iv
+  "TODO"
+  ([source]
+   (vctr mkl-int source))
+  ([x & xs]
+   (iv (cons x xs))))
+
+(defn lv
+  "TODO"
+  ([source]
+   (vctr mkl-long source))
+  ([x & xs]
+   (lv (cons x xs))))
 
 (defn fv
   "Creates a native-backed float vector from source.

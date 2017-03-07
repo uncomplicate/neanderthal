@@ -17,13 +17,12 @@
              [core :refer [transfer! copy!]]
              [real :refer [entry]]
              [native :refer [native-float native-double]]]
-            [uncomplicate.neanderthal.internal.api :refer :all]
+            [uncomplicate.neanderthal.internal
+             [api :refer :all]
+             [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
              [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
-             [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix col-navigator
-                                   row-navigator non-unit-upper-nav unit-upper-nav non-unit-lower-nav
-                                   unit-lower-nav non-unit-top-navigator unit-top-navigator
-                                   non-unit-bottom-navigator unit-bottom-navigator]]])
+             [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix]]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD]
            [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor Block Vector
@@ -402,7 +401,7 @@
                   (.sd navigator m n) (.fd navigator m n) ord)))
   ([fact ^long m ^long n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
-     (cl-ge-matrix fact true buf m n 0 m ord)))
+     (cl-ge-matrix fact true buf m n 0 0 ord)))
   ([fact ^long m ^long n]
    (cl-ge-matrix fact m n DEFAULT_ORDER)))
 

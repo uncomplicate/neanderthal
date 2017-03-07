@@ -33,6 +33,10 @@
   (set-all [this alpha x])
   (axpby [this alpha x beta y]))
 
+(defprotocol Lapack
+  (trf [this a ipiv])
+  (sv [this a b ipiv]))
+
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
   (vector-reduce-map [f init g x] [f init g x y] [f init g x y z] [f init g x y z v]))
@@ -50,14 +54,16 @@
 
 (defprotocol FactoryProvider
   (factory [this])
-  (native-factory [this]))
+  (native-factory [this])
+  (index-factory [this]))
 
 (defprotocol DataAccessorProvider
   (data-accessor ^DataAccessor [this]))
 
 (defprotocol MemoryContext
   (compatible? [this other])
-  (fits? [this other]))
+  (fits? [this other])
+  (fits-navigation? [this other]))
 
 (defprotocol Container
   (raw [this] [this factory])
@@ -199,3 +205,6 @@
   param must have dimension at least 5 and d1d2xy at least 4.
   \nd1d2xy: %s;
   \nparam: %s\n")
+
+(def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
+  "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")

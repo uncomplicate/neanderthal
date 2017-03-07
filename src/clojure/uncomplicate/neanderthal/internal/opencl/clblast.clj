@@ -10,12 +10,12 @@
     uncomplicate.neanderthal.internal.opencl.clblast
   (:refer-clojure :exclude [accessor])
   (:require [clojure.java.io :as io]
-            [uncomplicate.commons.core
-             :refer [Releaseable release let-release with-release wrap-int wrap-double wrap-float]]
+            [uncomplicate.commons
+             [core :refer [Releaseable release let-release with-release wrap-int wrap-double wrap-float]]
+             [utils :refer [with-check]]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [constants :refer [dec-error]]
-             [utils :refer [with-check]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
             [uncomplicate.neanderthal.native :refer [native-float native-double]]
             [uncomplicate.neanderthal.internal.api :refer :all]
@@ -244,7 +244,7 @@
                nil)))
          (dotimes [j# (.fd ~a)]
            (with-check error
-             (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) fd-b#
+             (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) ld-b#
               ~queue nil)
              nil))))))
 
@@ -296,7 +296,7 @@
                nil)))
          (dotimes [j# fd-b#]
            (with-check error
-             (~method sd-a# ~alpha buff-a# (+ offset-a# j#) fd-a# buff-b# (+ offset-b# (* ld-b# j#)) 1
+             (~method sd-b# ~alpha buff-a# (+ offset-a# j#) ld-a# buff-b# (+ offset-b# (* ld-b# j#)) 1
               ~queue nil)
              nil))))))
 
@@ -332,10 +332,10 @@
                nil)))
          (dotimes [j# fd-b#]
            (with-check error
-             (~scal-method sd-a# ~beta buff-b# (+ offset-b# (* ld-b# j#)) 1 ~queue nil)
+             (~scal-method sd-b# ~beta buff-b# (+ offset-b# (* ld-b# j#)) 1 ~queue nil)
              nil)
            (with-check error
-             (~method sd-a# ~alpha buff-a# (+ offset-a# j#) fd-a# buff-b# (+ offset-b# (* ld-b# j#)) 1
+             (~method sd-b# ~alpha buff-a# (+ offset-a# j#) ld-a# buff-b# (+ offset-b# (* ld-b# j#)) 1
               ~queue nil)
              nil))))))
 

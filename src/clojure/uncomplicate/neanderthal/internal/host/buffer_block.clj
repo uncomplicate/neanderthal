@@ -10,32 +10,29 @@
   (:require [vertigo
              [core :refer [wrap]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
-             [structs :refer [float64 float32 wrap-byte-seq]]]
+             [structs :refer [float64 float32 int32 int64 wrap-byte-seq]]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy!]]
              [real :refer [entry]]]
-            [uncomplicate.neanderthal.internal.api :refer :all]
+            [uncomplicate.neanderthal.internal
+             [api :refer :all]
+             [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all]
-            [uncomplicate.commons.core :refer [Releaseable release let-release]])
+            [uncomplicate.commons.core :refer [Releaseable release let-release clean-buffer]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
-           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L]
+           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL]
            [vertigo.bytes ByteSeq]
-           [uncomplicate.neanderthal.internal.api RealBufferAccessor BufferAccessor
-            DataAccessor Block Vector Matrix RealVector RealMatrix GEMatrix TRMatrix  RealChangeable
-            RealOrderNavigator UploNavigator StripeNavigator]))
+           [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
+            DataAccessor Block Vector Matrix RealVector IntegerVector RealMatrix GEMatrix TRMatrix
+            RealChangeable IntegerChangeable RealOrderNavigator UploNavigator StripeNavigator
+            ContiguousBlock]))
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
 
 ;; ============ Realeaseable ===================================================
-
-(defn ^:private clean-buffer [^ByteBuffer buffer]
-  (do
-    (if (.isDirect buffer)
-      (.clean (.cleaner ^DirectByteBuffer buffer)))
-    true))
 
 (extend-type DirectByteBuffer
   Releaseable
@@ -51,131 +48,9 @@
     (let [n (count this)]
       (create-vector fact n false))))
 
-(deftype ColumnRealOrderNavigator []
-  RealOrderNavigator
-  (sd [_ m n]
-    m)
-  (fd [_ m n]
-    n)
-  (index [_ offset ld i j]
-    (+ offset (* ld j) i))
-  (get [_ a i j]
-    (.entry a i j))
-  (set [_ a i j val]
-    (.set a i j val))
-  (stripe [_ a j]
-    (.col a j)))
-
-(deftype RowRealOrderNavigator []
-  RealOrderNavigator
-  (sd [_ m n]
-    n)
-  (fd [_ m n]
-    m)
-  (index [_ offset ld i j]
-    (+ offset (* ld i) j))
-  (get [_ a i j]
-    (.entry a j i))
-  (set [_ a i j val]
-    (.set a j i val))
-  (stripe [_ a i]
-    (.row a i)))
-
-(def col-navigator (ColumnRealOrderNavigator.))
-(def row-navigator (RowRealOrderNavigator.))
-
-(deftype NonUnitLowerNavigator []
-  UploNavigator
-  (colStart [_ _ i]
-    i)
-  (colEnd [_ n _]
-    n)
-  (rowStart [_ _ _]
-    0)
-  (rowEnd [_ n i]
-    (inc i))
-  (defaultEntry [_ i j]
-    (* 2 (Long/signum (inc (Long/signum (- i j)))))))
-
-(deftype UnitLowerNavigator []
-  UploNavigator
-  (colStart [_ _ i]
-    (inc i))
-  (colEnd [_ n _]
-    n)
-  (rowStart [_ _ _]
-    0)
-  (rowEnd [_ _ i]
-    i)
-  (defaultEntry [_ i j]
-    (inc (Long/signum (- i j)))))
-
-(deftype NonUnitUpperNavigator []
-  UploNavigator
-  (colStart [_ _ _]
-    0)
-  (colEnd [_ _ i]
-    (inc i))
-  (rowStart [_ _ i]
-    i)
-  (rowEnd [_ n _]
-    n)
-  (defaultEntry [_ i j]
-    (* 2 (Long/signum (inc (Long/signum (- j i)))))))
-
-(deftype UnitUpperNavigator []
-  UploNavigator
-  (colStart [_ _ _]
-    0)
-  (colEnd [_ _ i]
-    i)
-  (rowStart [_ _ i]
-    (inc i))
-  (rowEnd [_ n _]
-    n)
-  (defaultEntry [_ i j]
-    (inc (Long/signum (- j i)))))
-
-(def non-unit-upper-nav (NonUnitUpperNavigator.))
-(def unit-upper-nav (UnitUpperNavigator.))
-(def non-unit-lower-nav (NonUnitLowerNavigator.))
-(def unit-lower-nav (UnitLowerNavigator.))
-
-(deftype UnitTopNavigator []
-  StripeNavigator
-  (start [_ _ _]
-    0)
-  (end [_ _ i]
-    i))
-
-(deftype NonUnitTopNavigator []
-  StripeNavigator
-  (start [_ _ i]
-    0)
-  (end [_ _ i]
-    (inc i)))
-
-(deftype UnitBottomNavigator []
-  StripeNavigator
-  (start [_ _ i]
-    (inc i))
-  (end [_ n _]
-    n))
-
-(deftype NonUnitBottomNavigator []
-  StripeNavigator
-  (start [_ _ i]
-    i)
-  (end [_ n _]
-    n))
-
-(def non-unit-top-navigator (NonUnitTopNavigator.))
-(def unit-top-navigator (UnitTopNavigator.))
-(def non-unit-bottom-navigator (NonUnitBottomNavigator.))
-(def unit-bottom-navigator (UnitBottomNavigator.))
-
 ;; ================== Declarations ============================================
 
+(declare integer-block-vector)
 (declare real-block-vector)
 (declare real-ge-matrix)
 (declare real-tr-matrix)
@@ -262,6 +137,214 @@
 
 (def double-accessor (->DoubleBufferAccessor))
 
+(deftype IntBufferAccessor []
+  DataAccessor
+  (entryType [_]
+    Integer/TYPE)
+  (entryWidth [_]
+    Integer/BYTES)
+  (count [_ b]
+    (quot (.capacity ^ByteBuffer b) Integer/BYTES))
+  (createDataSource [_ n]
+    (direct-buffer (* Integer/BYTES n)))
+  (initialize [_ b]
+    b)
+  (initialize [this b v]
+    (let [v (double v)
+          strd Integer/BYTES]
+      (dotimes [i (.count this b)]
+        (.putInt ^ByteBuffer b (* strd i) v))
+      b))
+  DataAccessorProvider
+  (data-accessor [this]
+    this)
+  MemoryContext
+  (compatible? [this o]
+    (let [da (data-accessor o)]
+      (or (identical? this da) (instance? IntBufferAccessor da))))
+  BufferAccessor
+  (toSeq [this buf offset stride]
+    (if (< offset (.count this buf))
+      (wrap-byte-seq int32 (* Integer/BYTES stride) (* Integer/BYTES offset) (byte-seq buf))
+      (list)))
+  (slice [_ buf k l]
+    (slice-buffer buf (* Integer/BYTES k) (* Integer/BYTES l)))
+  IntegerBufferAccessor
+  (get [_ buf i]
+    (.getInt buf (* Integer/BYTES i)))
+  (set [_ buf i val]
+    (.putInt buf (* Integer/BYTES i) val)))
+
+(def int-accessor (->IntBufferAccessor))
+
+(deftype LongBufferAccessor []
+  DataAccessor
+  (entryType [_]
+    Long/TYPE)
+  (entryWidth [_]
+    Long/BYTES)
+  (count [_ b]
+    (quot (.capacity ^ByteBuffer b) Long/BYTES))
+  (createDataSource [_ n]
+    (direct-buffer (* Long/BYTES n)))
+  (initialize [_ b]
+    b)
+  (initialize [this b v]
+    (let [v (double v)
+          strd Long/BYTES]
+      (dotimes [i (.count this b)]
+        (.putInt ^ByteBuffer b (* strd i) v))
+      b))
+  DataAccessorProvider
+  (data-accessor [this]
+    this)
+  MemoryContext
+  (compatible? [this o]
+    (let [da (data-accessor o)]
+      (or (identical? this da) (instance? IntBufferAccessor da))))
+  BufferAccessor
+  (toSeq [this buf offset stride]
+    (if (< offset (.count this buf))
+      (wrap-byte-seq int64 (* Long/BYTES stride) (* Long/BYTES offset) (byte-seq buf))
+      (list)))
+  (slice [_ buf k l]
+    (slice-buffer buf (* Long/BYTES k) (* Long/BYTES l)))
+  IntegerBufferAccessor
+  (get [_ buf i]
+    (.getLong buf (* Long/BYTES i)))
+  (set [_ buf i val]
+    (.putLong buf (* Long/BYTES i) val)))
+
+(def long-accessor (->LongBufferAccessor))
+
+;; ============ Integer Vector =================================================
+
+(deftype IntegerBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact ^IntegerBufferAccessor da
+                             eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long strd]
+  Object
+  (hashCode [x]
+    (-> (hash :IntegerBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))));;TODO
+  (equals [x y]
+    (cond
+      (nil? y) false
+      (identical? x y) true
+      (and (instance? IntegerBlockVector y) (compatible? da y) (fits? x y))
+      (loop [i 0]
+        (if (< i n)
+          (and (= (.entry x i) (.entry ^IntegerBlockVector y i)) (recur (inc i)))
+          true))
+      :default false))
+  (toString [_]
+    (format "#IntegerBlockVector[%s, n:%d, offset: %d, stride:%d]" (.entryType da) n ofst strd))
+  Releaseable
+  (release [_]
+    (if master (clean-buffer buf) true))
+  Seqable
+  (seq [_]
+    (take n (.toSeq da buf ofst strd)))
+  Container
+  (raw [_]
+    (integer-block-vector fact n))
+  (raw [_ fact]
+    (create-vector fact n false))
+  (zero [_]
+    (integer-block-vector fact n))
+  (zero [_ fact]
+    (create-vector fact n true))
+  (host [x]
+    (let-release [res (raw x)]
+      (copy eng x res)))
+  (native [x]
+    x)
+  MemoryContext
+  (compatible? [_ y]
+    (compatible? da y))
+  (fits? [_ y]
+    (= n (.dim ^Vector y)))
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  (native-factory [_]
+    (native-factory fact))
+  (index-factory [_]
+    (index-factory fact))
+  DataAccessorProvider
+  (data-accessor [_]
+    da)
+  Block
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    strd)
+  (count [_]
+    n)
+  IFn$LL
+  (invokePrim [x i]
+    (.entry x i))
+  IFn$L
+  (invokePrim [x]
+    n)
+  IFn
+  (invoke [x i]
+    (.entry x i))
+  (invoke [x]
+    n)
+  IntegerChangeable
+  (set [x val]
+    (set-all eng val x)
+    x)
+  (set [x i val]
+    (.set da buf (+ ofst (* strd i)) val)
+    x)
+  (setBoxed [x val]
+    (.set x val))
+  (setBoxed [x i val]
+    (.set x i val))
+  (alter [x i f]
+    (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
+  IntegerVector
+  (dim [_]
+    n)
+  (entry [_ i]
+    (.get da buf (+ ofst (* strd i))))
+  (boxedEntry [x i]
+    (.entry x i))
+  (subvector [_ k l]
+    (integer-block-vector fact false buf l (+ ofst (* k strd)) strd))
+  Monoid
+  (id [x]
+    (integer-block-vector fact 0)))
+
+(defn integer-block-vector
+  ([fact master ^ByteBuffer buf n ofst strd]
+   (IntegerBlockVector. fact (data-accessor fact) (vector-engine fact) master buf n ofst strd))
+  ([fact n]
+   (let-release [buf (.createDataSource (data-accessor fact) n)]
+     (integer-block-vector fact true buf n 0 1))))
+
+(defmethod print-method IntegerBlockVector
+  [^Vector x ^java.io.Writer w]
+  (.write w (format "%s%s" (str x) (pr-str (take 100 (seq x))))))
+
+(defmethod transfer! [IntegerBlockVector IntegerBlockVector]
+  [source destination]
+  (copy! source destination))
+
+(defmethod transfer! [clojure.lang.Sequential IntegerBlockVector]
+  [source ^IntegerBlockVector destination]
+  (let [n (.dim destination)]
+    (loop [i 0 src source]
+      (if (and src (< i n))
+        (do
+          (.set destination i (first src))
+          (recur (inc i) (next src)))
+        destination))))
+
 ;; ============ Real Vector ====================================================
 
 (deftype RealBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact ^RealBufferAccessor da
@@ -313,7 +396,9 @@
   (factory [_]
     fact)
   (native-factory [_]
-    fact)
+    (native-factory fact))
+  (index-factory [_]
+    (index-factory fact))
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -472,7 +557,9 @@
   (factory [_]
     fact)
   (native-factory [_]
-    fact)
+    (native-factory fact))
+  (index-factory [_]
+    (index-factory fact))
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -501,6 +588,8 @@
     (compatible? da b))
   (fits? [_ b]
     (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
+  (fits-navigation? [_ b]
+    (= ord (.order ^ContiguousBlock b)))
   GEMatrix
   (buffer [_]
     buf)
@@ -619,12 +708,12 @@
 (defn real-ge-matrix
   ([fact master buf m n ofst ld ord]
    (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
-     (RealGEMatrix. (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
-                    (ge-engine fact) master buf m n ofst (max (long ld) (.sd navigator m n))
+     (RealGEMatrix. navigator fact (data-accessor fact) (ge-engine fact)
+                    master buf m n ofst (max (long ld) (.sd navigator m n))
                     (.sd navigator m n) (.fd navigator m n) ord)))
   ([fact ^long m ^long n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
-     (real-ge-matrix fact true buf m n 0 m ord)))
+     (real-ge-matrix fact true buf m n 0 0 ord)))
   ([fact ^long m ^long n]
    (real-ge-matrix fact m n DEFAULT_ORDER)))
 
@@ -704,7 +793,9 @@
   (factory [_]
     fact)
   (native-factory [_]
-    fact)
+    (native-factory fact))
+  (index-factory [_]
+    (index-factory fact))
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -727,6 +818,8 @@
     (compatible? da b))
   (fits? [_ b]
     (and (= n (.mrows ^TRMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
+  (fits-navigation? [_ b]
+    (and (= ord (.order ^ContiguousBlock b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
   Monoid
   (id [a]
     (real-tr-matrix fact 0))

@@ -107,7 +107,7 @@
                          (api/create-vector factory source true)
                          (throw (IllegalArgumentException.
                                  (format "Vector dimension must be at least 0, but is: %d" source))))
-     (number? source) (.set ^RealChangeable (vctr factory 1) 0 source)
+     (number? source) (.setBoxed ^Changeable (vctr factory 1) 0 source)
      :default (transfer factory source)))
   ([factory x & xs]
    (vctr factory (cons x xs))))
@@ -900,3 +900,29 @@
   "
   [x]
   (api/sum (api/engine x) x))
+
+;; ============================= LAPACK =======================================
+
+(defn sv!
+  "TODO"
+  ([^Matrix a ^Matrix b ^Vector ipiv]
+   (if (api/fits-navigation? a b)
+     (let [info (api/sv (api/engine a) a b ipiv)]
+       (cond
+         (= 0 info) ipiv
+         (< 0 (long info)) (throw (IllegalArgumentException. "TODO Illegal i"))
+         :else (throw (RuntimeException. "TODO Singular, no solution"))))
+     (throw (IllegalArgumentException. "TODO"))))
+  ([^Matrix a ^Matrix b]
+   (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
+     (sv! a b ipiv))))
+
+(defn sv
+  "TODO"
+  [^Matrix a ^Matrix b]
+  (let-release [a-copy (copy a)
+                b-copy (copy b)
+                ipiv (sv! a-copy b-copy)]
+    {:trf a-copy
+     :solution b-copy
+     :ipiv ipiv}))
