@@ -60,7 +60,22 @@
 
 ;; =============== Common GE matrix macros and functions =======================
 
-(defmacro ge-swap-copy [method a b]
+(defmacro ge-asum [method a]
+  `(if (< 0 (.count ~a))
+     (let [ld# (.stride ~a)
+           sd# (.sd ~a)
+           fd# (.fd ~a)
+           offset# (.offset ~a)
+           buff# (.buffer ~a)]
+       (if (= sd# ld#)
+         (~method (.count ~a) buff# offset# 1)
+         (loop [j# 0 acc# 0.0]
+           (if (< j# fd#)
+             (recur (inc j#) (+ acc# (~method sd# buff# (+ offset# (* ld# j#)) 1)))
+             acc#))))
+     0.0))
+
+(defmacro ge-swap [method a b]
   `(when (< 0 (.count ~a))
      (let [ld-a# (.stride ~a)
            sd-a# (.sd ~a)
@@ -78,7 +93,7 @@
          (dotimes [j# (.fd ~a)]
            (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) ld-b#))))))
 
-(defmacro ge-scal-set [method alpha a]
+(defmacro ge-set-all [method alpha a]
   `(when (< 0 (.count ~a))
      (let [ld# (.stride ~a)
            sd# (.sd ~a)
@@ -88,61 +103,6 @@
          (~method (.count ~a) ~alpha buff# offset# 1)
          (dotimes [j# (.fd ~a)]
            (~method sd# ~alpha buff# (+ offset# (* ld# j#)) 1))))))
-
-(defmacro ge-asum [method a]
-  `(if (< 0 (.count ~a))
-     (let [ld# (.stride ~a)
-           sd# (.sd ~a)
-           fd# (.fd ~a)
-           offset# (.offset ~a)
-           buff# (.buffer ~a)]
-       (if (= sd# ld#)
-         (~method (.count ~a) buff# offset# 1)
-         (loop [j# 0 acc# 0.0]
-           (if (< j# fd#)
-             (recur (inc j#) (+ acc# (~method sd# buff# (+ offset# (* ld# j#)) 1)))
-             acc#))))
-     0.0))
-
-(defmacro ge-axpy [method alpha a b]
-  `(when (< 0 (.count ~a))
-     (let [ld-a# (.stride ~a)
-           sd-a# (.sd ~a)
-           fd-a# (.fd ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           sd-b# (.sd ~b)
-           fd-b# (.fd ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (if (= sd-a# sd-b# ld-a# ld-b#)
-           (~method (.count ~a) ~alpha buff-a# offset-a# 1 buff-b# offset-b# 1)
-           (dotimes [j# fd-a#]
-             (~method sd-a# ~alpha buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# (* ld-b# j#)) 1)))
-         (dotimes [j# fd-b#]
-           (~method sd-b# ~alpha buff-a# (+ offset-a# j#) ld-a# buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
-
-(defmacro ge-axpby [method alpha a beta b]
-  `(when (< 0 (.count ~a))
-     (let [ld-a# (.stride ~a)
-           sd-a# (.sd ~a)
-           fd-a# (.fd ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           sd-b# (.sd ~b)
-           fd-b# (.fd ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (if (= sd-a# sd-b# ld-a# ld-b#)
-           (~method (.count ~a) ~alpha buff-a# offset-a# 1 ~beta buff-b# offset-b# 1)
-           (dotimes [j# fd-a#]
-             (~method sd-a# ~alpha buff-a# (+ offset-a# (* ld-a# j#)) 1 ~beta buff-b# (+ offset-b# (* ld-b# j#)) 1)))
-         (dotimes [j# fd-b#]
-           (~method sd-b# ~alpha buff-a# (+ offset-a# j#) ld-a# ~beta buff-b# (+ offset-b# (* ld-b# j#)) 1))))))
 
 (defmacro ge-mv
   ([method alpha a x beta y]

@@ -20,6 +20,31 @@
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
             RealTRMatrix RealGEMatrix]))
 
+;; ===============================================================================
+
+(defmacro ge-copy [method a b]
+  `(when (< 0 (.count ~a))
+     (let [no-trans# (= (.order ~a) (.order ~b))
+           rows# (if no-trans# (.sd ~b) (.fd ~b))
+           cols# (if no-trans# (.fd ~b) (.sd ~b))]
+       (~method (int \c)
+        (int (if no-trans# \n \t)) rows# cols#
+        1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
+
+(defmacro ge-scal [method alpha a]
+  `(when (< 0 (.count ~a))
+     (~method (int \c) (int \n) (.sd ~a) (.fd ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.stride ~a))))
+
+(defmacro ge-axpby [method alpha a beta b]
+  `(when (< 0 (.count ~a))
+     (let [no-trans# (= (.order ~a) (.order ~b))
+           rows# (if no-trans# (.sd ~a) (.fd ~a))
+           cols# (if no-trans# (.fd ~a) (.sd ~a))]
+       (~method (int \c)
+        (int (if no-trans# \n \t)) (int \n) rows# cols#
+        ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) ~beta (.buffer ~b) (.offset ~b) (.stride ~b)
+        (.buffer ~b) (.offset ~b) (.stride ~b)))))
+
 ;; ============ Integer Vector Engines ============================================
 
 (deftype LongVectorEngine []
@@ -231,18 +256,18 @@
 (deftype DoubleGEEngine []
   BLAS
   (swap [_ a b]
-    (ge-swap-copy CBLAS/dswap ^RealGEMatrix a ^RealGEMatrix b)
+    (ge-swap CBLAS/dswap ^RealGEMatrix a ^RealGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-swap-copy CBLAS/dcopy ^RealGEMatrix a ^RealGEMatrix b)
+    (ge-copy MKL/domatcopy ^RealGEMatrix a ^RealGEMatrix b)
     b)
   (scal [_ alpha a]
-    (ge-scal-set CBLAS/dscal alpha ^RealGEMatrix a)
+    (ge-scal MKL/dimatcopy alpha ^RealGEMatrix a)
     a)
   (asum [_ a]
     (ge-asum CBLAS/dasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
-    (ge-axpy CBLAS/daxpy alpha ^RealGEMatrix a ^RealGEMatrix b)
+    (ge-axpby MKL/domatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
    (ge-mv CBLAS/dgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
@@ -259,10 +284,10 @@
    c)
   BLASPlus
   (set-all [_ alpha a]
-    (ge-scal-set MKL/dset alpha ^RealGEMatrix a)
+    (ge-set-all MKL/dset alpha ^RealGEMatrix a)
     a)
   (axpby [_ alpha a beta b]
-    (ge-axpby MKL/daxpby alpha ^RealGEMatrix a beta ^RealGEMatrix b)
+    (ge-axpby MKL/domatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
     b)
   Lapack
   (sv [_ a b ipiv]
@@ -271,18 +296,18 @@
 (deftype FloatGEEngine []
   BLAS
   (swap [_ a b]
-    (ge-swap-copy CBLAS/sswap ^RealGEMatrix a ^RealGEMatrix b)
+    (ge-swap CBLAS/sswap ^RealGEMatrix a ^RealGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-swap-copy CBLAS/scopy ^RealGEMatrix a ^RealGEMatrix b)
+    (ge-copy MKL/somatcopy ^RealGEMatrix a ^RealGEMatrix b)
     b)
   (scal [_ alpha a]
-    (ge-scal-set CBLAS/sscal alpha ^RealGEMatrix a)
+    (ge-scal MKL/simatcopy alpha ^RealGEMatrix a)
     a)
   (asum [_ a]
     (ge-asum CBLAS/sasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
-    (ge-axpy CBLAS/saxpy alpha ^RealGEMatrix a ^RealGEMatrix b)
+    (ge-axpby MKL/somatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
    (ge-mv CBLAS/sgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
@@ -299,10 +324,10 @@
    c)
   BLASPlus
   (set-all [_ alpha a]
-    (ge-scal-set MKL/sset alpha ^RealGEMatrix a)
+    (ge-set-all MKL/sset alpha ^RealGEMatrix a)
     a)
   (axpby [_ alpha a beta b]
-    (ge-axpby MKL/saxpby alpha ^RealGEMatrix a beta ^RealGEMatrix b)
+    (ge-axpby MKL/somatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
     b)
   Lapack
   (sv [_ a b ipiv]
