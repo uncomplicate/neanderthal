@@ -31,7 +31,8 @@
   (imin [this x])
   (subcopy [this x y kx lx ky])
   (set-all [this alpha x])
-  (axpby [this alpha x beta y]))
+  (axpby [this alpha x beta y])
+  (trans [this a]))
 
 (defprotocol Lapack
   (trf [this a ipiv])

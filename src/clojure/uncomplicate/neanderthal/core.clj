@@ -317,6 +317,11 @@
          diag (api/enc-diag (:diag options))]
      (api/subtriangle a uplo diag))))
 
+(defn trans!
+  "TODO"
+  [^Matrix m]
+  (api/trans (api/engine m) m))
+
 (defn trans
   "Transposes matrix m, i.e returns a matrix that has
   m's columns as rows.

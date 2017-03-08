@@ -35,6 +35,10 @@
   `(when (< 0 (.count ~a))
      (~method (int \c) (int \n) (.sd ~a) (.fd ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.stride ~a))))
 
+(defmacro ge-trans [method a]
+  `(when (< 0 (.count ~a))
+     (~method (int \c) (int \t) (.sd ~a) (.fd ~a) 1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.fd ~a))))
+
 (defmacro ge-axpby [method alpha a beta b]
   `(when (< 0 (.count ~a))
      (let [no-trans# (= (.order ~a) (.order ~b))
@@ -289,6 +293,9 @@
   (axpby [_ alpha a beta b]
     (ge-axpby MKL/domatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
     b)
+  (trans [_ a]
+    (ge-trans MKL/dimatcopy ^RealGEMatrix a)
+    a)
   Lapack
   (sv [_ a b ipiv]
     (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
@@ -329,6 +336,9 @@
   (axpby [_ alpha a beta b]
     (ge-axpby MKL/somatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
     b)
+  (trans [_ a]
+    (ge-trans MKL/dimatcopy ^RealGEMatrix a)
+    a)
   Lapack
   (sv [_ a b ipiv]
     (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
