@@ -8,7 +8,24 @@
 
 (ns uncomplicate.neanderthal.internal.host.lapack)
 
+;; ================== Auxiliary LAPACK ==============================================
+
+(defmacro ge-lan [method norm a]
+  `(when (< 0 (.count ~a))
+     (~method (.order ~a) ~norm (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
+
+(defmacro ge-laset [method alpha beta a]
+  `(when (< 0 (.count ~a))
+     (~method (.order ~a) (int \g) (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
+
+;; ================== Singular Value Decomposition LAPACK ==============================================
+
 (defmacro ge-sv
   ([method a b ipiv]
    `(~method (.order ~a) (.ncols ~a) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-     (.buffer ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+     (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+
+(defmacro ge-trf
+  ([method a ipiv]
+   `(~method (.order ~a) (.mrows ~a) (.ncols ~a)
+     (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))

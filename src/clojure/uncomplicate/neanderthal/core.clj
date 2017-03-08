@@ -908,9 +908,29 @@
 
 ;; ============================= LAPACK =======================================
 
+(defn trf!
+  "TODO"
+  ([^Matrix a ^Vector ipiv];;TODO ipiv must be 0-offset and 0-stride
+   (let [info (api/trf (api/engine a) a ipiv)]
+     (cond
+       (= 0 info) ipiv
+       (< 0 (long info)) (throw (IllegalArgumentException. "TODO Illegal i"))
+       :else (throw (RuntimeException. "TODO Singular, no solution")))))
+  ([^Matrix a]
+   (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
+     (trf! a ipiv))))
+
+(defn trf
+  "TODO"
+  [^Matrix a]
+  (let-release [a-copy (copy a)
+                ipiv (trf! a-copy)]
+    {:trf a-copy
+     :ipiv ipiv}))
+
 (defn sv!
   "TODO"
-  ([^Matrix a ^Matrix b ^Vector ipiv]
+  ([^Matrix a ^Matrix b ^Vector ipiv];;TODO ipiv must be 0-offset and 0-stride
    (if (api/fits-navigation? a b)
      (let [info (api/sv (api/engine a) a b ipiv)]
        (cond

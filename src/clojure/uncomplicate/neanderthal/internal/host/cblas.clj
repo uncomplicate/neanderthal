@@ -93,17 +93,6 @@
          (dotimes [j# (.fd ~a)]
            (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) ld-b#))))))
 
-(defmacro ge-set-all [method alpha a]
-  `(when (< 0 (.count ~a))
-     (let [ld# (.stride ~a)
-           sd# (.sd ~a)
-           offset# (.offset ~a)
-           buff# (.buffer ~a)]
-       (if (= sd# ld#)
-         (~method (.count ~a) ~alpha buff# offset# 1)
-         (dotimes [j# (.fd ~a)]
-           (~method sd# ~alpha buff# (+ offset# (* ld# j#)) 1))))))
-
 (defmacro ge-mv
   ([method alpha a x beta y]
    `(~method (.order ~a) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a)

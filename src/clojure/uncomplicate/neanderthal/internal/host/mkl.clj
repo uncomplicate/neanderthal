@@ -270,6 +270,8 @@
     a)
   (asum [_ a]
     (ge-asum CBLAS/dasum ^RealGEMatrix a))
+  (nrm2 [_ a]
+    (ge-lan LAPACK/dlange (long \f) ^RealGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpby MKL/domatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
     b)
@@ -288,7 +290,7 @@
    c)
   BLASPlus
   (set-all [_ alpha a]
-    (ge-set-all MKL/dset alpha ^RealGEMatrix a)
+    (ge-laset LAPACK/dlaset alpha alpha ^RealGEMatrix a)
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby MKL/domatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
@@ -298,7 +300,9 @@
     a)
   Lapack
   (sv [_ a b ipiv]
-    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
+    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trf [_ a ipiv]
+    (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv)))
 
 (deftype FloatGEEngine []
   BLAS
@@ -312,7 +316,9 @@
     (ge-scal MKL/simatcopy alpha ^RealGEMatrix a)
     a)
   (asum [_ a]
-    (ge-asum CBLAS/sasum ^RealGEMatrix a))
+    (ge-asum CBLAS/snrm2 ^RealGEMatrix a))
+  (nrm2 [_ a]
+    (ge-lan LAPACK/slange (long \f) ^RealGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpby MKL/somatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
     b)
@@ -331,7 +337,7 @@
    c)
   BLASPlus
   (set-all [_ alpha a]
-    (ge-set-all MKL/sset alpha ^RealGEMatrix a)
+    (ge-laset LAPACK/slaset alpha alpha ^RealGEMatrix a)
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby MKL/somatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
@@ -341,7 +347,9 @@
     a)
   Lapack
   (sv [_ a b ipiv]
-    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
+    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trf [_ a ipiv]
+    (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv)))
 
 ;; ================= Triangular Matrix Engines =================================
 
