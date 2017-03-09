@@ -49,14 +49,6 @@
         ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) ~beta (.buffer ~b) (.offset ~b) (.stride ~b)
         (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
-(defmacro tr-lacpy [lacpy trans a b]
-  `(do
-     (when-not (= (.order ~a) (.order ~b)) (ge-trans ~trans ~b))
-     (with-lapack-check
-       (~lacpy (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L)) (.mrows ~a) (.ncols ~a)
-        (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
-     (when-not (= (.order ~a) (.order ~b)) (ge-trans ~trans ~b))))
-
 ;; ============ Integer Vector Engines ============================================
 
 (deftype LongVectorEngine []
@@ -367,7 +359,8 @@
     (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-lacpy LAPACK/dlacpy MKL/dimatcopy ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-lacpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/dlacpy CBLAS/dcopy
+              ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
     (tr-lascl LAPACK/dlascl alpha ^RealTRMatrix a)
@@ -402,7 +395,7 @@
     (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-lacpy LAPACK/slacpy MKL/simatcopy ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-lacpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/slacpy CBLAS/scopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
     (tr-lascl LAPACK/slascl alpha ^RealTRMatrix a)
