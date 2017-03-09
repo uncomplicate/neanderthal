@@ -429,6 +429,11 @@
   ^long [x]
   (api/iamax (api/engine x) x))
 
+(defn amax
+  "TODO "
+  [x]
+  (api/amax (api/engine x) x))
+
 (defn imax
   "BLAS 1+: The index of the largest value.
   The index of the first entry that has the maximum value.

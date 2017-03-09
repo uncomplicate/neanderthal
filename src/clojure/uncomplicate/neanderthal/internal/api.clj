@@ -9,7 +9,8 @@
 (ns uncomplicate.neanderthal.internal.api)
 
 (defprotocol BLAS
-  (iamax [this ^Vector x])
+  (amax [this x])
+  (iamax [this x])
   (swap [this x y])
   (copy [this x y])
   (dot [this x y])

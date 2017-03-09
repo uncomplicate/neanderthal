@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.cblas
-  (:require [uncomplicate.neanderthal.internal.api :refer [engine STRIDE_MSG mm]])
+  (:require [uncomplicate.neanderthal.internal.api :refer [engine STRIDE_MSG mm iamax]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
            [uncomplicate.neanderthal.internal.api RealVector]))
 
@@ -28,6 +28,11 @@
   `(if (= 1 (.stride ~param))
      (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param))
      (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~param))))))
+
+(defmacro vector-amax [x]
+  `(if (< 0 (.dim ~x))
+     (Math/abs (.entry ~x (iamax (engine ~x) ~x)))
+     0.0))
 
 (defmacro vector-method
   ([method x]

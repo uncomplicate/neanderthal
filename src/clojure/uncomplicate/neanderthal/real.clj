@@ -78,3 +78,8 @@
   "Primitive wrapper for core sum function."
   ^double [x]
   (double (core/sum x)))
+
+(defn amax
+  "TODO "
+  ^double [x]
+  (double (core/amax x)))

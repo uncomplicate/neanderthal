@@ -16,6 +16,15 @@
 
 ;; =========================== Auxiliary LAPACK Routines =========================
 
+;; ----------------- Common vector matrix macros and functions -----------------------
+
+(defmacro vctr-laset [method alpha x]
+  `(with-lapack-check
+     (~method (int (if (= 1 (.stride ~x)) CBLAS/ORDER_COLUMN_MAJOR CBLAS/ORDER_ROW_MAJOR))
+      (int \g) (.dim ~x) 1 ~alpha ~alpha (.buffer ~x) (.offset ~x) (.stride ~x))))
+
+;; ----------------- Common GE matrix macros and functions -----------------------
+
 (defmacro ge-lan [method norm a]
   `(~method (.order ~a) ~norm (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)))
 
@@ -26,11 +35,15 @@
 
 ;; ----------------- Common TR matrix macros and functions -----------------------
 
+;; There seems to be a bug in MKL's LAPACK_?lantr. If the order is column major,
+;; it returns 0.0 as a result. To fix this, I had to do the uplo# trick.
 (defmacro tr-lan [method norm a]
-  ` (~method (.order ~a) ~norm
-     (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L))
-     (int (if (= (CBLAS/DIAG_UNIT) (.diag ~a)) \U \N))
-     (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)))
+  `(let [uplo# (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~a))
+                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U)
+                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \U \L))]
+     (~method CBLAS/ORDER_ROW_MAJOR ~norm
+      (int uplo#) (int (if (= (CBLAS/DIAG_UNIT) (.diag ~a)) \U \N))
+      (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
 
 (defmacro tr-lacpy [stripe-nav lacpy copy a b]
   `(if (= (.order ~a) (.order ~b))

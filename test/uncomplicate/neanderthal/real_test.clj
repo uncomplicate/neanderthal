@@ -49,16 +49,16 @@
          (subvector (vctr factory 1 2 3) 2 3) => (throws IndexOutOfBoundsException)))
 
 (defn test-vctr-entry [factory]
-  (facts "Vectory entry."
+  (facts "Vector entry."
          (entry (vctr factory [1 2 3]) 1) => 2.0
          (entry (vctr factory []) 0) => (throws IndexOutOfBoundsException)))
 
 (defn test-vctr-entry! [factory]
-  (facts "Vectory entry!."
+  (facts "Vector entry!."
          (entry (entry! (vctr factory [1 2 3]) 1 77.0) 1) => 77.0))
 
 (defn test-vctr-bulk-entry! [factory]
-  (facts "Vectory entry!."
+  (facts "Vector entry!."
          (sum (entry! (vctr factory [1 2 3]) 77.0)) => 231.0))
 
 ;;================ BLAS functions =========================================
@@ -70,16 +70,6 @@
          (dot (vctr factory []) (vctr factory [])) => 0.0
          (dot (vctr factory [1]) (ge factory 3 3)) => (throws ClassCastException)
          (dot (vctr factory [1 2]) (vctr factory [1 2 3])) => (throws IllegalArgumentException)))
-
-(defn test-nrm2 [factory]
-  (facts "BLAS 1 nrm2."
-         (nrm2 (vctr factory [1 2 3])) => (roughly (Math/sqrt 14))
-         (nrm2 (vctr factory [])) => 0.0))
-
-(defn test-asum [factory]
-  (facts "BLAS 1 asum."
-         (asum (vctr factory [1 2 -3]))  => 6.0
-         (asum (vctr factory [])) => 0.0))
 
 (defn test-sum [factory]
   (facts "BLAS Plus 1 sum."
@@ -149,9 +139,24 @@
   (facts "BLAS 1 rotmg!"
          "TODO: Leave this for later since I am lacking good examples right now."))
 
+(defn test-vctr-nrm2 [factory]
+  (facts "BLAS 1 vector nrm2."
+         (nrm2 (vctr factory [1 2 3])) => (roughly (Math/sqrt 14))
+         (nrm2 (vctr factory [])) => 0.0))
+
+(defn test-vctr-asum [factory]
+  (facts "BLAS 1 vector asum."
+         (asum (vctr factory [1 2 -3]))  => 6.0
+         (asum (vctr factory [])) => 0.0))
+
+(defn test-vctr-amax [factory]
+  (facts "BLAS 1 vector nrm2."
+         (amax (vctr factory [1 2 3 -4])) => 4.0
+         (amax (vctr factory [])) => 0.0))
+
 (defn test-vctr-swap [factory]
   (facts
-   "BLAS 1 swap! vectors"
+   "BLAS 1 vectors swap!"
    (with-release [x (vctr factory [1 2 3])]
      (swp! x (vctr factory 3)) => x
      (swp! x (vctr factory [10 20 30])) => (vctr factory [10 20 30])
@@ -160,14 +165,14 @@
      (swp! x (vctr factory [10 20])) => (throws IllegalArgumentException))))
 
 (defn test-vctr-scal [factory]
-  (facts "BLAS 1 scal!"
+  (facts "BLAS 1 vector scal!"
          (with-release [x (vctr factory [1 2 3])]()
            (identical? (scal! 3 x) x) => true)
          (scal! 3 (vctr factory [1 -2 3])) => (vctr factory [3 -6 9])
          (scal! 3 (vctr factory [])) => (vctr factory [])))
 
 (defn test-vctr-copy [factory]
-  (facts "BLAS 1 copy!"
+  (facts "BLAS 1 vector copy!"
          (with-release [y (vctr factory 3)]
            (identical? (copy! (vctr factory [1 2 3]) y) y) => true
            (identical? (copy y) y) => false
@@ -182,7 +187,7 @@
          (copy (vctr factory 1 2)) => (vctr factory 1 2)))
 
 (defn test-vctr-axpy [factory]
-  (facts "BLAS 1 axpy!"
+  (facts "BLAS 1 vector axpy!"
          (with-release [y (vctr factory [1 2 3])]
            (axpy! 2.0 (vctr factory [10 20 30]) y) => (vctr factory [21 42 63])
            (identical? (axpy! 3.0 (vctr factory [1 2 3]) y) y) => true
@@ -209,7 +214,7 @@
            (axpy! 2 (vctr factory 1 2 3) y
                   (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
 
-  (facts "BLAS 1 axpby!"
+  (facts "BLAS 1 vector axpby!"
          (with-release [y (vctr factory [1 2 3])]
            (axpby! 2.0 (vctr factory [10 20 30]) 2.0 y) => (vctr factory [22 44 66])
            (identical? (axpby! 3.0 (vctr factory [1 2 3]) 2.0 y) y) => true
@@ -236,7 +241,7 @@
            (axpby! 2 (vctr factory 1 2 3) 2.0 y
                   (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
 
-  (facts "BLAS1 axpy"
+  (facts "BLAS1 vector axpy"
          (with-release [y (vctr factory [1 2 3])]
            (axpy 2.0 (vctr factory [10 20 30])) => (throws IllegalArgumentException)
            (identical? (axpy 3.0 (vctr factory [1 2 3]) y) y) => false
@@ -305,6 +310,25 @@
 (defn test-ge-bulk-entry! [factory]
   (facts "Bulk GE matrix entry!."
          (sum (row (entry! (ge factory 2 3 [1 2 3 4 5 6]) 88.0) 1)) => 264.0))
+
+(defn test-ge-nrm2 [factory]
+  (facts "BLAS 1 GE nrm2."
+         (nrm2 (ge factory 2 3 (range -3 3))) => (roughly (Math/sqrt 19))
+         (nrm2 (ge factory 0 0 [])) => 0.0))
+
+(defn test-ge-asum [factory]
+  (facts "BLAS 1 GE asum."
+         (asum (ge factory 2 3 (range -3 3))) => 9.0
+         (asum (ge factory 0 0 [])) => 0.0))
+
+(defn test-ge-amax [factory]
+  (facts "BLAS 1 GE amax."
+         (amax (ge factory 2 3 [1 2 3 -7.1 -3 1])) => (roughly 7.1)
+         (amax (ge factory 0 0 [])) => 0.0))
+
+(defn test-ge-trans! [factory]
+  (facts "BLAS 1 GE trans!."
+         (trans! (ge factory 2 3 (range 6))) => (ge factory 2 3 [0 2 4 1 3 5])))
 
 (defn test-ge-copy [factory]
   (facts "BLAS 1 copy! GE matrix"
@@ -517,6 +541,16 @@
          (sum (row (entry! (tr factory 3 [1 2 3 4 5 6]) 33.0) 1)) => 66.0
          (sum (row (entry! (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper}) 22.0) 0)) => 44.0))
 
+(defn test-tr-nrm2 [factory]
+  (facts "BLAS 1 TR nrm2."
+         (nrm2 (tr factory 3 (range -5 5))) => (roughly (Math/sqrt 29))
+         (nrm2 (tr factory 0 [])) => 0.0))
+
+(defn test-tr-amax [factory]
+  (facts "BLAS 1 TR amax."
+         (amax (tr factory 3 [1 2 3 -4 -3 1 1 1 1 1 1 1])) => 4.0
+         (amax (tr factory 0 [])) => 0.0))
+
 (defn test-tr-copy [factory]
   (facts "BLAS 1 copy! TR matrix"
          (with-release [a (tr factory 3)
@@ -690,10 +724,11 @@
   (test-vctr factory)
   (test-vctr-bulk-entry! factory)
   (test-dot factory)
-  (test-nrm2 factory)
-  (test-asum factory)
   (test-sum factory)
   (test-iamax factory)
+  (test-vctr-nrm2 factory)
+  (test-vctr-asum factory)
+  (test-vctr-amax factory)
   (test-vctr-swap factory)
   (test-vctr-copy factory)
   (test-vctr-scal factory)
@@ -726,14 +761,16 @@
   (test-vctr-entry! factory)
   (test-ge-entry factory)
   (test-ge-entry! factory)
+  (test-ge-trans! factory)
   (test-tr-entry factory)
   (test-tr-entry! factory)
   (test-tr-bulk-entry! factory))
 
 (defn test-lapack [factory]
-  ;;(test-ge-nrm2 factory)
-  ;;(test-ge-asum factory)
-  ;;(test-tr-nrm2 factory)
-
+  (test-ge-asum factory)
+  (test-ge-nrm2 factory)
+  (test-ge-amax factory)
+  (test-tr-nrm2 factory)
+  (test-tr-amax factory)
   (test-ge-trf factory)
   (test-ge-sv factory))
