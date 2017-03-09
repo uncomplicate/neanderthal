@@ -119,7 +119,7 @@
 
 ;; =============== Common TR matrix macros and functions ==========================
 
-(defmacro tr-swap-copy [stripe-nav method a b]
+(defmacro tr-swap [stripe-nav method a b]
   `(when (< 0 (.count ~a))
      (let [n# (.fd ~a)
            ld-a# (.stride ~a)
@@ -139,17 +139,6 @@
                  n-j# (- (.end ~stripe-nav n# j#) start#)]
              (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
-
-(defmacro tr-scal-set [stripe-nav method alpha a]
-  `(when (< 0 (.count ~a))
-     (let [n# (.fd ~a)
-           ld# (.stride ~a)
-           offset# (.offset ~a)
-           buff# (.buffer ~a)]
-       (dotimes [j# n#]
-         (let [start# (.start ~stripe-nav n# j#)
-               n-j# (- (.end ~stripe-nav n# j#) start#)]
-           (~method n-j# ~alpha buff# (+ offset# (* ld# j#) start#) 1))))))
 
 (defmacro tr-axpy [stripe-nav method alpha a b]
   `(when (< 0 (.count ~a))

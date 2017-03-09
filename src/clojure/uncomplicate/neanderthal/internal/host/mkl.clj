@@ -49,6 +49,14 @@
         ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) ~beta (.buffer ~b) (.offset ~b) (.stride ~b)
         (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
+(defmacro tr-lacpy [lacpy trans a b]
+  `(do
+     (when-not (= (.order ~a) (.order ~b)) (ge-trans ~trans ~b))
+     (with-lapack-check
+       (~lacpy (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L)) (.mrows ~a) (.ncols ~a)
+        (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
+     (when-not (= (.order ~a) (.order ~b)) (ge-trans ~trans ~b))))
+
 ;; ============ Integer Vector Engines ============================================
 
 (deftype LongVectorEngine []
@@ -356,14 +364,16 @@
 (deftype DoubleTREngine []
   BLAS
   (swap [_ a b]
-    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dcopy ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-lacpy LAPACK/dlacpy MKL/dimatcopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal-set ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dscal alpha ^RealTRMatrix a)
+    (tr-lascl LAPACK/dlascl alpha ^RealTRMatrix a)
     a)
+  (nrm2 [_ a]
+    (tr-lan LAPACK/dlantr (long \f) ^RealTRMatrix a))
   (axpy [_ alpha a b]
     (tr-axpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
@@ -379,7 +389,7 @@
    b)
   BLASPlus
   (set-all [_ alpha a]
-    (tr-scal-set ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/dset alpha ^RealTRMatrix a)
+    (tr-laset LAPACK/dlaset alpha alpha ^RealTRMatrix a)
     a)
   (axpby [_ alpha a beta b]
     (tr-axpby ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/daxpby
@@ -389,14 +399,16 @@
 (deftype FloatTREngine []
   BLAS
   (swap [_ a b]
-    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-swap-copy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/scopy ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-lacpy LAPACK/slacpy MKL/simatcopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
-    (tr-scal-set ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sscal alpha ^RealTRMatrix a)
+    (tr-lascl LAPACK/slascl alpha ^RealTRMatrix a)
     a)
+  (nrm2 [_ a]
+    (tr-lan LAPACK/slantr (long \f) ^RealTRMatrix a))
   (axpy [_ alpha a b]
     (tr-axpy ^StripeNavigator  (.stripe-nav ^RealTRMatrix a) CBLAS/saxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
@@ -412,7 +424,7 @@
    b)
   BLASPlus
   (set-all [_ alpha a]
-    (tr-scal-set ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/sset alpha ^RealTRMatrix a)
+    (tr-laset LAPACK/slaset alpha alpha ^RealTRMatrix a)
     a)
   (axpby [_ alpha a beta b]
     (tr-axpby ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/saxpby

@@ -13,9 +13,9 @@
 (with-default
   (with-engine clblast-float *command-queue*
     (block-test/test-all *opencl-factory*)
-    (real-test/test-all *opencl-factory*)
+    (real-test/test-blas *opencl-factory*)
     (opencl-test/test-all *opencl-factory*))
   (with-engine clblast-double *command-queue*
     (block-test/test-all *opencl-factory*)
-    (real-test/test-all *opencl-factory*)
+    (real-test/test-blas *opencl-factory*)
     (opencl-test/test-all *opencl-factory*)))

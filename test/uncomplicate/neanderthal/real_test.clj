@@ -683,7 +683,8 @@
      (< (double (nrm2 (axpy! -1 b solution))) 0.015) => true)))
 
 ;; =========================================================================
-(defn test-all [factory]
+
+(defn test-blas [factory]
   (test-group factory)
   (test-vctr-constructor factory)
   (test-vctr factory)
@@ -716,7 +717,7 @@
   (test-tr-mv factory)
   (test-tr-mm factory))
 
-(defn test-host [factory]
+(defn test-blas-host [factory]
   (test-rot factory)
   (test-rotg factory)
   (test-rotm factory)
@@ -727,6 +728,12 @@
   (test-ge-entry! factory)
   (test-tr-entry factory)
   (test-tr-entry! factory)
-  (test-tr-bulk-entry! factory)
+  (test-tr-bulk-entry! factory))
+
+(defn test-lapack [factory]
+  ;;(test-ge-nrm2 factory)
+  ;;(test-ge-asum factory)
+  ;;(test-tr-nrm2 factory)
+
   (test-ge-trf factory)
   (test-ge-sv factory))

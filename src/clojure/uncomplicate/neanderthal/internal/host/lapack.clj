@@ -6,19 +6,45 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.host.lapack)
+(ns uncomplicate.neanderthal.internal.host.lapack
+  (:import [uncomplicate.neanderthal.internal.host CBLAS]))
 
-;; ================== Auxiliary LAPACK ==============================================
+(defmacro with-lapack-check [expr]
+  ` (let [err# ~expr]
+      (when-not (zero? err#)
+        (throw (IllegalArgumentException. (format "LAPACK error: %d" err#))))))
+
+;; =========================== Auxiliary LAPACK Routines =========================
 
 (defmacro ge-lan [method norm a]
-  `(when (< 0 (.count ~a))
-     (~method (.order ~a) ~norm (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
+  `(~method (.order ~a) ~norm (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)))
 
 (defmacro ge-laset [method alpha beta a]
-  `(when (< 0 (.count ~a))
-     (~method (.order ~a) (int \g) (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
+  `(with-lapack-check
+     (~method (.order ~a) (int \g) (.mrows ~a) (.ncols ~a)
+      ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
 
-;; ================== Singular Value Decomposition LAPACK ==============================================
+;; ----------------- Common TR matrix macros and functions -----------------------
+
+(defmacro tr-lan [method norm a]
+  ` (~method (.order ~a) ~norm
+     (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L))
+     (int (if (= (CBLAS/DIAG_UNIT) (.diag ~a)) \U \N))
+     (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)))
+
+(defmacro tr-lascl [method alpha a]
+  `(with-lapack-check
+     (~method (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L))
+      0 0 1.0 ~alpha (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
+
+(defmacro tr-laset [method alpha beta a]
+  `(with-lapack-check
+     (~method (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L))
+      (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
+
+;; =========== Drivers and Computational LAPACK Routines ===========================
+
+;; ------------- Singular Value Decomposition LAPACK -------------------------------
 
 (defmacro ge-sv
   ([method a b ipiv]
