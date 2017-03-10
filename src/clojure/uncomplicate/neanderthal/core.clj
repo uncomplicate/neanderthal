@@ -913,6 +913,8 @@
 
 ;; ============================= LAPACK =======================================
 
+;; ------------- Singular Value Decomposition LAPACK -------------------------------
+
 (defn trf!
   "TODO"
   ([^Matrix a ^Vector ipiv]
@@ -942,3 +944,60 @@
   ([^Matrix a ^Matrix b]
    (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
      (sv! a b ipiv))))
+
+;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
+
+(defn ^:private min-mn ^long [^Matrix a]
+  (max 1 (min (.mrows a) (.ncols a))))
+
+(defn qrf!
+  "TODO"
+  ([^Matrix a ^Vector tau]
+   (if (and (= (.dim tau) (min-mn a)))
+     (api/qrf (api/engine a) a tau)))
+  ([^Matrix a]
+   (let-release [tau (vctr (api/factory a) (min-mn a))]
+     (qrf! a tau))))
+
+(defn qrfp!
+  "TODO"
+  ([^Matrix a ^Vector tau]
+   (if (and (= (.dim tau) (min-mn a)))
+     (api/qrfp (api/engine a) a tau)))
+  ([^Matrix a]
+   (let-release [tau (vctr (api/factory a) (min-mn a))]
+     (qrfp! a tau))))
+
+(defn rqf!
+  "TODO"
+  ([^Matrix a ^Vector tau]
+   (if (and (= (.dim tau) (min-mn a)))
+     (api/rqf (api/engine a) a tau)))
+  ([^Matrix a]
+   (let-release [tau (vctr (api/factory a) (min-mn a))]
+     (rqf! a tau))))
+
+(defn lqf!
+  "TODO"
+  ([^Matrix a ^Vector tau]
+   (if (and (= (.dim tau) (min-mn a)))
+     (api/lqf (api/engine a) a tau)))
+  ([^Matrix a]
+   (let-release [tau (vctr (api/factory a) (min-mn a))]
+     (lqf! a tau))))
+
+(defn qlf!
+  "TODO"
+  ([^Matrix a ^Vector tau]
+   (if (and (= (.dim tau) (min-mn a)))
+     (api/qlf (api/engine a) a tau)))
+  ([^Matrix a]
+   (let-release [tau (vctr (api/factory a) (min-mn a))]
+     (qlf! a tau))))
+
+(defn ls!
+  "TODO"
+  [^Matrix a ^Matrix b]
+  (if (and (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)) (api/fits-navigation? a b))
+    (api/ls (api/engine a) a b)
+    (throw (IllegalArgumentException. "TODO"))))

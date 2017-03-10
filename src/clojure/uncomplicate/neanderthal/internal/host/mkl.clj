@@ -310,7 +310,19 @@
   (trs [_ a b ipiv]
     (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b ipiv]
-    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
+    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (qrf [_ a tau]
+    (ge-lqrf LAPACK/dgeqrf ^RealGEMatrix a ^RealBlockVector tau))
+  (qrfp [_ a tau]
+    (ge-lqrf LAPACK/dgeqrfp ^RealGEMatrix a ^RealBlockVector tau))
+  (rqf [_ a tau]
+    (ge-lqrf LAPACK/dgerqf ^RealGEMatrix a ^RealBlockVector tau))
+  (lqf [_ a tau]
+    (ge-lqrf LAPACK/dgelqf ^RealGEMatrix a ^RealBlockVector tau))
+  (qlf [_ a tau]
+    (ge-lqrf LAPACK/dgeqlf ^RealGEMatrix a ^RealBlockVector tau))
+  (ls [_ a b]
+    (ge-ls LAPACK/dgels ^RealGEMatrix a ^RealGEMatrix b)))
 
 (deftype FloatGEEngine []
   BLAS
@@ -361,7 +373,19 @@
   (trs [_ a b ipiv]
     (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b ipiv]
-    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
+    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (qrf [_ a tau]
+    (ge-lqrf LAPACK/sgeqrf ^RealGEMatrix a ^RealBlockVector tau))
+  (qrfp [_ a tau]
+    (ge-lqrf LAPACK/sgeqrfp ^RealGEMatrix a ^RealBlockVector tau))
+  (rqf [_ a tau]
+    (ge-lqrf LAPACK/sgerqf ^RealGEMatrix a ^RealBlockVector tau))
+  (lqf [_ a tau]
+    (ge-lqrf LAPACK/sgelqf ^RealGEMatrix a ^RealBlockVector tau))
+  (qlf [_ a tau]
+    (ge-lqrf LAPACK/sgeqlf ^RealGEMatrix a ^RealBlockVector tau))
+  (ls [_ a b]
+    (ge-ls LAPACK/sgels ^RealGEMatrix a ^RealGEMatrix b)))
 
 ;; ================= Triangular Matrix Engines =================================
 

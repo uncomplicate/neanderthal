@@ -102,3 +102,22 @@
   `(with-sv-check ~ipiv
      (~method (.order ~a) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
       (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+
+;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
+
+(defmacro ge-lqrf [method a tau]
+  `(if (= 1 (.stride ~tau))
+     (if (= 0 (~method (.order ~a) (.mrows ~a) (.ncols ~a)
+               (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.stride ~tau)))
+       ~tau
+       (throw (IllegalArgumentException. "TODO Illegal i")))
+     (throw (IllegalArgumentException. "TODO Illegal tau stride."))))
+
+(defmacro ge-ls [method a b]
+  `(let [info# (~method (.order ~a) (int (if (= (.order ~a) (.order ~b)) \N \T))
+                (.mrows ~a) (.ncols ~a) (.ncols ~b)
+                (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))]
+     (cond
+       (= 0 info#) ~b
+       (< 0 info#) (throw (IllegalArgumentException. "TODO Illegal i"))
+       :else (throw (RuntimeException. "TODO a does not have full rank. no solution")))))

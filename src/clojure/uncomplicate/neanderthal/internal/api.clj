@@ -38,7 +38,13 @@
 (defprotocol Lapack
   (trf [this a ipiv])
   (trs [this a b ipiv])
-  (sv [this a b ipiv]))
+  (sv [this a b ipiv])
+  (qrf [this a tau])
+  (qrfp [this a tau])
+  (rqf [this a tau])
+  (lqf [this a tau])
+  (qlf [this a tau])
+  (ls [this a b]))
 
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])

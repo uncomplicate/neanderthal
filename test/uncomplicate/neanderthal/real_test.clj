@@ -688,7 +688,7 @@
 
 (defn test-ge-trs [factory]
   (facts
-   "LAPACK GE sv!"
+   "LAPACK GE trs!"
 
    (with-release [a (ge factory 5 5 [6.80, -2.11,  5.66,  5.97,  8.23,
                                      -6.05, -3.30,  5.36, -4.44,  1.08,
@@ -747,6 +747,32 @@
      (< (double (nrm2 (axpy! -1 a lu))) 0.015) => true
      (< (double (nrm2 (axpy! -1 b solution))) 0.015) => true)))
 
+(defn test-ge-ls [factory]
+  (facts
+   "LAPACK GE ls!"
+
+   (with-release [a (ge factory 6 4 [ 1.44, -9.96, -7.55,  8.34,  7.08, -5.45,
+                                     -7.84, -0.28,  3.24,  8.09,  2.52, -5.70,
+                                     -4.39, -3.24,  6.27,  5.28,  0.74, -1.19,
+                                     4.53,  3.83, -6.64,  2.06, -2.47,  4.70])
+                  b (ge factory 6 2 [8.58,  8.26,  8.48, -5.28,  5.72,  8.93,
+                                     9.35, -4.43, -0.70, -0.26, -7.36, -2.52])
+                  solution (ge factory 4 2 [-0.45   0.25
+                                            -0.85  -0.90
+                                            0.71   0.63
+                                            0.13   0.14]
+                               {:order :row})
+                  qr (ge factory 6 4 [-17.54  -4.76  -1.96   0.42
+                                      -0.52  12.40   7.88  -5.84
+                                      -0.40  -0.14  -5.75   4.11
+                                      0.44  -0.66  -0.20  -7.78
+                                      0.37  -0.26  -0.17  -0.15
+                                      -0.29   0.46   0.41   0.24]
+                         {:order :row})]
+
+     (ls! a b) => solution
+     a => qr)))
+
 ;; =========================================================================
 
 (defn test-blas [factory]
@@ -804,4 +830,5 @@
   (test-tr-nrm2 factory)
   (test-tr-amax factory)
   (test-ge-trf factory)
-  (test-ge-sv factory))
+  (test-ge-sv factory)
+  (test-ge-ls factory))
