@@ -37,6 +37,7 @@
 
 (defprotocol Lapack
   (trf [this a ipiv])
+  (trs [this a b ipiv])
   (sv [this a b ipiv]))
 
 (defprotocol ReductionFunction

@@ -11,7 +11,8 @@
 
 (defmacro with-lapack-check [expr]
   ` (let [err# ~expr]
-      (when-not (zero? err#)
+      (if (zero? err#)
+        err#
         (throw (IllegalArgumentException. (format "LAPACK error: %d" err#))))))
 
 ;; =========================== Auxiliary LAPACK Routines =========================
@@ -77,12 +78,27 @@
 
 ;; ------------- Singular Value Decomposition LAPACK -------------------------------
 
-(defmacro ge-sv
-  ([method a b ipiv]
-   `(~method (.order ~a) (.ncols ~a) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-     (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+(defmacro with-sv-check [ipiv expr]
+  `(if (= 1 (.stride ~ipiv))
+     (let [info# ~expr]
+       (cond
+         (= 0 info#) ~ipiv
+         (< 0 info#) (throw (IllegalArgumentException. "TODO Illegal i"))
+         :else (throw (RuntimeException. "TODO Singular, no solution"))))
+     (throw (IllegalArgumentException. "TODO Illegal ipiv stride."))))
 
-(defmacro ge-trf
-  ([method a ipiv]
-   `(~method (.order ~a) (.mrows ~a) (.ncols ~a)
-     (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+(defmacro ge-trf [method a ipiv]
+  `(with-sv-check ~ipiv
+     (~method (.order ~a) (.mrows ~a) (.ncols ~a)
+      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+
+(defmacro ge-trs [method a b ipiv]
+  `(with-sv-check ~ipiv
+     (~method (.order ~a) (int (if (= (.order ~a) (.order ~b)) \N \T))
+      (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+      (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+
+(defmacro ge-sv [method a b ipiv]
+  `(with-sv-check ~ipiv
+     (~method (.order ~a) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+      (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))

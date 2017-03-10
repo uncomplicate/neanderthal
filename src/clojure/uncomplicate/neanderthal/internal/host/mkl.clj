@@ -305,10 +305,12 @@
     (ge-trans MKL/dimatcopy ^RealGEMatrix a)
     a)
   Lapack
-  (sv [_ a b ipiv]
-    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (trf [_ a ipiv]
-    (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv)))
+    (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
+  (trs [_ a b ipiv]
+    (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (sv [_ a b ipiv]
+    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
 
 (deftype FloatGEEngine []
   BLAS
@@ -354,10 +356,12 @@
     (ge-trans MKL/simatcopy ^RealGEMatrix a)
     a)
   Lapack
-  (sv [_ a b ipiv]
-    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (trf [_ a ipiv]
-    (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv)))
+    (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
+  (trs [_ a b ipiv]
+    (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (sv [_ a b ipiv]
+    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)))
 
 ;; ================= Triangular Matrix Engines =================================
 

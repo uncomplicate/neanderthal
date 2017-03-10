@@ -150,7 +150,7 @@
          (asum (vctr factory [])) => 0.0))
 
 (defn test-vctr-amax [factory]
-  (facts "BLAS 1 vector nrm2."
+  (facts "BLAS 1 vector amax."
          (amax (vctr factory [1 2 3 -4])) => 4.0
          (amax (vctr factory [])) => 0.0))
 
@@ -686,6 +686,37 @@
      (trf! a ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
      (< (double (nrm2 (axpy! -1 a lu))) 0.015) => true)))
 
+(defn test-ge-trs [factory]
+  (facts
+   "LAPACK GE sv!"
+
+   (with-release [a (ge factory 5 5 [6.80, -2.11,  5.66,  5.97,  8.23,
+                                     -6.05, -3.30,  5.36, -4.44,  1.08,
+                                     -0.45,  2.58, -2.70,  0.27,  9.04,
+                                     8.32,  2.71,  4.35, -7.17,  2.14,
+                                     -9.67, -5.14, -7.26,  6.08, -6.87])
+                  b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
+                                     -1.56,  4.00, -8.67,  1.75,  2.86,
+                                     9.81, -4.09, -4.57, -8.61,  8.99])
+                  ipiv (vctr (index-factory factory) 5)
+                  solution (ge factory 5 3 [-0.80  -0.39   0.96
+                                            -0.70  -0.55   0.22
+                                            0.59   0.84   1.90
+                                            1.32  -0.10   5.36
+                                            0.57   0.11   4.04]
+                               {:order :row})
+                  lu (ge factory 5 5 [8.23   1.08   9.04   2.14  -6.87
+                                      0.83  -6.94  -7.92   6.55  -3.99
+                                      0.69  -0.67 -14.18   7.24  -5.19
+                                      0.73   0.75   0.02 -13.82  14.19
+                                      -0.26   0.44  -0.59  -0.34  -3.43]
+                         {:order :row})]
+
+     (trf! a ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
+     (trs! a b ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
+     (< (double (nrm2 (axpy! -1 a lu))) 0.015) => true
+     (< (double (nrm2 (axpy! -1 b solution))) 0.015) => true)))
+
 (defn test-ge-sv [factory]
   (facts
    "LAPACK GE sv!"
@@ -728,7 +759,6 @@
   (test-iamax factory)
   (test-vctr-nrm2 factory)
   (test-vctr-asum factory)
-  (test-vctr-amax factory)
   (test-vctr-swap factory)
   (test-vctr-copy factory)
   (test-vctr-scal factory)
@@ -759,6 +789,7 @@
   (test-rotmg factory)
   (test-vctr-entry factory)
   (test-vctr-entry! factory)
+  (test-vctr-amax factory)
   (test-ge-entry factory)
   (test-ge-entry! factory)
   (test-ge-trans! factory)
