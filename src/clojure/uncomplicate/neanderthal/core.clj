@@ -429,6 +429,15 @@
   ^long [x]
   (api/iamax (api/engine x) x))
 
+(defn iamin
+  "BLAS 1: The index of the smallest absolute value.
+  The index of the first entry that has the maximum value.
+
+  (iamin (dv 1 -3 2)) => 0
+  "
+  ^long [x]
+  (api/iamin (api/engine x) x))
+
 (defn amax
   "TODO "
   [x]

@@ -2,21 +2,25 @@
 
 ## 0.9.0
 
+### New features:
+
+* Linear algebra functions (LAPACK).
+* Support for TR matrices.
+* Pretty-printing
+* GE and TR support some more BLAS-1 functions.
+
+### Enhancements
+
+* Updated JOCLBlast dependency to 0.10.0.
+* Updated Fluokitten dependency to 0.6.0.
+* Internal api and implementations made more straightforward.
+
 ### Breaking changes:
 
 * Naming scheme changed from single to float for single-precision structures.
 * sv and sge from the native namespace renamed to fv and fge.
 * core constructor functions changed from create to vctr, ge, tr, etc.
 * Core constructors no longer accept raw buffers.
-
-### New features:
-
-* Support for TR matrices.
-
-### Enhancements
-
-* Updated JOCLBlast dependency to 0.10.0.
-* Updated Fluokitten dependency to 0.6.0.
 
 ## 0.8.0
 

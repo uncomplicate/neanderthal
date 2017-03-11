@@ -82,6 +82,12 @@
          (iamax (vctr factory [])) => 0
          (iamax (vctr factory [4 6 7 3])) => 2))
 
+(defn test-iamin [factory]
+  (facts "BLAS 1 iamax"
+         (iamin (vctr factory [1 2 7 7 6 2 -12 10])) => 0
+         (iamin (vctr factory [])) => 0
+         (iamin (vctr factory [4 6 7 3])) => 3))
+
 (defn test-imax [factory]
   (facts "BLAS 1 imax"
          (imax (vctr factory [1 2 7 7 6 2 -10 10])) => 7

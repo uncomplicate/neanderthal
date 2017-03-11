@@ -11,6 +11,7 @@
 (defprotocol BLAS
   (amax [this x])
   (iamax [this x])
+  (iamin [this x])
   (swap [this x y])
   (copy [this x y])
   (dot [this x y])

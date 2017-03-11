@@ -159,6 +159,8 @@
     (vector-method CBLAS/dasum ^RealBlockVector x))
   (iamax [_ x]
     (vector-method CBLAS/idamax ^RealBlockVector x))
+  (iamin [_ x]
+    (vector-method CBLAS/idamin ^RealBlockVector x))
   (amax [_ x]
     (vector-amax ^RealBlockVector x))
   (rot [_ x y c s]
@@ -217,6 +219,8 @@
     (vector-method CBLAS/sasum ^RealBlockVector x))
   (iamax [_ x]
     (vector-method CBLAS/isamax ^RealBlockVector x))
+  (iamin [_ x]
+    (vector-method CBLAS/isamin ^RealBlockVector x))
   (amax [_ x]
     (vector-amax ^RealBlockVector x))
   (rot [_ x y c s]

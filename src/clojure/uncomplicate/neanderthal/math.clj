@@ -84,6 +84,6 @@
 
 (defn magnitude
   (^double [^double range]
-   (pow 10 (floor (log10 range))))
+   (pow 10 (floor (log10 (abs range)))))
   (^double [^double lower ^double upper]
-   (magnitude (- upper lower))))
+   (magnitude (abs (- upper lower)))))
