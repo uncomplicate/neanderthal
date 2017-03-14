@@ -508,7 +508,7 @@
 
 (def ^:private format-g (compile-format "~6,2,,1G "))
 (def ^:private format-f (compile-format "~6,2F "))
-(def ^:private format-a (compile-format "~4@T~A~4@T"))
+(def ^:private format-a (compile-format "~3@T~A~3@T"))
 
 (defn format-vector [^java.io.Writer w formatter ^Vector x]
   (let [n-print (min (.dim x) (long *print-length*))
@@ -1030,9 +1030,14 @@
   ([fact n]
    (real-tr-matrix fact n DEFAULT_ORDER DEFAULT_UPLO DEFAULT_DIAG)))
 
-(defmethod print-method RealTRMatrix
-  [^RealTRMatrix a ^java.io.Writer w]
-  (.write w (format "%s%s" (str a) (pr-str (take 100 (seq a))))))
+(defmethod print-method RealTRMatrix [^RealTRMatrix a ^java.io.Writer w]
+  (if (< 0 (.count a))
+    (let [max-value (double (amax (engine a) a))
+          formatter (if (< max-value 10000.0) format-f format-g)]
+      (.write w (str a "\n"))
+      (format-ge w formatter a max-value)
+      (.write w "\n"))
+    (.write w (str a))))
 
 (defmethod transfer! [RealTRMatrix RealTRMatrix]
   [source destination]
