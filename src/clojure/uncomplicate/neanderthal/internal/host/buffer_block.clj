@@ -7,19 +7,18 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.buffer-block
-  (:require [clojure.pprint :refer [cl-format]]
-            [vertigo
+  (:require [vertigo
              [core :refer [wrap]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 int32 int64 wrap-byte-seq]]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
-             [math :refer [magnitude ceil floor]]
              [core :refer [transfer! copy!]]
              [real :refer [entry]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
+             [common :refer [format-vector format-matrix format-a format-f format-g]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release clean-buffer]])
@@ -504,22 +503,6 @@
   Magma
   {:op (constantly vector-op)})
 
-(def ^:private compile-format #'clojure.pprint/compile-format)
-
-(def ^:private format-g (compile-format "~6,2,,1G "))
-(def ^:private format-f (compile-format "~6,2F "))
-(def ^:private format-a (compile-format "~3@T~A~3@T"))
-
-(defn format-vector [^java.io.Writer w formatter ^Vector x]
-  (let [n-print (min (.dim x) (long *print-length*))
-        start-2 (- (.dim x) (floor (/ n-print 2)))]
-    (dotimes [i (ceil (/ n-print 2))]
-      (cl-format w formatter (.boxedEntry x i)))
-    (when (< n-print (.dim x))
-      (cl-format w format-a "..."))
-    (dotimes [i (floor (/ n-print 2))]
-      (cl-format w formatter (.boxedEntry x (+ start-2 i))))))
-
 (defmethod print-method RealBlockVector [^Vector x ^java.io.Writer w]
   (if (< 0 (.dim x))
     (let [max-value (double (amax (engine x) x))
@@ -749,31 +732,12 @@
   Magma
   {:op (constantly matrix-op)})
 
-(defn format-ge [^java.io.Writer w formatter ^Matrix a max-value]
-  (let [pl (long *print-length*)
-        m-print (min (.mrows a) pl)
-        n-print (min (.ncols a) pl)
-        m-start-2 (- (.mrows a) (floor (/ m-print 2)))]
-    (dotimes [i (ceil (/ m-print 2))]
-      (.write w "\n")
-      (format-vector w formatter (.row a i)))
-    (when (< m-print (.mrows a))
-      (let [width (* 0.1  n-print (.length ^String (cl-format nil formatter max-value)))]
-        (dotimes [_ 3]
-          (.write w "\n")
-          (dotimes [_ width]
-            (.write w "     .     ")))
-        (.write w "\n")))
-    (dotimes [i (floor (/ m-print 2))]
-      (.write w "\n")
-      (format-vector w formatter (.row a (+ m-start-2 i))))))
-
 (defmethod print-method RealGEMatrix [^RealGEMatrix a ^java.io.Writer w]
   (if (< 0 (.count a))
     (let [max-value (double (amax (engine a) a))
           formatter (if (< max-value 10000.0) format-f format-g)]
       (.write w (str a "\n"))
-      (format-ge w formatter a max-value)
+      (format-matrix w formatter a max-value)
       (.write w "\n"))
     (.write w (str a))))
 
@@ -1035,7 +999,7 @@
     (let [max-value (double (amax (engine a) a))
           formatter (if (< max-value 10000.0) format-f format-g)]
       (.write w (str a "\n"))
-      (format-ge w formatter a max-value)
+      (format-matrix w formatter a max-value)
       (.write w "\n"))
     (.write w (str a))))
 

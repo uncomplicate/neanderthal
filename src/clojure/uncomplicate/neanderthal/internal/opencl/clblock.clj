@@ -19,6 +19,7 @@
              [native :refer [native-float native-double]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
+             [common :refer :all]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
              [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
@@ -114,7 +115,7 @@
 ;; =============================================================================
 
 (deftype CLBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact
-                        ^DataAccessor da eng master ^CLBuffer buf^long n ^long ofst ^long strd]
+                        ^DataAccessor da eng master buf ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
     (-> (hash :CLBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))))
@@ -129,9 +130,10 @@
     (format "#CLBlockVector[%s, n:%d, offset:%d stride:%d]" (.entryType da) n ofst strd))
   Releaseable
   (release [_]
-    (if (compare-and-set! master true false)
-      (release buf)
-      true))
+    (when (compare-and-set! master true false)
+      (release @buf))
+    (reset! buf nil)
+    true)
   Container
   (raw [_]
     (cl-block-vector fact n))
@@ -164,7 +166,7 @@
     da)
   Block
   (buffer [_]
-    buf)
+    @buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -185,7 +187,7 @@
   RealChangeable
   (set [x val]
     (if (and (= 0 ofst) (= 1 strd))
-      (.initialize da buf val)
+      (.initialize da @buf val)
       (throw (IllegalArgumentException. INEFFICIENT_STRIDE_MSG)))
     x)
   (set [_ _ _]
@@ -204,7 +206,7 @@
   (boxedEntry [x i]
     (.entry x i))
   (subvector [_ k l]
-    (cl-block-vector fact (atom false) buf l (+ ofst (* k strd)) strd))
+    (cl-block-vector fact (atom false) @buf l (+ ofst (* k strd)) strd))
   Monoid
   (id [x]
     (cl-block-vector fact 0))
@@ -215,20 +217,20 @@
   (mmap [_ flags]
     (let [host-fact (native-factory da)
           queue (get-queue da)
-          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
+          mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* strd n (.entryWidth da)) flags nil nil)]
       (try
         (real-block-vector host-fact true mapped-buf n 0 strd)
-        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
+        (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [x mapped]
-    (enq-unmap! (get-queue da) buf (.buffer ^Block mapped))
+    (enq-unmap! (get-queue da) @buf (.buffer ^Block mapped))
     x))
 
 (defn cl-block-vector
   ([fact master ^CLBuffer buf n ofst strd]
    (let [da (data-accessor fact)]
      (if (and (<= 0 n (.count da buf)))
-       (CLBlockVector. fact da (vector-engine fact) (atom master) buf n ofst strd)
+       (CLBlockVector. fact da (vector-engine fact) (atom master) (atom buf) n ofst strd)
        (throw (IllegalArgumentException.
                (format "I can not create an %d element vector from %d-element %s."
                        n (.count da buf) (class buf)))))))
@@ -243,8 +245,18 @@
   {:op (constantly vector-op)})
 
 (defmethod print-method CLBlockVector
-  [x ^java.io.Writer w]
-  (.write w (str x)))
+  [^CLBlockVector x ^java.io.Writer w]
+  (if (and (< 0 (.dim x)) (.buffer x))
+    (let [mapped-x (mmap x :read)]
+      (.write w (str x "\n["))
+      (try
+        (let [max-value (double (amax (engine mapped-x) mapped-x))
+              min-value (entry mapped-x (iamin (engine mapped-x) mapped-x))
+              formatter (if (and (not (< 0.0 min-value 0.01)) (< max-value 10000.0)) format-f format-g)]
+          (format-vector w formatter mapped-x))
+        (finally (unmap x mapped-x)))
+      (.write w "]"))
+    (.write w (str x))))
 
 (defmethod transfer! [CLBlockVector CLBlockVector]
   [source destination]
@@ -266,7 +278,7 @@
 ;; ================== CL Matrix ============================================
 
 (deftype CLGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
-                     ^DataAccessor da eng master ^CLBuffer buf ^long m ^long n
+                     ^DataAccessor da eng master buf ^long m ^long n
                      ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [a]
@@ -284,9 +296,10 @@
             (.entryType da) m n (dec-property ord) ofst ld))
   Releaseable
   (release [_]
-    (if (compare-and-set! master true false)
-      (release buf)
-      true))
+    (when (compare-and-set! master true false)
+      (release @buf))
+    (reset! buf nil)
+    true)
   EngineProvider
   (engine [_]
     eng)
@@ -314,7 +327,7 @@
     (host a))
   DenseContainer
   (subtriangle [_ uplo diag];;TODO remove and introduce new function similar to copy that reuses memory (view x :tr)
-    (cl-tr-matrix fact false buf (min m n) 0 ld ord uplo diag))
+    (cl-tr-matrix fact false @buf (min m n) 0 ld ord uplo diag))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -322,7 +335,7 @@
     (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
   GEMatrix
   (buffer [_]
-    buf)
+    @buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -370,13 +383,13 @@
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
-    (cl-block-vector fact false buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
+    (cl-block-vector fact false @buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
   (col [a j]
-    (cl-block-vector fact false buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+    (cl-block-vector fact false @buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
   (submatrix [a i j k l]
-    (cl-ge-matrix fact false buf k l (.index navigator ofst ld i j) ld ord))
+    (cl-ge-matrix fact false @buf k l (.index navigator ofst ld i j) ld ord))
   (transpose [a]
-    (cl-ge-matrix fact false buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+    (cl-ge-matrix fact false @buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
   Monoid
   (id [a]
     (cl-ge-matrix fact 0 0))
@@ -384,20 +397,20 @@
   (mmap [a flags]
     (let [host-fact (native-factory da)
           queue (get-queue da)
-          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
+          mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* fd ld (.entryWidth da)) flags nil nil)]
       (try
         (real-ge-matrix host-fact true mapped-buf m n 0 ld ord)
-        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
+        (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (get-queue da) buf (.buffer ^Block mapped))
+    (enq-unmap! (get-queue da) @buf (.buffer ^Block mapped))
     this))
 
 (defn cl-ge-matrix
   ([fact master ^CLBuffer buf m n ofst ld ord]
    (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
      (CLGEMatrix. (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
-                  (ge-engine fact) (atom master) buf m n ofst (max (long ld) (.sd navigator m n))
+                  (ge-engine fact) (atom master) (atom buf) m n ofst (max (long ld) (.sd navigator m n))
                   (.sd navigator m n) (.fd navigator m n) ord)))
   ([fact ^long m ^long n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
@@ -411,9 +424,17 @@
   Magma
   {:op (constantly matrix-op)})
 
-(defmethod print-method CLGEMatrix
-  [x ^java.io.Writer w]
-  (.write w (str x)))
+(defmethod print-method CLGEMatrix [^CLGEMatrix a ^java.io.Writer w]
+  (if (and (< 0 (.count a)) (.buffer a))
+    (let [mapped-a (mmap a :read)]
+      (.write w (str a "\n"))
+      (try
+        (let [max-value (double (amax (engine mapped-a) mapped-a))
+              formatter (if (< max-value 10000.0) format-f format-g)]
+          (format-matrix w formatter mapped-a max-value))
+        (finally (unmap a mapped-a)))
+      (.write w "\n"))
+    (.write w (str a))))
 
 (defmethod transfer! [CLGEMatrix CLGEMatrix]
   [source destination]
@@ -436,7 +457,7 @@
 
 (deftype CLTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
                      ^uncomplicate.neanderthal.internal.api.Factory fact ^DataAccessor da
-                     eng master ^CLBuffer buf ^long n ^long ofst ^long ld
+                     eng master buf ^long n ^long ofst ^long ld
                      ^long ord ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
@@ -453,9 +474,10 @@
             (.entryType da) n n (dec-property ord) (dec-property fuplo) (dec-property fdiag) ofst ld ))
   Releaseable
   (release [_]
-    (if (compare-and-set! master true false)
-      (release buf)
-      true))
+    (when (compare-and-set! master true false)
+      (release @buf))
+    (reset! buf nil)
+    true)
   EngineProvider
   (engine [_]
     eng)
@@ -491,7 +513,7 @@
     (cl-tr-matrix fact 0))
   TRMatrix
   (buffer [_]
-    buf)
+    @buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -543,30 +565,30 @@
     (.entry this i j))
   (row [a i]
     (let [start (.rowStart uplo-nav n i)]
-      (cl-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
+      (cl-block-vector fact false @buf (- (.rowEnd uplo-nav n i) start)
                        (.index navigator ofst ld i start) (if (= ROW_MAJOR ord) 1 ld))))
   (col [a j]
     (let [start (.colStart uplo-nav n j)]
-      (cl-block-vector fact false buf (- (.colEnd uplo-nav n j) start)
+      (cl-block-vector fact false @buf (- (.colEnd uplo-nav n j) start)
                        (.index navigator ofst ld start j) (if (= COLUMN_MAJOR ord) 1 ld))))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
-      (cl-tr-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo fdiag))
+      (cl-tr-matrix fact false @buf k (.index navigator ofst ld i j) ld ord fuplo fdiag))
     (throw (UnsupportedOperationException. "Submatrix of a TR matrix has to be triangular.")))
   (transpose [a]
-    (cl-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
+    (cl-tr-matrix fact false @buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
                   (if (= LOWER fuplo) UPPER LOWER) fdiag))
   Mappable
   (mmap [a flags]
     (let [host-fact (native-factory da)
           queue (get-queue da)
-          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
+          mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* ld n (.entryWidth da)) flags nil nil)]
       (try
         (real-tr-matrix host-fact true mapped-buf n 0 ld ord fuplo fdiag)
-        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
+        (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (get-queue da) buf (.buffer ^Block mapped))
+    (enq-unmap! (get-queue da) @buf (.buffer ^Block mapped))
     this))
 
 (extend CLTRMatrix
@@ -589,7 +611,7 @@
                       (if unit unit-bottom-navigator non-unit-bottom-navigator)
                       (if unit unit-top-navigator non-unit-top-navigator))]
      (CLTRMatrix. order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
-                  (atom master) buf n ofst (max (long ld) (long n)) ord uplo diag)))
+                  (atom master) (atom buf) n ofst (max (long ld) (long n)) ord uplo diag)))
   ([fact n ord uplo diag]
    (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
      (cl-tr-matrix fact true buf n 0 n ord uplo diag)))
@@ -599,6 +621,17 @@
 (defmethod print-method CLTRMatrix
   [x ^java.io.Writer w]
   (.write w (str x)))
+
+(defmethod print-method CLTRMatrix [^CLTRMatrix a ^java.io.Writer w]
+  (if (and (< 0 (.count a)) (.buffer a))
+    (let [mapped-a (mmap a :read)]
+      (.write w (str a "\n"))
+      (try
+        (let [max-value (double (amax (engine mapped-a) mapped-a))
+              formatter (if (< max-value 10000.0) format-f format-g)]
+          (format-matrix w formatter mapped-a max-value)))
+      (.write w "\n"))
+    (.write w (str a))))
 
 (defmethod transfer! [CLTRMatrix CLTRMatrix]
   [source destination]
