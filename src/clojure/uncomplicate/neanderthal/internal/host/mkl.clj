@@ -52,7 +52,7 @@
 ;; ============ Integer Vector Engines ============================================
 
 (deftype LongVectorEngine []
-  BLAS
+  Blas
   (swap [_ x y]
     (vector-method CBLAS/dswap ^IntegerBlockVector x ^IntegerBlockVector y)
     x)
@@ -79,7 +79,7 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (axpy [_ alpha x y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-  BLASPlus
+  BlasPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/dcopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
                  (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
@@ -97,7 +97,7 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
 
 (deftype IntVectorEngine []
-  BLAS
+  Blas
   (swap [_ x y]
     (vector-method CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
     x)
@@ -124,7 +124,7 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (axpy [_ alpha x y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-  BLASPlus
+  BlasPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
                  (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
@@ -144,7 +144,7 @@
 ;; ============ Real Vector Engines ============================================
 
 (deftype DoubleVectorEngine []
-  BLAS
+  Blas
   (swap [_ x y]
     (vector-method CBLAS/dswap ^RealBlockVector x ^RealBlockVector y)
     x)
@@ -184,7 +184,7 @@
                  alpha  (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
                  (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
-  BLASPlus
+  BlasPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
                  (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
@@ -204,7 +204,7 @@
     y))
 
 (deftype FloatVectorEngine []
-  BLAS
+  Blas
   (swap [_ x y]
     (vector-method CBLAS/sswap ^RealBlockVector x ^RealBlockVector y)
     x)
@@ -244,7 +244,7 @@
                  alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
                  (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
-  BLASPlus
+  BlasPlus
   (subcopy [_ x y kx lx ky]
     (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
                  (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
@@ -266,7 +266,7 @@
 ;; ================= General Matrix Engines ====================================
 
 (deftype DoubleGEEngine []
-  BLAS
+  Blas
   (amax [this a]
     (ge-lan LAPACK/dlange (long \m) ^RealGEMatrix a))
   (swap [_ a b]
@@ -298,7 +298,7 @@
   (mm [_ alpha a b beta c]
    (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
    c)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     (ge-laset LAPACK/dlaset alpha alpha ^RealGEMatrix a)
     a)
@@ -329,7 +329,7 @@
     (ge-ls LAPACK/dgels ^RealGEMatrix a ^RealGEMatrix b)))
 
 (deftype FloatGEEngine []
-  BLAS
+  Blas
   (amax [this a]
     (ge-lan LAPACK/slange (long \m) ^RealGEMatrix a))
   (swap [_ a b]
@@ -361,7 +361,7 @@
   (mm [_ alpha a b beta c]
    (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
    c)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     (ge-laset LAPACK/slaset alpha alpha ^RealGEMatrix a)
     a)
@@ -394,7 +394,7 @@
 ;; ================= Triangular Matrix Engines =================================
 
 (deftype DoubleTREngine []
-  BLAS
+  Blas
   (amax [this a]
     (tr-lan LAPACK/dlantr (long \m) ^RealTRMatrix a))
   (swap [_ a b]
@@ -423,7 +423,7 @@
   (mm [_ alpha a b left]
    (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
    b)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     (tr-laset LAPACK/dlaset alpha alpha ^RealTRMatrix a)
     a)
@@ -433,7 +433,7 @@
     b))
 
 (deftype FloatTREngine []
-  BLAS
+  Blas
   (amax [this a]
     (tr-lan LAPACK/slantr (long \m) ^RealTRMatrix a))
   (swap [_ a b]
@@ -462,7 +462,7 @@
   (mm [_ alpha a b left]
    (tr-mm CBLAS/strmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
    b)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     (tr-laset LAPACK/slaset alpha alpha ^RealTRMatrix a)
     a)

@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.internal.api)
 
-(defprotocol BLAS
+(defprotocol Blas
   (amax [this x])
   (iamax [this x])
   (iamin [this x])
@@ -27,7 +27,7 @@
   (rank [this alpha x y a])
   (mm [this alpha a b beta c] [this alpha a b right]))
 
-(defprotocol BLASPlus
+(defprotocol BlasPlus
   (sum [this x])
   (imax [this x])
   (imin [this x])

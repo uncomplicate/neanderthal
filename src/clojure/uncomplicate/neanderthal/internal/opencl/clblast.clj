@@ -509,7 +509,7 @@
   BlockEngine
   (equals-block [_ x y]
     (equals-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
-  BLAS
+  Blas
   (swap [_ x y]
     (vector-method queue CLBlast/CLBlastDswap ^CLBlockVector x ^CLBlockVector y)
     x)
@@ -539,7 +539,7 @@
   (axpy [_ alpha x y]
     (vector-axpy queue CLBlast/CLBlastDaxpy alpha ^CLBlockVector x ^CLBlockVector y)
     y)
-  BLASPlus
+  BlasPlus
   (subcopy [_ x y kx lx ky]
     (vector-subcopy queue CLBlast/CLBlastDcopy ^CLBlockVector x ^CLBlockVector y kx lx ky)
     y)
@@ -564,7 +564,7 @@
   BlockEngine
   (equals-block [_ x y]
     (equals-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
-  BLAS
+  Blas
   (swap [_ x y]
     (vector-method queue CLBlast/CLBlastSswap ^CLBlockVector x ^CLBlockVector y)
     x)
@@ -593,7 +593,7 @@
   (axpy [_ alpha x y]
     (vector-axpy queue CLBlast/CLBlastSaxpy alpha ^CLBlockVector x ^CLBlockVector y)
     y)
-  BLASPlus
+  BlasPlus
   (subcopy [_ x y kx lx ky]
     (vector-subcopy queue CLBlast/CLBlastScopy ^CLBlockVector x ^CLBlockVector y kx lx ky)
     y)
@@ -618,7 +618,7 @@
   BlockEngine
   (equals-block [_ a b]
     (equals-ge ctx queue prog a b))
-  BLAS
+  Blas
   (swap [_ a b]
     (ge-swap queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
     a)
@@ -644,7 +644,7 @@
   (mm [_ alpha a b beta c]
    (ge-mm queue CLBlast/CLBlastDgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
    c)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     (ge-set ctx queue prog alpha a)
     a)
@@ -659,7 +659,7 @@
   BlockEngine
   (equals-block [_ a b]
     (equals-ge ctx queue prog a b))
-  BLAS
+  Blas
   (swap [_ a b]
     (ge-swap queue CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
     a)
@@ -685,7 +685,7 @@
   (mm [_ alpha a b beta c]
    (ge-mm queue CLBlast/CLBlastSgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
    c)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     (ge-set ctx queue prog alpha a)
     a)
@@ -697,7 +697,7 @@
   BlockEngine
   (equals-block [_ a b]
     (equals-tr ctx queue prog a b))
-  BLAS
+  Blas
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
                   CLBlast/CLBlastDswap ^CLTRMatrix a ^CLTRMatrix b)
@@ -724,7 +724,7 @@
   (mm [_ alpha a b left]
    (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
    b)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     #_(tr-scal-set queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
                    CLBlast/CLBlastDset alpha ^CLTRMatrix a);;TODO CLBlast
@@ -739,7 +739,7 @@
   BlockEngine
   (equals-block [_ a b]
     (equals-tr ctx queue prog a b))
-  BLAS
+  Blas
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
                   CLBlast/CLBlastSswap ^CLTRMatrix a ^CLTRMatrix b)
@@ -766,7 +766,7 @@
   (mm [_ alpha a b left]
    (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
    b)
-  BLASPlus
+  BlasPlus
   (set-all [_ alpha a]
     #_(tr-scal-set queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
                    CLBlast/CLBlastSset alpha ^CLTRMatrix a);;TODO CLBlast
