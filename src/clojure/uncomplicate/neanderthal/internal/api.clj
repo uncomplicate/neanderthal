@@ -8,6 +8,25 @@
 
 (ns uncomplicate.neanderthal.internal.api)
 
+(definterface UploNavigator
+  (^long colStart [^long n ^long i])
+  (^long colEnd [^long n ^long i])
+  (^long rowStart [^long n ^long i])
+  (^long rowEnd [^long n ^long i])
+  (^long defaultEntry [^long i ^long j]))
+
+(definterface StripeNavigator
+  (^long start [^long n ^long j])
+  (^long end [^long n ^long j]))
+
+(definterface RealOrderNavigator
+  (^long sd [^long m ^long n])
+  (^long fd [^long m ^long n])
+  (^long index [^long ofst ^long ld ^long i ^long j])
+  (^double get [a ^long i ^long j])
+  (set [a ^long i ^long j ^double val])
+  (stripe [a ^long j]))
+
 (defprotocol Blas
   (amax [this x])
   (iamax [this x])
@@ -45,7 +64,8 @@
   (rqf [this a tau])
   (lqf [this a tau])
   (qlf [this a tau])
-  (ls [this a b]))
+  (ls [this a b])
+  (ev [this a w vl vr]))
 
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
@@ -84,17 +104,6 @@
 (defprotocol DenseContainer
   (subband [this p q])
   (subtriangle [this uplo diag]))
-
-(definterface UploNavigator
-  (^long colStart [^long n ^long i])
-  (^long colEnd [^long n ^long i])
-  (^long rowStart [^long n ^long i])
-  (^long rowEnd [^long n ^long i])
-  (^long defaultEntry [^long i ^long j]))
-
-(definterface StripeNavigator
-  (^long start [^long n ^long j])
-  (^long end [^long n ^long j]))
 
 (def ^:const ROW_MAJOR 101)
 (def ^:const COLUMN_MAJOR 102)

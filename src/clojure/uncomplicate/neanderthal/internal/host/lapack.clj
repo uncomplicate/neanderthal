@@ -7,6 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.lapack
+  (:require [uncomplicate.neanderthal.block :refer [buffer offset]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]))
 
 (defmacro with-lapack-check [expr]
@@ -83,7 +84,7 @@
      (let [info# ~expr]
        (cond
          (= 0 info#) ~ipiv
-         (< 0 info#) (throw (IllegalArgumentException. "TODO Illegal i"))
+         (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
          :else (throw (RuntimeException. "TODO Singular, no solution"))))
      (throw (IllegalArgumentException. "TODO Illegal ipiv stride."))))
 
@@ -113,11 +114,30 @@
        (throw (IllegalArgumentException. "TODO Illegal i")))
      (throw (IllegalArgumentException. "TODO Illegal tau stride."))))
 
+;; ------------- Linear Least Squares Routines LAPACK -------------------------------
+
 (defmacro ge-ls [method a b]
   `(let [info# (~method (.order ~a) (int (if (= (.order ~a) (.order ~b)) \N \T))
                 (.mrows ~a) (.ncols ~a) (.ncols ~b)
                 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))]
      (cond
        (= 0 info#) ~b
-       (< 0 info#) (throw (IllegalArgumentException. "TODO Illegal i"))
+       (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
        :else (throw (RuntimeException. "TODO a does not have full rank. no solution")))))
+
+;; ------------- Non-Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
+
+(defmacro ge-ev
+  ([method a w vl vr]
+   `(if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~w))
+      (let [wr# (.col ~w 0)
+            wi# (.col ~w 1)
+            info# (~method (.order ~a) (int (if (< 0 (.mrows ~vl)) \V \N)) (int (if (< 0 (.mrows ~vr)) \V \N))
+                   (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
+                   (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
+                   (.buffer ~vl) (.offset ~vl) (.stride ~vl) (.buffer ~vr) (.offset ~vr) (.stride ~vr))]
+        (cond
+          (= 0 info#) ~w
+          (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
+          :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#)))))
+      (throw (IllegalArgumentException. "TODO Illegal wr/wi stride.")))))

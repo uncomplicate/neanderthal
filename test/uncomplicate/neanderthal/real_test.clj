@@ -7,11 +7,13 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.real-test
-  (:require [midje.sweet :refer [facts throws => roughly]]
+  (:require [midje.sweet :refer [facts throws => roughly truthy]]
             [uncomplicate.commons.core :refer [release with-release]]
+            [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [math :refer :all]]
+             [math :refer :all]
+             [real :refer [ls-residual]]]
             [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]]))
 
 (defn test-group [factory]
@@ -774,10 +776,47 @@
                                       0.44  -0.66  -0.20  -7.78
                                       0.37  -0.26  -0.17  -0.15
                                       -0.29   0.46   0.41   0.24]
-                         {:order :row})]
+                         {:order :row})
+                  residual (vctr factory [195.36 107.06])]
+     (ls! a b)
+     (< (double (nrm2 (axpy! -1 residual (ls-residual a b)))) 0.0031) => true
+     (< (double (nrm2 (axpy! -1 solution (submatrix b 0 0 4 2)))) 0.007) => true
+     (< (double (nrm2 (axpy! -1 qr a))) 0.015) => true)))
 
-     (ls! a b) => solution
-     a => qr)))
+(defn test-ge-ev [factory]
+  (facts
+   "LAPACK GE ev!"
+
+   (with-release [a0 (ge factory 5 5 [-1.01,  3.98,  3.30,  4.43,  7.31,
+                                      0.86,  0.53,  8.26,  4.96, -6.43,
+                                      -4.60, -7.04, -3.89, -7.66, -6.16,
+                                      3.31,  5.29,  8.20, -7.33,  2.47,
+                                      -4.81,  3.55, -1.51,  6.18,  5.58])
+                  a1 (copy a0)
+                  eigenvalues (ge factory 5 2 [2.86  10.76
+                                               2.86 -10.76
+                                               -0.69   4.70
+                                               -0.69  -4.70
+                                               -10.46   0.00]
+                                  {:order :row})
+                  vl-res (ge factory 5 5 [-0.04  -0.29  -0.13  -0.33   0.04
+                                          -0.62   0.00   0.69   0.00   0.56
+                                          0.04   0.58  -0.39  -0.07  -0.13
+                                          -0.28  -0.01  -0.02  -0.19  -0.80
+                                          0.04  -0.34  -0.40   0.22   0.18]
+                             {:order :row})
+                  vr-res (ge factory 5 5 [-0.11  -0.17  -0.73   0.00   0.46
+                                          -0.41   0.26   0.03   0.02   0.34
+                                          -0.10   0.51  -0.19   0.29   0.31
+                                          -0.40   0.09   0.08   0.08  -0.74
+                                          -0.54   0.00   0.29   0.49   0.16]
+                             {:order :row})
+                  vl (ge factory 5 5)
+                  vr (ge factory 5 5)]
+     (< (double (nrm2 (axpy! -1 eigenvalues (ev! a0)))) 0.01) => true
+     (ev! a1 vl vr) = truthy
+     (< (double (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl)))) 0.014) => true
+     (< (double (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr)))) 0.011) => true)))
 
 ;; =========================================================================
 
@@ -837,4 +876,5 @@
   (test-tr-amax factory)
   (test-ge-trf factory)
   (test-ge-sv factory)
-  (test-ge-ls factory))
+  (test-ge-ls factory)
+  (test-ge-ev factory))

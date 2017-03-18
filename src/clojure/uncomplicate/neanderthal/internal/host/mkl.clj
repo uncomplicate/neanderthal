@@ -16,7 +16,8 @@
              [lapack :refer :all]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
-           [uncomplicate.neanderthal.internal.api DataAccessor BufferAccessor StripeNavigator Block RealVector]
+           [uncomplicate.neanderthal.internal.api DataAccessor BufferAccessor Block RealVector
+            StripeNavigator RealOrderNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
             RealTRMatrix RealGEMatrix]))
 
@@ -265,6 +266,9 @@
 
 ;; ================= General Matrix Engines ====================================
 
+(def ^:private zero-matrix ^RealGEMatrix (->RealGEMatrix nil nil nil nil true (ByteBuffer/allocateDirect 0)
+                                                         0 0 0 1 0 0 CBLAS/ORDER_COLUMN_MAJOR))
+
 (deftype DoubleGEEngine []
   Blas
   (amax [this a]
@@ -326,7 +330,11 @@
   (qlf [_ a tau]
     (ge-lqrf LAPACK/dgeqlf ^RealGEMatrix a ^RealBlockVector tau))
   (ls [_ a b]
-    (ge-ls LAPACK/dgels ^RealGEMatrix a ^RealGEMatrix b)))
+    (ge-ls LAPACK/dgels ^RealGEMatrix a ^RealGEMatrix b))
+  (ev [_ a w vl vr]
+    (let [vl (or vl zero-matrix)
+          vr (or vr zero-matrix)]
+      (ge-ev LAPACK/dgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr))))
 
 (deftype FloatGEEngine []
   Blas
@@ -389,7 +397,11 @@
   (qlf [_ a tau]
     (ge-lqrf LAPACK/sgeqlf ^RealGEMatrix a ^RealBlockVector tau))
   (ls [_ a b]
-    (ge-ls LAPACK/sgels ^RealGEMatrix a ^RealGEMatrix b)))
+    (ge-ls LAPACK/sgels ^RealGEMatrix a ^RealGEMatrix b))
+  (ev [_ a w vl vr]
+    (let [vl (or vl zero-matrix)
+          vr (or vr zero-matrix)]
+      (ge-ev LAPACK/sgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr))))
 
 ;; ================= Triangular Matrix Engines =================================
 

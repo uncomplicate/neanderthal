@@ -24,7 +24,10 @@
                [core :refer :all :exclude [entry entry! dot nrm2 asum sum]]
                [real :refer :all]]))
   "
-  (:require [uncomplicate.neanderthal.core :as core]
+  (:require [uncomplicate.fluokitten.core :refer [foldmap]]
+            [uncomplicate.neanderthal
+             [math :refer [sqr]]
+             [core :as core]]
             [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api RealVector RealMatrix RealChangeable]))
 
@@ -83,3 +86,14 @@
   "TODO "
   ^double [x]
   (double (core/amax x)))
+
+(defn ls-residual
+  "TODO"
+  [^RealMatrix a ^RealMatrix b]
+  (let [res (api/raw (.row b 0))]
+    (if (<= (.ncols a) (.mrows a))
+      (let [residuals (.submatrix b (.ncols a) 0 (- (.mrows b) (.ncols a)) (.ncols b))]
+        (dotimes [j (.ncols residuals)]
+          (entry! res j (foldmap sqr (.col residuals j))))
+        res)
+      res)))

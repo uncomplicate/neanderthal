@@ -940,7 +940,7 @@
    (if (and (= (.ncols a) (.mrows b) (.dim ipiv)) (api/fits-navigation? a b))
      (api/trs (api/engine a) a b ipiv)
      (throw (IllegalArgumentException. "TODO"))))
-  ([^Matrix a ^Matrix b]
+  ([^Matrix a b]
    (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
      (trs! a b ipiv))))
 
@@ -950,7 +950,7 @@
    (if (and (= (.ncols a) (.mrows b) (.dim ipiv)) (api/fits-navigation? a b))
      (api/sv (api/engine a) a b ipiv)
      (throw (IllegalArgumentException. "TODO"))))
-  ([^Matrix a ^Matrix b]
+  ([^Matrix a b]
    (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
      (sv! a b ipiv))))
 
@@ -964,7 +964,7 @@
   ([^Matrix a ^Vector tau]
    (if (and (= (.dim tau) (min-mn a)))
      (api/qrf (api/engine a) a tau)))
-  ([^Matrix a]
+  ([a]
    (let-release [tau (vctr (api/factory a) (min-mn a))]
      (qrf! a tau))))
 
@@ -973,7 +973,7 @@
   ([^Matrix a ^Vector tau]
    (if (and (= (.dim tau) (min-mn a)))
      (api/qrfp (api/engine a) a tau)))
-  ([^Matrix a]
+  ([a]
    (let-release [tau (vctr (api/factory a) (min-mn a))]
      (qrfp! a tau))))
 
@@ -982,7 +982,7 @@
   ([^Matrix a ^Vector tau]
    (if (and (= (.dim tau) (min-mn a)))
      (api/rqf (api/engine a) a tau)))
-  ([^Matrix a]
+  ([a]
    (let-release [tau (vctr (api/factory a) (min-mn a))]
      (rqf! a tau))))
 
@@ -991,7 +991,7 @@
   ([^Matrix a ^Vector tau]
    (if (and (= (.dim tau) (min-mn a)))
      (api/lqf (api/engine a) a tau)))
-  ([^Matrix a]
+  ([a]
    (let-release [tau (vctr (api/factory a) (min-mn a))]
      (lqf! a tau))))
 
@@ -1000,7 +1000,7 @@
   ([^Matrix a ^Vector tau]
    (if (and (= (.dim tau) (min-mn a)))
      (api/qlf (api/engine a) a tau)))
-  ([^Matrix a]
+  ([a]
    (let-release [tau (vctr (api/factory a) (min-mn a))]
      (qlf! a tau))))
 
@@ -1010,3 +1010,20 @@
   (if (and (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)) (api/fits-navigation? a b))
     (api/ls (api/engine a) a b)
     (throw (IllegalArgumentException. "TODO"))))
+
+(defn ev!
+  "TODO"
+  ([^Matrix a ^Matrix w ^Matrix vl ^Matrix vr]
+   (if (and (= (.mrows a) (.ncols a))
+            (= (.mrows a) (.mrows w)) (= 2 (.ncols w))
+            (or (nil? vl) (and (= (.mrows a) (.mrows vl) (.ncols vl)) (api/fits-navigation? a vl)))
+            (or (nil? vr) (and (= (.mrows a) (.mrows vr) (.ncols vr)) (api/fits-navigation? a vr))))
+     (api/ev (api/engine a) a w vl vr)
+     (throw (IllegalArgumentException. "TODO not square matrix a."))))
+  ([a w]
+   (ev! a w nil nil))
+  ([^Matrix a vl vr]
+   (let-release [w (ge (api/factory a) (.mrows a) 2)]
+     (ev! a w vl vr)))
+  ([^Matrix a]
+   (ev! a nil nil)))

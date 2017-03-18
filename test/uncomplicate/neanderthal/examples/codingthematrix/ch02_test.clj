@@ -59,17 +59,14 @@
  (ax 2 (ax 3 (dv 1 2 3))) => (ax (* 2 3) (dv 1 2 3))
 
  (take 3 (map #(ax (/ (double %) 10) (dv 3 2)) (range 11)))
- => [(dv 0 0) (dv 0.30000000000000004 0.2)
-     (dv 0.6000000000000001 0.4)] )
+ => [(dv 0 0) (dv 0.30000000000000004 0.2) (dv 0.6000000000000001 0.4)] )
 
 (facts
  "2.6 Combining vector addition and scalar multiplication"
 
- (ax 2 (xpy (dv 1 2 3) (dv 3 4 4)))
- => (xpy (ax 2 (dv 1 2 3)) (ax 2 (dv 3 4 4)))
+ (ax 2 (xpy (dv 1 2 3) (dv 3 4 4))) => (xpy (ax 2 (dv 1 2 3)) (ax 2 (dv 3 4 4)))
 
- (ax (+ 2 3) (dv 1 2 3))
- => (xpy (ax 2 (dv 1 2 3)) (ax 3 (dv 1 2 3))))
+ (ax (+ 2 3) (dv 1 2 3)) => (xpy (ax 2 (dv 1 2 3)) (ax 3 (dv 1 2 3))))
 
 (facts
  "2.6.3 First look at convex combinations"
@@ -83,8 +80,7 @@
    => [(dv 2.0) (dv 4.5) (dv 7.0) (dv 9.5) (dv 12.0)]
 
    (map (fn [[alpha beta]] (axpy alpha u2 beta v2)) ab)
-   => [(dv 5 2) (dv 6.25 0) (dv 7.5 -2)
-       (dv 8.75 -4) (dv 10 -6)]))
+   => [(dv 5 2) (dv 6.25 0) (dv 7.5 -2) (dv 8.75 -4) (dv 10 -6)]))
 
 (facts
  "2.7.4 Vector negative, invertibility of vector addition,"
@@ -106,8 +102,7 @@
 
  (let [haystack (dv 1 -1 1 1 1 -1 1 1 1)
        needle (dv 1 -1 1 1 -1 1)]
-   (map #(dot (subvector haystack % (dim needle)) needle)
-        (range (inc (- (dim haystack) (dim needle)))))
+   (map #(dot (subvector haystack % (dim needle)) needle) (range (inc (- (dim haystack) (dim needle)))))
    => [2.0 2.0 0.0 0.0]))
 
 (facts

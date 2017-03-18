@@ -64,6 +64,9 @@
    (fn ^double [^double x]
      (Math/pow x y))))
 
+(defn sqr ^double [^double x]
+  (* x x))
+
 (defn exp ^double [^double x]
   (Math/exp x))
 

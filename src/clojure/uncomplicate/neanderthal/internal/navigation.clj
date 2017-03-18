@@ -7,7 +7,8 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.navigation
-  (:import [uncomplicate.neanderthal.internal.api RealOrderNavigator UploNavigator StripeNavigator]))
+  (:import [uncomplicate.neanderthal.internal.api RealOrderNavigator UploNavigator StripeNavigator
+            RealChangeable RealMatrix]))
 
 (deftype ColumnRealOrderNavigator []
   RealOrderNavigator
@@ -18,11 +19,11 @@
   (index [_ offset ld i j]
     (+ offset (* ld j) i))
   (get [_ a i j]
-    (.entry a i j))
+    (.entry ^RealMatrix a i j))
   (set [_ a i j val]
-    (.set a i j val))
+    (.set ^RealChangeable a i j val))
   (stripe [_ a j]
-    (.col a j)))
+    (.col ^RealMatrix a j)))
 
 (deftype RowRealOrderNavigator []
   RealOrderNavigator
@@ -33,11 +34,11 @@
   (index [_ offset ld i j]
     (+ offset (* ld i) j))
   (get [_ a i j]
-    (.entry a j i))
+    (.entry ^RealMatrix a j i))
   (set [_ a i j val]
-    (.set a j i val))
+    (.set ^RealChangeable a j i val))
   (stripe [_ a i]
-    (.row a i)))
+    (.row ^RealMatrix a i)))
 
 (def col-navigator (ColumnRealOrderNavigator.))
 (def row-navigator (RowRealOrderNavigator.))
