@@ -1027,3 +1027,23 @@
      (ev! a w vl vr)))
   ([^Matrix a]
    (ev! a nil nil)))
+
+(defn svd!
+  "TODO"
+  ([^Matrix a ^Vector s ^Matrix u ^Matrix vt ^Vector superb]
+   (let [m (.mrows a)
+         n (.ncols a)
+         min-mn (min m n)]
+     (if (and (or (nil? u) (and (or (= m (.mrows u) (.ncols u))
+                                    (and (= m (.mrows u)) (= min-mn (.ncols u))))
+                                (api/fits-navigation? a u)))
+              (or (nil? vt) (and (or (= n (.mrows vt) (.ncols vt))
+                                     (and (= min-mn (.mrows vt)) (= n (.ncols vt))))
+                                 (api/fits-navigation? a vt)))
+              (= min-mn (.dim s) (.dim superb)))
+       (api/svd (api/engine a) a s u vt superb)
+       (throw (IllegalArgumentException. "TODO detailed error.")))))
+  ([^Matrix a ^Vector s ^Vector superb]
+   (if (and (= (min (.mrows a) (.ncols a)) (.dim s) (.dim superb)))
+       (api/svd (api/engine a) a s superb)
+       (throw (IllegalArgumentException. "TODO detailed error."))))) ;;TODO create other arities

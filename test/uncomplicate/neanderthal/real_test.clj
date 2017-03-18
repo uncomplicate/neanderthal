@@ -813,10 +813,45 @@
                              {:order :row})
                   vl (ge factory 5 5)
                   vr (ge factory 5 5)]
+
      (< (double (nrm2 (axpy! -1 eigenvalues (ev! a0)))) 0.01) => true
      (ev! a1 vl vr) = truthy
      (< (double (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl)))) 0.014) => true
      (< (double (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr)))) 0.011) => true)))
+
+(defn test-ge-svd [factory]
+  (facts
+   "LAPACK GE svd!"
+
+   (with-release [a0 (ge factory 6 5 [8.79,  6.11, -9.15,  9.57, -3.49,  9.84,
+                                      9.93,  6.91, -7.93,  1.64,  4.02,  0.15,
+                                      9.83,  5.04,  4.86,  8.83,  9.80, -8.99,
+                                      5.45, -0.27,  4.85,  0.74, 10.00, -6.02,
+                                      3.16,  7.98,  3.01,  5.80,  4.27, -5.31])
+                  a1 (copy a0)
+                  s (vctr factory 5)
+                  u (ge factory 6 5)
+                  vt (ge factory 5 5)
+                  superb (vctr factory 5)
+                  s-res (vctr factory [27.47 22.64 8.56 5.99 2.01])
+                  u-res (ge factory 6 5 [-0.59   0.26   0.36   0.31   0.23
+                                         -0.40   0.24  -0.22  -0.75  -0.36
+                                         -0.03  -0.60  -0.45   0.23  -0.31
+                                         -0.43   0.24  -0.69   0.33   0.16
+                                         -0.47  -0.35   0.39   0.16  -0.52
+                                         0.29   0.58  -0.02   0.38  -0.65]
+                             {:order :row})
+                  vt-res (ge factory 5 5 [-0.25  -0.40  -0.69  -0.37  -0.41
+                                          0.81   0.36  -0.25  -0.37  -0.10
+                                          -0.26   0.70  -0.22   0.39  -0.49
+                                          0.40  -0.45   0.25   0.43  -0.62
+                                          -0.22   0.14   0.59  -0.63  -0.44]
+                             {:order :row})]
+
+     (< (double (nrm2 (axpy! -1 s-res (svd! a0 s superb)))) 0.0076) => true
+     (< (double (nrm2 (axpy! -1 s-res (svd! a1 s u vt superb)))) 0.0076) => true
+     (< (double (nrm2 (axpy! -1 u-res u))) 0.016) => true
+     (< (double (nrm2 (axpy! -1 vt-res vt))) 0.013) => true)))
 
 ;; =========================================================================
 
@@ -877,4 +912,5 @@
   (test-ge-trf factory)
   (test-ge-sv factory)
   (test-ge-ls factory)
-  (test-ge-ev factory))
+  (test-ge-ev factory)
+  (test-ge-svd factory))

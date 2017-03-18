@@ -334,7 +334,15 @@
   (ev [_ a w vl vr]
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
-      (ge-ev LAPACK/dgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr))))
+      (ge-ev LAPACK/dgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
+  (svd [_ a s u vt superb]
+    (let [u (or u zero-matrix)
+          vt (or vt zero-matrix)]
+      (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBlockVector s ^RealGEMatrix u ^RealGEMatrix vt
+              ^RealBlockVector superb)))
+  (svd [_ a s superb]
+    (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBlockVector s
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBlockVector superb)))
 
 (deftype FloatGEEngine []
   Blas
@@ -401,7 +409,15 @@
   (ev [_ a w vl vr]
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
-      (ge-ev LAPACK/sgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr))))
+      (ge-ev LAPACK/sgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
+  (svd [_ a s u vt superb]
+    (let [u (or u zero-matrix)
+          vt (or vt zero-matrix)]
+      (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBlockVector s ^RealGEMatrix u ^RealGEMatrix vt
+              ^RealBlockVector superb)))
+  (svd [_ a s superb]
+    (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBlockVector s
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBlockVector superb)))
 
 ;; ================= Triangular Matrix Engines =================================
 

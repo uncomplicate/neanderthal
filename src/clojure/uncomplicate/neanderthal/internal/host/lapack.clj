@@ -127,17 +127,49 @@
 
 ;; ------------- Non-Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
 
-(defmacro ge-ev
-  ([method a w vl vr]
-   `(if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~w))
-      (let [wr# (.col ~w 0)
-            wi# (.col ~w 1)
-            info# (~method (.order ~a) (int (if (< 0 (.mrows ~vl)) \V \N)) (int (if (< 0 (.mrows ~vr)) \V \N))
-                   (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
-                   (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
-                   (.buffer ~vl) (.offset ~vl) (.stride ~vl) (.buffer ~vr) (.offset ~vr) (.stride ~vr))]
-        (cond
-          (= 0 info#) ~w
-          (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
-          :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#)))))
-      (throw (IllegalArgumentException. "TODO Illegal wr/wi stride.")))))
+(defmacro ge-ev [method a w vl vr]
+  `(if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~w))
+     (let [wr# (.col ~w 0)
+           wi# (.col ~w 1)
+           info# (~method (.order ~a) (int (if (< 0 (.mrows ~vl)) \V \N)) (int (if (< 0 (.mrows ~vr)) \V \N))
+                  (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
+                  (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
+                  (.buffer ~vl) (.offset ~vl) (.stride ~vl) (.buffer ~vr) (.offset ~vr) (.stride ~vr))]
+       (cond
+         (= 0 info#) ~w
+         (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
+         :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#)))))
+     (throw (IllegalArgumentException. "TODO Illegal wr/wi stride."))))
+
+;; ------------- Singular Value Decomposition Routines LAPACK -------------------------------
+
+(defmacro ge-svd
+  ([method a s u vt superb]
+   `(let [m# (.mrows ~a)
+          n# (.ncols ~a)
+          info# (~method (.order ~a)
+                 (int (cond (= m# (.mrows ~u) (.ncols ~u)) \A
+                            (and (= m# (.mrows ~u)) (= (min m# n#) (.ncols ~u))) \S
+                            (nil? ~u) \O
+                            :else \N))
+                 (int (cond (= n# (.mrows ~vt) (.ncols ~vt)) \A
+                            (and (= (min m# n#) (.mrows ~vt)) (= n# (.ncols ~vt))) \S
+                            (and ~u (nil? ~vt)) \O
+                            :else \N))
+                 m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
+                 (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)
+                 (.buffer ~superb) (.offset ~superb))]
+      (cond
+        (= 0 info#) ~s
+        (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
+        :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#))))))
+  ([method a s zero-uvt superb]
+   `(let [info# (~method (.order ~a) (int \N) (int \N) (.mrows ~a) (.ncols ~a)
+                 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
+                 (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
+                 (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
+                 (.buffer ~superb) (.offset ~superb))]
+      (cond
+        (= 0 info#) ~s
+        (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
+        :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#)))))))

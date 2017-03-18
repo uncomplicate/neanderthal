@@ -65,7 +65,8 @@
   (lqf [this a tau])
   (qlf [this a tau])
   (ls [this a b])
-  (ev [this a w vl vr]))
+  (ev [this a w vl vr])
+  (svd [this a s superb] [this a s u vt superb]))
 
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
