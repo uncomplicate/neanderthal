@@ -102,7 +102,7 @@
 
 (def ^:private f* (double-fn *))
 
-(defn det! ^double [^RealMatrix lu ^Vector ipiv]
+(defn det ^double [^RealMatrix lu ^Vector ipiv]
   (with-release [res (double (fold f* 1.0 (.dia lu)))]
     (if (even? (.dim ipiv))
       res

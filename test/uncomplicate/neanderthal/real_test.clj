@@ -14,7 +14,7 @@
              [core :refer :all]
              [linalg :refer :all]
              [math :refer :all]
-             [real :refer [ls-residual det!]]]
+             [real :refer [ls-residual det]]]
             [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]]))
 
 (defn test-group [factory]
@@ -753,7 +753,7 @@
 
 (defn test-ge-det [factory]
   (facts
-   "LAPACK GE det!"
+   "LAPACK GE det"
 
    (with-release [a (ge factory 5 5 [6.80, -2.11,  5.66,  5.97,  8.23,
                                      -6.05, -3.30,  5.36, -4.44,  1.08,
@@ -768,7 +768,7 @@
                                       -0.26   0.44  -0.59  -0.34  -3.43]
                          {:order :row})]
 
-     (det! a (trf! a)) => (roughly -38406.4848))))
+     (det a (trf! a)) => (roughly -38406.4848))))
 
 (defn test-ge-ls [factory]
   (facts
