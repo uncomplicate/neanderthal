@@ -456,17 +456,17 @@
          (mv 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 0 0))
          => (vctr factory 22 28)))
 
-(defn test-rank [factory]
-  (facts "BLAS 2 rank!"
+(defn test-rk [factory]
+  (facts "BLAS 2 rk!"
          (with-release [a (ge factory 2 3)]
-           (identical? (rank! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) a) a))
+           (identical? (rk! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) a) a))
          => true
 
-         (rank! (vctr factory 3 2 1 4) (vctr factory 1 2 3)
+         (rk! (vctr factory 3 2 1 4) (vctr factory 1 2 3)
                 (ge factory 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
          => (ge factory 4 3 [4 4 4 8 8 6 4 10 12 10 5 13])
 
-         (rank! (vctr factory 1 2) (vctr factory 1 2 3) (ge factory 2 2 [1 2 3 5]))
+         (rk! (vctr factory 1 2) (vctr factory 1 2 3) (ge factory 2 2 [1 2 3 5]))
          => (throws IllegalArgumentException)))
 
 ;; ====================== BLAS 3 ================================
@@ -900,7 +900,7 @@
   (test-ge-scal factory)
   (test-ge-axpy factory)
   (test-ge-mv factory)
-  (test-rank factory)
+  (test-rk factory)
   (test-ge-mm factory)
   (test-tr factory)
   (test-tr-constructor factory)

@@ -353,7 +353,7 @@
    `(throw (IllegalArgumentException. "In-place mv! is not supported for GE matrices."))))
 
 
-(defmacro ^:private ge-rank [queue method alpha x y a]
+(defmacro ^:private ge-rk [queue method alpha x y a]
   `(when (< 0 (.count ~a))
      (with-check error
        (~method (.order ~a) (.mrows ~a) (.ncols ~a)
@@ -636,8 +636,8 @@
    y)
   (mv [this a x]
    (ge-mv))
-  (rank [_ alpha x y a]
-    (ge-rank queue CLBlast/CLBlastDger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
+  (rk [_ alpha x y a]
+    (ge-rk queue CLBlast/CLBlastDger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
     a)
   (mm [_ alpha a b left]
    (ge-mm alpha a b left))
@@ -677,8 +677,8 @@
    y)
   (mv [this a x]
    (ge-mv))
-  (rank [_ alpha x y a]
-    (ge-rank queue CLBlast/CLBlastSger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
+  (rk [_ alpha x y a]
+    (ge-rk queue CLBlast/CLBlastSger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
     a)
   (mm [_ alpha a b left]
    (ge-mm alpha a b left))

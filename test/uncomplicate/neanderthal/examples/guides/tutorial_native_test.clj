@@ -249,16 +249,16 @@ instance."
    y => (dv 26.5 38.0)))
 
 (facts
- "BLAS 2 rank: Here is how to multiply a transposed vector by another vector,
-thus creating a matrix. rank! puts the result in a provided matrix, while rank
+ "BLAS 2 rk: Here is how to multiply a transposed vector by another vector,
+thus creating a matrix. rk! puts the result in a provided matrix, while rk
 puts it in a new matrix instance."
  (let [a (dge 2 3 (range 6))
        x (dv 1 2)
        y (dv 1 2 3)]
-   (rank x y) => (dge 2 3 [1 2 2 4 3 6])
-   (rank 1.5 x y) => (dge 2 3 [1.5 3.0 3.0 6.0 4.5 9.0])
+   (rk x y) => (dge 2 3 [1 2 2 4 3 6])
+   (rk 1.5 x y) => (dge 2 3 [1.5 3.0 3.0 6.0 4.5 9.0])
    a => (dge 2 3 (range 6))
-   (rank! 2.5 x y a) => (dge 2 3 [2.5 6.0 7.0 13.0 11.5 20.0])
+   (rk! 2.5 x y a) => (dge 2 3 [2.5 6.0 7.0 13.0 11.5 20.0])
    a => (dge 2 3 [2.5 6.0 7.0 13.0 11.5 20.0])))
 
 "$text

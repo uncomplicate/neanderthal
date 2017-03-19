@@ -802,7 +802,7 @@
      (let-release [res (copy x)]
        (mv! a x)))))
 
-(defn rank!
+(defn rk!
   "BLAS 2: General rank-1 update.
 
   Computes a = alpha * x * y' + a
@@ -815,28 +815,28 @@
   If called with 3 arguments, a, x, y, alpha is 1.0.
 
   (def a (dge 3 2 [1 1 1 1 1 1]))
-  (rank! 1.5 (dv 1 2 3) (dv 4 5) a)
+  (rk! 1.5 (dv 1 2 3) (dv 4 5) a)
   => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
    (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
-     (api/rank (api/engine a) alpha x y a)
+     (api/rk (api/engine a) alpha x y a)
      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
   ([x y a]
-   (rank! 1.0 x y a)))
+   (rk! 1.0 x y a)))
 
-(defn rank
+(defn rk
   "A pure version of rank! that returns the result
   in a new matrix instance.
   "
   ([alpha x y a]
    (let-release [res (copy a)]
-     (rank! alpha x y res)))
+     (rk! alpha x y res)))
   ([alpha ^Vector x ^Vector y]
    (let-release [res (ge (api/factory x) (.dim x) (.dim y))]
-     (rank! alpha x y res)))
+     (rk! alpha x y res)))
   ([x y]
-   (rank 1.0 x y)))
+   (rk 1.0 x y)))
 
 ;; =========================== BLAS 3 ==========================================
 

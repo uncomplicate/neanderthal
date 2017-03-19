@@ -294,8 +294,8 @@
    y)
   (mv [this a x]
    (ge-mv))
-  (rank [_ alpha x y a]
-    (ge-rank CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
+  (rk [_ alpha x y a]
+    (ge-rk CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
   (mm [_ alpha a b left]
    (ge-mm alpha a b left))
@@ -369,8 +369,8 @@
    y)
   (mv [this a x]
    (ge-mv))
-  (rank [_ alpha x y a]
-    (ge-rank CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
+  (rk [_ alpha x y a]
+    (ge-rk CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
   (mm [_ alpha a b left]
    (ge-mm alpha a b left))

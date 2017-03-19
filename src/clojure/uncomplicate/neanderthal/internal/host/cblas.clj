@@ -106,7 +106,7 @@
   ([]
    `(throw (IllegalArgumentException. "In-place mv! is not supported for GE matrices."))))
 
-(defmacro ge-rank [method alpha x y a]
+(defmacro ge-rk [method alpha x y a]
   `(~method (.order ~a) (.mrows ~a) (.ncols ~a) ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
     (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~a) (.offset ~a) (.stride ~a)))
 
