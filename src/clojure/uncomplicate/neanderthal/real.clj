@@ -24,12 +24,14 @@
                [core :refer :all :exclude [entry entry! dot nrm2 asum sum]]
                [real :refer :all]]))
   "
-  (:require [uncomplicate.fluokitten.core :refer [foldmap]]
+  (:require [uncomplicate.commons.core :refer [with-release double-fn]]
+            [uncomplicate.fluokitten.core :refer [foldmap fold]]
             [uncomplicate.neanderthal
              [math :refer [sqr]]
-             [core :as core]]
+             [core :as core]
+             [linalg :as linalg]]
             [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api RealVector RealMatrix RealChangeable]))
+  (:import [uncomplicate.neanderthal.internal.api RealVector RealMatrix RealChangeable Vector]))
 
 ;; ============ Vector and Matrix access methods ===
 
@@ -97,3 +99,11 @@
           (entry! res j (foldmap sqr (.col residuals j))))
         res)
       res)))
+
+(def ^:private f* (double-fn *))
+
+(defn det! ^double [^RealMatrix lu ^Vector ipiv]
+  (with-release [res (double (fold f* 1.0 (.dia lu)))]
+    (if (even? (.dim ipiv))
+      res
+      (- res))))

@@ -12,8 +12,9 @@
             [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.neanderthal
              [core :refer :all]
+             [linalg :refer :all]
              [math :refer :all]
-             [real :refer [ls-residual]]]
+             [real :refer [ls-residual det!]]]
             [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]]))
 
 (defn test-group [factory]
@@ -758,6 +759,25 @@
      (< (double (nrm2 (axpy! -1 a lu))) 0.015) => true
      (< (double (nrm2 (axpy! -1 b solution))) 0.015) => true)))
 
+(defn test-ge-det [factory]
+  (facts
+   "LAPACK GE det!"
+
+   (with-release [a (ge factory 5 5 [6.80, -2.11,  5.66,  5.97,  8.23,
+                                     -6.05, -3.30,  5.36, -4.44,  1.08,
+                                     -0.45,  2.58, -2.70,  0.27,  9.04,
+                                     8.32,  2.71,  4.35, -7.17,  2.14,
+                                     -9.67, -5.14, -7.26,  6.08, -6.87])
+                  ipiv (vctr (index-factory factory) 5)
+                  lu (ge factory 5 5 [8.23   1.08   9.04   2.14  -6.87
+                                      0.83  -6.94  -7.92   6.55  -3.99
+                                      0.69  -0.67 -14.18   7.24  -5.19
+                                      0.73   0.75   0.02 -13.82  14.19
+                                      -0.26   0.44  -0.59  -0.34  -3.43]
+                         {:order :row})]
+
+     (det! a (trf! a)) => (roughly -38406.4848))))
+
 (defn test-ge-ls [factory]
   (facts
    "LAPACK GE ls!"
@@ -913,6 +933,7 @@
   (test-tr-nrm2 factory)
   (test-tr-amax factory)
   (test-ge-trf factory)
+  (test-ge-det factory)
   (test-ge-sv factory)
   (test-ge-ls factory)
   (test-ge-ev factory)
