@@ -294,6 +294,8 @@
          (col (ge factory 2 3 [1 2 3 4 5 6]) 1) => (vctr factory 3 4)
          (col (ge factory 2 3 [1 2 3 4 5 6]) 4) => (throws IndexOutOfBoundsException)
 
+         (dia (ge factory 2 3 [1 2 3 4 5 6])) => (vctr factory 1 4)
+
          (submatrix (ge factory 3 4 (range 12)) 1 2 2 1) => (ge factory 2 1 [7 8])
          (submatrix (ge factory 3 4 (range 12)) 2 3) => (ge factory 2 3 [0 1 3 4 6 7])
          (submatrix (ge factory 3 4 (range 12)) 3 4) => (ge factory 3 4 (range 12))
@@ -521,7 +523,8 @@
            (row a-lower 0) => (vctr factory [0])
            (row a-lower 2) => (vctr factory [2 4 5])
            (col a-lower 0) => (vctr factory [0 1 2])
-           (col a-lower 2) => (vctr factory [5]))))
+           (col a-lower 2) => (vctr factory [5])
+           (dia a-upper) => (vctr factory 0 2 5))))
 
 (defn test-tr-entry [factory]
   (facts "TR Matrix entry."

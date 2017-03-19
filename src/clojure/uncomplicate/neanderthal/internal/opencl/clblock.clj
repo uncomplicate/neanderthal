@@ -386,6 +386,8 @@
     (cl-block-vector fact false @buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
   (col [a j]
     (cl-block-vector fact false @buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+  (dia [a]
+    (cl-block-vector fact false @buf (min m n) ofst (inc ld)))
   (submatrix [a i j k l]
     (cl-ge-matrix fact false @buf k l (.index navigator ofst ld i j) ld ord))
   (transpose [a]
@@ -571,6 +573,8 @@
     (let [start (.colStart uplo-nav n j)]
       (cl-block-vector fact false @buf (- (.colEnd uplo-nav n j) start)
                        (.index navigator ofst ld start j) (if (= COLUMN_MAJOR ord) 1 ld))))
+  (dia [a]
+    (cl-block-vector fact false @buf n ofst (inc ld)))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
       (cl-tr-matrix fact false @buf k (.index navigator ofst ld i j) ld ord fuplo fdiag))

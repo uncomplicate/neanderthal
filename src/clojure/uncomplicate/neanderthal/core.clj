@@ -269,6 +269,11 @@
     (.col m j)
     (throw (IndexOutOfBoundsException. (format api/ROW_COL_MSG "col" j "col" (.ncols m))))))
 
+(defn dia
+  "TODO"
+  [^Matrix m]
+  (.dia m))
+
 (defn cols
   "Returns a lazy sequence of vectors that represent
   columns of the matrix m.

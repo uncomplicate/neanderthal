@@ -18,6 +18,8 @@ public interface Matrix {
 
     Vector col (long j);
 
+    Vector dia ();
+
     Object boxedEntry (long i, long j);
 
     Matrix transpose ();
