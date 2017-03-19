@@ -37,8 +37,7 @@
          (vect? (vctr factory [1 2 3])) => true
          (vctr factory 1 2 3) => (vctr factory [1 2 3])
          (vctr factory 3) => (vctr factory [0 0 0])
-         ;;(vctr factory (seq-to-buffer (data-accessor factory) [1 2 3]))
-         ;;=> (vctr factory [1 2 3])
+         (view-ge (vctr factory 1 2 3 4)) => (ge factory 4 1 [1 2 3 4])
          (vctr factory nil) => (throws IllegalArgumentException)
          (dim (vctr factory [])) => 0
          (vctr factory 3) => (zero (vctr factory [1 2 3]))))
@@ -265,15 +264,12 @@
 
 (defn test-ge-constructor [factory]
   (facts "Create a GE matrix."
-         (with-release [a (ge factory 2 3 [1 2 3 4 5 6])]
+         (with-release [a (ge factory 2 3 [1 2 3 4 5 6])
+                        b (tr factory 2 [1 2 4])]
            (ge factory 2 3 [1 2 3 4 5 6]) => a
-           ;;(ge factory 2 3 (seq-to-buffer (data-accessor factory)
-           ;;[1 2 3 4 5 6]))
-           ;;=> a
            (ge factory 2 3 nil) => (zero a)
-           ;;(ge factory 0 0 [])
-           ;;=> (ge factory 0 0 (seq-to-buffer (data-accessor factory) []))
-           )))
+           (view-ge a) => a
+           (view-tr a) => b)))
 
 (defn test-ge [factory]
   (facts "GE Matrix methods."
@@ -502,15 +498,11 @@
 
 (defn test-tr-constructor [factory]
   (facts "Create a triangular matrix."
-         (with-release [a (tr factory 3 (range 6))]
-           (subtriangle (ge factory 3 3 [0 1 2 0 3 4 0 0 5])) => a
-           ;;(ge factory 2 3 (seq-to-buffer (data-accessor factory)
-           ;;[1 2 3 4 5 6]))
-           ;;=> a
-           (tr factory 3 nil) => (zero a)
-           ;;(ge factory 0 0 [])
-           ;;=> (ge factory 0 0 (seq-to-buffer (data-accessor factory) []))
-           )))
+         (with-release [a (tr factory 3 (range 6))
+                        b (ge factory 3 3 [0 1 2 0 3 4 0 0 5])]
+           (view-tr b) => a
+           (view-ge (view-tr b)) => b
+           (tr factory 3 nil) => (zero a))))
 
 (defn test-tr [factory]
   (facts "Triangular Matrix methods."

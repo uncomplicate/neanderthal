@@ -135,6 +135,11 @@
   ([factory ^Matrix a]
    (ge factory (.mrows a) (.ncols a) a nil)))
 
+(defn view-ge
+  "TODO"
+  ([a]
+   (api/view-ge a)))
+
 (defn ge?
   "TODO
   "
@@ -152,7 +157,7 @@
   ([factory ^long n source options]
    (if (<= 0 n)
      (let-release [res (api/create-tr factory n (api/enc-order (:order options))
-                                    (api/enc-uplo (:uplo options)) (api/enc-diag (:diag options)) true)]
+                                      (api/enc-uplo (:uplo options)) (api/enc-diag (:diag options)) true)]
        (if source
          (transfer! source res)
          res))
@@ -166,6 +171,15 @@
    (if (number? source)
      (tr factory source nil nil)
      (tr factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
+
+(defn view-tr
+  "TODO"
+  ([a]
+   (api/view-tr a api/DEFAULT_UPLO api/DEFAULT_DIAG))
+  ([^Matrix a options]
+   (let [uplo (api/enc-uplo (:uplo options))
+         diag (api/enc-diag (:diag options))]
+     (api/view-tr a uplo diag))))
 
 ;; ================= Container  ================================================
 
@@ -310,15 +324,6 @@
              (format "Submatrix %d,%d %d,%d is out of bounds of %dx%d." i j k l (.mrows a) (.ncols a))))))
   ([^Matrix a k l]
    (submatrix a 0 0 k l)))
-
-(defn subtriangle
-  "TODO"
-  ([a]
-   (api/subtriangle a api/DEFAULT_UPLO api/DEFAULT_DIAG))
-  ([^Matrix a options]
-   (let [uplo (api/enc-uplo (:uplo options))
-         diag (api/enc-diag (:diag options))]
-     (api/subtriangle a uplo diag))))
 
 (defn trans!
   "TODO"

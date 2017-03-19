@@ -385,6 +385,9 @@
       (copy eng x res)))
   (native [x]
     x)
+  DenseContainer
+  (view-ge [_]
+    (real-ge-matrix fact false buf n 1 ofst n COLUMN_MAJOR))
   MemoryContext
   (compatible? [_ y]
     (compatible? da y))
@@ -588,8 +591,10 @@
   (native [a]
     a)
   DenseContainer
-  (subtriangle [_ uplo diag];;TODO remove and introduce new function similar to copy that reuses memory (view x :tr)
-    (real-tr-matrix fact false buf (min m n) 0 ld ord uplo diag))
+  (view-ge [_]
+    (real-ge-matrix fact false buf m n ofst ld ord))
+  (view-tr [_ uplo diag]
+    (real-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -827,6 +832,11 @@
       (copy eng a res)))
   (native [a]
     a)
+  DenseContainer
+  (view-ge [_]
+    (real-ge-matrix fact false buf n n ofst ld ord))
+  (view-tr [_ uplo diag]
+    (real-tr-matrix fact false buf n ofst ld ord uplo diag))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))

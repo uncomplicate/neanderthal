@@ -103,8 +103,8 @@
   (native [this]))
 
 (defprotocol DenseContainer
-  (subband [this p q])
-  (subtriangle [this uplo diag]))
+  (view-ge [this])
+  (view-tr [this uplo diag]))
 
 (def ^:const ROW_MAJOR 101)
 (def ^:const COLUMN_MAJOR 102)
