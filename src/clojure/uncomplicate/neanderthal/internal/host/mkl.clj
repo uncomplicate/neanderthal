@@ -21,6 +21,9 @@
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
             RealTRMatrix RealGEMatrix]))
 
+(def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
+  "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")
+
 ;; =========== MKL-spicific routines ====================================================
 
 (defmacro ge-copy [method a b]
@@ -293,7 +296,7 @@
    (ge-mv CBLAS/dgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
    y)
   (mv [this a x]
-   (ge-mv))
+   (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
@@ -368,7 +371,7 @@
    (ge-mv CBLAS/sgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
    y)
   (mv [this a x]
-   (ge-mv))
+   (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
@@ -442,12 +445,12 @@
              alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-   (tr-mv))
+   (tr-mv a))
   (mv [_ a x]
    (tr-mv CBLAS/dtrmv ^RealTRMatrix a ^RealBlockVector x)
    x)
   (mm [this alpha a b beta c]
-   (tr-mm))
+   (tr-mm a))
   (mm [_ alpha a b left]
    (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
    b)
@@ -481,12 +484,12 @@
              ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-   (tr-mv))
+   (tr-mv a))
   (mv [_ a x]
    (tr-mv CBLAS/strmv ^RealTRMatrix a ^RealBlockVector x)
    x)
   (mm [this alpha a b beta c]
-   (tr-mm))
+   (tr-mm a))
   (mm [_ alpha a b left]
    (tr-mm CBLAS/strmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
    b)

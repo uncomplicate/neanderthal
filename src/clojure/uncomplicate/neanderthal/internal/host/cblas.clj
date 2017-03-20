@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.cblas
-  (:require [uncomplicate.neanderthal.internal.api :refer [engine STRIDE_MSG mm iamax]])
+  (:require [uncomplicate.neanderthal.internal.api :refer [engine mm iamax]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
            [uncomplicate.neanderthal.internal.api RealVector]))
 
@@ -22,12 +22,12 @@
      (if (= 1 (.stride ~param))
        (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
         (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
-       (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~param)))))))
+       (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)})))))
 
 (defmacro vector-rotmg [method d1d2xy param]
   `(if (= 1 (.stride ~param))
      (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param))
-     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~param))))))
+     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
 
 (defmacro vector-amax [x]
   `(if (< 0 (.dim ~x))
@@ -103,8 +103,8 @@
    `(~method (.order ~a) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a)
      ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
      (.buffer ~x) (.offset ~x) (.stride ~x) ~beta (.buffer ~y) (.offset ~y) (.stride ~y)))
-  ([]
-   `(throw (IllegalArgumentException. "In-place mv! is not supported for GE matrices."))))
+  ([a]
+   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (str ~a)}))))
 
 (defmacro ge-rk [method alpha x y a]
   `(~method (.order ~a) (.mrows ~a) (.ncols ~a) ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
@@ -114,7 +114,7 @@
   ([alpha a b left]
    `(if ~left
       (mm (engine ~b) ~alpha ~b ~a false)
-      (throw (IllegalArgumentException. "In-place mm! is not supported for GE matrices."))))
+      (throw (ex-info "In-place mm! is not supported for GE matrices." {:a (str ~a)}))))
   ([method alpha a b beta c]
    `(~method (.order ~c)
      (if (= (.order ~a) (.order ~c)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
@@ -195,8 +195,8 @@
   ([method a x]
    `(~method (.order ~a) (.uplo ~a) CBLAS/TRANSPOSE_NO_TRANS (.diag ~a) (.ncols ~a)
      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x)))
-  ([]
-   `(throw (IllegalArgumentException. "Only in-place mv! is supported for TR matrices."))))
+  ([a]
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
 (defmacro tr-mm
   ([method alpha a b left]
@@ -204,5 +204,5 @@
      (if (= (.order ~a) (.order ~b)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
      (.diag ~a) (.mrows ~b) (.ncols ~b)
      ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
-  ([]
-   `(throw (IllegalArgumentException. "Only in-place mm! is supported for TR matrices."))))
+  ([a]
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))

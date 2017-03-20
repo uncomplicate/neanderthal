@@ -12,9 +12,8 @@
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal.core :refer [vctr ge copy copy! dim ncols]]
             [uncomplicate.neanderthal.internal.api
-             :refer [factory compatible? engine raw subcopy
-                     ReductionFunction vector-reduce vector-reduce-map
-                     DIMENSIONS_MSG INCOMPATIBLE_BLOCKS_MSG dec-property]])
+             :refer [factory compatible? engine raw subcopy dec-property
+                     ReductionFunction vector-reduce vector-reduce-map]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
             IFn$DLDD IFn$ODO IFn$OLDO]
            [uncomplicate.neanderthal.internal.api  Block ContiguousBlock
@@ -22,6 +21,9 @@
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
   "Matrices should have fitting dimensions.")
+
+(def ^{:no-doc true :const true} DIMENSIONS_MSG
+  "Vectors should have fitting dimensions.")
 
 ;; ==================== Vector Fluokitten funcitions =======================
 
@@ -47,7 +49,7 @@
        (if (check-vector-dimensions ~@xs)
          (dotimes [i# (dim ~(first xs))]
            (.set ~(first xs) i# (invoke-entry ~f i# ~@xs)))
-         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (dim ~(first xs))))))
+         (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)})))
        ~(first xs))
     `(throw (UnsupportedOperationException. "Vector fmap supports up to 4 vectors."))))
 
@@ -78,7 +80,7 @@
     `(do
        (if (check-vector-dimensions ~@xs)
          (vector-reduce ~f ~init ~@xs)
-         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (dim ~(first xs)))))))
+         (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)}))))
     `(throw (UnsupportedOperationException. "Vector fold supports up to 4 vectors."))))
 
 (defmacro vector-foldmap [f init g & xs]
@@ -86,7 +88,7 @@
     `(do
        (if (check-vector-dimensions ~@xs)
          (vector-reduce-map ~f ~init ~g ~@xs)
-         (throw (IllegalArgumentException. (format DIMENSIONS_MSG (dim ~(first xs)))))))
+         (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)}))))
     `(throw (UnsupportedOperationException. "Vector foldmap supports up to 4 vectors."))))
 
 (defn vector-op [^Vector x & ws]
@@ -95,7 +97,7 @@
       (when w
         (if (compatible? res w)
           (subcopy (engine w) w res 0 (dim w) pos)
-          (throw (UnsupportedOperationException. (format INCOMPATIBLE_BLOCKS_MSG res w))))
+          (throw (ex-info "You can not apply op on incompatiple vectors." {:res res :w w})))
         (recur (+ pos (dim w)) (first ws) (next ws))))
     res))
 
@@ -137,7 +139,7 @@
            (if (< j# ~fd)
              (recur (inc j#) (matrix-reduce ~navigator j# ~f acc# ~@as))
              acc#))
-         (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
+         (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))))
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
 (defmacro matrix-foldmap [navigator fd f init g & as]
@@ -148,7 +150,7 @@
            (if (< j# ~fd)
              (recur (inc j#) (matrix-reduce-map ~navigator j# ~f acc# ~g ~@as))
              acc#))
-         (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG))))
+         (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))))
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
 (defn matrix-op [^ContiguousBlock a & bs]
@@ -159,7 +161,7 @@
       (when w
         (if (compatible? res w)
           (copy! w (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))
-          (throw (IllegalArgumentException. (format INCOMPATIBLE_BLOCKS_MSG res w))))
+          (throw (ex-info "You can not apply op on incompatiple matrices." {:res res :w w})))
         (recur (+ pos (.ncols w)) (first ws) (next ws))))
     res))
 
@@ -167,8 +169,7 @@
   ([a ^double v]
    (.set ^RealChangeable (raw a) v))
   ([a ^double v cs]
-   (throw (UnsupportedOperationException.
-           "This operation would be slow on primitive matrices."))))
+   (throw (UnsupportedOperationException. "This operation would be slow on primitive matrices."))))
 
 ;; ==================== GE matrix Fluokitten funcitions ========================
 
@@ -180,7 +181,7 @@
            (dotimes [i# ~sd]
              (.set ~navigator ~(first as) i# j#
                    (invoke-matrix-entry ~navigator ~f i# j# ~@as))))
-         (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
+         (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
        ~(first as))
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
@@ -198,7 +199,7 @@
                  (.set ~navigator ~(first as) i# j#
                        (invoke-matrix-entry ~navigator ~f i# j# ~@as))
                  (recur (inc i#))))))
-         (throw (IllegalArgumentException. FITTING_DIMENSIONS_MATRIX_MSG)))
+         (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
        ~(first as))
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 

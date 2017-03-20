@@ -191,7 +191,7 @@
   (set [x val]
     (if (and (= 0 ofst) (= 1 strd))
       (.initialize da @buf val)
-      (throw (IllegalArgumentException. INEFFICIENT_STRIDE_MSG)))
+      (throw (UnsupportedOperationException. INEFFICIENT_STRIDE_MSG)))
     x)
   (set [_ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
@@ -230,13 +230,11 @@
     x))
 
 (defn cl-block-vector
-  ([fact master ^CLBuffer buf n ofst strd]
+  ([fact ^Boolean master ^CLBuffer buf n ofst strd]
    (let [da (data-accessor fact)]
      (if (and (<= 0 n (.count da buf)))
-       (CLBlockVector. fact da (vector-engine fact) (atom master) (atom buf) n ofst strd)
-       (throw (IllegalArgumentException.
-               (format "I can not create an %d element vector from %d-element %s."
-                       n (.count da buf) (class buf)))))))
+       (->CLBlockVector fact da (vector-engine fact) (atom master) (atom buf) n ofst strd)
+       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da buf)})))))
   ([fact n]
    (let-release [buf (.createDataSource (data-accessor fact) n)]
      (cl-block-vector fact true buf n 0 1))))
@@ -416,9 +414,9 @@
 (defn cl-ge-matrix
   ([fact master ^CLBuffer buf m n ofst ld ord]
    (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
-     (CLGEMatrix. (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
-                  (ge-engine fact) (atom master) (atom buf) m n ofst (max (long ld) (.sd navigator m n))
-                  (.sd navigator m n) (.fd navigator m n) ord)))
+     (->CLGEMatrix (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
+                   (ge-engine fact) (atom master) (atom buf) m n ofst (max (long ld) (.sd navigator m n))
+                   (.sd navigator m n) (.fd navigator m n) ord)))
   ([fact ^long m ^long n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
      (cl-ge-matrix fact true buf m n 0 0 ord)))
@@ -587,8 +585,9 @@
     (cl-block-vector fact false @buf n ofst (inc ld)))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
-      (cl-tr-matrix fact false @buf k (.index navigator ofst ld i j) ld ord fuplo fdiag))
-    (throw (UnsupportedOperationException. "Submatrix of a TR matrix has to be triangular.")))
+      (cl-tr-matrix fact false @buf k (.index navigator ofst ld i j) ld ord fuplo fdiag)
+      (throw (ex-info "You cannot use regions outside the triangle in TR submatrix"
+                      {:a (str a) :i i :j j :k k :l l}))))
   (transpose [a]
     (cl-tr-matrix fact false @buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
                   (if (= LOWER fuplo) UPPER LOWER) fdiag))
@@ -624,8 +623,8 @@
          stripe-nav (if bottom
                       (if unit unit-bottom-navigator non-unit-bottom-navigator)
                       (if unit unit-top-navigator non-unit-top-navigator))]
-     (CLTRMatrix. order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
-                  (atom master) (atom buf) n ofst (max (long ld) (long n)) ord uplo diag)))
+     (->CLTRMatrix order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
+                   (atom master) (atom buf) n ofst (max (long ld) (long n)) ord uplo diag)))
   ([fact n ord uplo diag]
    (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
      (cl-tr-matrix fact true buf n 0 n ord uplo diag)))

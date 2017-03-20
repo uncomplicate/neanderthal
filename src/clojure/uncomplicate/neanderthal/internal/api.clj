@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.api)
+(ns uncomplicate.neanderthal.internal.api
+  (:require [uncomplicate.commons.core :refer [Releaseable]]))
 
 (definterface UploNavigator
   (^long colStart [^long n ^long i])
@@ -106,6 +107,35 @@
   (view-ge [this])
   (view-tr [this uplo diag]))
 
+;; ============ Realeaseable ===================================================
+
+(extend-type clojure.lang.Sequential
+  Releaseable
+  (release [this]
+    true)
+  Container
+  (raw [this fact]
+    (let [n (count this)]
+      (create-vector fact n false))))
+
+(extend-type Object
+  MemoryContext
+  (compatible? [this o]
+    (instance? (class this) o))
+  DataAccessorProvider
+  (data-accessor [_]
+    nil))
+
+(extend-type nil
+  MemoryContext
+  (compatible? [this o]
+    false)
+  DataAccessorProvider
+  (data-accessor [_]
+    nil))
+
+;; ============================================================================
+
 (def ^:const ROW_MAJOR 101)
 (def ^:const COLUMN_MAJOR 102)
 (def ^:const DEFAULT_ORDER COLUMN_MAJOR)
@@ -167,64 +197,3 @@
 
 (defn enc-diag ^long [diag]
   (if (= :unit diag) 132 131))
-
-(def ^{:no-doc true :const true} MAT_BOUNDS_MSG
-  "\nRequested entry %d, %d is out of bounds of matrix %d x %d.\n")
-
-(def ^{:no-doc true :const true} VECTOR_BOUNDS_MSG
-  "\nRequested dim %d is out of bounds of vector dim %d.\n")
-
-(def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG
-  "\nOperation is not permited on objects with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  \n1: %s
-  \n2: %s\n")
-
-(def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG_3
-  "\nOperation is not permited on objects with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  \n1: %s
-  \n2: %s
-  \n3: %s\n")
-
-(def ^{:no-doc true :const true} INCOMPATIBLE_BLOCKS_MSG_4
-  "\nOperation is not permited on objects with incompatible buffers,
-  or dimensions that are incompatible in the context of the operation.
-  \n1: %s
-  \n2: %s
-  \n3: %s
-  \n4: %s\n")
-
-(def ^{:no-doc true :const true} ROW_COL_MSG
-  "\nRequired %s %d is higher than the %s count %d.\n")
-
-(def ^{:no-doc true :const true} DIMENSION_MSG
-  "\nIncompatible dimensions - expected:%d, actual:%d.\n")
-
-(def ^{:no-doc true :const true} STRIDE_MSG
-  "\nIncompatible stride - expected:%d, actual:%d.\n")
-
-(def ^{:no-doc true :const true} ILLEGAL_SOURCE_MSG
-  "\n%d is not a valid data source for %s.\n")
-
-(def ^{:no-doc true :const true} DIMENSIONS_MSG
-  "\nVector dimensions should be %d.\n")
-
-(def ^{:no-doc true :const true} PRIMITIVE_FN_MSG
-  "\nI cannot accept function of this type as an argument.\n")
-
-(def ^{:no-doc true :const true} ROTM_COND_MSG
-  "\nArguments x and y must be compatible and have equeal dimensions.
-  argument param must have dimension at least 5.
-  \nx: %s;
-  \ny: %s;
-  \nparam: %s\n")
-
-(def ^{:no-doc true :const true} ROTMG_COND_MSG
-  "\nArguments d1d2xy and param must be compatible.
-  param must have dimension at least 5 and d1d2xy at least 4.
-  \nd1d2xy: %s;
-  \nparam: %s\n")
-
-(def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
-  "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")

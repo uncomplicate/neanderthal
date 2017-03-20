@@ -33,21 +33,10 @@
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
 
-;; ============ Realeaseable ===================================================
-
 (extend-type DirectByteBuffer
   Releaseable
   (release [this]
     (clean-buffer this)))
-
-(extend-type clojure.lang.Sequential
-  Releaseable
-  (release [this]
-    true)
-  Container
-  (raw [this fact]
-    (let [n (count this)]
-      (create-vector fact n false))))
 
 ;; ================== Declarations ============================================
 
@@ -323,7 +312,7 @@
 
 (defn integer-block-vector
   ([fact master ^ByteBuffer buf n ofst strd]
-   (IntegerBlockVector. fact (data-accessor fact) (vector-engine fact) master buf n ofst strd))
+   (->IntegerBlockVector fact (data-accessor fact) (vector-engine fact) master buf n ofst strd))
   ([fact n]
    (let-release [buf (.createDataSource (data-accessor fact) n)]
      (integer-block-vector fact true buf n 0 1))))
@@ -417,13 +406,13 @@
     n)
   IFn$LD
   (invokePrim [x i]
-    (.entry x i))
+    (entry x i))
   IFn$L
   (invokePrim [x]
     n)
   IFn
   (invoke [x i]
-    (.entry x i))
+    (entry x i))
   (invoke [x]
     n)
   RealChangeable
@@ -493,7 +482,10 @@
 
 (defn real-block-vector
   ([fact master ^ByteBuffer buf n ofst strd]
-   (RealBlockVector. fact (data-accessor fact) (vector-engine fact) master buf n ofst strd))
+   (let [da (data-accessor fact)]
+     (if (and (<= 0 n (.count da buf)))
+       (->RealBlockVector fact da (vector-engine fact) master buf n ofst strd)
+       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da buf)})))))
   ([fact n]
    (let-release [buf (.createDataSource (data-accessor fact) n)]
      (real-block-vector fact true buf n 0 1))))
@@ -722,9 +714,9 @@
 (defn real-ge-matrix
   ([fact master buf m n ofst ld ord]
    (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
-     (RealGEMatrix. navigator fact (data-accessor fact) (ge-engine fact)
-                    master buf m n ofst (max (long ld) (.sd navigator m n))
-                    (.sd navigator m n) (.fd navigator m n) ord)))
+     (->RealGEMatrix navigator fact (data-accessor fact) (ge-engine fact)
+                     master buf m n ofst (max (long ld) (.sd navigator m n))
+                     (.sd navigator m n) (.fd navigator m n) ord)))
   ([fact ^long m ^long n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
      (real-ge-matrix fact true buf m n 0 0 ord)))
@@ -919,8 +911,9 @@
     (real-block-vector fact false buf n ofst (inc ld)))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
-      (real-tr-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo fdiag))
-    (throw (UnsupportedOperationException. "Submatrix of a TR matrix has to be triangular.")))
+      (real-tr-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo fdiag)
+      (throw (ex-info "You cannot use regions outside the triangle in TR submatrix"
+                      {:a (str a) :i i :j j :k k :l l}))))
   (transpose [a]
     (real-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
                     (if (= LOWER fuplo) UPPER LOWER) fdiag))
@@ -1000,8 +993,8 @@
          stripe-nav (if bottom
                       (if unit unit-bottom-navigator non-unit-bottom-navigator)
                       (if unit unit-top-navigator non-unit-top-navigator))]
-     (RealTRMatrix. order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
-                    master buf n ofst (max (long ld) (long n)) ord uplo diag)))
+     (->RealTRMatrix order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
+                     master buf n ofst (max (long ld) (long n)) ord uplo diag)))
   ([fact n ord uplo diag]
    (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
      (real-tr-matrix fact true buf n 0 n ord uplo diag)))

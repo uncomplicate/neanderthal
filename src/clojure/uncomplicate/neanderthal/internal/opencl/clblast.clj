@@ -135,7 +135,7 @@
          (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
           (cl-mem (.buffer ~param)) (.offset ~param) ~queue nil)
          nil))
-     (throw (IllegalArgumentException. (format STRIDE_MSG 1 (.stride ~param))))))
+     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
 
 (defmacro ^:private vector-method
   ([queue method x]
@@ -349,8 +349,8 @@
          ~beta (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
          ~queue nil)
         nil)))
-  ([]
-   `(throw (IllegalArgumentException. "In-place mv! is not supported for GE matrices."))))
+  ([a]
+   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (str ~a)}))))
 
 
 (defmacro ^:private ge-rk [queue method alpha x y a]
@@ -367,7 +367,7 @@
   ([alpha a b left]
    `(if ~left
       (mm (engine ~b) ~alpha ~b ~a false)
-      (throw (IllegalArgumentException. "In-place mm! is not supported for GE matrices."))))
+      (throw (ex-info "In-place mm! is not supported for GE matrices." {:a (str ~a)}))))
   ([queue method alpha a b beta c]
    `(when (< 0 (.count ~a))
       (with-check error
@@ -485,8 +485,8 @@
        (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
        ~queue nil)
       nil))
-  ([]
-   `(throw (IllegalArgumentException. "Only in-place mv! is supported for TR matrices."))))
+  ([a]
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
 (defmacro ^:private tr-mm
   ([queue method alpha a b left]
@@ -497,8 +497,8 @@
        (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
        ~queue nil)
       nil))
-  ([]
-   `(throw (IllegalArgumentException. "Only in-place mm! is supported for TR matrices."))))
+  ([a]
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
 ;; =============== CLBlast based engines =======================================
 
@@ -635,7 +635,7 @@
    (ge-mv queue CLBlast/CLBlastDgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
    y)
   (mv [this a x]
-   (ge-mv))
+   (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk queue CLBlast/CLBlastDger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
     a)
@@ -676,7 +676,7 @@
    (ge-mv queue CLBlast/CLBlastSgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
    y)
   (mv [this a x]
-   (ge-mv))
+   (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk queue CLBlast/CLBlastSger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
     a)
@@ -715,12 +715,12 @@
              CLBlast/CLBlastDaxpy alpha ^CLTRMatrix a ^CLTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-   (tr-mv))
+   (tr-mv a))
   (mv [_ a x]
    (tr-mv queue CLBlast/CLBlastDtrmv ^CLTRMatrix a ^CLBlockVector x)
    x)
   (mm [this alpha a b beta c]
-   (tr-mm))
+   (tr-mm a))
   (mm [_ alpha a b left]
    (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
    b)
@@ -757,12 +757,12 @@
              CLBlast/CLBlastSaxpy alpha ^CLTRMatrix a ^CLTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-   (tr-mv))
+   (tr-mv a))
   (mv [_ a x]
    (tr-mv queue CLBlast/CLBlastStrmv ^CLTRMatrix a ^CLBlockVector x)
    x)
   (mm [this alpha a b beta c]
-   (tr-mm))
+   (tr-mm a))
   (mm [_ alpha a b left]
    (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
    b)

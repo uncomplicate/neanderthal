@@ -34,10 +34,10 @@
   (ns test
     (:require [uncomplicate.neanderthal core native opencl]))
   "
-  (:require [uncomplicate.commons.core :refer [release let-release]]
-            [uncomplicate.neanderthal
-             [math :refer [f= pow sqrt]]
-             [block :refer [ecount]]]
+  (:require [uncomplicate.commons
+             [core :refer [release let-release]]
+             [utils :refer [cond-into]]]
+            [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix Changeable]))
 
@@ -69,6 +69,19 @@
   (transfer! device-vect (sv 3))
   "
   (fn ([source destination] [(class source) (class destination)])))
+
+(defmethod transfer! [nil Object]
+  [source destination]
+  (throw (ex-info "You cannot transfer data from nil." {:source source :destination (str destination)})))
+
+(defmethod transfer! [Object nil]
+  [source destination]
+  (throw (ex-info "You cannot transfer data to nil." {:source (str source) :destination destination})))
+
+(defmethod transfer! [Object Object]
+  [source destination]
+  (throw (ex-info "You cannot transfer data between these types of objects."
+                  {:source (type source) :destination (str destination)})))
 
 (defn transfer
   "Transfers the data to the memory space defined by factory (OpenCL, CUDA, etc.).
@@ -103,8 +116,7 @@
    (cond
      (integer? source) (if (<= 0 (long source))
                          (api/create-vector factory source true)
-                         (throw (IllegalArgumentException.
-                                 (format "Vector dimension must be at least 0, but is: %d" source))))
+                         (throw (ex-info "Vector cannot have a negative dimension." {:source (str source)})))
      (number? source) (.setBoxed ^Changeable (vctr factory 1) 0 source)
      :default (transfer factory source)))
   ([factory x & xs]
@@ -124,8 +136,7 @@
        (if source
          (transfer! source res)
          res))
-     (throw (IllegalArgumentException.
-             (format "GE matrix dimensions must be at least 0x0, but are: %dx%d" m n)))))
+     (throw (ex-info "GE matrix cannot have a negative dimension." {:m m :n n}))))
   ([factory ^long m ^long n arg]
    (if (or (not arg) (map? arg))
      (ge factory m n nil arg)
@@ -161,8 +172,7 @@
        (if source
          (transfer! source res)
          res))
-     (throw (IllegalArgumentException.
-             (format "TR matrix dimensions must be at least 0x0, but are: %dx%d" n n)))))
+     (throw (ex-info "TR matrix cannot have a negative dimension." {:n n}))))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
      (tr factory n nil arg)
@@ -226,7 +236,7 @@
   [^Vector x ^long k ^long l]
   (if (<= (+ k l) (.dim x))
     (.subvector x k l)
-    (throw (IndexOutOfBoundsException. (format api/VECTOR_BOUNDS_MSG (+ k l) (.dim x))))))
+    (throw (ex-info "Requested subvector is out of bounds." {:k k :l l :k+l (+ k l) :dim (.dim x)}))))
 
 ;; ================= Matrix =======================
 
@@ -235,15 +245,15 @@
 
   (mrows (dge 3 2 [1 2 3 4 5 6])) => 3
   "
-  ^long [^Matrix m]
-  (.mrows m))
+  ^long [^Matrix a]
+  (.mrows a))
 
 (defn ncols
   "Returns the number of columns of the matrix m.
   (mrows (dge 3 2 [1 2 3 4 5 6])) => 2
   "
-  ^long [^Matrix m]
-  (.ncols m))
+  ^long [^Matrix a]
+  (.ncols a))
 
 (defn row
   "Returns the i-th row of the matrix m as a vector.
@@ -258,10 +268,10 @@
   (row (dge 3 2 [1 2 3 4 5 6]) 1)
   => #<RealBlockVector| double, n:2, stride:3>(2.0 5.0)<>
   "
-  [^Matrix m ^long i]
-  (if (< -1 i (.mrows m))
-    (.row m i)
-    (throw (IndexOutOfBoundsException. (format api/ROW_COL_MSG "row" i "row" (.mrows m))))))
+  [^Matrix a ^long i]
+  (if (< -1 i (.mrows a))
+    (.row a i)
+    (throw (ex-info "Requested row is out of bounds." {:i i :mrows (.mrows a)}))))
 
 (defn col
   "Returns the j-th column of the matrix m as a vector.
@@ -276,31 +286,31 @@
   (col (dge 3 2 [1 2 3 4 5 6]) 0)
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
   "
-  [^Matrix m ^long j]
-  (if (< -1 j (.ncols m))
-    (.col m j)
-    (throw (IndexOutOfBoundsException. (format api/ROW_COL_MSG "col" j "col" (.ncols m))))))
+  [^Matrix a ^long j]
+  (if (< -1 j (.ncols a))
+    (.col a j)
+    (throw (ex-info "Requested column is out of bounds." {:j j :ncols (.ncols a)}))))
 
 (defn dia
   "TODO"
-  [^Matrix m]
-  (.dia m))
+  [^Matrix a]
+  (.dia a))
 
 (defn cols
   "Returns a lazy sequence of vectors that represent
   columns of the matrix m.
   These vectors have a live connection to the matrix data.
   "
-  [^Matrix m]
-  (map #(.col m %) (range (.ncols m))))
+  [^Matrix a]
+  (map #(.col a %) (range (.ncols a))))
 
 (defn rows
   "Returns a lazy sequence of vectors that represent
   rows of the matrix m.
   These vectors have a live connection to the matrix data.
   "
-  [^Matrix m]
-  (map #(.row m %) (range (.mrows m))))
+  [^Matrix a]
+  (map #(.row a %) (range (.mrows a))))
 
 (defn submatrix
   "Returns a submatrix of m starting with row i, column j,
@@ -320,15 +330,16 @@
    (if (and (<= 0 (long i) (+ (long i) (long k)) (.mrows a))
             (<= 0 (long j) (+ (long j) (long l)) (.ncols a)))
      (.submatrix a i j k l)
-     (throw (IndexOutOfBoundsException.
-             (format "Submatrix %d,%d %d,%d is out of bounds of %dx%d." i j k l (.mrows a) (.ncols a))))))
+     (throw (ex-info "Requested submatrix is out of bounds."
+                     {:i i :j j :k k :l l :mrows (.mrows a) :ncols (.ncols a)
+                      :i+k (+ (long i) (long k)) :j+l (+ (long j) (long l))}))))
   ([^Matrix a k l]
    (submatrix a 0 0 k l)))
 
 (defn trans!
   "TODO"
-  [^Matrix m]
-  (api/trans (api/engine m) m))
+  [^Matrix a]
+  (api/trans (api/engine a) a))
 
 (defn trans
   "Transposes matrix m, i.e returns a matrix that has
@@ -338,8 +349,8 @@
   (trans (dge 3 2 [1 2 3 4 5 6]))
   => #<GeneralMatrix| double, ROW, mxn: 2x3, ld:3>((1.0 2.0 3.0) (4.0 5.0 6.0))<>
   "
-  [^Matrix m]
-  (.transpose m))
+  [^Matrix a]
+  (.transpose a))
 
 ;; ============ Vector and Matrix access methods ===============================
 
@@ -352,11 +363,15 @@
   (entry (dv 1 2 3) 1) => 2.0
   "
   ([^Vector x ^long i]
-   (.boxedEntry x i))
-  ([^Matrix m ^long i ^long j]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
-     (.boxedEntry m i j)
-     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+   (try
+     (.boxedEntry x i)
+     (catch IndexOutOfBoundsException e
+       (throw (ex-info "Requested element is out of bounds of the vector." {:i i :dim (.dim x)})))))
+  ([^Matrix a ^long i ^long j]
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)))
+     (.boxedEntry a i j)
+     (throw (ex-info "Requested element is out of bounds of the matrix."
+                     {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn entry!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
@@ -369,14 +384,19 @@
   (entry! (dv 1 2 3) 2 -5)
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 -5.0)<>
   "
-  ([^Changeable c val]
-   (.setBoxed c val))
-  ([^Changeable v ^long i val]
-   (.setBoxed v i val))
-  ([^Matrix m ^long i ^long j val]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)) (.isAllowed ^Changeable m i j))
-     (.setBoxed ^Changeable m i j val)
-     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+  ([^Changeable x val]
+   (.setBoxed x val))
+  ([^Changeable x ^long i val]
+   (try
+     (.setBoxed x i val)
+     (catch IndexOutOfBoundsException e
+       (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                       {:i i :dim (dim x)})))))
+  ([^Matrix a ^long i ^long j val]
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^Changeable a i j))
+     (.setBoxed ^Changeable a i j val)
+     (throw (ex-info "The element you're trying to set is out of bounds of the matrix."
+                     {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn alter!
   "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result
@@ -390,12 +410,17 @@
   (alter! (dv 1 2 3) 2 (fn ^double [^double x] (inc x)))
   #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 4.0)<>
   "
-  ([^Changeable v ^long i f]
-   (.alter v i f))
-  ([^Matrix m ^long i ^long j f]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
-     (.alter ^Changeable m i j f)
-     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+  ([^Changeable x ^long i f]
+   (try
+     (.alter x i f)
+     (catch IndexOutOfBoundsException e
+       (throw (ex-info "The element you're trying to alter is out of bounds of the vector."
+                       {:i i :dim (dim x)})))))
+  ([^Matrix a ^long i ^long j f]
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)))
+     (.alter ^Changeable a i j f)
+     (throw (ex-info "The element you're trying to alter is out of bounds of the matrix."
+                     {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 ;;================== BLAS 1 =======================
 
@@ -408,7 +433,8 @@
   [^Vector x ^Vector y]
   (if (and (api/compatible? x y) (api/fits? x y))
     (api/dot (api/engine x) x y)
-    (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
+    (throw (ex-info "You cannot compute dot of incompatible or ill-fitting vectors."
+                    {:x (str x) :y (str y)}))))
 
 (defn nrm2
   "BLAS 1: Euclidean norm.
@@ -489,7 +515,8 @@
   (if (not (identical? x y))
     (if (and (api/compatible? x y) (api/fits? x y))
       (api/swap (api/engine x) x y)
-      (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
+      (throw (ex-info "You cannot swap data of incompatible or ill-fitting structures."
+                      {:x (str x) :y (str y)})))
     x))
 
 (defn copy!
@@ -514,17 +541,17 @@
    (if (not (identical? x y))
      (if (and (api/compatible? x y) (api/fits? x y))
        (api/copy (api/engine x) x y)
-       (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
+       (throw (ex-info "You cannot copy data of incompatible or ill-fitting structures."
+                       {:x (str x) :y (str y)})))
      y))
-  ([x y offset-x length offset-y]
+  ([^Vector x ^Vector y offset-x length offset-y]
    (if (not (identical? x y))
-     (if (api/compatible? x y)
-       (if (<= (long length) (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y))))
-         (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
-         (throw (IllegalArgumentException.
-                 (format api/DIMENSION_MSG length
-                         (min (- (ecount x) (long offset-x)) (- (ecount y) (long offset-y)))))))
-       (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y))))
+     (if (and (api/compatible? x y)
+              (<= (+ (long offset-x) (long length)) (.dim x))
+              (<= (+ (long offset-y) (long length)) (.dim y)))
+       (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
+       (throw (ex-info "You cannot copy data of incompatible vectors"
+                       {:x (str x) :y (str y) :length length})))
      y)))
 
 (defn copy
@@ -572,8 +599,14 @@
    (if (and (api/compatible? x y))
      (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0) (f= 1.0 (+ (pow c 2) (pow s 2))))
        (api/rot (api/engine x) x y c s)
-       (throw (IllegalArgumentException. "c and s must be sin and cos.")))
-     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
+       (throw (ex-info "You cannot rotate vectors with c and s that are not sin and cos."
+                       {:c c :s s :errors
+                        (cond-into []
+                                   (not (<= -1.0 c 1.0)) "c is not between -1.0 and 1.0"
+                                   (not (<= -1.0 s 1.0)) "s is not between -1.0 and 1.0"
+                                   (not (f= 1.0 (+ (pow c 2) (pow s 2)))) "s^2 + c^2 is not 1.0")})))
+     (throw (ex-info "You cannot rotate incompatible vectors."
+                     {:x (str x) :y (str y)}))))
   ([x y ^double c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
@@ -610,7 +643,7 @@
   [^Vector abcs]
   (if (< 3 (.dim abcs))
     (api/rotg (api/engine abcs) abcs)
-    (throw (IllegalArgumentException. (format api/DIMENSION_MSG 4 (.dim abcs))))))
+    (throw (ex-info "Vector abcs must have at least 4 elements." {:dim (.dim abcs)}))))
 
 (defn rotm!;;TODO docs
   "BLAS 1: Apply modified plane rotation.
@@ -618,7 +651,13 @@
   [^Vector x ^Vector y ^Vector param]
   (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
     (api/rotm (api/engine x) x y param)
-    (throw (IllegalArgumentException. (format api/ROTM_COND_MSG x y param)))))
+    (throw (ex-info "You cannot apply modified plane rotation with incompatible or ill-fitting vectors."
+                    {:x (str x) :y (str y) :param (str param) :errors
+                     (cond-into []
+                                (not (api/compatible? x y)) "incompatible x and y"
+                                (not (api/compatible? x param)) "incompatible x and param"
+                                (not (api/fits? x y)) "ill-fitting x and y"
+                                (not (< 4 (.dim param))) "param is shorter than 4")}))))
 
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
@@ -629,7 +668,12 @@
   [^Vector d1d2xy ^Vector param]
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
     (api/rotmg (api/engine param) d1d2xy param)
-    (throw (IllegalArgumentException. (format api/ROTMG_COND_MSG d1d2xy param)))))
+    (throw (ex-info "You cannot generate modified plane rotation with incompatible or ill-fitting vectors."
+                    {:d1d2xy (str d1d2xy) :param (str param) :errors
+                     (cond-into []
+                                (not (api/compatible? d1d2xy param)) "incompatible d2d2xy and param"
+                                (not (< 3 (.dim param))) "d1d2xy is shorter than 3"
+                                (not (< 4 (.dim param))) "param is shorter than 4")}))))
 
 (defn axpy!
   "BLAS 1: Vector scale and add. Also works on matrices.
@@ -668,7 +712,8 @@
   ([alpha x y]
    (if (and (api/compatible? x y) (api/fits? x y))
      (api/axpy (api/engine x) alpha x y)
-     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
+     (throw (ex-info "You cannot add incompatible or ill-fitting structures."
+                     {:x (str x) :y (str y)}))))
   ([x y]
    (axpy! 1.0 x y))
   ([alpha x y & zs]
@@ -731,7 +776,8 @@
   ([alpha x beta y]
    (if (and (api/compatible? x y) (api/fits? x y))
      (api/axpby (api/engine x) alpha x beta y)
-     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG x y)))))
+     (throw (ex-info "You cannot add incompatible or ill-fitting structures."
+                     {:x (str x) :y (str y)}))))
   ([x beta y]
    (axpby! 1.0 x beta y))
   ([x y]
@@ -780,7 +826,13 @@
    (if (and (api/compatible? a x) (api/compatible? a y)
             (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
      (api/mv (api/engine a) alpha a x beta y)
-     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
+     (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
+                     {:a (str a) :x (str x) :y (str y) :errors
+                      (cond-into []
+                                 (not (api/compatible? a x)) "incompatible a and x"
+                                 (not (api/compatible? a y)) "incompatible a and y"
+                                 (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)"
+                                 (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")}))))
   ([alpha a x y]
    (mv! alpha a x 1.0 y))
   ([a x y]
@@ -788,7 +840,11 @@
   ([^Matrix a ^Vector x];;TODO docs
    (if (and (api/compatible? a x) (= (.ncols a) (.dim x)))
      (api/mv (api/engine a) a x)
-     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG a x))))))
+     (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
+                     {:a (str a) :x (str x) :errors
+                      (cond-into []
+                                 (not (api/compatible? a x)) "incompatible a and x"
+                                 (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")})))))
 
 (defn mv
   "A pure version of mv! that returns the result
@@ -826,7 +882,13 @@
   ([alpha ^Vector x ^Vector y ^Matrix a]
    (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
      (api/rk (api/engine a) alpha x y a)
-     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG_3 a x y)))))
+     (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
+                     {:a (str a) :x (str x) :y (str y) :errors
+                      (cond-into []
+                                 (not (api/compatible? a x)) "incompatible a and x"
+                                 (not (api/compatible? a y)) "incompatible a and y"
+                                 (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)"
+                                 (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")}))))
   ([x y a]
    (rk! 1.0 x y a)))
 
@@ -876,24 +938,27 @@
   => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
   "
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
-   (if (and (api/compatible? a b) (api/compatible? a c))
-     (if (and (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
-       (api/mm (api/engine a) alpha a b beta c)
-       (throw (IllegalArgumentException.
-               (format "Incompatible dimensions - a:%dx%d, b:%dx%d, c:%dx%d."
-                       (.mrows a) (.ncols a) (.mrows b) (.ncols b) (.mrows c) (.ncols c)))))
-     (throw (IllegalArgumentException.
-             (format api/INCOMPATIBLE_BLOCKS_MSG_3 a b c)))))
+   (if (and (api/compatible? a b) (api/compatible? a c)
+            (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
+     (api/mm (api/engine a) alpha a b beta c)
+     (throw (ex-info "You cannot multiply incompatible or ill-fitting matrices."
+                     {:a (str a) :b (str b) :c (str c) :errors
+                      (cond-into []
+                                 (not (api/compatible? a b)) "incompatible a and b"
+                                 (not (api/compatible? a c)) "incompatible a and c"
+                                 (not (= (.ncols a) (.mrows b))) "(ncols a) is not equals to (mrows b)"
+                                 (not (= (.mrows a) (.mrows c))) "(mrows a) is not equals to (mrows c)"
+                                 (not (= (.ncols b) (.ncols c))) "(ncols b) is not equals to (ncols c)")}))))
   ([alpha a b c]
    (mm! alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
-   (if (api/compatible? a b)
-     (if (= (.ncols a) (.mrows b))
-       (api/mm (api/engine a) alpha a b true)
-       (throw (IllegalArgumentException.
-               (format "Incompatible dimensions - a:%dx%d, b:%dx%d."
-                       (.mrows a) (.ncols a) (.mrows b) (.ncols b)))))
-     (throw (IllegalArgumentException. (format api/INCOMPATIBLE_BLOCKS_MSG a b)))))
+   (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
+     (api/mm (api/engine a) alpha a b true)
+     (throw (ex-info "You cannot multiply incompatible or ill-fitting matrices."
+                     {:a (str a) :b (str b) :errors
+                      (cond-into []
+                                 (not (api/compatible? a b)) "incompatible a and b"
+                                 (not (= (.ncols a) (.mrows b))) "(ncols a) is not equals to (mrows b)")}))))
   ([a b]
    (mm! 1.0 a b)))
 

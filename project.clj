@@ -22,9 +22,11 @@
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [vertigo "0.1.4"]]
 
-  :codox {:src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"
+  :codox {:metadata {:doc/format :markdown}
+          :src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"
           :src-linenum-anchor-prefix "L"
           :namespaces [uncomplicate.neanderthal.core
+                       uncomplicate.neanderthal.linalg
                        uncomplicate.neanderthal.native
                        uncomplicate.neanderthal.opencl
                        uncomplicate.neanderthal.math

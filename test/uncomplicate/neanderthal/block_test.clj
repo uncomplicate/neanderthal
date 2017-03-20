@@ -11,7 +11,7 @@
             [uncomplicate.commons.core :refer [release with-release]]
             [uncomplicate.fluokitten.core :refer [fmap! fold foldmap op]]
             [uncomplicate.neanderthal.core :refer :all])
-  (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD]))
+  (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD ExceptionInfo]))
 
 (defn test-create [factory]
   (facts "Create and create-raw."
@@ -27,7 +27,7 @@
            (dim x1) => 1
            (dim xr0) => 0
            (dim xr1) => 1
-           (vctr factory -1) => (throws IllegalArgumentException)
+           (vctr factory -1) => (throws ExceptionInfo)
            (mrows a00) => 0
            (ncols a00) => 0
            (mrows a11) => 1
@@ -36,8 +36,9 @@
            (ncols ar00) => 0
            (mrows ar11) => 1
            (ncols ar11) => 1
-           (ge factory -1 -1) => (throws IllegalArgumentException)
-           (ge factory -3 0) => (throws IllegalArgumentException))))
+           (ge factory -1 -1) => (throws ExceptionInfo)
+           (ge factory -3 0) => (throws ExceptionInfo)
+           (tr factory -1) => (throws ExceptionInfo))))
 
 (defn test-equality [factory]
   (facts "Equality and hash code."
@@ -70,8 +71,8 @@
   (facts "IFn implementation for real block vector"
          (let [x (vctr factory [1 2 3 4])]
            (x 2) => 3.0
-           (x 5) => (throws IndexOutOfBoundsException)
-           (x -1) => (throws IndexOutOfBoundsException)
+           (x 5) => (throws ExceptionInfo)
+           (x -1) => (throws ExceptionInfo)
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LD x 0) => 1.0)))
 
@@ -169,8 +170,8 @@
   (facts "IFn implementation for double general matrix"
          (let [x (ge factory 2 3 [1 2 3 4 5 6])]
            (x 1 2) => 6.0
-           (x 2 1) => (throws IndexOutOfBoundsException)
-           (x -1 3) => (throws IndexOutOfBoundsException)
+           (x 2 1) => (throws ExceptionInfo)
+           (x -1 3) => (throws ExceptionInfo)
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LLD x 0 0) => 1.0)))
 

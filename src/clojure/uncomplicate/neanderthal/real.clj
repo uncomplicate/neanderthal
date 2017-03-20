@@ -41,11 +41,15 @@
   (entry (dv 1 2 3) 1) => 2.0
   "
   (^double [^RealVector x ^long i]
-   (.entry x i))
-  (^double [^RealMatrix m ^long i ^long j]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)))
-     (.entry m i j)
-     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+   (try
+     (.entry x i)
+     (catch IndexOutOfBoundsException e
+       (throw (ex-info "Requested element is out of bounds of the vector." {:i i :dim (.dim x)})))))
+  (^double [^RealMatrix a ^long i ^long j]
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)))
+     (.entry a i j)
+     (throw (ex-info "Requested element is out of bounds of the matrix."
+                     {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn entry!
   "Sets the i-th entry of vector x, or ij-th entry of matrix m,
@@ -55,14 +59,19 @@
   (entry! (dv 1 2 3) 2 -5)
   => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 -5.0)<>
   "
-  ([^RealChangeable c ^double val]
-   (.set c val))
-  ([^RealChangeable v ^long i ^double val]
-   (.set v i val))
-  ([^RealMatrix m ^long i ^long j ^double val]
-   (if (and (< -1 i (.mrows m)) (< -1 j (.ncols m)) (.isAllowed ^RealChangeable m i j))
-     (.set ^RealChangeable m i j val)
-     (throw (IndexOutOfBoundsException. (format api/MAT_BOUNDS_MSG i j (.mrows m) (.ncols m)))))))
+  ([^RealChangeable x ^double val]
+   (.set x val))
+  ([^RealChangeable x ^long i ^double val]
+   (try
+     (.set x i val)
+     (catch IndexOutOfBoundsException e
+       (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                       {:i i :dim (core/dim x)})))))
+  ([^RealMatrix a ^long i ^long j ^double val]
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^RealChangeable a i j))
+     (.set ^RealChangeable a i j val)
+     (throw (ex-info "The element you're trying to set is out of bounds of the matrix."
+                     {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn dot
   "Primitive wrapper for core dot function."
@@ -103,7 +112,10 @@
 (def ^:private f* (double-fn *))
 
 (defn det ^double [^RealMatrix lu ^Vector ipiv]
-  (let [res (double (fold f* 1.0 (.dia lu)))]
-    (if (even? (.dim ipiv))
-      res
-      (- res))))
+  (if (= (.mrows lu) (.ncols lu))
+    (let [res (double (fold f* 1.0 (.dia lu)))]
+      (if (even? (.dim ipiv))
+        res
+        (- res)))
+    (throw (ex-info "Determinant computation requires a square result of trf!."
+                    {:mrows (.mrows lu) :ncols (.ncols lu)}))))

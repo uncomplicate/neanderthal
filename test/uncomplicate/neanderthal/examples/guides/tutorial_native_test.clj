@@ -37,7 +37,8 @@ $code"
              [block :refer [buffer]]
              [core :refer :all]
              [native :refer :all]])
-  (:import [java.nio ByteBuffer ByteOrder]))
+  (:import [java.nio ByteBuffer ByteOrder]
+           clojure.lang.ExceptionInfo))
 
 "$text
 
@@ -89,7 +90,7 @@ or to extract its raw ByteBuffer, and work on it **carefully**.
 
 It is awkward and cumbersome to directly work with buffers. You should take care
 of endianess: java uses BIG_ENDIAN, while Intel processors and most native
-platform natively support LITTLE_ENDIAN. If you pre-load your data in buffers,
+platforms natively support LITTLE_ENDIAN. If you pre-load your data in buffers,
 you, or the library you use, have to take care of using the proper native
 endianess. Also take care to revert the buffer position to 0. Neanderthal does not care how you prepare the buffers
 as long as the data is prepared well. You can use some of the existing libraries that
@@ -240,7 +241,7 @@ instance."
        v (dv 1 2 3)
        y (dv 1 2)]
    (mv m v) => (dv 16 22)
-   (mv m (dv 1 2)) => (throws IllegalArgumentException)
+   (mv m (dv 1 2)) => (throws ExceptionInfo)
    (mv 1.5 m v) => (dv 24 33)
    m => (dge 2 3 (range 6))
    v => (dv 1 2 3)
