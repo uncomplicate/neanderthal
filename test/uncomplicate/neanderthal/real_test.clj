@@ -35,7 +35,7 @@
 
 (defn test-vctr-constructor [factory]
   (facts "Create a real vector."
-         (vect? (vctr factory [1 2 3])) => true
+         (vctr? (vctr factory [1 2 3])) => true
          (vctr factory 1 2 3) => (vctr factory [1 2 3])
          (vctr factory 3) => (vctr factory [0 0 0])
          (view-ge (vctr factory 1 2 3 4)) => (ge factory 4 1 [1 2 3 4])

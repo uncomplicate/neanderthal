@@ -14,7 +14,7 @@
   ` (let [err# ~expr]
       (if (zero? err#)
         err#
-        (throw (IllegalArgumentException. (format "LAPACK error: %d" err#))))))
+        (throw (ex-info "LAPACK error." {:error-code err#})))))
 
 ;; =========================== Auxiliary LAPACK Routines =========================
 
@@ -84,9 +84,10 @@
      (let [info# ~expr]
        (cond
          (= 0 info#) ~ipiv
-         (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
+         (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                     {:arg-index (- info#)}))
          :else (throw (RuntimeException. "TODO Singular, no solution"))))
-     (throw (IllegalArgumentException. "TODO Illegal ipiv stride."))))
+     (throw (ex-info "You cannot use ipiv with stride different than 1." {:stride (.stride ~ipiv)}))))
 
 (defmacro ge-trf [method a ipiv]
   `(with-sv-check ~ipiv
@@ -108,11 +109,13 @@
 
 (defmacro ge-lqrf [method a tau]
   `(if (= 1 (.stride ~tau))
-     (if (= 0 (~method (.order ~a) (.mrows ~a) (.ncols ~a)
-               (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.stride ~tau)))
-       ~tau
-       (throw (IllegalArgumentException. "TODO Illegal i")))
-     (throw (IllegalArgumentException. "TODO Illegal tau stride."))))
+     (let [info# (~method (.order ~a) (.mrows ~a) (.ncols ~a)
+                  (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.stride ~tau))]
+       (if (= 0 info#)
+         ~tau
+         (throw (ex-info "There has been an illegal argument in the native function call."
+                         {:arg-index (- info#)}))))
+     (throw (ex-info "You cannot use tau with stride different than 1." {:stride (.stride ~tau)}))))
 
 ;; ------------- Linear Least Squares Routines LAPACK -------------------------------
 
@@ -122,8 +125,10 @@
                 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))]
      (cond
        (= 0 info#) ~b
-       (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
-       :else (throw (RuntimeException. "TODO a does not have full rank. no solution")))))
+       (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                  {:arg-index (- info#)}))
+       :else (throw (ex-info "The i-th diagonal element of a is zero, so the matrix does not have full rank."
+                             {:arg-index info#})))))
 
 ;; ------------- Non-Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
 
@@ -137,39 +142,45 @@
                   (.buffer ~vl) (.offset ~vl) (.stride ~vl) (.buffer ~vr) (.offset ~vr) (.stride ~vr))]
        (cond
          (= 0 info#) ~w
-         (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
-         :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#)))))
-     (throw (IllegalArgumentException. "TODO Illegal wr/wi stride."))))
+         (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                     {:arg-index (- info#)}))
+         :else (throw (ex-info "The QR algorithm failed to compute all the eigenvalues."
+                              {:first-converged (inc info#)}))))
+     (throw (ex-info "You cannot use w that is not column-oriented and has less than 2 columns."
+                     {:order (.order ~w) :ncols (.ncols ~w)}))))
 
 ;; ------------- Singular Value Decomposition Routines LAPACK -------------------------------
+
+(defmacro with-svd-check [s expr]
+  `(let [info# ~expr]
+     (cond
+       (= 0 info#) ~s
+       (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                   {:arg-index (- info#)}))
+       :else (throw (ex-info "The reduction to bidiagonal form did not converge"
+                             {:non-converged-superdiagonals info#})))))
 
 (defmacro ge-svd
   ([method a s u vt superb]
    `(let [m# (.mrows ~a)
-          n# (.ncols ~a)
-          info# (~method (.order ~a)
-                 (int (cond (= m# (.mrows ~u) (.ncols ~u)) \A
-                            (and (= m# (.mrows ~u)) (= (min m# n#) (.ncols ~u))) \S
-                            (nil? ~u) \O
-                            :else \N))
-                 (int (cond (= n# (.mrows ~vt) (.ncols ~vt)) \A
-                            (and (= (min m# n#) (.mrows ~vt)) (= n# (.ncols ~vt))) \S
-                            (and ~u (nil? ~vt)) \O
-                            :else \N))
-                 m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
-                 (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)
-                 (.buffer ~superb) (.offset ~superb))]
-      (cond
-        (= 0 info#) ~s
-        (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
-        :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#))))))
+          n# (.ncols ~a)]
+      (with-svd-check ~s
+        (~method (.order ~a)
+         (int (cond (= m# (.mrows ~u) (.ncols ~u)) \A
+                    (and (= m# (.mrows ~u)) (= (min m# n#) (.ncols ~u))) \S
+                    (nil? ~u) \O
+                    :else \N))
+         (int (cond (= n# (.mrows ~vt) (.ncols ~vt)) \A
+                    (and (= (min m# n#) (.mrows ~vt)) (= n# (.ncols ~vt))) \S
+                    (and ~u (nil? ~vt)) \O
+                    :else \N))
+         m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
+         (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)
+         (.buffer ~superb) (.offset ~superb)))))
   ([method a s zero-uvt superb]
-   `(let [info# (~method (.order ~a) (int \N) (int \N) (.mrows ~a) (.ncols ~a)
-                 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
-                 (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
-                 (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
-                 (.buffer ~superb) (.offset ~superb))]
-      (cond
-        (= 0 info#) ~s
-        (< info# 0) (throw (IllegalArgumentException. (format "TODO Illegal %d" (- info#))))
-        :else (throw (RuntimeException. (format "TODO elements < %d haven't converged" info#)))))))
+   `(with-svd-check ~s
+      (~method (.order ~a) (int \N) (int \N) (.mrows ~a) (.ncols ~a)
+       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
+       (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
+       (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
+       (.buffer ~superb) (.offset ~superb)))))

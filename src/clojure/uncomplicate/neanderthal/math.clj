@@ -39,7 +39,7 @@
   ([^double x ^double y]
    (>= (Precision/compareTo x y Precision/EPSILON))))
 
-(defn power-of-2? [^long n]
+(defn pow-of-2? [^long n]
   (= 0 (bit-and n (- n 1))))
 
 (defn round ^double [^double x]

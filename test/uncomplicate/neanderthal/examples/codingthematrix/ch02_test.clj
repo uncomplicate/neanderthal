@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.examples.codingthematrix.ch02-test
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
-             [core :refer [dim vect? axpy! axpy xpy zero ax copy subvector]]
+             [core :refer [dim vctr? axpy! axpy xpy zero ax copy subvector]]
              [real :refer [entry dot]]
              [native :refer [dv dge]]]))
 
@@ -17,7 +17,7 @@
  "2.1 What is a Vector?"
  (let [v (dv 3.14159 2.718281828 -1.0 2.0)]
    (dim v) => 4
-   (vect? v ) => true
+   (vctr? v ) => true
 
    (ifn? v) => true
    (v 0) => (entry v 0)

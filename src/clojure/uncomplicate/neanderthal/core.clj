@@ -8,31 +8,72 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.core
-  "Contains core type-agnostic linear algebraic functions roughly corresponding
-  to functionality defined in BLAS 123. Typically, you would want to require this
-  namespace regardless of the actual type (real, complex, CPU, GPU, pure Java etc.)
-  of the vectors and matrices that you use.
+  "Contains core type-agnostic linear algebraic functions roughly corresponding to functionality
+  defined in BLAS 123, and functions to create and work with various kinds of vectors and matrices.
+  Typically, you would want to require this namespace regardless of the actual type
+  (real, complex, CPU, GPU, pure Java etc.) of the vectors and matrices that you use.
 
-  In cases when you need to repeatedly call a function from this namespace
-  that accesses individual entries, and the entries are primitive, it
-  is better to use a primitive version of the function from
-  uncomplicate.neanderthal.real namespace.
-  Additionally, constructor functions for different specialized types
-  (native, GPU, pure java) are in respective specialized namespaces.
+  In cases when you need to repeatedly call a function from this namespace that accesses
+  individual entries, and the entries are primitive, it is better to use a primitive version
+  of the function from [[uncomplicate.neanderthal.real]] namespace. Constructor functions
+  for different specialized types (native, GPU, pure java) are in respective specialized namespaces
+  ([[uncomplicate.neanderthal.native]], [[uncomplicate.neanderthal.opencl]], etc).
 
-  You need to take care to only use vectors and matrices
-  of the same type in the same function call. These functions do not support
-  arguments of mixed types. For example, you can not call the
-  dot function with one double vector (dv) and one float vector (fv),
-  or for one vector in the CPU memory and one in the GPU memory.
+  Please take care to only use vectors and matrices of the same type in one call of a
+  linear algebra operation. Compute operations typically (and on purpose!) do not support arguments
+  of mixed types. For example, you can not call the [[dot]] function with one double vector (dv) and
+  one float vector (fv), or for one vector in the CPU memory and one in the GPU memory.
+  If you try to do that, an `ex-info` is thrown. You can use those different types side-by-side
+  and transfer data between them though.
 
-  ## Examples
+  ### How to use
 
-  (ns test
-    (:require [uncomplicate.neanderthal core native]))
+      (ns test
+        (:require [uncomplicate.neanderthal core native]))
 
-  (ns test
-    (:require [uncomplicate.neanderthal core native opencl]))
+      (ns test
+        (:require [uncomplicate.neanderthal core native opencl]))
+
+  ### Examples
+
+  The best and most accurate examples can be found in the
+  [comprehensive test suite](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal):
+  see [here](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/real_test.clj),
+  [here](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/block_test.clj),
+  and [here](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/opencl_test.clj).
+  Also, there are tutorial test examples [here](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples),
+  the tutorials at [the Neanderthal web site](http://neanderthal.uncomplicate.org),
+  and [my blog dragan.rocks](http://dragan.rocks).
+
+  ### Cheat Sheet
+
+  [Naming conventions for BLAS routines](https://software.intel.com/en-us/node/468382).
+
+  * Create: [[vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[raw]], [[zero]].
+
+  * Move data around: [[transfer!]], [[transfer]], [[native]], [[copy!]], [[copy]], [[swp!]].
+
+  * Clean up!: `with-release`, `let-release`, and `release` from the `uncomplicate.commons.core` namespace.
+
+  * Vector: [[vctr?]], [[dim]], [[subvector]], [[entry]], [[entry!]], [[alter!]].
+
+  * Matrix: [[matrix?]], [[ge?]], [[tr?]], [[mrows]], [[ncols]], [[row]], [[col]], [[dia]], [[cols]],
+  [[rows]], [[submatrix]], [[trans]], [[trans!]], [[entry]], [[entry!]], [[alter!]].
+
+  * Change: [[trans!]], [[entry!]], [[alter!]].
+
+  * [Monadic functions](http://fluokitten.uncomplicate.org): `fmap!`, `fmap`, `fold`, `foldmap`,
+  `pure`, `op`, `id`, from the `uncomplicate.fluokitten.core` namespace.
+
+  * [Compute level 1](https://software.intel.com/en-us/node/468390): [[dot]], [[nrm2]], [[asum]],
+  [[iamax]], [[amax]], [[iamin]], [[imax]], [[imin]], [[swp!]], [[copy!]], [[copy!]], [[scal!]],
+  [[scal]], [[rot!]], [[rotg!]], [[rotm!]], [[rotmg!]], [[axpy!]], [[axpy]], [[ax]], [[xpy]],
+  [[axpby!]], [[sum]].
+
+  * [Compute level 2](https://software.intel.com/en-us/node/468426): [[mv!]], [[mv]], [[rk!]], [[rk]].
+
+  * [Compute level 3](https://software.intel.com/en-us/node/468478): [[mm!]], [[mm]].
+
   "
   (:require [uncomplicate.commons
              [core :refer [release let-release]]
@@ -41,32 +82,16 @@
             [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix Changeable]))
 
-(defn vect?
-  "Returns true if x implements uncomplicate.neanderthal.internal.api.Vector.
-  (vect? (dv 1 2 3)) => true
-  (vect? [1 2 3]) => false
-  "
-  [x]
-  (instance? Vector x))
-
-(defn matrix?
-  "Returns true if x implements uncomplicate.neanderthal.internal.api.Matrix.
-  (matrix? (dge 3 2 [1 2 3 4 5 6])) => true
-  (matrix? [[1 2] [3 4] [5 6]]) => false
-  "
-  [x]
-  (instance? Matrix x))
-
 (defmulti transfer!
-  "Transfers the data from source in one type of memory, to the appropriate
-  destination in another type of memory. Typically you would use it when you want to
-  move data between the host memory and the OpenCL device memory. If you want to
-  simply move data from one container to another in the same memory space,
-  you should use copy.  If you call transfer in one memory space, it would simply
-  be copied.
+  "Transfers the data from source to destination regardless of the structure type or memory context.
 
-  (transfer! (sv 1 2 3) device-vect)
-  (transfer! device-vect (sv 3))
+  Typically you would use it when you want to move data between the host memory and the OpenCL device
+  memory. If you want to simply move data from one object to another in the same memory context,
+  you should prefer [[copy!]].  If both arguments are already in the same memory context, the data
+  will simply be copied, but with multimethod call overhead.
+
+      (transfer! (fv 1 2 3) device-vctr)
+      (transfer! device-vctr (fv 3))
   "
   (fn ([source destination] [(class source) (class destination)])))
 
@@ -84,14 +109,15 @@
                   {:source (type source) :destination (str destination)})))
 
 (defn transfer
-  "Transfers the data to the memory space defined by factory (OpenCL, CUDA, etc.).
-  If the factory is not provided, moves the data to the main host memory.
-  If x is already in the main memory, makes a fresh copy.
+  "Transfers the data to the memory context defined by `factory` (native, OpenCL, CUDA, etc.).
 
-  (transfer (sv [1 2 3]) opencl-factory)
-  (transfer (sge 2 3 (range 6)) opencl-factory)
+  If `factory` is not provided, moves the data to the main host memory. If `x` is already in the
+  main memory, makes a fresh copy.
 
-  (transfer (sv [1 2 3]))
+      (transfer (fv [1 2 3]) opencl-factory)
+      (transfer (sge 2 3 (range 6)) opencl-factory)
+
+      (transfer (fv [1 2 3]))
   "
   ([factory x]
    (let-release [res (api/raw x factory)]
@@ -101,17 +127,29 @@
    (api/host x)))
 
 (defn native
-  "Ensures that the data x is in the native main memory,
-  and if not, transfers it there.
+  "Ensures that `x` is in the native main memory, and if not, transfers it there.
 
-  (let [v (sv [1 2 3])]
-    (identical? (native v) v)) => true
+      (let [v (fv [1 2 3])]
+        (identical? (native v) v)) => true
   "
   [x]
   (api/native x))
 
 (defn vctr
-  "TODO"
+  "Creates a dense vector in the context of `factory`, from the provided `source`.
+
+  If `source` is an integer, creates a vector of zeroes. If `source` is a number, puts it
+  in the resulting vector. Otherwise, transfers the data from `source` (a sequence, vector, etc.)
+  to the resulting vector.
+
+  If the provided source do not make sense, throws ExceptionInfo.
+
+      (vctr double-factory 3)
+      (vctr float-factory 1 2 3)
+      (vctr opencl-factory [1 2 3])
+      (vctr opencl-factory (vctr float-factory [1 2 3]))
+
+  "
   ([factory source]
    (cond
      (integer? source) (if (<= 0 (long source))
@@ -123,13 +161,30 @@
    (vctr factory (cons x xs))))
 
 (defn vctr?
-  "TODO
-  "
+  "Tests if x is a (neanderthal) vector."
   [x]
   (instance? Vector x))
 
+(defn matrix?
+  "Tests if x is a matrix of any kind."
+  [x]
+  (instance? Matrix x))
+
 (defn ge
-  "TODO"
+  "Creates a dense matrix (GE) in the context of `factory`, with `m` rows and `n` columns.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimensions `m` and `n` are not required.
+
+  The internal structure can be specified with a map of options: `:order` (`:column` or `:row`).
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (ge float-factory 2 3)
+      (ge opencl-factory 2 3 (range 6))
+      (ge opencl-factory (ge double-factory 2 3 (range 6)))
+  "
   ([factory m n source options]
    (if (and (<= 0 (long m)) (<= 0 (long n)))
      (let-release [res (api/create-ge factory m n (api/enc-order (:order options)) true)]
@@ -147,24 +202,37 @@
    (ge factory (.mrows a) (.ncols a) a nil)))
 
 (defn view-ge
-  "TODO"
+  "Attach a GE matrix to the raw data of `a`.
+
+  Changes to the resulting object affect the source `a`, even the parts of data that might not
+  be accessible by a. Use with caution!
+
+      (view-ge (tr float-factory 3 (range 6)))
+  "
   ([a]
    (api/view-ge a)))
 
 (defn ge?
-  "TODO
-  "
+  "Tests if x is a dense matrix (GE)."
   [x]
   (instance? GEMatrix x))
 
-(defn tr?
-  "TODO
-  "
-  [x]
-  (instance? TRMatrix x))
-
 (defn tr
-  "TODO"
+  "Creates a dense triangular matrix (TR) in the context of `factory`, with `n` rows and `n` columns.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimension `n` is not required.
+
+  The internal structure can be specified with a map of options: `:order` (`:column` or `:row`),
+  `:uplo` (`upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (tr float-factory 2)
+      (tr opencl-factory 3 (range 6))
+      (tr opencl-factory (ge double-factory 2 3 (range 6)))
+  "
   ([factory ^long n source options]
    (if (<= 0 n)
      (let-release [res (api/create-tr factory n (api/enc-order (:order options))
@@ -183,7 +251,15 @@
      (tr factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
 
 (defn view-tr
-  "TODO"
+  "Attach a TR matrix to the raw data of `a`.
+
+  Changes to the resulting object affect the source `a`, even the parts of data that might not be
+  accessible by a. Use with caution!
+
+  Options: `:uplo` (`upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
+
+      (view-ge (tr float-factory 3 (range 6)))
+  "
   ([a]
    (api/view-tr a api/DEFAULT_UPLO api/DEFAULT_DIAG))
   ([^Matrix a options]
@@ -191,19 +267,22 @@
          diag (api/enc-diag (:diag options))]
      (api/view-tr a uplo diag))))
 
+(defn tr?
+  "Tests if `x` is a triangular matrix (TR)."
+  [x]
+  (instance? TRMatrix x))
+
 ;; ================= Container  ================================================
 
 (defn raw
-  "Returns an uninitialized instance of the same type and dimension(s)
-  as x, which can be neanderthal container."
+  "Returns an uninitialized instance of the same type and dimension(s) as `x`."
   ([x]
    (api/raw x))
   ([factory x]
    (api/raw x factory)))
 
 (defn zero
-  "Returns an instance of the same type and dimension(s) as the container x,
-  filled with 0."
+  "Returns an instance of the same type and dimension(s) as the `x`, initialized with `0`."
   ([x]
    (api/zero x))
   ([factory x]
@@ -212,26 +291,18 @@
 ;; ================= Vector ====================================================
 
 (defn dim
-  "Returns the dimension of the vector x.
-
-  (dim (dv 1 2 3) => 3)
-  "
+  "Returns the dimension of the vector `x`."
   ^long [^Vector x]
   (.dim x))
 
 (defn subvector
-  "Returns a subvector starting witk k, l entries long,
-  which is a part of a neanderthal vector x.
+  "Returns a subvector starting witk `k`, `l` entries long, which is a part of the neanderthal vector `x`.
 
-  The resulting subvector has a live connection to the
-  vector data. Any change to the subvector data will affect
-  the vector data.
-  If you wish to disconnect the subvector from the parent
-  vector, make a copy of the subvector (copy subx) prior
-  to any destructive operation.
+  The resulting subvector has a live connection to `x`'s data. Any change to the subvector data
+  will affect the vector data. If you wish to disconnect the subvector from the parent vector,
+  make a copy prior to any destructive operation.
 
-  (subvector (dv 1 2 3 4 5 6) 2 3)
-  => #<RealBlockVector| double, n:3, stride:1>(3.0 4.0 5.0)<>
+  If the requested region is not within the dimensions of `x`, throws ExceptionInfo.
   "
   [^Vector x ^long k ^long l]
   (if (<= (+ k l) (.dim x))
@@ -241,32 +312,21 @@
 ;; ================= Matrix =======================
 
 (defn mrows
-  "Returns the number of rows of the matrix m.
-
-  (mrows (dge 3 2 [1 2 3 4 5 6])) => 3
-  "
+  "Returns the number of rows of the matrix `a`."
   ^long [^Matrix a]
   (.mrows a))
 
 (defn ncols
-  "Returns the number of columns of the matrix m.
-  (mrows (dge 3 2 [1 2 3 4 5 6])) => 2
-  "
+  "Returns the number of columns of the matrix `a`."
   ^long [^Matrix a]
   (.ncols a))
 
 (defn row
-  "Returns the i-th row of the matrix m as a vector.
+  "Returns the `i`-th row of the matrix `a` as a vector.
 
-  The resulting vector has a live connection to the
-  matrix data. Any change to the vector data will affect
-  the matrix data.
-  If you wish to disconnect the vector from the parent
-  matrix, make a copy of the vector (copy x) prior
-  to any changing operation.
+  The vector has access to and can change the same data as the original matrix.
 
-  (row (dge 3 2 [1 2 3 4 5 6]) 1)
-  => #<RealBlockVector| double, n:2, stride:3>(2.0 5.0)<>
+  If the requested column is not within the dimensions of `a`, throws ExceptionInfo.
   "
   [^Matrix a ^long i]
   (if (< -1 i (.mrows a))
@@ -274,17 +334,11 @@
     (throw (ex-info "Requested row is out of bounds." {:i i :mrows (.mrows a)}))))
 
 (defn col
-  "Returns the j-th column of the matrix m as a vector.
+  "Returns the `j`-th column of the matrix `a` as a vector.
 
-  The resulting vector has a live connection to the
-  matrix data. Any change to the vector data will affect
-  the matrix data.
-  If you wish to disconnect the vector from the parent
-  matrix, make a copy of the vector (copy x) prior
-  to any changing operation.
+  The vector has access to and can change the same data as the original matrix.
 
-  (col (dge 3 2 [1 2 3 4 5 6]) 0)
-  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
+  If the requested column is not within the dimensions of `a`, throws ExceptionInfo.
   "
   [^Matrix a ^long j]
   (if (< -1 j (.ncols a))
@@ -292,39 +346,37 @@
     (throw (ex-info "Requested column is out of bounds." {:j j :ncols (.ncols a)}))))
 
 (defn dia
-  "TODO"
+  "Returns the diagonal elements of the matrix `a` in a vector.
+
+  The vector has access to and can change the same data as the original matrix."
   [^Matrix a]
   (.dia a))
 
 (defn cols
-  "Returns a lazy sequence of vectors that represent
-  columns of the matrix m.
-  These vectors have a live connection to the matrix data.
-  "
+  "Returns a lazy sequence of column vectors of the matrix `a`.
+
+  The vectors has access to and can change the same data as the original matrix."
   [^Matrix a]
   (map #(.col a %) (range (.ncols a))))
 
 (defn rows
-  "Returns a lazy sequence of vectors that represent
-  rows of the matrix m.
-  These vectors have a live connection to the matrix data.
-  "
+  "Returns a lazy sequence of row vectors of the matrix `a`.
+
+  The vectors has access to and can change the same data as the original matrix."
   [^Matrix a]
   (map #(.row a %) (range (.mrows a))))
 
 (defn submatrix
-  "Returns a submatrix of m starting with row i, column j,
-  that has k columns and l rows.
+  "Returns a submatrix of the matrix `a` starting from row `i`, column `j`,
+  that has `k` kolumns and `l` rows.
 
-  The resulting submatrix has a live connection to the
-  matrix m's data. Any change to the submatrix data will affect
-  m's data.
-  If you wish to disconnect the submatrix from the parent
-  matrix, make a copy of the submatrix (copy subm) prior
-  to any changing operation.
+  The resulting submatrix has a live connection to `a`'s data. Any change to the subvector data
+  will affect the vector data. If you wish to disconnect the submatrix from the parent matrix,
+  make a copy prior to any destructive operation.
 
-  (submatrix (dge 4 3 (range 12)) 1 1 2 1)
-  => #<GeneralMatrix| double, COL, mxn: 2x1, ld:4>((5.0 6.0))<>
+  If the requested region is not within the dimensions of `a`, throws ExceptionInfo.
+
+      (submatrix (ge double-factroy 4 3 (range 12)) 1 1 2 1)
   "
   ([^Matrix a i j k l]
    (if (and (<= 0 (long i) (+ (long i) (long k)) (.mrows a))
@@ -337,30 +389,32 @@
    (submatrix a 0 0 k l)))
 
 (defn trans!
-  "TODO"
+  "Transposes matrix `a`'s data **in-place**. For the 'real' transpose, use the `trans` function.
+
+  The transpose affects the internal structure of `a`.
+
+      (trans! (dge 2 3 [1 2, 3 4, 5 6])) => (dge 2 3 [1 3, 5 2, 4 ,6])
+  "
   [^Matrix a]
   (api/trans (api/engine a) a))
 
 (defn trans
-  "Transposes matrix m, i.e returns a matrix that has
-  m's columns as rows.
-  The resulting matrix has a live connection to m's data.
+  "Transposes matrix `a`, i.e returns a matrix that has m's columns as rows.
 
-  (trans (dge 3 2 [1 2 3 4 5 6]))
-  => #<GeneralMatrix| double, ROW, mxn: 2x3, ld:3>((1.0 2.0 3.0) (4.0 5.0 6.0))<>
-  "
+  The transpose does not affect the internal structure of `a`. The resulting matrix has
+  a live connection to `a`'s data."
   [^Matrix a]
   (.transpose a))
 
 ;; ============ Vector and Matrix access methods ===============================
 
 (defn entry
-  "Returns the BOXED i-th entry of vector x, or ij-th entry of matrix m.
-  In case  your container holds primitive elements, or the element have
-  a specific structure, it is much better to use the equivalent methods from
-  function from uncomplicate.neanderthal.real.
+  "Returns the **boxed** `i`-th entry of vector `x`, or `(i, j)`-th entry of matrix `a`.
 
-  (entry (dv 1 2 3) 1) => 2.0
+  For optimally accessing the elements of native objects use the equivalent `entry`
+  function from `uncomplicate.neanderthal.real` namespace.
+
+  If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
   "
   ([^Vector x ^long i]
    (try
@@ -374,15 +428,12 @@
                      {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn entry!
-  "Sets the i-th entry of vector x, or ij-th entry of matrix m,
-  or all entries if no index is provided, to BOXED value val and returns
-  the updated container.
-  In case  your container holds primitive elements, or the element have
-  a specific structure, it is much better to use the equivalent methods from
-  function from uncomplicate.neanderthal.real.
+  "Sets the `i`-th entry of vector `x`, or `(i, j)`-th entry of matrix `a` using a **boxed** method.
 
-  (entry! (dv 1 2 3) 2 -5)
-  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 -5.0)<>
+  For optimally accessing the elements of native objects use the equivalent `entry!`
+  function from `uncomplicate.neanderthal.real` namespace.
+
+  If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
   "
   ([^Changeable x val]
    (.setBoxed x val))
@@ -399,16 +450,15 @@
                      {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn alter!
-  "Alters the i-th entry of vector x, or ij-th entry of matrix m, to te result
-  of applying a function f to the old value at that position, and returns the
-  updated container.
+  "Alters the `i`-th entry of vector `x`, or `(i, j)`-th entry of matrix `a` by
+  evaluating function f on one or all of its elements.
 
-  In case  your container holds primitive elements, the function f
-  must accept appropriate primitive unboxed arguments, and it will work faster
-  if it also returns unboxed result.
+  If the structure holds primitive elements, the function f must accept appropriate primitive
+  unboxed arguments, and it will work faster if it also returns unboxed result.
 
-  (alter! (dv 1 2 3) 2 (fn ^double [^double x] (inc x)))
-  #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 4.0)<>
+  If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
+
+      (alter! (dv 1 2 3) 2 (fn ^double [^double x] (inc x)))
   "
   ([^Changeable x ^long i f]
    (try
@@ -425,10 +475,13 @@
 ;;================== BLAS 1 =======================
 
 (defn dot
-  "BLAS 1: Dot product.
-  Computes the dot product of vectors x and y.
+  "Computes the dot product of vectors `x` and `y`.
 
-  (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
+  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+
+  See related info about [cblas_?dot](https://software.intel.com/en-us/node/520734).
+
+      (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
   "
   [^Vector x ^Vector y]
   (if (and (api/compatible? x y) (api/fits? x y))
@@ -437,79 +490,83 @@
                     {:x (str x) :y (str y)}))))
 
 (defn nrm2
-  "BLAS 1: Euclidean norm.
-  Computes the Euclidan (L2) norm of vector x.
+  "Computes the Euclidan norm of vector `x`, or Frobenius norm of matrix `x`.
 
-  (nrm2 (dv 1 2 3)) => 3.7416573867739413
+  See related info about [cblas_?nrm2](https://software.intel.com/en-us/node/520738).
+
+      (nrm2 (dv 1 2 3)) => 3.7416573867739413
   "
   [x]
   (api/nrm2 (api/engine x) x))
 
 (defn asum
-  "BLAS 1: Sum absolute values.
-  Sums absolute values of entries of vector x.
+  "Sums absolute values of entries of vector or matrix `x`''.
 
-  (asum (dv -1 2 -3)) => 6.0
+  See related info about [cblas_?asum](https://software.intel.com/en-us/node/520731).
+
+      (asum (dv -1 2 -3)) => 6.0
   "
   [x]
   (api/asum (api/engine x) x))
 
 (defn iamax
-  "BLAS 1: The index of the largest absolute value.
-  The index of the first entry that has the maximum value.
+  "The index of the first entry of vector `x` that has the largest absolute value.
 
-  (iamax (dv 1 -3 2)) => 1
+    See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
+
+      (iamax (dv 1 -3 2)) => 1
   "
   ^long [x]
   (api/iamax (api/engine x) x))
 
 (defn iamin
-  "BLAS 1: The index of the smallest absolute value.
-  The index of the first entry that has the maximum value.
+  "The index of the first entry of vector `x` that has the smallest absolute value.
 
-  (iamin (dv 1 -3 2)) => 0
+    See related info about [cblas_i?amin](https://software.intel.com/en-us/node/520746).
+
+      (iamin (dv 1 -3 2)) => 0
   "
   ^long [x]
   (api/iamin (api/engine x) x))
 
 (defn amax
-  "TODO "
+  "Absolute value of the first entry of vector `x` that has the largest absolute value.
+
+  See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
+
+      (amax (dv 1 -3 2)) => 3
+  "
   [x]
   (api/amax (api/engine x) x))
 
 (defn imax
-  "BLAS 1+: The index of the largest value.
-  The index of the first entry that has the maximum value.
+  "The index of the first entry of vector `x` that has the largest value.
 
-  (imax (dv 1 -3 2)) => 2
+  See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
+
+      (imax (dv 1 -3 2)) => 2
   "
   ^long [x]
   (api/imax (api/engine x) x))
 
 (defn imin
-  "BLAS 1+: The index of the smallest value.
-  The index of the first entry that has the minimum value.
+  "The index of the first entry of vector `x` that has the smallest value.
 
-  (imin (dv 1 -3 2)) => 2
+  See related info about [cblas_i?amin](https://software.intel.com/en-us/node/520746).
+
+      (imin (dv 1 -3 2)) => 2
   "
   ^long [x]
   (api/imin (api/engine x) x))
 
 (defn swp!
-  "BLAS 1: Swap vectors or matrices.
-  Swaps the entries of containers x and y. x and y must have
-  equal dimensions. Both x and y will be changed.
-  Works on both vectors and matrices.
+  "Swaps all entries of vectors or matrices `x` and `y`.
 
-  If the dimensions of x and y are not compatible,
-  throws IllegalArgumentException.
+  Both `x` and `y` will be changed.
 
-  (def x (dv 1 2 3))
-  (def y (dv 3 4 5))
-  (swp! x y)
-  => #<RealBlockVector| double, n:3, stride:1>(3.0 4.0 5.0)<>
-  y
-  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
+  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+
+  See related info about [cblas_?swap](https://software.intel.com/en-us/node/520744).
   "
   [x y]
   (if (not (identical? x y))
@@ -520,22 +577,13 @@
     x))
 
 (defn copy!
-  "BLAS 1: Copy a vector or a matrix.
-  Copies the entries of x into y and returns x. x and y must have
-  equal dimensions. y will be changed. Also works on
-  matrices.
+  "Copies all entries of a vector or a matrix `x` to the compatible structure `y`.
 
-  If provided with length, offset-x, and offset-y, copies a subvector
-  of x into a subvector of y, if there is enough space in y.
+  Only `y` will be changed.
 
-  If x and y are not compatible, throws IllegalArgumentException.
+  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
 
-  (def x (dv 1 2 3))
-  (def y (dv 3 4 5))
-  (copy! x y)
-  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
-  y
-  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
+  See related info about [cblas_?copy](https://software.intel.com/en-us/node/520733).
   "
   ([x y]
    (if (not (identical? x y))
@@ -555,12 +603,7 @@
      y)))
 
 (defn copy
-  "Returns a new copy the (part of) entries from container x.
-  Changes to the resulting vectors do not affect x.
-
-  (copy (dv 1 2 3))
-  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 3.0)<>
-  "
+  "Copies all entries of a vector or a matrix `x` to the newly created structure (see [[copy!]])."
   ([x]
    (let-release [res (api/raw x)]
      (copy! x res)))
@@ -569,31 +612,31 @@
      (copy! x res offset length 0))))
 
 (defn scal!
-  "BLAS 1: Scale vector.
+  "Multiplies all entries of a vector or matrix `x` by scalar `alpha`.
 
-  Computes x = ax
-  where:
-  - x is a vector,
-  - a is a scalar.
+  After `scal!`, `x` will be changed.
 
-  Multiplies vector x by scalar alpha, i.e scales the vector.
-  After scal!, x will be changed.
-
-  (scal! 1.5  (dv 1 2 3))
-  => #<RealBlockVector| double, n:3, stride:1>(1.5 3.0 4.5)<>
+  See related info about [cblas_?scal](https://software.intel.com/en-us/node/520743).
   "
   [alpha x]
   (api/scal (api/engine x) alpha x)
   x)
 
 (defn scal
-  "TODO"
+  "Multiplies all entries of a copy a vector or matrix `x` by scalar `alpha`.
+
+  See related info about [cblas_?scal](https://software.intel.com/en-us/node/520743).
+  "
   [alpha x]
   (let-release [res (copy x)]
     (scal! alpha res)))
 
 (defn rot!
-  "BLAS 1: Apply plane rotation.
+  "Rotates points of vectors `x` and `y` in the plane by cos `c` and sin `s`.
+
+  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+
+  See related info about [cblas_?rot](https://software.intel.com/en-us/node/520739).
   "
   ([^Vector x ^Vector y ^double c ^double s]
    (if (and (api/compatible? x y))
@@ -610,43 +653,25 @@
   ([x y ^double c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
-(defn rotg!;;TODO docs
-  "BLAS 1: Generate plane rotation.
+(defn rotg!
+  "Computes the parameters for a givens rotation and puts them as entries of a 4-element vector `abcs`,
+  that can be used as parameters in `rot!`.
 
-  # Description:
+  If  `abcs` does not have at least 4 entries, throws ExceptionInfo.
 
-  Computes  the  elements  of  a Givens plane rotation matrix:
-  .           __    __     __ __    __ __
-  .           | c  s |     | a |    | r |
-  .           |-s  c | *   | b | =  | 0 |
-  .           --    --     -- --    -- --
-
-  where  r = +- sqrt ( a**2 + b**2 )
-  and    c**2 + s**2 = 1.
-
-  a, b, c, s are the four entries in the vector x.
-
-  This rotation can be used to selectively introduce zero elements
-  into a matrix.
-
-  # Arguments:
-
-  x: contains a, b, c, and s arguments (see the description).
-  .  Has to have exactly these four entries, and must have stride = 1.
-
-  # Result:
-
-  x with the elements changed to be r, z, c, s.
-  For a detailed description see
-  http://www.mathkeisan.com/usersguide/man/drotg.html
+  See related info about [cblas_?rotg](https://software.intel.com/en-us/node/520740).
   "
   [^Vector abcs]
   (if (< 3 (.dim abcs))
     (api/rotg (api/engine abcs) abcs)
     (throw (ex-info "Vector abcs must have at least 4 elements." {:dim (.dim abcs)}))))
 
-(defn rotm!;;TODO docs
-  "BLAS 1: Apply modified plane rotation.
+(defn rotm!
+  "Rotates points of vectors `x` and `y` in the plane using Givens rotation.
+
+  `param` must be a vector of at least 4 entries.
+
+  See related info about [cblas_?rotm](https://software.intel.com/en-us/node/520741).
   "
   [^Vector x ^Vector y ^Vector param]
   (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
@@ -662,8 +687,10 @@
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.
 
-  - d1d2xy must be a vector of at least 4 entries
-  - param must be a vector of at least 5 entries
+  If the context or dimensions of  `d1d2xy` and `param` are not compatible, or `d1d2xy` does not have
+  at least at least 4 entries, or `param` does not have at least 5 entries, throws ExceptionInfo.
+
+  See related info about [cblas_?rotmg](https://software.intel.com/en-us/node/520742).
   "
   [^Vector d1d2xy ^Vector param]
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
@@ -676,38 +703,22 @@
                                 (not (< 4 (.dim param))) "param is shorter than 4")}))))
 
 (defn axpy!
-  "BLAS 1: Vector scale and add. Also works on matrices.
+  "Multiplies elements of a vector or matrix `x` by scalar `alpha` and adds it to a vector or matrix `y`.
 
-  Computes y = ax + y.
-  where:
-  x and y are vectors, or matrices
-  a is a scalar.
+  The contents of `y` will be changed.
 
-  Multiplies vector x by scalar alpha and adds it to
-  vector y. After axpy!, y will be changed.
 
-  If called with 2 arguments, x and y, adds vector x
-  to vector y.
+  If called with 2 arguments, `x` and `y`, adds vector or matrix `x` to a vector or matrix `y`.
+  If called with more than 3 arguments, at least every other have to be a vector or matrix.
+  A scalar multiplier may be included before each object.
 
-  If called with more than 3 arguments, at least every
-  other have to be a vector. A scalar multiplier may be
-  included before each vector.
+  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
 
-  If the dimensions of x and y are not compatible,
-  throws IllegalArgumentException.
+  See related info about [cblas_?axpy](https://software.intel.com/en-us/node/520732).
 
-  (def x (dv 1 2 3))
-  (def y (dv 2 3 4))
-  (axpy! 1.5 x y)
-  => #<RealBlockVector| double, n:3, stride:1>(3.5 6.0 8.5)<>
-
-  y => #<RealBlockVector| double, n:3, stride:1>(3.5 6.0 8.5)<>
-
-  (axpy! x y)
-  => #<RealBlockVector| double, n:3, stride:1>(4.5 8.0 11.5)<>
-
-  (axpy! x y (dv 3 4 5) 2 (dv 1 2 3))
-  => #<RealBlockVector| double, n:3, stride:1>(10.5 18.0 25.5)<>
+      (axpy! 3 x y)
+      (axpy! x y)
+      (axpy! 3 x y 4 z 0.4 v)
   "
   ([alpha x y]
    (if (and (api/compatible? x y) (api/fits? x y))
@@ -730,9 +741,7 @@
 (declare axpby!)
 
 (defn axpy
-  "A pure variant of axpy! that does not change any of the arguments.
-  The result is a new instance.
-  "
+  "A pure variant of [[axpy!]] that does not change any of the arguments. The result is a new instance."
   ([x y]
    (let-release [res (copy y)]
      (axpy! 1.0 x (copy y))))
@@ -752,15 +761,14 @@
      (apply axpy 1.0 x y z w ws))))
 
 (defn ax
-  "Multiplies container x by a scalar a.
-  Similar to scal!, but does not change x. The result
-  is a new vector instance."
+  "Multiplies vector or matrix `x` by a scalar `alpha`. Similar to [[scal!]], but does not change x.
+  The result is a new instance. See [[axpy!]] and [[axpy]]."
   [alpha x]
   (let-release [res (zero x)]
     (axpy! alpha x res)))
 
 (defn xpy
-  "Sums containers x, y & zs. The result is a new vector instance."
+  "Sums vectors or matrices `x`, `y`, and `zs`. The result is a new instance. See [[axpy!]] and [[axpy]]."
   ([x y]
    (let-release [res (copy y)]
      (axpy! 1.0 x res)))
@@ -772,7 +780,24 @@
          res)))))
 
 (defn axpby!
-  "TODO"
+  "Multiplies elements of a vector or matrix `x` by scalar `alpha` and adds it to
+   vector or matrix `y`, that was previously scaled by scalar `beta`.
+
+  The contents of `y` will be changed.
+
+
+  If called with 2 arguments, `x` and `y`, adds vector or matrix `x` to a vector or matrix `y`.
+  If called with more than 4 arguments, at least every other have to be a vector or matrix.
+  A scalar multiplier may be included before each object.
+
+  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+
+  See related info about [cblas_?axpby](https://software.intel.com/en-us/node/520858).
+
+      (axpy! 3 x 0.9 y)
+      (axpy! x y)
+      (axpy! 3 x 0.2 y 4 z 0.4 v)
+  "
   ([alpha x beta y]
    (if (and (api/compatible? x y) (api/fits? x y))
      (api/axpby (api/engine x) alpha x beta y)
@@ -796,31 +821,22 @@
 ;;============================== BLAS 2 ========================================
 
 (defn mv!
-  "BLAS 2: Matrix-vector multiplication.
+  "Matrix-vector multiplication. Multiplies matrix `a`, scaled by scalar `alpha`, by vector `x`,
+  and ads it to vector `y` previously scaled by scalar `beta`.
 
-  Computes y = alpha a * x + beta * y
-  where:
-  a is a matrix,
-  x and y are vectors,
-  alpha and beta are scalars.
+  If called with 2 arguments, `a` and `x`, multiplies matrix `a` by a vector `x`, and puts the
+  result in the vector `x`. Scaling factors `alpha` and/or `beta` may be left out.
 
-  Multiplies the matrix a by the scalar alpha and then multiplies
-  the resulting matrix by the vector x. Adds the resulting
-  vector to the vector y, previously scaled by the scalar beta.
-  Returns the vector y, which contains the result and is changed by
-  the operation.
+  The contents of the destination vector will be changed.
 
-  If alpha and beta are not provided, uses identity value as their values.
+  If the context or dimensions of `a`, `x` and `y` are not compatible, throws ExceptionInfo.
 
-  If the dimensions of a, x and y are not compatible,
-  throws IllegalArgumentException.
+  See related info about [cblas_?gemv](https://software.intel.com/en-us/node/520750), and
+  [cblas_?trmv](https://software.intel.com/en-us/node/520772).
 
-  (def a (dge 3 2 (range 6)))
-  (def x (dv 1 2))
-  (def y (dv 2 3 4))
-
-  (mv! 2.0 a x 1.5 y)
-  => #<RealBlockVector| double, n:3, stride:1>(15.0 22.5 30.0)<>
+      (mv! 3 a x y)
+      (mv! a x y)
+      (mv! a x)
   "
   ([alpha ^Matrix a ^Vector x beta ^Vector y]
    (if (and (api/compatible? a x) (api/compatible? a y)
@@ -837,7 +853,7 @@
    (mv! alpha a x 1.0 y))
   ([a x y]
    (mv! 1.0 a x 0.0 y))
-  ([^Matrix a ^Vector x];;TODO docs
+  ([^Matrix a ^Vector x]
    (if (and (api/compatible? a x) (= (.ncols a) (.dim x)))
      (api/mv (api/engine a) a x)
      (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
@@ -847,8 +863,8 @@
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")})))))
 
 (defn mv
-  "A pure version of mv! that returns the result
-  in a new vector instance. Computes alpha * a * x."
+  "Matrix-vector multiplication. A pure version of mv! that returns the result in a new vector
+  instance. Computes alpha * a * x."
   ([alpha a x beta y]
    (let-release [res (copy y)]
      (mv! alpha a x beta res)))
@@ -858,26 +874,23 @@
    (let-release [res (api/raw (col a 0))]
      (mv! alpha a x 0.0 res)))
   ([a x]
-   (if (instance? GEMatrix a)
+   (if (ge? a)
      (mv 1.0 a x)
      (let-release [res (copy x)]
        (mv! a x)))))
 
 (defn rk!
-  "BLAS 2: General rank-1 update.
+  "Rank-1 update. Multiplies vector `x` with transposed vector `y`, scales the resulting matrix
+  by scalar `alpha`, and adds it to the matrix `a`.
 
-  Computes a = alpha * x * y' + a
-  where:
+  The contents of `a` will be changed.
 
-  alpha is a scalar
-  x and y are vectors, y' is a transposed vector,
-  a is a mxn matrix.
+  If the context or dimensions of `a`, `x` and `y` are not compatible, throws ExceptionInfo.
 
-  If called with 3 arguments, a, x, y, alpha is 1.0.
+  See related info about [cblas_?ger](https://software.intel.com/en-us/node/520751).
 
-  (def a (dge 3 2 [1 1 1 1 1 1]))
-  (rk! 1.5 (dv 1 2 3) (dv 4 5) a)
-  => #<GeneralMatrix| double, COL, mxn: 3x2, ld:3>((7.0 13.0 19.0) (8.5 16.0 23.5))<>
+
+      (rk! 1.5 (dv 1 2 3) (dv 4 5) a)
   "
   ([alpha ^Vector x ^Vector y ^Matrix a]
    (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
@@ -893,9 +906,7 @@
    (rk! 1.0 x y a)))
 
 (defn rk
-  "A pure version of rank! that returns the result
-  in a new matrix instance.
-  "
+  "Pure rank-1 update. A pure version of [[rk!]] that returns the result in a new matrix instance."
   ([alpha x y a]
    (let-release [res (copy a)]
      (rk! alpha x y res)))
@@ -908,34 +919,29 @@
 ;; =========================== BLAS 3 ==========================================
 
 (defn mm!
-  "BLAS 3: Matrix-matrix multiplication.
+  "Matrix-matrix multiplication. Multiplies matrix `a`, scaled by scalar `alpha`, by matrix `b`,
+  and ads it to matrix `c` previously scaled by scalar `beta`.
 
-  Computes c = alpha a * b + beta * c
-  where:
-  a, b and c are matrices,
-  alpha and beta are scalars.
+  If called with only 2 matrices, `a` and `b`, multiplies matrix `a` by a matrix `b`, and puts the
+  result in the one that is a GE matrix. In this case, exactly one of `a` or `b` has to be,
+  and one **not** be a GE matrix, but TR, or SY, or a matrix type that supports in-place multiplication.
+  Scaling factors `alpha` and/or `beta` may be left out.
 
-  Multiplies matrix a by scalar alpha and then multiplies
-  the resulting matrix by matrix b. Adds the resulting
-  matrix to matrix c previously scaled by scalar beta.
-  Returns matrix c, which contains the result and is changed by
-  the operation.
+  The contents of the destination matrix will be changed.
 
-  Can be called without scalars, with three matrix arguments.
+  If the context or dimensions of `a`, `b` and `c` are not compatible, throws ExceptionInfo.
 
-  If the dimensions of a, b and c are not compatible,
-  throws IllegalArgumentException.
+  See related info about [cblas_?gemm](https://software.intel.com/en-us/node/520775), and
+  [cblas_?trmm](https://software.intel.com/en-us/node/520782).
 
-  (def a (dge 2 3 (range 6)))
-  (def b (dge 3 2 (range 2 8)))
-  (def c (dge 2 2 [1 1 1 1]))
+      (def a (dge 2 3 (range 6)))
+      (def b (dge 3 2 (range 2 8)))
+      (def c (dge 2 2 [1 1 1 1]))
+      (def e (dtr 3 (range 6)))
 
-  (mm! 1.5 a b 2.5 c)
-  => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((35.5 49.0) (62.5 89.5))<>
-
-  (def c (dge 2 2))
-  (mm! a b c)
-  => #<GeneralMatrix| double, COL, mxn: 2x2, ld:2>((22.0 31.0) (40.0 58.0))<>
+      (mm! 1.5 a b 2.5 c)
+      (mm! 2.3 a e)
+      (mm! e a)
   "
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
    (if (and (api/compatible? a b) (api/compatible? a c)
@@ -963,17 +969,16 @@
    (mm! 1.0 a b)))
 
 (defn mm
-  "A pure version of mm!, that returns the result
-  in a new matrix instance.
-  Computes alpha a * b"
+  "Pure matrix multiplication. A version of [[mm!]], that returns the result in a new matrix instance.
+  Computes `alpha a * b`."
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c]
    (let-release [res (copy c)]
      (mm! alpha a b beta res)))
   ([alpha ^Matrix a ^Matrix b ^Matrix c]
    (mm alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
-   (if (instance? GEMatrix b)
-     (if (instance? GEMatrix a)
+   (if (ge? b)
+     (if (ge? a)
        (let-release [res (ge (api/factory b) (.mrows a) (.ncols b))]
          (mm! alpha a b 1.0 res))
        (let-release [res (copy b)]
@@ -986,9 +991,9 @@
 ;; ============================== BLAS Plus ====================================
 
 (defn sum
-  "Sums values of entries of x.
+  "Sums values of entries of a vector or matrix `x`.
 
-  (sum (dv -1 2 -3)) => -2.0
+      (sum (dv -1 2 -3)) => -2.0
   "
   [x]
   (api/sum (api/engine x) x))

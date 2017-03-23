@@ -11,6 +11,7 @@
 
 ### Enhancements
 
+* Cheat Sheet in the docs.
 * Updated JOCLBlast dependency to 0.10.0.
 * Updated Fluokitten dependency to 0.6.0.
 * Internal api and implementations made more straightforward.

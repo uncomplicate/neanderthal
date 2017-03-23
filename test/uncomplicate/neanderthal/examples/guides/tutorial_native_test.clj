@@ -316,9 +316,9 @@ $code"
    (identical? x (dv (range 10 20))) => false
    (entry x 7) => 17.0
    (dim x) => 10
-   (vect? x) => true
+   (vctr? x) => true
    (vector? x) => false
-   (vect? [1 2 3]) => false
+   (vctr? [1 2 3]) => false
    (zero x) => (dv 10)
    (subvector x 2 3) => (dv 12 13 14)
    x => (dv (range 10 20)))

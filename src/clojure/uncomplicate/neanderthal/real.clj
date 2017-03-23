@@ -8,21 +8,16 @@
 
 (ns ^{:author "Dragan Djuric"}
   uncomplicate.neanderthal.real
-  "Contains type-specific primitive floating point functions. Typically,
-  you would want to require this namespace if you need to compute
-  real matrices containing doubles and/or floats.
-  Aditionally, you need to require core namespace to use
-  type-agnostic functions.
-  You need to take care to only use vectors and matrices
-  of the same type in the same function call. These functions do not support
-  arguments of mixed real types. For example, you can not call the
-  dot function with one double vector (dv) and one float vector (fv).
+  "Contains type-specific primitive floating point functions, equivalents of functions from the
+  [[uncomplicate.neanderthal.core]] namespace. Typically, you would want to require this namespace
+  if you need to compute real matrices containing doubles and/or floats.
 
-  ## Example
-  (ns test
-    (:require [uncomplicate.neanderthal
-               [core :refer :all :exclude [entry entry! dot nrm2 asum sum]]
-               [real :refer :all]]))
+  ### Example
+
+      (ns test
+        (:require [uncomplicate.neanderthal
+                  [core :refer :all :exclude [entry entry! dot nrm2 asum sum]]
+                  [real :refer :all]]))
   "
   (:require [uncomplicate.commons.core :refer [with-release double-fn]]
             [uncomplicate.fluokitten.core :refer [foldmap fold]]
@@ -36,10 +31,7 @@
 ;; ============ Vector and Matrix access methods ===
 
 (defn entry
-  "Returns a primitive ^double i-th entry of vector x, or ij-th entry of matrix m.
-
-  (entry (dv 1 2 3) 1) => 2.0
-  "
+  "The primitive, much faster, version of [[uncomplicate.neanderthal.core/entry]]."
   (^double [^RealVector x ^long i]
    (try
      (.entry x i)
@@ -52,13 +44,7 @@
                      {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn entry!
-  "Sets the i-th entry of vector x, or ij-th entry of matrix m,
-  or all entries if no index is provided, to the primitive ^double value val and
-  returns the updated container.
-
-  (entry! (dv 1 2 3) 2 -5)
-  => #<RealBlockVector| double, n:3, stride:1>(1.0 2.0 -5.0)<>
-  "
+  "The primitive, much faster, version of [[uncomplicate.neanderthal.core/entry!]]."
   ([^RealChangeable x ^double val]
    (.set x val))
   ([^RealChangeable x ^long i ^double val]
@@ -74,44 +60,49 @@
                      {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn dot
-  "Primitive wrapper for core dot function."
+  "Primitive wrapper of [[uncomplicate.neanderthal.core/dot]]."
   ^double [x y]
   (double (core/dot x y)))
 
 (defn nrm2
-  "Primitive wrapper for core nrm2 function."
+  "Primitive wrapper of [[uncomplicate.neanderthal.core/nrm2]]."
   ^double [x]
   (double (core/nrm2 x)))
 
 (defn asum
-  "Primitive wrapper for core asum function."
+  "Primitive wrapper of [[uncomplicate.neanderthal.core/asum]]."
   ^double [x]
   (double (core/asum x)))
 
 (defn sum
-  "Primitive wrapper for core sum function."
+  "Primitive wrapper of [[uncomplicate.neanderthal.core/sum]]."
   ^double [x]
   (double (core/sum x)))
 
 (defn amax
-  "TODO "
+  "Primitive wrapper of [[uncomplicate.neanderthal.core/amax]]."
   ^double [x]
   (double (core/amax x)))
 
 (defn ls-residual
-  "TODO"
+  "Computes the residual sum of squares for the solution of a linear system returned by
+  [[uncomplicate.neanderthal.linalg/ls!]] (Linear Least Squares (LLS) problem)."
   [^RealMatrix a ^RealMatrix b]
-  (let [res (api/raw (.row b 0))]
-    (if (<= (.ncols a) (.mrows a))
-      (let [residuals (.submatrix b (.ncols a) 0 (- (.mrows b) (.ncols a)) (.ncols b))]
-        (dotimes [j (.ncols residuals)]
-          (entry! res j (foldmap sqr (.col residuals j))))
-        res)
-      res)))
+  (if (<= (.ncols a) (.mrows a))
+    (let [res (api/raw (.row b 0))
+          residuals (.submatrix b (.ncols a) 0 (- (.mrows b) (.ncols a)) (.ncols b))]
+      (dotimes [j (.ncols residuals)]
+        (entry! res j (foldmap sqr (.col residuals j))))
+      res)
+    (api/zero (.row b 0))))
 
 (def ^:private f* (double-fn *))
 
-(defn det ^double [^RealMatrix lu ^Vector ipiv]
+(defn det
+  "Computes the determinant of a matrix from its `lu` factors and `ipiv` pivot,
+  which were obtained as an output from [[uncomplicate.neanderthal.linalg/trf!]] (LU factorization).
+  Overwrites the data in `lu`!"
+  ^double [^RealMatrix lu ^Vector ipiv]
   (if (= (.mrows lu) (.ncols lu))
     (let [res (double (fold f* 1.0 (.dia lu)))]
       (if (even? (.dim ipiv))

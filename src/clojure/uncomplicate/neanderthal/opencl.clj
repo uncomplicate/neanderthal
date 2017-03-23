@@ -7,32 +7,40 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-  uncomplicate.neanderthal.opencl
+    uncomplicate.neanderthal.opencl
+  "Specialized constructors that use OpenCL engine by default, and convenient macros for
+  creating and maintaining engines in appropriate OpenCL context. A convenience over agnostic
+  [[uncomplicate.neanderthal.core]] functions."
   (:require [uncomplicate.commons.core
              :refer [release let-release wrap-float wrap-double]]
             [uncomplicate.clojurecl
              [core :refer [*context* *command-queue* cl-buffer?]]
              [info :refer [queue-context]]]
-            [uncomplicate.neanderthal.core :refer [vect? matrix? transfer! vctr ge tr]]
+            [uncomplicate.neanderthal.core :refer [vctr ge tr]]
             [uncomplicate.neanderthal.internal.opencl
              [clblock :refer [->TypedCLAccessor cl-to-host host-to-cl]]
              [clblast :refer [clblast-double clblast-float]]])
   (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
 
-(def ^:dynamic *opencl-factory*)
+(def ^{:dynamic true
+       :doc "Dynamically bound OpenCL factory that is used in vector and matrix constructors."}
+  *opencl-factory*)
 
-(def opencl-float clblast-float)
+(def ^{:doc "Constructor of a single precision floating point OpenCL factory."}
+  opencl-float clblast-float)
 
-(def opencl-double clblast-double)
+(def ^{:doc "Constructor of a double-precision floating point OpenCL factory."}
+  opencl-double clblast-double)
 
 (defmacro with-engine
-  "Creates a concrete OpenCL factory that executes in the provided queue,
-  and binds *opencl-factory* to it. Enables the use of clv and clge in body.
+  "Creates an OpenCL factory using the provided `factory` constructor function. The created factory
+  will work using the provided queue and its context, and will be bound to [[*opencl-factory*]].
+  Enables the use of [[clv]], [[clge]], [[cltr]], etc. in its body.
 
-  (with-default
-    (with-engine clblast-float *command-queue*
-      (with-release [gpu-x (clv (range 3))]
-        (sum gpu-x))))
+      (with-default
+        (with-engine clblast-float *command-queue*
+          (with-release [gpu-x (clv (range 3))]
+            (sum gpu-x))))
   "
   ([factory queue & body]
    `(binding [*opencl-factory* (~factory (queue-context ~queue) ~queue)]
@@ -41,14 +49,14 @@
         (finally (release *opencl-factory*))))))
 
 (defmacro with-default-engine
-  "Creates a concrete float-precision CLBlast OpenCL factory that executes
-  in the default context and queue, and binds *opencl-factory* to it.
-  clv and clge in its body will create float-precision blocks.
+  "Creates an OpenCL factory using the default OpenCL factory (single precision floating point),
+  that works in the default OpenCL queue and context acquired through ClojureCL's `*context*` and
+  *command-queue*` bindings. The created factory will be bound to [[*opencl-factory*]].
 
-  (with-default
-    (with-default-engine
-      (with-release [gpu-x (clv (range 3))]
-        (sum gpu-x))))
+      (with-default
+        (with-default-engine
+          (with-release [gpu-x (clv (range 3))]
+            (sum gpu-x))))
   "
   [& body]
   `(binding [*opencl-factory* (opencl-float *context* *command-queue*)]
@@ -57,22 +65,16 @@
        (finally (release *opencl-factory*)))))
 
 (defn clv
-  "Creates an OpenCL-backed vector on the device, with dimension n, using
-  the default engine factory.
-
-  (clv 3)
-  "
+  "Creates a vector using GPU engine provided to the bound [[*opencl-factory*]]
+  (see [[uncomplicate.neanderthal.core/vctr]])."
   ([source]
    (vctr *opencl-factory* source))
   ([x & xs]
    (clv (cons x xs))))
 
 (defn clge
-  "Creates an OpenCL-backed matrix on the device, with dimensions m x n,
-  using the default engine factory.
-
-  (clge 2 3)
-  "
+  "Creates a GE matrix using GPU engine provided to the bound [[*opencl-factory*]]
+  (see [[uncomplicate.neanderthal.core/ge]])."
   ([^long m ^long n source options]
    (ge *opencl-factory* m n source options))
   ([^long m ^long n arg]
@@ -81,3 +83,13 @@
    (ge *opencl-factory* m n))
   ([a]
    (ge *opencl-factory* a)))
+
+(defn cltr
+  "Creates a TR matrix using GPU engine provided to the bound [[*opencl-factory*]]
+  (see [[uncomplicate.neanderthal.core/tr]])."
+  ([^long n source options]
+   (tr *opencl-factory* n source options))
+  ([^long n arg]
+   (tr *opencl-factory* n arg))
+  ([arg]
+   (tr *opencl-factory* arg)))
