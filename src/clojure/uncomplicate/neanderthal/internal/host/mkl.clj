@@ -326,12 +326,28 @@
     (ge-lqrf LAPACK/dgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
     (ge-lqrf LAPACK/dgeqrfp ^RealGEMatrix a ^RealBlockVector tau))
+  (gqr [_ a tau]
+    (or-glqr LAPACK/dorgqr ^RealGEMatrix a ^RealBlockVector tau))
+  (mqr [_ a tau c left]
+    (or-mlqr LAPACK/dormqr ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (rqf [_ a tau]
     (ge-lqrf LAPACK/dgerqf ^RealGEMatrix a ^RealBlockVector tau))
+  (grq [_ a tau]
+    (or-glqr LAPACK/dorgrq ^RealGEMatrix a ^RealBlockVector tau))
+  (mrq [_ a tau c left]
+    (or-mlqr LAPACK/dormrq ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (lqf [_ a tau]
     (ge-lqrf LAPACK/dgelqf ^RealGEMatrix a ^RealBlockVector tau))
+  (glq [_ a tau]
+    (or-glqr LAPACK/dorglq ^RealGEMatrix a ^RealBlockVector tau))
+  (mlq [_ a tau c left]
+    (or-mlqr LAPACK/dormlq ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (qlf [_ a tau]
     (ge-lqrf LAPACK/dgeqlf ^RealGEMatrix a ^RealBlockVector tau))
+  (gql [_ a tau]
+    (or-glqr LAPACK/dorgql ^RealGEMatrix a ^RealBlockVector tau))
+  (mql [_ a tau c left]
+    (or-mlqr LAPACK/dormql ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (ls [_ a b]
     (ge-ls LAPACK/dgels ^RealGEMatrix a ^RealGEMatrix b))
   (ev [_ a w vl vr]
@@ -401,12 +417,28 @@
     (ge-lqrf LAPACK/sgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
     (ge-lqrf LAPACK/sgeqrfp ^RealGEMatrix a ^RealBlockVector tau))
+  (gqr [_ a tau]
+    (or-glqr LAPACK/sorgqr ^RealGEMatrix a ^RealBlockVector tau))
+  (mqr [_ a tau c left]
+    (or-mlqr LAPACK/sormqr ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (rqf [_ a tau]
     (ge-lqrf LAPACK/sgerqf ^RealGEMatrix a ^RealBlockVector tau))
+  (grq [_ a tau]
+    (or-glqr LAPACK/sorgrq ^RealGEMatrix a ^RealBlockVector tau))
+  (mrq [_ a tau c left]
+    (or-mlqr LAPACK/sormrq ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (lqf [_ a tau]
     (ge-lqrf LAPACK/sgelqf ^RealGEMatrix a ^RealBlockVector tau))
+  (glq [_ a tau]
+    (or-glqr LAPACK/sorglq ^RealGEMatrix a ^RealBlockVector tau))
+  (mlq [_ a tau c left]
+    (or-mlqr LAPACK/sormlq ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (qlf [_ a tau]
     (ge-lqrf LAPACK/sgeqlf ^RealGEMatrix a ^RealBlockVector tau))
+  (gql [_ a tau]
+    (or-glqr LAPACK/sorgql ^RealGEMatrix a ^RealBlockVector tau))
+  (mql [_ a tau c left]
+    (or-mlqr LAPACK/sormql ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (ls [_ a b]
     (ge-ls LAPACK/sgels ^RealGEMatrix a ^RealGEMatrix b))
   (ev [_ a w vl vr]

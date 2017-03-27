@@ -686,7 +686,7 @@
                          {:order :row})]
 
      (trf! a ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
-     (< (double (nrm2 (axpy! -1 a lu))) 0.015) => true)))
+     (nrm2 (axpy! -1 a lu)) => (roughly 0.01359))))
 
 (defn test-ge-trs [factory]
   (facts
@@ -716,8 +716,8 @@
 
      (trf! a ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
      (trs! a b ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
-     (< (double (nrm2 (axpy! -1 a lu))) 0.015) => true
-     (< (double (nrm2 (axpy! -1 b solution))) 0.015) => true)))
+     (nrm2 (axpy! -1 a lu)) => (roughly 0.014)
+     (nrm2 (axpy! -1 b solution)) => (roughly 0.014))))
 
 (defn test-ge-sv [factory]
   (facts
@@ -746,8 +746,8 @@
                          {:order :row})]
 
      (sv! a b ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
-     (< (double (nrm2 (axpy! -1 a lu))) 0.015) => true
-     (< (double (nrm2 (axpy! -1 b solution))) 0.015) => true)))
+     (nrm2 (axpy! -1 a lu)) => (roughly 0.01359)
+     (nrm2 (axpy! -1 b solution)) => (roughly 0.01201))))
 
 (defn test-ge-det [factory]
   (facts
@@ -767,6 +767,151 @@
                          {:order :row})]
 
      (det a (trf! a)) => (roughly -38406.4848))))
+
+(defn test-ge-qr [factory]
+  (facts
+   "LAPACK GE qr!"
+
+   (with-release [a0 (ge factory 6 4 [ 1.44, -9.96, -7.55,  8.34,  7.08, -5.45,
+                                      -7.84, -0.28,  3.24,  8.09,  2.52, -5.70,
+                                      -4.39, -3.24,  6.27,  5.28,  0.74, -1.19,
+                                      4.53,  3.83, -6.64,  2.06, -2.47,  4.70])
+                  a1 (copy a0)
+                  tau (vctr factory 4)
+                  c (ge factory 6 2 [8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44])
+                  qr (ge factory 6 4 [-17.54  -4.76  -1.96   0.42
+                                      -0.52  12.40   7.88  -5.84
+                                      -0.40  -0.14  -5.75   4.11
+                                      0.44  -0.66  -0.20  -7.78
+                                      0.37  -0.26  -0.17  -0.15
+                                      -0.29   0.46   0.41   0.24]
+                         {:order :row})
+                  q (ge factory 6 4 [-0.08  -0.66  -0.12  -0.15
+                                      0.57   0.20   0.64  -0.27
+                                      0.43   0.43  -0.65   0.21
+                                      -0.48   0.47  -0.11  -0.70
+                                      -0.40   0.05   0.08   0.30
+                                      0.31  -0.34  -0.37  -0.52]
+                        {:order :row})
+                  qr*c (ge factory 6 2 [-7.65   2.25
+                                        13.53   4.63
+                                        0.24   2.79
+                                        2.15  -6.31
+                                        -1.86  -2.29
+                                        1.42   5.73]
+                           {:order :row})]
+     (nrm2 (axpy! -1 (gqr! a0 (qrf! a0 tau)) q)) => (roughly 0.014)
+     (nrm2 (axpy! -1 (doto a1 (qrf! tau)) qr)) => (roughly 0.0129)
+     (nrm2 (axpy! -1 (mqr! a1 tau c) qr*c)) => (roughly 0.0115))))
+
+(defn test-ge-rq [factory]
+  (facts
+   "LAPACK GE rq!"
+
+   (with-release [a0 (ge factory 4 6 [ 1.44, -9.96, -7.55,  8.34,  7.08, -5.45,
+                                      -7.84, -0.28,  3.24,  8.09,  2.52, -5.70,
+                                      -4.39, -3.24,  6.27,  5.28,  0.74, -1.19,
+                                      4.53,  3.83, -6.64,  2.06, -2.47,  4.70]
+                         {:order :row})
+                  a1 (copy a0)
+                  tau (vctr factory 4)
+                  c (ge factory 6 4 [8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44
+                                     8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44])
+                  rq (ge factory 4 6 [-0.32   0.82  16.01  -5.88   4.02   0.70
+                                      -0.18   0.36  -0.44  -7.78   8.13   7.04
+                                      0.26   0.16  -0.36  -0.80   7.38   6.67
+                                      0.30   0.25  -0.43   0.13  -0.16 -10.57]
+                         {:order :row})
+                  q (ge factory 4 6 [0.31  -0.73  -0.41   0.20   0.38  -0.17
+                                     0.40  -0.41   0.45  -0.28  -0.23   0.58
+                                     -0.21  -0.11   0.28   0.89  -0.11   0.24
+                                     -0.43  -0.36   0.63  -0.19   0.23  -0.44]
+                        {:order :row})
+                  rq*c (ge factory 6 4 [27778.10474205729 34849.97134137374 27778.10474205729 34849.97134137374
+                                        37576.96048773454 47101.054569347405 37576.96048773454 47101.054569347405
+                                        3883.645144131808 4867.867395762253 3883.645144131808 4867.867395762253
+                                        -650.254385760667 -804.37260305241 -650.254385760667 -804.37260305241
+                                        -35.23575939807661 -43.69759691590371 -35.23575939807661 -43.69759691590371
+                                        -4824.495361548854 -6051.555558128556 -4824.495361548854 -6051.555558128556]
+                           {:order :row})]
+     (nrm2 (axpy! -1 (grq! a0 (rqf! a0 tau)) q)) => (roughly 0.01304)
+     (nrm2 (axpy! -1 (doto a1 (rqf! tau)) rq)) => (roughly 0.0127)
+     (nrm2 (axpy! -1 (mrq! a1 tau c) rq*c)) => (roughly 0.0 0.04))))
+
+(defn test-ge-lq [factory]
+  (facts
+   "LAPACK GE lq!"
+
+   (with-release [a0 (ge factory 4 4 [2 3 -1 0
+                                      -6 -5 0 2
+                                      2 -5 6 -6
+                                      4 6 2 -3]
+                         {:order :row})
+                  a1 (copy a0)
+                  a2 (copy a0)
+                  tau (vctr factory 4)
+                  c (ge factory 4 4 [8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44
+                                     8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44])
+                  lq (ge factory 4 4 [-3.74   0.52  -0.17   0.00
+                                      7.22  -3.60  -0.42   0.36
+                                      4.54   8.84  -1.49  -0.80
+                                      -6.41   3.81  -2.30   2.00]
+                         {:order :row})
+                  q (ge factory 4 4 [ -0.534522 -0.801784 0.267261 -0
+                                     0.595961 -0.218519 0.536365 -0.55623
+                                     0.564904 -0.386513 -0.0297318 0.728428
+                                     -0.2 0.4 0.8 0.4]
+                        {:order :row})
+                  lq*c (ge factory 4 4 [3861.9576278420636 4161.270425791217 1103.4822844002706 3861.9576278420636
+                                        27719.90284478883 29911.457438130125 7937.11129835215 27719.90284478883
+                                        16655.246287501766 17979.057772570286 4748.23322679897 16655.246287501766
+                                        -25024.58322860647 -27015.7721311638 -7195.2447564577 -25024.58322860647]
+                           {:order :row})]
+
+     (nrm2 (axpy! -1 (glq! a0 (lqf! a0 tau)) q)) => (roughly 0.0 0.0001)
+     (nrm2 (axpy! -1 (doto a1 (lqf! tau)) lq)) => (roughly 0.0126)
+     (nrm2 (axpy! -1 (mlq! a1 tau c) lq*c)) => (roughly 0.0 0.01))))
+
+(defn test-ge-ql [factory]
+  (facts
+   "LAPACK GE ql!"
+
+   (with-release [a0 (ge factory 4 4 [2 3 -1 0
+                                      -6 -5 0 2
+                                      2 -5 6 -6
+                                      4 6 2 -3]
+                         {:order :row})
+                  a1 (copy a0)
+                  a2 (copy a0)
+                  tau (vctr factory 4)
+                  c (ge factory 4 4 [8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44
+                                     8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44])
+                  ql (ge factory 4 4 [-0.56  -0.23  -0.29  -0.00
+                                      -0.41  -4.53   0.47  -0.20
+                                      5.75   8.62  -2.24   0.60
+                                      -5.14   0.29  -6.00   7.00 ]
+                         {:order :row})
+                  q (ge factory 4 4 [0.87   0.19   0.45   0.00
+                                     0.47  -0.34  -0.77   0.29
+                                     0.13   0.32  -0.38  -0.86
+                                     0.06  -0.86   0.26  -0.43]
+                        {:order :row})
+                  ql*c (ge factory 4 4 [73364.78125 54602.0859375 6721.794921875 73364.78125
+                                        -23043.171875 -17142.7265625 -2109.498779296875 -23043.171875
+                                        6087.68798828125 4543.7509765625 562.00439453125 6087.68798828125
+                                        134.61383056640625 98.04141998291016 12.774694442749023 134.61383056640625]
+                           {:order :row})]
+
+     (nrm2 (axpy! -1 (gql! a0 (qlf! a0 tau)) q)) => (roughly 0.013)
+     (nrm2 (axpy! -1 (doto a1 (qlf! tau)) ql)) => (roughly 0.01123)
+     (nrm2 (axpy! -1 (mql! a1 tau c) ql*c)) => (roughly 0.0 0.14))))
 
 (defn test-ge-ls [factory]
   (facts
@@ -792,9 +937,9 @@
                          {:order :row})
                   residual (vctr factory [195.36 107.06])]
      (ls! a b)
-     (< (double (nrm2 (axpy! -1 residual (ls-residual a b)))) 0.0031) => true
-     (< (double (nrm2 (axpy! -1 solution (submatrix b 0 0 4 2)))) 0.007) => true
-     (< (double (nrm2 (axpy! -1 qr a))) 0.015) => true)))
+     (nrm2 (axpy! -1 residual (ls-residual a b))) => (roughly 0.003 0.0001)
+     (nrm2 (axpy! -1 solution (submatrix b 0 0 4 2))) 0.007 => (roughly 0.007)
+     (nrm2 (axpy! -1 qr a)) => (roughly 0.0129))))
 
 (defn test-ge-ev [factory]
   (facts
@@ -827,10 +972,10 @@
                   vl (ge factory 5 5)
                   vr (ge factory 5 5)]
 
-     (< (double (nrm2 (axpy! -1 eigenvalues (ev! a0)))) 0.01) => true
+     (nrm2 (axpy! -1 eigenvalues (ev! a0))) => (roughly 0.00943)
      (ev! a1 vl vr) = truthy
-     (< (double (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl)))) 0.014) => true
-     (< (double (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr)))) 0.011) => true)))
+     (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl))) => (roughly 0.01378)
+     (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr))) => (roughly 0.010403))))
 
 (defn test-ge-svd [factory]
   (facts
@@ -861,10 +1006,10 @@
                                           -0.22   0.14   0.59  -0.63  -0.44]
                              {:order :row})]
 
-     (< (double (nrm2 (axpy! -1 s-res (svd! a0 s superb)))) 0.0076) => true
-     (< (double (nrm2 (axpy! -1 s-res (svd! a1 s u vt superb)))) 0.0076) => true
-     (< (double (nrm2 (axpy! -1 u-res u))) 0.016) => true
-     (< (double (nrm2 (axpy! -1 vt-res vt))) 0.013) => true)))
+     (nrm2 (axpy! -1 s-res (svd! a0 s superb))) => (roughly 0.007526)
+     (nrm2 (axpy! -1 s-res (svd! a1 s u vt superb))) => (roughly 0.007526)
+     (nrm2 (axpy! -1 u-res u)) => (roughly 0.01586)
+     (nrm2 (axpy! -1 vt-res vt)) => (roughly 0.012377))))
 
 ;; =========================================================================
 
@@ -925,6 +1070,10 @@
   (test-ge-trf factory)
   (test-ge-det factory)
   (test-ge-sv factory)
+  (test-ge-qr factory)
+  (test-ge-rq factory)
+  (test-ge-lq factory)
+  (test-ge-ql factory)
   (test-ge-ls factory)
   (test-ge-ev factory)
   (test-ge-svd factory))

@@ -107,15 +107,30 @@
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 
-(defmacro ge-lqrf [method a tau]
+(defmacro with-lqr-check [tau res expr]
   `(if (= 1 (.stride ~tau))
-     (let [info# (~method (.order ~a) (.mrows ~a) (.ncols ~a)
-                  (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.stride ~tau))]
+     (let [info# ~expr]
        (if (= 0 info#)
-         ~tau
+         ~res
          (throw (ex-info "There has been an illegal argument in the native function call."
                          {:arg-index (- info#)}))))
      (throw (ex-info "You cannot use tau with stride different than 1." {:stride (.stride ~tau)}))))
+
+(defmacro ge-lqrf [method a tau]
+  `(with-lqr-check ~tau ~tau
+     (~method (.order ~a) (.mrows ~a) (.ncols ~a)
+      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.offset ~tau))))
+
+(defmacro or-glqr [method a tau]
+  `(with-lqr-check ~tau ~a
+     (~method (.order ~a) (.mrows ~a) (.ncols ~a) (.dim ~tau)
+      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.offset ~tau))))
+
+(defmacro or-mlqr [method a tau c left]
+  `(with-lqr-check ~tau ~c
+     (~method (.order ~c) (int (if ~left \L \R)) (int (if (= (.order ~a) (.order ~c)) \N \T))
+      (.mrows ~c) (.ncols ~c) (.dim ~tau) (.buffer ~a) (.offset ~a) (.stride ~a)
+      (.buffer ~tau) (.offset ~tau) (.buffer ~c) (.offset ~c) (.stride ~c))))
 
 ;; ------------- Linear Least Squares Routines LAPACK -------------------------------
 
