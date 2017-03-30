@@ -44,27 +44,30 @@ This is one of the ways to multiply matrices:
 
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
 
-* The **native engine** is based on a highly optimized native [Automatically Tuned Linear Algebra Software (ATLAS)](http://math-atlas.sourceforge.net/) library of [BLAS](http://netlib.org/blas/) and [LAPACK](http://www.netlib.org/lapack/) computation routines.
-* The **GPU engine** is based on OpenCL BLAS routines for even more computational power when needed. It uses ClojureCL. Check out [Uncomplicate ClojureCL](http://clojurecl.uncomplicate.org) if you want to harness the GPU power from Clojure for your own algorithms.
+* The **native engine** is based on a highly optimized native [Intel's MKL](http://https://software.intel.com/en-us/intel-mkl) library of [BLAS](http://netlib.org/blas/) and [LAPACK](http://www.netlib.org/lapack/) computation routines (MKL is not open-source, but it is free to use and redistribute since 2016).
+* The **GPU engine** is based on OpenCL BLAS routines from [CLBlast](https://github.com/CNugteren/CLBlast) library for even more computational power when needed. It uses [ClojureCL](http://clojurece.uncomplicate.org) and [JOCL](http://jocl.org) libraries. Check out [Uncomplicate ClojureCL](http://clojurecl.uncomplicate.org) if you want to harness the GPU power from Clojure for your own algorithms.
 
 ### Implemented Features
 
-* Data structures: double and single precision vector, double and single precision general dense matrix (GE);
+* Data structures: double and single precision vectors, dense matrices (GE), and triangular matrices (TR);
 * BLAS Level 1, 2, and 3 routines;
+* Major LAPACK routines;
 * Various Clojure vector and matrix functions (transpositions, submatrices etc.);
+* Easy and efficient data mapping and transfer to and from GPUs;
 * Fast map, reduce and fold implementations for the provided structures.
 
 ### On the TODO List
 
-* LAPACK routines;
-* Banded, symmetric, triangular, and sparse matrices;
+* CUDA support (in addition to OpenCL support that already works with Nvidia)
+* Banded, symmetric, and sparse matrices;
+* More LAPACK routines;
 * Support for complex numbers;
 
 ## Installation
 
 1. Add Neanderthal jars to your classpath ([from the Clojars](https://clojars.org/uncomplicate/neanderthal)).
-2. To use the native engine: install ATLAS on your system following [Native Engine Requirements](http://neanderthal.uncomplicate.org/articles/getting_started.html#the-native-library-used-by-neanderthals-native-engine)).
-3. To use the GPU engine: install the drivers and an OpenCL platform software provided by the vendor of your graphic card (you probably already have that) - (see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
+2. To use the native engine: install Intel's MKL on your system following [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine)).
+3. To use the GPU engine: install the drivers and an OpenCL platform software provided by the vendor of your graphic card (you probably already have that; see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
 
 ### With Leiningen
 
@@ -74,57 +77,46 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 ## Requirements
 
-Neanderthal's data structures are written in Clojure, so many functions work even without native engines. However, you probably need Neanderthal because of its fast BLAS native and/or GPU engines. Here is how to make sure they are ready to use.
+You need at least Java 8.
+
+Neanderthal's data structures are written in Clojure, so many functions work even without native engines. However, you probably need Neanderthal because of its fast BLAS native or GPU engines. Here is how to make sure they are available.
 
 ### The native library used by Neanderthal's native engine
 
-Works on Linux, OS X, and Windows!
+* Works on Linux, OS X, and Windows!
 
-#### Mac OS X
+* Note: Previous versions of Neanderthal used ATLAS, while from version 0.9.0, it uses Intel's MKL. If you used ATLAS previously, you'll have to install MKL!
 
-**Works out of the box**. You should have Apple's XCode that comes with Accelerate framework and that's it - no need to fiddle with ATLAS, and you get Apple's highly tuned BLAS engine.
+* While old versions had different installation guides for each OS, from version 0.9.0, installation on all OSes is more or less the same.
 
-#### Linux - optimized (recommended)
+Neanderthal **uses the native Intel MKL library and expects that you make it available on your system, typically as shared xyz.so, xyz.dll, or xyz.dylib files**. Intel MKL is highly optimized for various architectures; its installation comes with many optimized binaries for all supported architectures, that are then selected during runtime according to the hardware at hand. Neanderthal has been built and tested with **Intel MKL 2017**; please make sure that you use a compatible MKL version.
 
-Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared libatlas.so** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). Use the latest stable ATLAS, not an alpha or beta version.
+**You do not need to compile or tune anything yourself.**
 
-If you do not follow this procedure, and use a pre-packaged ATLAS provided by your package manager (available in most distributions), you will probably get lower performance compared to a properly tuned ATLAS (but still much faster than Java).
+There are two main steps to how to make MKL available on your system; either:
 
-Either way, Neanderthal does not care how ATLAS is provided, as long it is on the path an was compiled as a shared library. It can even be packed in a jar if that's convenient, and I could make some steps in the future to make
-the "compile it and install ATLAS by yourself" step optional. But, I do not recommend it, other than as a convenience for people who are scared of the terminal and C tools.
+1. (Optional) Install MKL using a [GUI installer provided by Intel](https://software.intel.com/en-us/intel-mkl) free of charge. In case you use this method, you may [set environment variables as explained in this guide](https://software.intel.com/en-us/node/528500), but it is probably not required, since you do **not** need to compile anything.
+2. Put all required binary files (that you installed with MKL installer or copied from wherever you acquired them) in a directory that is available from your `LD_LIBRARY_PATH` or, if you are using Windows, `PATH` (those binary files are available from anyone who installed MKL and have the (free) license to redistribute it with a project).
 
-This is how I installed it on Arch Linux:
+Either way, Neanderthal does not care how MKL has been provided, as long as it is on the path of your OS. When it comes to distributing the software you build using Neanderthal, I guess the most convenient option is that you include the required MKL binary files in the uberjar or other package that you use to ship the product. Then, it would not require any additional action from your users.
 
-* I had to have gcc (installed by default) and gcc-fortran packages.
-* I followed the aforementioned atlas build instructions to the letter. The only critical addition is to add `--shared` flag (explained in the details there, but not a default).
-* I had to disable Hyperthreading in BIOS (after the build, you can turn it back on)
-* I had to disable CPU throttling with this command in the shell: `cpupower frequency-set -g performance` (depending on the distribution and the CPU, this may be slightly different)
-* I had to create a symlink `libatlas.so` in my `/usr/lib`, that points to 'libsatlas.so' (serial)
-or 'libtatlas.so' (parallel) atlas shared binary created by the build script.
+This is the list of MKL files that Neanderthal requires:
 
-That should be all, but YMMV, depending on your hardware and OS installation.
+* Mandatory MKL libraries (this is what I use on my Intel Core i7 4790k):
+  * `libmkl_rt.so`
+  * `libmkl_core.so`
+  * `libmkl_intel_lp64.so`
+  * `libiomp5.so`
+  * `libmkl_intel_thread`
+  * `libmkl_avx2.so` (if your CPU supports AVX2, which it probably does)
+* Optionally, your processor might support additional set of instructions that may require an additional file from MKL. See the MKL guide and browse all available files once you install MKL to discover this. For example, I guess that you might also need `libmkl_avx512.so` if you have a Xeon processor.
 
-#### Linux - non-optimized, but easy way (not recommended)
+Please note that, if you use Windows or OS X, the binary file extensions are not `.so`, but `.dll` and `dylib` respectively.
 
-Use atlas build provided by your package manager. Something like:
+**Note for OSX users:** MKL installation on my OSX 10.11 placed `libiomp5.dylib` in a different folder than the rest
+of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `LD_LIBRARY_PATH`. Please also note that on OSX, this environment variable could instead be called `DYLD_LIBRARY_PATH` - you'll have to consult Intel MKL documentation and experiment a bit in such cases.
 
-``` shell
-sudo pacman -Suy atlas-lapack
-```
-or your distribution's equivalent. It is fine as an easy way to get started, but does not offer full performance.
-
-Ubuntu users - make sure to read [this blog post](https://bigsolutions.io/2017/02/01/how-to-run-neanderthal-with-atlas-blas-from-ubuntu-repositories/).
-
-#### Windows - non-optimized, but easy way
-
-Find a previously compiled libatlas.dll and put it on your path (through Control Panel's Environment Variables or just
-by dropping it in the root of your project's folder). If you can not find libatlas.dll, send me a mail to atlasplease@uncomplicate.org, and I will send you mine. It would be nice if you write a few sentences about what you are planning to create with Neanderthal :)
-
-#### Windows - optimized
-
-Neanderthal **uses the native ATLAS library and expects that you make it available on your system, typically as a shared libatlas.dll** ATLAS is highly optimized for various architectures - if you want top performance **you have to build ATLAS from the source**. Do not worry, ATLAS comes with automatic autotools build script, and a [detailed configuration and installation guide](http://math-atlas.sourceforge.net/atlas_install/atlas_install.html). Also consult the Linux section of the page you are currently reading.
-
-Please note that the build and optimization proccess is straightforward on Linux, but needs a lot of care and patience on Windows. You'll need to use **stable** ATLAS versions (I use 3.10.3) and cygwin with MinGW. Be prepared to read the ATLAS build documentation really carefully, or hire someone to help you.
+**Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those.
 
 ### GPU drivers for the GPU engine
 
@@ -138,4 +130,6 @@ Follow the [ClojureCL getting started guide](http://clojurecl.uncomplicate.org/a
 
 ## Where to Go Next
 
-Hopefully this guide got you started and now you'd like to learn more. I expect to build a comprehensive base of articles and references for exploring this topic, so please check the [All Guides](/articles/guides.html) page from time to time. Of course, you should also check the [Neanderthal API](/codox) for specific details, and feel free to take a gander at [the source](https://github.com/uncomplicate/neanderthal) while you are there.
+Hopefully this guide got you started and now you'd like to learn more. I expect to build a comprehensive base of articles and references for exploring this topic, so please check the [All Guides](/articles/guides.html) page from time to time. Of course, you should also check the [Neanderthal API](/codox) for specific details, and feel free to take a glance at [the source](https://github.com/uncomplicate/neanderthal) while you are there.
+
+It is also a good idea to follow [my blog at dragan.rocks](http://dragan.rocks) since I'll write about Neanderthal there.

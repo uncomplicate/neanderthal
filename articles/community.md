@@ -9,6 +9,8 @@ layout: article
 
 [Neanderthal has a mailing list](https://groups.google.com/forum/#!forum/uncomplicate). Feel free to join it and ask any questions you may have.
 
+[Follow my blog at dragan.rocks](http://dragan.rocks) to keep up with the development and tutorials.
+
 ## News & Announcements on Twitter
 
 To subscribe for announcements of releases, important changes, and so on, please follow [@Uncomplicateorg](https://twitter.com/#!/uncomplicateorg) on Twitter.

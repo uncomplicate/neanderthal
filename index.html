@@ -10,11 +10,10 @@ layout: default
   <p style=''>
       Fast <span class="text-success">native-speed</span> matrix and linear algebra in Clojure
   </p>
-  <p>On the <strong class="text-success">GPU</strong>: <a href="/articles/tutorial_opencl.html"> more than 1000x faster</a> for large matrices than the fastest optimized Java libraries!</p>
+  <p>On the <strong class="text-success">GPU</strong>: <a href="/articles/tutorial_opencl.html"> more than 1500x faster</a> for large matrices than optimized Clojure/Java libraries!</p>
+  <p>On the CPU: <a href="/articles/benchmarks.html">100x faster</a> than optimized pure Java.</p>
   <p>Works on <strong><span class="text-success">AMD, Nvidia, and Intel</span></strong> hardware!</p>
-  <p>On the CPU: <a href="/articles/benchmarks.html">10x - 60x faster</a> than optimized Java libraries.</p>
-  <p><a href="http://dragan.rocks/talks/EuroClojure2016/clojure-is-not-afraid-of-the-gpu.html">Slides for my upcoming talk at EuroClojure 2016: Clojure is not afraid of the GPU</a>
-  </p>
+    <p><a href="http://dragan.rocks/talks/EuroClojure2016/clojure-is-not-afraid-of-the-gpu.html">Slides</a> and <a href="https://www.youtube.com/watch?v=bEOOYbscyTs">video</a> of the <a href="http://2016.euroclojure.org/speakers#ddjuric">presentation at EuroClojure 2016</a></p>
   <a class='btn btn-primary btn-lg' href='/articles/getting_started.html'>Get Started! »</a>
   <a class="btn btn-danger btn-lg" href="/articles/benchmarks.html">Check the benchmarks »</a>
   <a class="btn btn-success btn-lg" href="/articles/guides.html">Learn to use it. »</a>
@@ -25,18 +24,17 @@ layout: default
     <h2>Very Fast</h2>
     <p>Handcrafted JNI calls, with almost no overhead, call the machine-optimized native
         <a href="http://netlib.org/blas/">BLAS</a>  provided by
-        <a href="http://math-atlas.sourceforge.net/">ATLAS</a>.
-    <p class="text-success"><strong class="text-success">Seamless support for GPU computing.</strong> Many times faster than any code running on the CPU.</p>
+        <a href="https://en.wikipedia.org/wiki/Math_Kernel_Library">Intel's MKL</a>.
+    <p class="text-success"><strong class="text-success">Seamless support for <a href="http://localhost:4003/articles/tutorial_opencl.html">GPU computing</a>.</strong> Many times faster than any code running on the CPU.</p>
     </p>
-    <p>Considerably faster than JBlas, and faster than pure Java core.matrix vectorz <span class="text-success">even for small matrices</span>:
-        see the <a href="/articles/benchmarks.html">benchmarks and comparisons</a>.</p>
+    <p>Faster than JBlas, and orders of magnitude times faster than pure Java core.matrix/vectorz<span class="text-success"> even for small matrices</span>: see the <a href="/articles/benchmarks.html">benchmarks and comparisons</a>.</p>
   </div>
   <div class='col-md-4'>
     <h2>Optimized for Clojure</h2>
     <p>Built with Clojure in mind, and implemented in Clojure.</p>
     <p>Sane interface and functions that fit into functional style while still respecting the reality
         of number crunching.</p>
-    <p><span class="text-success">Comes with fast primitive versions of map and reduce.</span></p>
+    <p><span class="text-success">Comes with <a href="http://localhost:4003/articles/fast-map-and-reduce-for-primitive-vectors.html">fast primitive versions of map and reduce</a>.</span></p>
     <p>Pluggable engine implementations - even a pure Java engine could be plugged in for the cases when speed is not the priority.</p>
   </div>
   <div class='col-md-4'>
@@ -53,17 +51,15 @@ layout: default
     <p><span class="text-success">Does not try to poorly reinvent the wheel. Respects decades of BLAS and LAPACK standardization.</span> Does the number crunching part with native BLAS and/or GPU, but provides a tiny Clojure layer for sanity. Win-win :)</p>
   </div>
   <div class='col-md-4'>
-    <h2>Free and Open Source</h2>
-    <p>Licensed under the <a href="https://github.com/uncomplicate/neanderthal/blob/master/LICENSE">Eclipse Public License</a>, same as Clojure.</p>
-  </div>
-  <div class='col-md-4'>
       <h2>Latest News</h2>
-      <p><img src="http://clojars.org/uncomplicate/neanderthal/latest-version.svg"/></p>
-      <p><a href="/articles/news/release-0.8.0.html">Windows support in 0.8.0 - 9.10.2016.</p>
-      <p><a href="/articles/news/release-0.6.0.html">New Release 0.7.0 - 7.7.2016.</p>
-      <p><a href="/articles/news/release-0.6.0.html">New Release 0.6.0 - 24.5.2016.</p>
+      <p class="lead text-success">LAPACK support available: factorizations and solvers!</p>
       <p class="lead text-success">GPU engine supports AMD, Nvidia, Intel, and Mac OSX!</p>
       <a href="https://clojurians.slack.com/messages/uncomplicate/details/">I hang around at Uncomplicate group at Slack's Clojurians</a>
-      <p>Follow the news on the <a href="https://groups.google.com/forum/#!forum/uncomplicate">Uncomplicate mailing list</a> or <a href="https://twitter.com/#!/uncomplicateorg">@Uncomplicateorg</a> Twitter account.</p>
+      <p class="lead text-success">Read more at <a href="http://dragan.rocks">dragan.rocks</a>
+      <p>Follow the news on the <a href="https://groups.google.com/forum/#!forum/uncomplicate">Uncomplicate mailing list</a> or <a href="https://twitter.com/#!/uncomplicateorg">@Uncomplicateorg</a> and <a href="https://twitter.com/#!/draganrocks">@draganrocks</a> Twitter accounts.</p>
+  </div>
+  <div class='col-md-4'>
+    <h2>Free and Open Source</h2>
+    <p>Licensed under the <a href="https://github.com/uncomplicate/neanderthal/blob/master/LICENSE">Eclipse Public License</a>, same as Clojure.</p>
   </div>
 </div>

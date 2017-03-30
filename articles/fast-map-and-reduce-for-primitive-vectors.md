@@ -74,10 +74,10 @@ First, we create two Neanderthal vectors, and use the built-in `dot`, just to se
 (def ny (dv (range n)))
 
 (with-progress-reporting (quick-bench (dot nx ny)))
-;; Execution time mean : 32.828791 µs
+;; Execution time mean :  8.472175 µs
 
 ```
-Roughly 3 times faster than in Java. We'll leave it at that, since this is not the topic of this tutorial. We'll pretend that `dot` is some custom function not supported in Neanderthal. First, try this:
+Roughly 12 times faster than in the fastest primitive Java implementation.We'll leave it at that, since this is not the topic of this tutorial. We'll pretend that `dot` is some custom function not supported in Neanderthal. First, try this:
 
 ``` clojure
 (fold (fmap * nx ny))
@@ -99,14 +99,11 @@ Neanderthal complains, because it explicitly checks that we do not shoot our alg
 (defn p* ^double [^double x ^double y]
   (* x y))
 
-(defn sqr ^double [^double x]
-  (* x x))
-
 (with-progress-reporting (quick-bench (foldmap p+ 0.0 p* nx ny)))
-;; Execution time mean : 186.881027 µs
+;; Execution time mean : 206.636721 µs
 
 (with-progress-reporting (quick-bench (fold nx)))
-;; Execution time mean : 95.081694 µs
+;; Execution time mean : 74.933079 µs
 
 ```
 
@@ -118,7 +115,7 @@ For example, the same old boxed Clojure persistent vectors will be 5 times faste
 
 ``` clojure
 (with-progress-reporting (quick-bench (foldmap p+ 0.0 p* cvx cvy)))
-;; Execution time mean : 2.316850 ms
+;; Execution time mean : 2.595561 ms
 
 ```
 
