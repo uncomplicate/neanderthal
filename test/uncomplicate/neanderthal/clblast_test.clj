@@ -1,4 +1,4 @@
-(ns uncomplicate.neanderthal.opencl.clblast-test
+(ns uncomplicate.neanderthal.clblast-test
   (:require [midje.sweet :refer :all]
             [uncomplicate.clojurecl.core
              :refer [with-default *command-queue*]]

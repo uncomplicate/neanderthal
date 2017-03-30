@@ -18,7 +18,7 @@
 (def format-a (compile-format "~3@T~A~3@T"))
 
 (defn format-vector [^java.io.Writer w formatter ^Vector x]
-  (let [n-print (min (.dim x) (long *print-length*))
+  (let [n-print (min (.dim x) (long (or *print-length* 16)))
         start-2 (- (.dim x) (floor (/ n-print 2)))]
     (dotimes [i (ceil (/ n-print 2))]
       (cl-format w formatter (.boxedEntry x i)))
@@ -28,7 +28,7 @@
       (cl-format w formatter (.boxedEntry x (+ start-2 i))))))
 
 (defn format-matrix [^java.io.Writer w formatter ^Matrix a max-value]
-  (let [pl (long *print-length*)
+  (let [pl (long (or *print-length* 16))
         m-print (min (.mrows a) pl)
         n-print (min (.ncols a) pl)
         m-start-2 (- (.mrows a) (floor (/ m-print 2)))]
