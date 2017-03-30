@@ -187,7 +187,7 @@
   "
   ([factory m n source options]
    (if (and (<= 0 (long m)) (<= 0 (long n)))
-     (let-release [res (api/create-ge factory m n (api/enc-order (:order options)) true)]
+     (let-release [res (api/create-ge factory m n (api/enc-order (get options :order :column)) true)]
        (if source
          (transfer! source res)
          res))
@@ -235,8 +235,9 @@
   "
   ([factory ^long n source options]
    (if (<= 0 n)
-     (let-release [res (api/create-tr factory n (api/enc-order (:order options))
-                                      (api/enc-uplo (:uplo options)) (api/enc-diag (:diag options)) true)]
+     (let-release [res (api/create-tr factory n (api/enc-order (get options :order :column))
+                                      (api/enc-uplo (get options :uplo :lower))
+                                      (api/enc-diag (get options :diag :non-unit)) true)]
        (if source
          (transfer! source res)
          res))
@@ -263,8 +264,8 @@
   ([a]
    (api/view-tr a api/DEFAULT_UPLO api/DEFAULT_DIAG))
   ([^Matrix a options]
-   (let [uplo (api/enc-uplo (:uplo options))
-         diag (api/enc-diag (:diag options))]
+   (let [uplo (api/enc-uplo (get options :uplo :lower))
+         diag (api/enc-diag (get options :diag :non-unit))]
      (api/view-tr a uplo diag))))
 
 (defn tr?

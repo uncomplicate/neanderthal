@@ -483,11 +483,11 @@
          (mm! 2.0 (ge factory 3 5 (take 15 (repeat 1))) (ge factory 5 3 (take 15 (repeat 1)))
               3.0 (ge factory 3 3 (take 9 (repeat 0)))) => (ge factory 3 3 (take 9 (repeat 10)))
 
-         (mm! 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order row})
-              3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [49 66 97 128])
+         (mm! 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order :row})
+              3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
 
-         (mm 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order row})
-             3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [49 66 97 128])
+         (mm 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order :row})
+             3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
 
          (mm (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]))
          => (ge factory 2 2 (list 22.0 28.0 49.0 64.0))))

@@ -20,7 +20,7 @@
             [uncomplicate.neanderthal.native :refer [native-float native-double]]
             [uncomplicate.neanderthal.internal.api :refer :all]
             [uncomplicate.neanderthal.internal.opencl.clblock :refer :all])
-  (:import [org.jocl.blast CLBlast CLBlastStatusCode]
+  (:import [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
            [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor StripeNavigator]
            [uncomplicate.neanderthal.internal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
@@ -28,10 +28,10 @@
 
 (defn ^:private error [^long err-code details]
   (if (< -10000 err-code -1003)
-     (let [err (CLBlastStatusCode/stringFor err-code)]
-       (ex-info (format "CLBlast error: %s." err) {:name err :code err-code :type :clblast-error :details details}))
-     (let [err (dec-error err-code)]
-       (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
+    (let [err (CLBlastStatusCode/stringFor err-code)]
+      (ex-info (format "CLBlast error: %s." err) {:name err :code err-code :type :clblast-error :details details}))
+    (let [err (dec-error err-code)]
+      (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
 
 (defn ^:private equals-vector [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
   (if (< 0 (.dim x))
@@ -251,8 +251,10 @@
 (defmacro ^:private ge-copy [queue method a b]
   `(when (< 0 (.count ~a))
      (with-check error
-       (~method (.order ~a) (if (= (.order ~a) (.order ~b)) NO_TRANS TRANS) (.mrows ~a) (.ncols ~a)
-        1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.ld ~a) (cl-mem (.buffer ~b)) (.offset ~b) (.ld ~b)
+       (~method (.order ~a)
+        (if (= (.order ~a) (.order ~b)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
+        (.mrows ~a) (.ncols ~a) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.ld ~a)
+        (cl-mem (.buffer ~b)) (.offset ~b) (.ld ~b)
         ~queue nil)
        nil)))
 
@@ -343,7 +345,7 @@
   ([queue method alpha a x beta y]
    `(when (< 0 (.count ~a))
       (with-check error
-        (~method (.order ~a) NO_TRANS (.mrows ~a) (.ncols ~a)
+        (~method (.order ~a) CLBlastTranspose/CLBlastTransposeNo (.mrows ~a) (.ncols ~a)
          ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
          (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
          ~beta (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
@@ -372,8 +374,8 @@
    `(when (< 0 (.count ~a))
       (with-check error
         (~method (.order ~c)
-         (if (= (.order ~a) (.order ~c)) NO_TRANS TRANS)
-         (if (= (.order ~b) (.order ~c)) NO_TRANS TRANS)
+         (if (= (.order ~a) (.order ~c)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
+         (if (= (.order ~b) (.order ~c)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
          (.mrows ~a) (.ncols ~b) (.ncols ~a)
          ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
          (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
@@ -480,7 +482,7 @@
 (defmacro ^:private tr-mv
   ([queue method a x]
    `(with-check error
-      (~method (.order ~a) (.uplo ~a) NO_TRANS (.diag ~a) (.ncols ~a)
+      (~method (.order ~a) (.uplo ~a) CLBlastTranspose/CLBlastTransposeNo (.diag ~a) (.ncols ~a)
        (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
        (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
        ~queue nil)
@@ -491,8 +493,11 @@
 (defmacro ^:private tr-mm
   ([queue method alpha a b left]
    `(with-check error
-      (~method (.order ~b) (if ~left LEFT RIGHT) (.uplo ~a)
-       (if (= (.order ~a) (.order ~b)) NO_TRANS TRANS) (.diag ~a) (.mrows ~b) (.ncols ~b)
+      (~method (.order ~b)
+       (if ~left CLBlastSide/CLBlastSideLeft CLBlastSide/CLBlastSideRight)
+       (.uplo ~a)
+       (if (= (.order ~a) (.order ~b)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
+       (.diag ~a) (.mrows ~b) (.ncols ~b)
        ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
        (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
        ~queue nil)
@@ -632,18 +637,18 @@
     (ge-axpy queue CLBlast/CLBlastDaxpy alpha ^CLGEMatrix a ^CLGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
-   (ge-mv queue CLBlast/CLBlastDgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
-   y)
+    (ge-mv queue CLBlast/CLBlastDgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
+    y)
   (mv [this a x]
-   (ge-mv a))
+    (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk queue CLBlast/CLBlastDger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
     a)
   (mm [_ alpha a b left]
-   (ge-mm alpha a b left))
+    (ge-mm alpha a b left))
   (mm [_ alpha a b beta c]
-   (ge-mm queue CLBlast/CLBlastDgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
-   c)
+    (ge-mm queue CLBlast/CLBlastDgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
+    c)
   BlasPlus
   (set-all [_ alpha a]
     (ge-set ctx queue prog alpha a)
@@ -673,18 +678,18 @@
     (ge-axpy queue CLBlast/CLBlastSaxpy alpha ^CLGEMatrix a ^CLGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
-   (ge-mv queue CLBlast/CLBlastSgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
-   y)
+    (ge-mv queue CLBlast/CLBlastSgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
+    y)
   (mv [this a x]
-   (ge-mv a))
+    (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk queue CLBlast/CLBlastSger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
     a)
   (mm [_ alpha a b left]
-   (ge-mm alpha a b left))
+    (ge-mm alpha a b left))
   (mm [_ alpha a b beta c]
-   (ge-mm queue CLBlast/CLBlastSgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
-   c)
+    (ge-mm queue CLBlast/CLBlastSgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
+    c)
   BlasPlus
   (set-all [_ alpha a]
     (ge-set ctx queue prog alpha a)
@@ -715,15 +720,15 @@
              CLBlast/CLBlastDaxpy alpha ^CLTRMatrix a ^CLTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-   (tr-mv a))
+    (tr-mv a))
   (mv [_ a x]
-   (tr-mv queue CLBlast/CLBlastDtrmv ^CLTRMatrix a ^CLBlockVector x)
-   x)
+    (tr-mv queue CLBlast/CLBlastDtrmv ^CLTRMatrix a ^CLBlockVector x)
+    x)
   (mm [this alpha a b beta c]
-   (tr-mm a))
+    (tr-mm a))
   (mm [_ alpha a b left]
-   (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
-   b)
+    (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
+    b)
   BlasPlus
   (set-all [_ alpha a]
     #_(tr-scal-set queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
@@ -757,15 +762,15 @@
              CLBlast/CLBlastSaxpy alpha ^CLTRMatrix a ^CLTRMatrix b)
     b)
   (mv [this alpha a x beta y]
-   (tr-mv a))
+    (tr-mv a))
   (mv [_ a x]
-   (tr-mv queue CLBlast/CLBlastStrmv ^CLTRMatrix a ^CLBlockVector x)
-   x)
+    (tr-mv queue CLBlast/CLBlastStrmv ^CLTRMatrix a ^CLBlockVector x)
+    x)
   (mm [this alpha a b beta c]
-   (tr-mm a))
+    (tr-mm a))
   (mm [_ alpha a b left]
-   (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
-   b)
+    (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
+    b)
   BlasPlus
   (set-all [_ alpha a]
     #_(tr-scal-set queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)

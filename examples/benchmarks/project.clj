@@ -5,13 +5,13 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [criterium "0.4.3"]
+                 [criterium "0.4.4"]
                  [primitive-math "0.1.4"]
                  [prismatic/hiphip "0.2.1"]
-                 [net.mikera/core.matrix "0.50.0"]
-                 [net.mikera/vectorz-clj "0.43.1"]
-                 [org.jblas/jblas "1.2.3"]
-                 [uncomplicate/fluokitten "0.5.1"]
+                 [net.mikera/core.matrix "0.58.0"]
+                 [net.mikera/vectorz-clj "0.46.0"]
+                 [clatrix/clatrix "0.5.0"]
+                 [uncomplicate/fluokitten "0.6.0-SNAPSHOT"]
                  [uncomplicate/neanderthal "0.9.0-SNAPSHOT"]]
 
   :jvm-opts ^:replace ["-Dserver -Dclojure.compiler.direct-linking=true"

@@ -5,8 +5,6 @@ Author: Dragan Djuric
 layout: article
 ---
 
-# Fast, Native Speed, Vector and Matrix Computations in Clojure
-
 ## Vector and Matrix Data Structures
 
 Before we do any numeric computations, we have to create the data to run the
@@ -413,8 +411,9 @@ accumulate values with fold, or fold the entries."
 LAPACK functions build on BLAS, they are performed on the same vector and matrix
 objects: dv, dge etc.
 
-LAPACK is currently on the TODO list. It will be added to this tutorial
-once these functions are implemented.
+From version 0.9.0 on, Neanderthal supports major (but not yet all) LAPACK operations. For the details on
+how to use them, check out the `test` folder in the Neanderthal github repository, and
+[My blog at dragan.rocks](http://dragan.rocks).
 
 ## Can Neanderthal Go Even Faster?
 

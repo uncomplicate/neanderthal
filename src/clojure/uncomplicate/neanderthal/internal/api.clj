@@ -148,11 +148,6 @@
 (def ^:const COLUMN_MAJOR 102)
 (def ^:const DEFAULT_ORDER COLUMN_MAJOR)
 
-(def ^:const NO_TRANS 111)
-(def ^:const TRANS 112)
-(def ^:const CONJ_TRANS 113)
-(def ^:const DEFAULT_TRANS NO_TRANS)
-
 (def ^:const UPPER 121)
 (def ^:const LOWER 122)
 (def ^:const DEFAULT_UPLO LOWER)
@@ -160,9 +155,6 @@
 (def ^:const DIAG_NON_UNIT 131)
 (def ^:const DIAG_UNIT 132)
 (def ^:const DEFAULT_DIAG DIAG_NON_UNIT)
-
-(def ^:const LEFT 141)
-(def ^:const RIGHT 142)
 
 (defn dec-property
   [^long code]
@@ -172,13 +164,10 @@
     111 :no-trans
     112 :trans
     113 :conj-trans
-    114 :atlas-conj
     121 :upper
     122 :lower
     131 :non-unit
     132 :unit
-    141 :left
-    142 :right
     :unknown))
 
 (defn enc-property [option]
@@ -188,20 +177,32 @@
     :no-trans 111
     :trans 112
     :conj-trans 113
-    :atlas-conj 114
     :upper 121
     :lower 122
     :non-unit 131
     :unit 132
-    :left 141
-    :right 142
-    nil))
+    (throw (ex-info "Invalid option." {:option option}))))
 
 (defn enc-order ^long [order]
-  (if (= :row order) 101 102))
+  (case order
+    :row 101
+    :column 102
+    101 101
+    102 102
+    (throw (ex-info "Invalid order" {:order order}))))
 
 (defn enc-uplo ^long [uplo]
-  (if (= :upper uplo) 121 122))
+  (case uplo
+    :upper 121
+    :lower 122
+    121 121
+    122 122
+    (throw (ex-info "Invalid uplo" {:uplo uplo}))))
 
 (defn enc-diag ^long [diag]
-  (if (= :unit diag) 132 131))
+  (case diag
+    :unit 132
+    :non-unit 131
+    132 132
+    131 131
+    (throw (ex-info "Invalid diag" {:diag diag}))))

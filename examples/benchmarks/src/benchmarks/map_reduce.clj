@@ -51,8 +51,9 @@
 
 (def nx (dv (range n)))
 (def ny (dv (range n)))
+
 (with-progress-reporting (quick-bench (dot nx ny)))
-;; Execution time mean : 32.828791 µs
+;; Execution time mean : 8.472175 µs
 
 (defn p+ ^double [^double x ^double y]
   (+ x y))
@@ -60,19 +61,16 @@
 (defn p* ^double [^double x ^double y]
   (* x y))
 
-(defn sqr ^double [^double x]
-  (* x x))
-
 (with-progress-reporting (quick-bench (foldmap p+ 0.0 p* cvx cvy)))
-;; Execution time mean : 2.316850 ms
+;; Execution time mean : 2.595561 ms
 
 (with-progress-reporting (quick-bench (foldmap p+ 0.0 p* nx ny)))
-;; Execution time mean : 186.881027 µs
+;; Execution time mean : 206.636721 µs
 
 (with-progress-reporting (quick-bench (fold nx)))
-;; Execution time mean : 95.081694 µs
+;; Execution time mean : 74.933079 µs
 
 (with-progress-reporting
   (quick-bench
    (sqrt (- (/ (foldmap p+ 0.0 sqr nx) n) (pow (/ (fold nx) n) 2)))))
-;; Execution time mean : 197.692695 µs
+;; Execution time mean : 192.752880 µs

@@ -5,11 +5,9 @@ Author: Dragan Djuric
 layout: article
 ---
 
-# Matrix Computations on GPU in Clojure at the Speed of a Couple of TFLOPS
-
 So, you've [installed Neanderthal](getting_started.html) and [learned
-how to work](tutorial_native.html) with vectors and matrices on the CPU at much
-more than 10x than the speed of pure Java libs. It is fast, running at tens of GFLOPS,
+how to work](tutorial_native.html) with vectors and matrices on the CPU at 100X
+ the speed of pure Java libs. It is fast, running at hundreds of GFLOPS,
 but you've read that nowadays the computations on GPUs are what all the hipster
 geeks do, so you wonder whether there is something to it. If only you could
 connect to [CUBLAS](https://developer.nvidia.com/cuBLAS), your algorithms would
@@ -17,7 +15,7 @@ speed up thousandfold with almost no sweat, as in commercials...
 
 I have some news for you:
 
-* The bad: it is not that simple. Your algorithms probably suck on massively
+* The bad: it is not that simple. CPU algorithms probably suck on massively
 parallel architectures, and you'd need to learn quite a few new tricks to collect
 the benefits you see on NVIDIA and AMD websites.
 
@@ -25,7 +23,7 @@ the benefits you see on NVIDIA and AMD websites.
 complexity for vector and matrix computations away, behind a frendly Clojure API.
 
 **TL/DR: Multiplication of large matrices is more than 1000x faster with Neanderthal
-than with optimized pure Java libraries, 50x faster than Neanderthal native engine
+than with optimized pure Java libraries, 10x faster than Neanderthal native engine
 and many thousands of times faster than the nested looping code with primitives
 that you'd write yourself.**
 
@@ -63,7 +61,7 @@ it is absolutely necessary.
 
 The typical workflow woud be: prepare the input data in your Clojure program and
 send it to the device. Then, call many Neanderthal and ClojureCL functions that
-41work with that data without transferring it back. Only transfer the final result.
+work with that data without transferring it back. Only transfer the final result.
 
 You'll still write your algorithms in Clojure as any normal Clojure code,
 you just have to be aware that the data is actually on the device, and that the
@@ -90,7 +88,7 @@ $code"
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
   (:require [midje.sweet :refer [facts => truthy]]
-            ;;[criterium.core :refer [quick-bench with-progress-reporting]]
+            #_[criterium.core :refer [quick-bench with-progress-reporting]]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl.core
              :refer [with-default finish!]]
@@ -112,7 +110,7 @@ Our code will then be executed on the first available device on the first availa
 OpenCL platform. On my machine, that would activate the most capable GPU
 using the AMD's OpenCL drivers. Your setup may be different.
 
-$code\""
+$code"
 
 (with-default
   (with-default-engine
@@ -145,7 +143,7 @@ I'll make a cup of coffee and spice it with some chocolate milk
 so I can drink it while I am explaining what we have just done here. In the
 meantime, you can study that code, and probably figure it out yourself.
 
-<Making the drink... >
+`<Preparing the drink... >`
 
 Here are the important steps:
 
@@ -199,7 +197,7 @@ $code"
 When meansuring very fast code, the `time` function gives wildly imprecise results
 - thus we replace the calls to `time` with calls for criterium `quick-bench` and it
 shows much faster and precise measurements. Anyway, we can see that CPU is much faster:
-28 nanoseconds vs many microseconds. This is because calling GPU takes some time
+37 nanoseconds vs many microseconds. This is because calling GPU takes some time
 (on the order of magnitude of 20-30 microseconds per kernel enqueue, depending
 on the device), and when the device starts computing, most of its many
 computing units are idling because we have loaded it with only 3 numbers
@@ -230,16 +228,15 @@ $code"
 
 "$text
 
-On my machine, it's almost a tie. Criterium reports 99 microseconds on the CPU
-vs 107 microseconds on the GPU with amd-gcn engine and 375 microseconds with the
- (default) clblast engine.
+On my machine, it's closer, but CPU is still faster. Criterium reports 29 microseconds on the CPU
+ vs 102 microseconds on the GPU with clblast engine.
 
 A million is still smallish, though. Let's get serious. Let's give a vector of
 1GB (that's 536 million entries) to both:
 
 $code"
 
-#_(with-default
+(with-default
   (with-default-engine
     ;; I had to change it to 2^28 because a recent update for my GPU driver caused
     ;; it to complain about insufficient memory, but this is probably a temporary issue.
@@ -255,29 +252,29 @@ currently handle. Java 9 would hopefully increase that."
          ;; precision floats are not precise enough for so many accumulations.
          ;; In real life, sometimes you must use doubles in such cases.
          (asum host-x) => (float 3.6077906E16)
-         (println "CPU:")
-         (with-progress-reporting (quick-bench (asum host-x)))
+         #_(println "CPU:")
+         #_(with-progress-reporting (quick-bench (asum host-x)))
 
          ;; GPU engine uses doubles for this accumulation, so the result is more precise.
          (asum gpu-x) => (float 3.60287949E16)
-         (println "GPU:")
-         (with-progress-reporting (quick-bench (do (asum gpu-x) (finish!)))))))))
+         #_(println "GPU:")
+         #_(with-progress-reporting (quick-bench (do (asum gpu-x) (finish!)))))))))
 
 "$text
 
-CPU: 45 milliseconds
-GPU: 12 milliseconds
+CPU: 37 milliseconds
+GPU: 8 milliseconds
 
-Underwhelming. Is that it? This GPU has 5632 GFLOPS, while the CPU has only 32 or so.
+Underwhelming. Is that it? This GPU has 5632 GFLOPS, while the CPU has only 32 per core or so.
 That's 176x more muscle! Should the difference be much bigger? The point is: we
 should keep that muscle busy, and we can not, because the computing units
 are still idling most of the time waiting data to be transferred from the
-device memory to the device registers. Sum is a so simple operation
+device memory to the device registers. Sum is a rather simple operation,
 that the main constraint is memory throughput, not computing power.
 
 $code"
 
-#_(with-default
+(with-default
   (with-default-engine
     (let [cnt (long (Math/pow 2 28))]
       (with-release [host-x (fv (range cnt))
@@ -290,30 +287,30 @@ I'll set them to 1GB each because my GPU does not have enough memory to
 hold 4GB of data (it has 4GB total memory)."
 
          (axpy! 3 host-x host-y) => host-y
-         (println "CPU:")
-         (with-progress-reporting (quick-bench (axpy! 3 host-x host-y)))
+         #_(println "CPU:")
+         #_(with-progress-reporting (quick-bench (axpy! 3 host-x host-y)))
 
          (axpy! 3 gpu-x gpu-y) => gpu-y
-         (println "GPU:")
-         (with-progress-reporting (quick-bench (do (axpy! 3 gpu-x gpu-y) (finish!)))))))))
+         #_(println "GPU:")
+         #_(with-progress-reporting (quick-bench (do (axpy! 3 gpu-x gpu-y) (finish!)))))))))
 
 "$text
 
-CPU: 134 ms
+CPU: 118 ms
 GPU: 11 ms
 
-Not bad, but still less than 10x faster. Linear 1D operations are simply so
+Not bad, but still only 10x faster. Linear 1D operations are simply so
 easy on computation that GPU can not show it's power. They are still useful, though. If
 your vector data is already on the GPU, where it participates in some complex
-computations that GPU shines at, then it is easier to compute it on the GPU
-than to transfer it back and forth to the CPU.
+computations that GPU shines at, **then it is easier and faster to compute it on the GPU
+than to transfer it back and forth to the CPU**.
 
 Let's try with some BLAS 2 operation. Their quadratic complexity should matter.
 We'll do a matrix - vector multiplication.
 
 $code"
 
-#_(with-default
+(with-default
     (with-default-engine
       (let [cnt 8192]
         (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
@@ -327,19 +324,19 @@ $code"
 demanding enough."
 
            (mv! 3 host-a host-x 2 host-y) => host-y
-           (println "CPU:")
-           (with-progress-reporting (quick-bench (mv! 3 host-a host-x 2 host-y)))
+           #_(println "CPU:")
+           #_(with-progress-reporting (quick-bench (mv! 3 host-a host-x 2 host-y)))
 
            (mv! 3 gpu-a gpu-x 2 gpu-y) => gpu-y
-           (println "GPU:")
-           (with-progress-reporting (quick-bench (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish!)))))))))
+           #_(println "GPU:")
+           #_(with-progress-reporting (quick-bench (do (mv! 3 gpu-a gpu-x 2 gpu-y) (finish!)))))))))
 
 "$text
 
-CPU: 15.4 ms
+CPU: 9.6 ms
 GPU: 1.01 ms
 
-That's a 15x win for the GPU. Nothing too much, but still ok. Let's try matrix
+That's a 9x win for the GPU. Nothing too much, but still ok. Let's try matrix
 multiplication and see how that goes.
 
 $code"
@@ -366,12 +363,12 @@ demanding enough."
 
 "$text
 
-CPU: 16301 ms
+CPU: 3157 ms
 GPU: 293 ms
 
 Note: Nvidia GTX 1080: 220 ms.
 
-That's almost 60x faster than the CPU! But, still, shouldn't it be even faster?
+That's almost 11x faster than the CPU working in 4 threads! But, still, shouldn't it be even faster?
 You've probably seen those benchmarks with 1000x speed improvements!
 
 Let's consider matrix multiplication. It is a complex operation - O(n^3), but at
@@ -383,44 +380,34 @@ hugely, but it still has unused computation power.
 
 **Where do those 1000x numbers come from then? That depends on what you compare to.**
 
-**This is a very important issue. Remember, here we've compared Neanderthal's GPU
-speed to Neanderthal's highly optimized native ATLAS BLAS engine, which is
-a speed demon in its own right! And we got a 60x speedup.**
+This is a very important issue. Remember, here **we've compared Neanderthal's GPU
+speed to Neanderthal's highly optimized native MNKL BLAS engine, which is
+a speed demon in its own right! And we got a 10x speedup.** If you take the fastest
+Intel Xeon with dozens of cores, costing thousands of dollars, you might even approach
+the speed of a consumer GPU costing $300.
 
-**How it stands to pure Java? Check out the [Neanderthal Benchmarks page](benchmarks.html).
+**How it stands to pure Java?** Check out the [Neanderthal Benchmarks page](benchmarks.html).
 For 8192x8192 matrices, an optimized and decently fast pure Java library Vectorz
 (which is the core.matrix flagship implementation)
 working with primitives and optimizing cache use, needs 6.14 minutes to compute.
-That's 368400 milliseconds. Neanderthal GPU is 1200x faster than that! And, there
-are several GPUs on the market that are considerably faster than my Radeon 290X.**
+That's 368400 milliseconds. Neanderthal GPU is 1250x faster than that (on the rather old AMD R9 290X,
+and **1675x** on the newer Nvidia GTX 1080)! And, there
+are several GPUs on the market that are considerably faster than my Radeon 290X.
 
-**Of course, if you try to write your own nested loops to compute these matrices,
-even pure Java libraries will run circles around your operations, and Neanderthal
-will be several thousands times faster, even when you write tight Java loops with primitives.**
+Of course, if you try to write your own nested loops to compute these matrices,
+even pure Java libraries will run circles around your operations, and **Neanderthal
+will be several thousands times faster**, even when you write tight Java loops with primitives.
 
-**Matrix algebra is only a start. The real benefit is when you use Neanderthal as
-a gate and a foundation to write your own ClojureCL numerical computation kernels
+Matrix algebra is only a start. **The real benefit is when you use Neanderthal as
+a gateway and a foundation to write your own ClojureCL numerical computation kernels
 for your own number crunching algorithms. If they are computationally intensive
 enough and parallel, THEN you can hope for real thousandfold improvements.**
 
 ## Can You Run This On Your Own Machine?
 
-At the time of writing of this text, Neanderthal builds its accelerator support
-on ClojureCL, which is a Clojure library for programming with OpenCL, which is in
-turn an open standard for GPU and accelerated computing. Thanks to Neanderthal's
-pluggable architecture, BLAS engines optimized for any OpenCL-compatible
-architecture can be transparently added, and the code of this tutorial does not
-need to change at all.
-
-However, be aware that the first implementation available today is OpenCL 2.0 only
-and optimized for AMD's GCN architecture (R9 Radeons, newer FirePro). I am running this
-tutorial on AMD Radeon R9 290X. It should work on Intel hardware, but I doubt
-that the performance would be even remotely close. Nvidia currently supports
-only OpenCL 1.2. Providing optimized Neanderthal engines for Nvidia and Intel is
-planned, but will not be immediate. If you would like to do superfast numerical
-computations in Clojure soon, and do not wish to spend $350 for an AMD GPU such
-as the one that I have, you might even contribute a BLAS engine implementation
-for your chosen architecture! :)
+**Absolutely! It works on any sufficiently modern OpenCL platform, which includes
+AMD, Nvidia, and Intel!** Please note that the speed will depend on the actual hardware,
+so if you intend to use a laptop GPU, you might not be impressed with the speed.
 
 Happy hacking!
 
