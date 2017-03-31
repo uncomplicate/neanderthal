@@ -96,7 +96,7 @@ Neanderthal **uses the native Intel MKL library and expects that you make it ava
 There are two main steps to how to make MKL available on your system; either:
 
 1. (Optional) Install MKL using a [GUI installer provided by Intel](https://software.intel.com/en-us/intel-mkl) free of charge. In case you use this method, you may [set environment variables as explained in this guide](https://software.intel.com/en-us/node/528500), but it is probably not required, since you do **not** need to compile anything.
-2. Put all required binary files (that you installed with MKL installer or copied from wherever you acquired them) in a directory that is available from your `LD_LIBRARY_PATH` or, if you are using Windows, `PATH` (those binary files are available from anyone who installed MKL and have the (free) license to redistribute it with a project).
+2. Put all required binary files (that you installed with MKL installer or copied from wherever you acquired them) in a directory that is available from your `LD_LIBRARY_PATH` (Linux), `DYLD_LIBRARY_PATH` (OSX) or, `PATH` (windows). Those binary files are available from anyone who installed MKL and have the (free) license to redistribute it with a project.
 
 Either way, Neanderthal does not care how MKL has been provided, as long as it is on the path of your OS. When it comes to distributing the software you build using Neanderthal, I guess the most convenient option is that you include the required MKL binary files in the uberjar or other package that you use to ship the product. Then, it would not require any additional action from your users.
 
@@ -114,7 +114,7 @@ This is the list of MKL files that Neanderthal requires:
 Please note that, if you use Windows or OS X, the binary file extensions are not `.so`, but `.dll` and `dylib` respectively.
 
 **Note for OSX users:** MKL installation on my OSX 10.11 placed `libiomp5.dylib` in a different folder than the rest
-of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `LD_LIBRARY_PATH`. Please also note that on OSX, this environment variable could instead be called `DYLD_LIBRARY_PATH` - you'll have to consult Intel MKL documentation and experiment a bit in such cases. If you want a quick & dirty solution without much fuss, copying the `dylib` files and pasting them into `/usr/local/lib` has been reported to work.
+of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `DYLD_LIBRARY_PATH`. If you want a quick & dirty solution without much fuss, copying the `dylib` files and pasting them into `/usr/local/lib` has been reported to work.
 
 **Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contain the `dll`s into the `PATH` environment variable, and you're ready to go.
 
