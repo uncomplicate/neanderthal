@@ -114,9 +114,9 @@ This is the list of MKL files that Neanderthal requires:
 Please note that, if you use Windows or OS X, the binary file extensions are not `.so`, but `.dll` and `dylib` respectively.
 
 **Note for OSX users:** MKL installation on my OSX 10.11 placed `libiomp5.dylib` in a different folder than the rest
-of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `LD_LIBRARY_PATH`. Please also note that on OSX, this environment variable could instead be called `DYLD_LIBRARY_PATH` - you'll have to consult Intel MKL documentation and experiment a bit in such cases.
+of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `LD_LIBRARY_PATH`. Please also note that on OSX, this environment variable could instead be called `DYLD_LIBRARY_PATH` - you'll have to consult Intel MKL documentation and experiment a bit in such cases. If you want a quick & dirty solution without much fuss, copying the `dylib` files and pasting them into `/usr/local/lib` has been reported to work.
 
-**Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those.
+**Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contain the `dll`s into the `PATH` environment variable, and you're ready to go.
 
 ### GPU drivers for the GPU engine
 
