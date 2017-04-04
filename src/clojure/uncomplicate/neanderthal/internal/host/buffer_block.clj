@@ -213,7 +213,7 @@
                              eng ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
-    (-> (hash :IntegerBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))));;TODO
+    (-> (hash :IntegerBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))))
   (equals [x y]
     (cond
       (nil? y) false
@@ -253,7 +253,7 @@
     (= n (.dim ^Vector y)))
   EngineProvider
   (engine [_]
-    eng)
+    nil)
   FactoryProvider
   (factory [_]
     fact)

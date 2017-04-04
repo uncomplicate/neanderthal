@@ -9,14 +9,13 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.opencl.clblock
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release with-release wrap-float wrap-double
-                           Mappable mmap unmap]]]
+             [core :refer [Releaseable release let-release with-release Mappable mmap unmap
+                           wrap-float wrap-double wrap-int wrap-long]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy!]]
-             [real :refer [entry]]
-             [native :refer [native-float native-double]]]
+             [real :refer [entry]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [common :refer :all]
@@ -61,7 +60,7 @@
 
 ;; ================== Accessors ================================================
 
-(deftype TypedCLAccessor [ctx queue et ^long w array-fn wrap-fn host-fact]
+(deftype TypedCLAccessor [ctx queue et ^long w array-fn wrap-fn]
   DataAccessor
   (entryType [_]
     et)
@@ -96,18 +95,19 @@
        (and (instance? TypedCLAccessor da)
             (= et (.et ^TypedCLAccessor da)) (= ctx (.ctx ^TypedCLAccessor da)))
        (= ctx o)
-       (= et o))))
-  FactoryProvider
-  (native-factory [_]
-    host-fact)
-  (factory [_]
-    host-fact))
+       (= et o)))))
 
 (defn cl-float-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float native-float))
+  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float))
 
 (defn cl-double-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double native-double))
+  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double))
+
+(defn cl-int-accessor [ctx queue]
+  (->TypedCLAccessor ctx queue Integer/TYPE Integer/BYTES int-array wrap-int))
+
+(defn cl-long-accessor [ctx queue]
+  (->TypedCLAccessor ctx queue Long/TYPE Long/BYTES long-array wrap-long))
 
 (defprotocol BlockEngine
   (equals-block [_ cl-x cl-y]))
@@ -144,7 +144,7 @@
   (zero [_ fact]
     (create-vector fact n true))
   (host [x]
-    (let-release [res (create-vector (native-factory da) n false)]
+    (let-release [res (raw x (native-factory fact))]
       (cl-to-host x res)))
   (native [x]
     (host x))
@@ -163,7 +163,7 @@
   (factory [_]
     fact)
   (native-factory [_]
-    (native-factory da))
+    (native-factory fact))
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -218,7 +218,7 @@
     (sum eng x))
   Mappable
   (mmap [_ flags]
-    (let [host-fact (native-factory da)
+    (let [host-fact (native-factory fact)
           queue (get-queue da)
           mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* strd n (.entryWidth da)) flags nil nil)]
@@ -308,7 +308,7 @@
   (factory [_]
     fact)
   (native-factory [_]
-    (native-factory da))
+    (native-factory fact))
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -322,7 +322,7 @@
   (zero [_ fact]
     (create-ge fact m n ord true))
   (host [a]
-    (let-release [res (create-ge (native-factory da) m n ord false)]
+    (let-release [res (raw a (native-factory fact))]
       (cl-to-host a res)))
   (native [a]
     (host a))
@@ -400,7 +400,7 @@
     (cl-ge-matrix fact 0 0))
   Mappable
   (mmap [a flags]
-    (let [host-fact (native-factory da)
+    (let [host-fact (native-factory fact)
           queue (get-queue da)
           mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* fd ld (.entryWidth da)) flags nil nil)]
@@ -490,7 +490,7 @@
   (factory [_]
     fact)
   (native-factory [_]
-    (native-factory da))
+    (native-factory fact))
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -504,7 +504,7 @@
   (zero [_ fact]
     (create-tr fact n ord fuplo fdiag true))
   (host [a]
-    (let-release [res (create-tr (native-factory da) n ord fuplo fdiag false)]
+    (let-release [res (raw a (native-factory fact))]
       (cl-to-host a res)))
   (native [a]
     (host a))
@@ -593,7 +593,7 @@
                   (if (= LOWER fuplo) UPPER LOWER) fdiag))
   Mappable
   (mmap [a flags]
-    (let [host-fact (native-factory da)
+    (let [host-fact (native-factory fact)
           queue (get-queue da)
           mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* ld n (.entryWidth da)) flags nil nil)]

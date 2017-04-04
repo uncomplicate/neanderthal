@@ -78,8 +78,12 @@
   (^Vector [^Matrix lu ^Matrix b ^Vector ipiv]
    (if (and (= (.ncols lu) (.mrows b) (.dim ipiv)) (api/fits-navigation? lu b))
      (api/trs (api/engine lu) lu b ipiv)
-     (throw (ex-info "Column number of a and the dimension of ipiv do not fit."
-                     {:n (.ncols lu) :dim (.dim ipiv)}))))
+     (throw (ex-info "Dimensions and orientation of lu, b, and ipiv do not fit"
+                     {:lu  (str lu) :b (str b) :ipiv (str ipiv) :errors
+                      (cond-into []
+                                 (not (= (.ncols lu) (.mrows b))) "lu and b dimensions do not fit"
+                                 (not (= (.ncols lu) (.dim ipiv))) "lu and ipiv do not fit"
+                                 (not (api/fits-navigation? lu b) "lu and b do not have the same order"))}))))
   (^Vector [^Matrix lu b]
    (let-release [ipiv (vctr (api/index-factory lu) (.ncols lu))]
      (trs! lu b ipiv))))
@@ -102,8 +106,12 @@
   (^Vector [^Matrix a ^Matrix b ^Vector ipiv]
    (if (and (= (.ncols a) (.mrows b) (.dim ipiv)) (api/fits-navigation? a b))
      (api/sv (api/engine a) a b ipiv)
-     (throw (ex-info "Column number of a and the dimension of ipiv do not fit."
-                     {:n (.ncols a) :dim (.dim ipiv)}))))
+     (throw (ex-info "Dimensions and orientation of a, b, and ipiv do not fit"
+                     {:a  (str a) :b (str b) :ipiv (str ipiv) :errors
+                      (cond-into []
+                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
+                                 (not (= (.ncols a) (.dim ipiv))) "a and ipiv do not fit"
+                                 (not (api/fits-navigation? a b) "a and b do not have the same order"))}))))
   (^Vector [^Matrix a b]
    (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
      (sv! a b ipiv))))

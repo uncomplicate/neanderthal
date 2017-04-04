@@ -187,7 +187,8 @@
   "
   ([factory m n source options]
    (if (and (<= 0 (long m)) (<= 0 (long n)))
-     (let-release [res (api/create-ge factory m n (api/enc-order (get options :order :column)) true)]
+     (let-release [res (api/create-ge factory m n (api/enc-order (get options :order :column))
+                                      (not (:raw options)))]
        (if source
          (transfer! source res)
          res))
@@ -944,7 +945,7 @@
       (mm! 2.3 a e)
       (mm! e a)
   "
-  ([alpha ^Matrix a ^Matrix b beta ^Matrix c];;TODO docs
+  ([alpha ^Matrix a ^Matrix b beta ^Matrix c]
    (if (and (api/compatible? a b) (api/compatible? a c)
             (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
      (api/mm (api/engine a) alpha a b beta c)

@@ -782,7 +782,7 @@
               alpha ^CLTRMatrix a beta ^CLTRMatrix b);;TODO CLBlast
     b))
 
-(deftype CLFactory [ctx queue prog ^DataAccessor da vector-eng ge-eng tr-eng]
+(deftype CLFactory [ctx queue prog ^DataAccessor da native-fact vector-eng ge-eng tr-eng]
   Releaseable
   (release [_]
     (try
@@ -794,6 +794,11 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
+  FactoryProvider
+  (factory [this]
+    this)
+  (native-factory [this]
+    native-fact)
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
@@ -827,15 +832,15 @@
   (defn clblast-double [ctx queue]
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)]
       (->CLFactory ctx queue prog
-                   (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES
-                                      double-array wrap-double native-double)
+                   (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double)
+                   native-double
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
                    (->DoubleTREngine ctx queue prog))))
 
   (defn clblast-float [ctx queue]
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
       (->CLFactory ctx queue prog
-                   (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES
-                                      float-array wrap-float native-float)
+                   (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float)
+                   native-float
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)
                    (->FloatTREngine ctx queue prog)))))

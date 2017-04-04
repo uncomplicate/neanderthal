@@ -17,7 +17,7 @@
             [uncomplicate.neanderthal.internal.api :refer [native-factory data-accessor]]))
 
 (defn test-clblock [ocl-factory]
-  (let [host-factory (native-factory (data-accessor ocl-factory))
+  (let [host-factory (native-factory ocl-factory)
         m 33
         n (long (+ 1000 (pow 2 12)))
         cnt n
@@ -65,7 +65,7 @@
 (defn test-blas1 [ocl-factory]
   (facts
    "BLAS methods"
-   (let [host-factory (native-factory (data-accessor ocl-factory))
+   (let [host-factory (native-factory ocl-factory)
          cnt (long (+ 1000 (pow 2 12)))
          x-magic 2
          y-magic 5]
@@ -94,7 +94,7 @@
 
        (transfer (axpy! 2 cl-x cl-y)) => (axpy! 2 host-x host-y)))
 
-   (let [host-factory (native-factory (data-accessor ocl-factory))
+   (let [host-factory (native-factory ocl-factory)
          cnt (long (+ 1000 (pow 2 12)))
          x-magic 2
          y-magic 5]
@@ -121,7 +121,7 @@
 (defn test-blas2 [ocl-factory]
   (facts
    "BLAS 2"
-   (let [host-factory (native-factory (data-accessor ocl-factory))
+   (let [host-factory (native-factory ocl-factory)
          m-cnt 2050
          n-cnt 337
          a-magic 3
@@ -142,7 +142,7 @@
 (defn test-blas3 [ocl-factory]
   (facts
    "BLAS 3"
-   (let [host-factory (native-factory (data-accessor ocl-factory))
+   (let [host-factory (native-factory ocl-factory)
          m-cnt 123
          k-cnt 456
          n-cnt 789]

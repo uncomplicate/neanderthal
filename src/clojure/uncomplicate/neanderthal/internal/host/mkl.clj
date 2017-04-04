@@ -536,7 +536,7 @@
 
 ;; =============== Factories ==================================================
 
-(deftype CblasRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng]
+(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -564,7 +564,7 @@
   (tr-engine [_]
     tr-eng))
 
-(deftype CblasIntegerFactory [index-fact ^DataAccessor da vector-eng]
+(deftype MKLIntegerFactory [index-fact ^DataAccessor da vector-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -587,17 +587,17 @@
 (let [index-fact (volatile! nil)]
 
   (def mkl-int
-    (->CblasIntegerFactory index-fact int-accessor (->IntVectorEngine)))
+    (->MKLIntegerFactory index-fact int-accessor (->IntVectorEngine)))
 
   (def mkl-long
-    (->CblasIntegerFactory index-fact long-accessor (->LongVectorEngine)))
+    (->MKLIntegerFactory index-fact long-accessor (->LongVectorEngine)))
 
   (def mkl-float
-    (->CblasRealFactory index-fact float-accessor
-                        (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine)))
+    (->MKLRealFactory index-fact float-accessor
+                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine)))
 
   (def mkl-double
-    (->CblasRealFactory index-fact double-accessor
-                        (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine)))
+    (->MKLRealFactory index-fact double-accessor
+                      (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine)))
 
   (vreset! index-fact mkl-int))

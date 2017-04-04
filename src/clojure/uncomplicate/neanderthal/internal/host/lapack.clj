@@ -86,7 +86,8 @@
          (= 0 info#) ~ipiv
          (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
                                      {:arg-index (- info#)}))
-         :else (throw (RuntimeException. "TODO Singular, no solution"))))
+         :else (throw (ex-info "The factor U is singular, the solution could not be computed."
+                               {:info info#}))))
      (throw (ex-info "You cannot use ipiv with stride different than 1." {:stride (.stride ~ipiv)}))))
 
 (defmacro ge-trf [method a ipiv]
