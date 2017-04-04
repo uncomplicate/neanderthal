@@ -417,7 +417,10 @@
     n)
   RealChangeable
   (set [x val]
-    (set-all eng val x)
+    (if (not (Double/isNaN val))
+      (set-all eng val x)
+      (dotimes [i n]
+        (.set x i val)))
     x)
   (set [x i val]
     (.set da buf (+ ofst (* strd i)) val)
@@ -624,7 +627,11 @@
   (isAllowed [a i j]
     true)
   (set [a val]
-    (set-all eng val a)
+    (if (not (Double/isNaN val))
+      (set-all eng val a)
+      (dotimes [j fd]
+        (dotimes [i sd]
+          (.set da buf (+ ofst (* ld j) i) val))))
     a)
   (set [a i j val]
     (.set da buf (.index navigator ofst ld i j) val)
@@ -876,7 +883,13 @@
   (isAllowed [a i j]
     (= 2 (.defaultEntry uplo-nav i j)))
   (set [a val]
-    (set-all eng val a)
+    (if (not (Double/isNaN val))
+      (set-all eng val a)
+      (dotimes [j n]
+        (let [start (.start stripe-nav n j)
+              end (.end stripe-nav n j)]
+          (dotimes [i (- end start)]
+            (.set da buf (+ ofst (* ld j) (+ start i)) val)))))
     a)
   (set [a i j val]
     (.set da buf (.index navigator ofst ld i j) val)

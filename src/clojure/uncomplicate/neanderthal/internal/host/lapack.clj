@@ -22,8 +22,7 @@
 
 (defmacro vctr-laset [method alpha x]
   `(with-lapack-check
-     (~method (int (if (= 1 (.stride ~x)) CBLAS/ORDER_COLUMN_MAJOR CBLAS/ORDER_ROW_MAJOR))
-      (int \g) (.dim ~x) 1 ~alpha ~alpha (.buffer ~x) (.offset ~x) (.stride ~x))))
+     (~method CBLAS/ORDER_ROW_MAJOR (int \g) (.dim ~x) 1 ~alpha ~alpha (.buffer ~x) (.offset ~x) (.stride ~x))))
 
 ;; ----------------- Common GE matrix macros and functions -----------------------
 
