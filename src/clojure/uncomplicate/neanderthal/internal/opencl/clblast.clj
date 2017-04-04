@@ -81,6 +81,16 @@
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
 
+(defn ^:private vctr-set [ctx queue prog alpha ^CLBlockVector x]
+  (if (< 0 (.dim x))
+    (let [da (data-accessor x)]
+      (if (= (.dim x) (.count da (.buffer x)))
+        (.initialize da (.buffer x) alpha)
+        (with-release [vctr-set-kernel (kernel prog "vctr_set")]
+          (set-args! vctr-set-kernel (.wrapPrim da alpha)
+                     (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
+          (enq-nd! queue vctr-set-kernel (work-size-1d (.dim x))))))))
+
 (defn ^:private ge-set [ctx queue prog alpha ^CLGEMatrix a]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
@@ -555,7 +565,7 @@
   (imin [this x]
     (vector-ipeak ctx queue CLBlast/CLBlastiDmin ^CLBlockVector x))
   (set-all [_ alpha x]
-    #_(vector-scal-set queue CLBlast/CLBlastDset alpha ^CLBlockVector x);;TODO CLBlast
+    (vctr-set ctx queue prog alpha x)
     x)
   (axpby [_ alpha x beta y]
     (vector-axpby queue CLBlast/CLBlastDaxpy CLBlast/CLBlastDscal
@@ -609,7 +619,7 @@
   (imin [this x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSmin ^CLBlockVector x))
   (set-all [_ alpha x]
-    #_(vector-scal-set queue CLBlast/CLBlastSset alpha ^CLBlockVector x);;TODO CLBlast
+    (vctr-set ctx queue prog alpha x)
     x)
   (axpby [_ alpha x beta y]
     (vector-axpby queue CLBlast/CLBlastSaxpy CLBlast/CLBlastSscal

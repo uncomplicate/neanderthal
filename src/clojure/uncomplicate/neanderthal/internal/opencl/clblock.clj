@@ -189,9 +189,7 @@
     n)
   RealChangeable
   (set [x val]
-    (if (and (= 0 ofst) (= 1 strd))
-      (.initialize da @buf val)
-      (throw (UnsupportedOperationException. INEFFICIENT_STRIDE_MSG)))
+    (set-all eng val x)
     x)
   (set [_ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))

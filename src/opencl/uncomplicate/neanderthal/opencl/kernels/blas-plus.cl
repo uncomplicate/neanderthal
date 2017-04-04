@@ -88,6 +88,11 @@ __kernel void equals_tr_top_transp (__global uint* eq_flag, const uint unit,
     }
 }
 
+__kernel void vctr_set (const REAL val, __global REAL* x, const uint offset_x, const uint stride_x) {
+    x[offset_x + get_global_id(0) * stride_x] = val;
+}
+
+
 __kernel void ge_set (const REAL val, __global REAL* a, const uint offset_a, const uint ld_a) {
     a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] = val;
 }
