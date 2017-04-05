@@ -15,4 +15,5 @@ public interface BufferAccessor extends DataAccessor {
     Object toSeq (ByteBuffer buf, long offset, long stride);
 
     ByteBuffer slice (ByteBuffer buf, long k, long l);
+
 }

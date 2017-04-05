@@ -1,5 +1,17 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.10.0
+
+### New features:
+
+* Added aux namespace for auxiliary functions.
+* Sorting of vectors, GE, and TR host matrices.
+
+### Enhancements
+
+* set-all accepts NaN
+* CL factories implement FactoryProvider.
+
 ## 0.9.0
 
 ### New features:

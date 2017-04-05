@@ -18,11 +18,17 @@
 
 ;; =========================== Auxiliary LAPACK Routines =========================
 
-;; ----------------- Common vector matrix macros and functions -----------------------
+;; ----------------- Common vector macros and functions -----------------------
 
 (defmacro vctr-laset [method alpha x]
   `(with-lapack-check
      (~method CBLAS/ORDER_ROW_MAJOR (int \g) (.dim ~x) 1 ~alpha ~alpha (.buffer ~x) (.offset ~x) (.stride ~x))))
+
+(defmacro vctr-lasrt [method x increasing]
+  `(if (= 1 (.stride ~x))
+     (with-lapack-check
+       (~method (int (if ~increasing \I \D)) (.dim ~x) (.buffer ~x) (.offset ~x)))
+     (throw (ex-info "You cannot sort a vector with stride different than 1." {:stride (.stride ~x)}))))
 
 ;; ----------------- Common GE matrix macros and functions -----------------------
 
@@ -31,8 +37,17 @@
 
 (defmacro ge-laset [method alpha beta a]
   `(with-lapack-check
-     (~method (.order ~a) (int \g) (.mrows ~a) (.ncols ~a)
-      ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
+     (~method (.order ~a) (int \g) (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
+
+(defmacro ge-lasrt [method a increasing]
+  `(let [n# (.fd ~a)
+         ld-a# (.stride ~a)
+         sd-a# (.sd ~a)
+         offset-a# (.offset ~a)
+         buff-a# (.buffer ~a)
+         incr# (int (if ~increasing \I \D))]
+     (dotimes [j# n#]
+       (with-lapack-check (~method incr# sd-a# buff-a# (+ offset-a# (* j# ld-a#)))))))
 
 ;; ----------------- Common TR matrix macros and functions -----------------------
 
@@ -73,6 +88,18 @@
   `(with-lapack-check
      (~method (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L))
       (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
+
+(defmacro tr-lasrt [stripe-nav method a increasing]
+  `(let [n# (.fd ~a)
+         ld-a# (.stride ~a)
+         sd-a# (.sd ~a)
+         offset-a# (.offset ~a)
+         buff-a# (.buffer ~a)
+         incr# (int (if ~increasing \I \D))]
+     (dotimes [j# n#]
+       (let [start# (.start ~stripe-nav n# j#)
+             n-j# (- (.end ~stripe-nav n# j#) start#)]
+         (with-lapack-check (~method incr# n-j# buff-a# (+ offset-a# (* j# ld-a#) start#)))))))
 
 ;; =========== Drivers and Computational LAPACK Routines ===========================
 

@@ -205,7 +205,11 @@
   (axpby [_ alpha x beta y]
     (MKL/daxpby (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
                 beta (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
-    y))
+    y)
+  Lapack
+  (srt [_ x increasing]
+    (vctr-lasrt LAPACK/dlasrt ^RealBlockVector x increasing)
+    x))
 
 (deftype FloatVectorEngine []
   Blas
@@ -265,7 +269,11 @@
   (axpby [_ alpha x beta y]
     (MKL/saxpby (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
                 beta (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
-    y))
+    y)
+  Lapack
+  (srt [_ x increasing]
+    (vctr-lasrt LAPACK/slasrt ^RealBlockVector x increasing)
+    x))
 
 ;; ================= General Matrix Engines ====================================
 
@@ -316,6 +324,9 @@
     (ge-trans MKL/dimatcopy ^RealGEMatrix a)
     a)
   Lapack
+  (srt [_ a increasing]
+    (ge-lasrt LAPACK/dlasrt ^RealGEMatrix a increasing)
+    a)
   (trf [_ a ipiv]
     (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trs [_ a b ipiv]
@@ -407,6 +418,10 @@
     (ge-trans MKL/simatcopy ^RealGEMatrix a)
     a)
   Lapack
+  (srt [_ a increasing]
+    (ge-lasrt LAPACK/slasrt ^RealGEMatrix a increasing)
+    a
+    a)
   (trf [_ a ipiv]
     (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trs [_ a b ipiv]
@@ -493,7 +508,11 @@
   (axpby [_ alpha a beta b]
     (tr-axpby ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/daxpby
               alpha ^RealTRMatrix a beta ^RealTRMatrix b)
-    b))
+    b)
+  Lapack
+  (srt [_ a increasing]
+    (tr-lasrt ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/dlasrt ^RealTRMatrix a increasing)
+    a))
 
 (deftype FloatTREngine []
   Blas
@@ -532,7 +551,11 @@
   (axpby [_ alpha a beta b]
     (tr-axpby ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/saxpby
               alpha ^RealTRMatrix a beta ^RealTRMatrix b)
-    b))
+    b)
+  Lapack
+  (srt [_ a increasing]
+    (tr-lasrt ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/slasrt ^RealTRMatrix a increasing)
+    a))
 
 ;; =============== Factories ==================================================
 

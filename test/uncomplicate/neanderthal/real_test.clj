@@ -13,6 +13,7 @@
             [uncomplicate.neanderthal
              [core :refer :all]
              [linalg :refer :all]
+             [aux :refer :all]
              [math :refer :all]
              [real :refer [ls-residual det]]]
             [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]])
@@ -668,6 +669,42 @@
 
 ;; ==================== LAPACK tests =======================================
 
+(defn test-vctr-srt [factory]
+  (facts
+   "LAPACK vector srt!"
+   (with-release [x0 (vctr factory 0)
+                  x1 (vctr factory [-1 1 2 3])
+                  x2 (vctr factory [-1 1 2 3])
+                  x3 (vctr factory [2 1 3 -1])
+                  x4 (vctr factory [3 2 1 -1])
+                  a (ge factory 2 2)]
+     (sort+! x0) => x0
+     (sort+! x1) => x2
+     (sort-! x3) => x4
+     (sort+! (row a 0)) => (throws ExceptionInfo))))
+
+(defn test-ge-srt [factory]
+  (facts
+   "LAPACK ge srt!"
+   (with-release [a0 (ge factory 2 0)
+                  a1 (ge factory 2 3 [0 -1 1 2 3 3])
+                  a2 (ge factory 2 3 [-1 0 1 2 3 3])
+                  a3 (ge factory 2 3 [0 -1 2 1 3 3])]
+     (sort+! a0) => a0
+     (sort+! a1) => a2
+     (sort-! a1) => a3)))
+
+(defn test-tr-srt [factory]
+  (facts
+   "LAPACK ge srt!"
+   (with-release [a0 (tr factory 0)
+                  a1 (tr factory 3 [0 -1 1 2 3 3])
+                  a2 (tr factory 3 [-1 0 1 2 3 3])
+                  a3 (tr factory 3 [1 0 -1 3 2 3])]
+     (sort+! a0) => a0
+     (sort+! a1) => a2
+     (sort-! a1) => a3)))
+
 (defn test-ge-trf [factory]
   (facts
    "LAPACK GE trf!"
@@ -1067,6 +1104,9 @@
   (test-ge-amax factory)
   (test-tr-nrm2 factory)
   (test-tr-amax factory)
+  (test-vctr-srt factory)
+  (test-ge-srt factory)
+  (test-tr-srt factory)
   (test-ge-trf factory)
   (test-ge-det factory)
   (test-ge-sv factory)

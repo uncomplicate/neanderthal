@@ -57,6 +57,7 @@
   (trans [this a]))
 
 (defprotocol Lapack
+  (srt [this x increasing])
   (trf [this a ipiv])
   (trs [this a b ipiv])
   (sv [this a b ipiv])

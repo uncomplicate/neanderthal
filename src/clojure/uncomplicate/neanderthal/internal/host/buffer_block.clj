@@ -286,7 +286,10 @@
     n)
   IntegerChangeable
   (set [x val]
-    (set-all eng val x)
+    (if (not (Double/isNaN val))
+      (set-all eng val x)
+      (dotimes [i n]
+        (.set x i val)))
     x)
   (set [x i val]
     (.set da buf (+ ofst (* strd i)) val)
@@ -508,7 +511,7 @@
           formatter (if (and (not (< 0.0 min-value 0.01)) (< max-value 10000.0)) format-f format-g)]
       (.write w (str x "\n["))
       (format-vector w formatter x)
-      (.write w "]"))
+      (.write w "]\n"))
     (.write w (str x))))
 
 (defmethod transfer! [RealBlockVector RealBlockVector]
@@ -619,10 +622,10 @@
   (invoke [a i j]
     (entry a i j))
   (invoke [a]
-    sd)
+    n)
   IFn$L
   (invokePrim [a]
-    sd)
+    n)
   RealChangeable
   (isAllowed [a i j]
     true)
