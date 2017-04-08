@@ -7,7 +7,8 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.navigation
-  (:import [uncomplicate.neanderthal.internal.api RealOrderNavigator UploNavigator StripeNavigator
+  (:import [clojure.lang IFn$LLDD]
+           [uncomplicate.neanderthal.internal.api RealOrderNavigator UploNavigator StripeNavigator
             RealChangeable RealMatrix]))
 
 (deftype ColumnRealOrderNavigator []
@@ -22,6 +23,8 @@
     (.entry ^RealMatrix a i j))
   (set [_ a i j val]
     (.set ^RealChangeable a i j val))
+  (invokePrimitive [_ f i j val]
+    (.invokePrim ^IFn$LLDD f i j val))
   (stripe [_ a j]
     (.col ^RealMatrix a j)))
 
@@ -37,6 +40,8 @@
     (.entry ^RealMatrix a j i))
   (set [_ a i j val]
     (.set ^RealChangeable a j i val))
+  (invokePrimitive [_ f i j val]
+    (.invokePrim ^IFn$LLDD f j i val))
   (stripe [_ a i]
     (.row ^RealMatrix a i)))
 

@@ -65,6 +65,21 @@
   (facts "Vector entry!."
          (sum (entry! (vctr factory [1 2 3]) 77.0)) => 231.0))
 
+(defn ^:private val+
+  (^double [^double val]
+   (inc val)))
+
+(defn ^:private val-ind+
+  (^double [^long i ^double val]
+   (+ (double i) val))
+  (^double [^long i ^long j ^double val]
+   (* (double j) (+ (double i) val))))
+
+(defn test-vctr-alter! [factory]
+  (facts "Vector alter!."
+         (entry (alter! (vctr factory [1 2 3]) 1 val+) 1) => 3.0
+         (alter! (vctr factory [1 2 3]) val-ind+) => (vctr factory [1 3 5])))
+
 ;;================ BLAS functions =========================================
 
 (defn test-dot [factory]
@@ -317,6 +332,13 @@
   (facts "Bulk GE matrix entry!."
          (sum (row (entry! (ge factory 2 3 [1 2 3 4 5 6]) 88.0) 1)) => 264.0))
 
+(defn test-ge-alter! [factory]
+  (facts "GE alter!."
+         (entry (alter! (ge factory 2 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 6.0
+         (alter! (ge factory 2 3 [1 2 3 4 5 6]) val-ind+) => (ge factory 2 3 [0 0 3 5 10 14])
+         (alter! (ge factory 2 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
+         => (ge factory 2 3 [0 2 6 0 6 14] {:order :row})))
+
 (defn test-ge-nrm2 [factory]
   (facts "BLAS 1 GE nrm2."
          (nrm2 (ge factory 2 3 (range -3 3))) => (roughly (Math/sqrt 19))
@@ -543,6 +565,13 @@
   (facts "Bulk TR matrix entry!."
          (sum (row (entry! (tr factory 3 [1 2 3 4 5 6]) 33.0) 1)) => 66.0
          (sum (row (entry! (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper}) 22.0) 0)) => 44.0))
+
+(defn test-tr-alter! [factory]
+  (facts "TR alter!."
+         (entry (alter! (tr factory 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 4.0
+         (alter! (tr factory 3 [1 2 3 4 5 6]) val-ind+) => (tr factory 3 [0 0 0 5 7 16])
+         (alter! (tr factory 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
+         => (tr factory 3 [0 0 4 0 7 16] {:order :row})))
 
 (defn test-tr-nrm2 [factory]
   (facts "BLAS 1 TR nrm2."
@@ -1090,13 +1119,16 @@
   (test-rotmg factory)
   (test-vctr-entry factory)
   (test-vctr-entry! factory)
+  (test-vctr-alter! factory)
   (test-vctr-amax factory)
   (test-ge-entry factory)
   (test-ge-entry! factory)
+  (test-ge-alter! factory)
   (test-ge-trans! factory)
   (test-tr-entry factory)
   (test-tr-entry! factory)
-  (test-tr-bulk-entry! factory))
+  (test-tr-bulk-entry! factory)
+  (test-tr-alter! factory))
 
 (defn test-lapack [factory]
   (test-ge-asum factory)

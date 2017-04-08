@@ -23,7 +23,8 @@
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all]
             [uncomplicate.commons.core :refer [Releaseable release let-release clean-buffer]])
   (:import [java.nio ByteBuffer DirectByteBuffer]
-           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL]
+           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
+            IFn$LDD IFn$LLDD IFn$LLL]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
             DataAccessor Block Vector Matrix RealVector IntegerVector RealMatrix GEMatrix TRMatrix
@@ -286,10 +287,7 @@
     n)
   IntegerChangeable
   (set [x val]
-    (if (not (Double/isNaN val))
-      (set-all eng val x)
-      (dotimes [i n]
-        (.set x i val)))
+    (set-all eng val x)
     x)
   (set [x i val]
     (.set da buf (+ ofst (* strd i)) val)
@@ -298,8 +296,15 @@
     (.set x val))
   (setBoxed [x i val]
     (.set x i val))
+  (alter [x f]
+    (if (instance? IFn$LL f)
+      (dotimes [i n]
+        (.set x i (.invokePrim ^IFn$LL f (.entry x i))))
+      (dotimes [i n]
+        (.set x i (.invokePrim ^IFn$LLL f i (.entry x i)))))
+    x)
   (alter [x i f]
-    (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
+    (.set x i (.invokePrim ^IFn$LL f (.entry x i))))
   IntegerVector
   (dim [_]
     n)
@@ -432,6 +437,13 @@
     (.set x val))
   (setBoxed [x i val]
     (.set x i val))
+  (alter [x f]
+    (if (instance? IFn$DD f)
+      (dotimes [i n]
+        (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
+      (dotimes [i n]
+        (.set x i (.invokePrim ^IFn$LDD f i (.entry x i)))))
+    x)
   (alter [x i f]
     (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
   RealVector
@@ -643,8 +655,21 @@
     (.set a val))
   (setBoxed [a i j val]
     (.set a i j val))
+  (alter [a f]
+    (if (instance? IFn$DD f)
+      (dotimes [j fd]
+        (dotimes [i sd]
+          (let [idx (+ ofst (* ld j) i)]
+            (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))))
+      (dotimes [j fd]
+        (dotimes [i sd]
+          (let [idx (+ ofst (* ld j) i)]
+            (.set da buf idx (.invokePrimitive navigator f i j (.get da buf idx)))))))
+    a)
   (alter [a i j f]
-    (.set a i j (.invokePrim ^IFn$DD f (.entry a i j))))
+    (let [idx (.index navigator ofst ld i j)]
+      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))
+    a)
   RealMatrix
   (mrows [_]
     m)
@@ -786,20 +811,16 @@
       (nil? b) false
       (identical? a b) true
       (and (instance? RealTRMatrix b) (compatible? da b) (fits? a b))
-      (let [buf-b (.buf ^RealTRMatrix b)
-            ofst-b (.ofst ^RealTRMatrix b)
-            ld-b (.ld ^RealTRMatrix b)]
-        (loop [j 0]
-          (if (< j n)
-            (let [end (.end stripe-nav n j)]
-              (and (loop [i (.start stripe-nav n j)]
-                     (if (< i end)
-                       (and (= (.get da buf (+ ofst (* ld j) i))
-                               (.get da buf-b (.index navigator ofst-b ld-b i j)))
-                            (recur (inc i)))
-                       true))
-                   (recur (inc j))))
-            true)))
+      (loop [j 0]
+        (if (< j n)
+          (let [end (.end stripe-nav n j)]
+            (and (loop [i (.start stripe-nav n j)]
+                   (if (< i end)
+                     (and (= (.get da buf (+ ofst (* ld j) i)) (.get navigator b i j))
+                          (recur (inc i)))
+                     true))
+                 (recur (inc j))))
+          true))
       :default false))
   (toString [a]
     (format "#RealTRMatrix[%s, mxn:%dx%d, order%s, uplo%s, diag%s, offset:%d, ld:%d]"
@@ -901,6 +922,21 @@
     (.set a val))
   (setBoxed [a i j val]
     (.set a i j val))
+  (alter [a f]
+    (if (instance? IFn$DD f)
+      (dotimes [j n]
+        (let [start (.start stripe-nav n j)
+              end (.end stripe-nav n j)]
+          (dotimes [i (- end start)]
+            (let [idx (+ ofst (* ld j) (+ start i))]
+              (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))))))
+      (dotimes [j n]
+        (let [start (.start stripe-nav n j)
+              end (.end stripe-nav n j)]
+          (dotimes [i (- end start)]
+            (let [idx (+ ofst (* ld j) (+ start i))]
+              (.set da buf idx (.invokePrimitive navigator f (+ start i) j (.get da buf idx))))))))
+    a)
   (alter [a i j f]
     (.set a i j (.invokePrim ^IFn$DD f (.entry a i j))))
   RealMatrix

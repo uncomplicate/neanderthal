@@ -26,6 +26,7 @@
   (^long index [^long ofst ^long ld ^long i ^long j])
   (^double get [a ^long i ^long j])
   (set [a ^long i ^long j ^double val])
+  (invokePrimitive [f ^long i ^long j ^double val])
   (stripe [a ^long j]))
 
 (defprotocol Blas

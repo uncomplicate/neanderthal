@@ -22,6 +22,8 @@ public interface Changeable {
 
     Changeable setBoxed (long i, Number val);
 
+    Changeable alter (IFn fn);
+
     Changeable alter (long i, IFn fn);
 
     Changeable alter (long i, long j, IFn fn);

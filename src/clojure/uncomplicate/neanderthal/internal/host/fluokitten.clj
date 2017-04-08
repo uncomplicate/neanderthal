@@ -179,8 +179,7 @@
        (if (check-matrix-dimensions ~@as)
          (dotimes [j# ~fd]
            (dotimes [i# ~sd]
-             (.set ~navigator ~(first as) i# j#
-                   (invoke-matrix-entry ~navigator ~f i# j# ~@as))))
+             (.set ~navigator ~(first as) i# j# (invoke-matrix-entry ~navigator ~f i# j# ~@as))))
          (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
        ~(first as))
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
@@ -196,8 +195,7 @@
            (let [end# (.end ~stripe-nav ~n j#)]
              (loop [i# (.start ~stripe-nav ~n j#)]
                (when (< i# end#)
-                 (.set ~navigator ~(first as) i# j#
-                       (invoke-matrix-entry ~navigator ~f i# j# ~@as))
+                 (.set ~navigator ~(first as) i# j# (invoke-matrix-entry ~navigator ~f i# j# ~@as))
                  (recur (inc i#))))))
          (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
        ~(first as))

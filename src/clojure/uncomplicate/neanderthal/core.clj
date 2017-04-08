@@ -462,6 +462,8 @@
 
       (alter! (dv 1 2 3) 2 (fn ^double [^double x] (inc x)))
   "
+  ([^Changeable x f]
+   (.alter x f))
   ([^Changeable x ^long i f]
    (try
      (.alter x i f)
