@@ -197,6 +197,8 @@
     (.set x val))
   (setBoxed [x i val]
     (.set x i val))
+  (alter [_ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   (alter [_ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   RealVector
@@ -372,7 +374,9 @@
     (.set a val))
   (setBoxed [a i j val]
     (.set a i j val))
-  (alter [a i j f]
+  (alter [a _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (alter [a _ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   RealMatrix
   (mrows [_]
@@ -560,7 +564,9 @@
     (.set a val))
   (setBoxed [a i j val]
     (.set a i j val))
-  (alter [a i j f]
+  (alter [a _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (alter [a _ _ _]
     (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
   RealMatrix
   (mrows [_]
