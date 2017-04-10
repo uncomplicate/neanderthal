@@ -14,7 +14,7 @@
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD ExceptionInfo]))
 
 (defn test-create [factory]
-  (facts "Create and create-raw."
+  (facts "Create tests."
          (with-release [x0 (vctr factory 0)
                         x1 (vctr factory 1)
                         xr0 (vctr factory 0)
@@ -41,7 +41,7 @@
            (tr factory -1) => (throws ExceptionInfo))))
 
 (defn test-equality [factory]
-  (facts "Equality and hash code."
+  (facts "Equality and hash code tests."
          (with-release [x1 (vctr factory [1 2 3 4])
                         y1 (vctr factory [1 2 3 4])
                         x2 (row (ge factory 2 2 [1 2 3 4]) 0)
@@ -57,13 +57,73 @@
   (let [a (ge factory 2 3 [1 2 3 4 5 6])
         col-a (col a 0)
         sub-a (submatrix a 0 0 1 1)]
-    (facts "RealBlockVector and RealBlockMatrix release."
+    (facts "RealBlockVector and RealBlockMatrix release tests."
            (release col-a) => true
            (release col-a) => true
            (release sub-a) => true
            (release sub-a) => true
            (release a) => true
            (release a) => true)))
+
+(defn test-vctr-transfer [factory0 factory1]
+  (let [x0 (vctr factory0 4)
+        x1 (vctr factory0 [1 2 3 0])
+        x2 (vctr factory0 [22 33 3 0])
+        y0 (vctr factory1 4)
+        y1 (vctr factory1 [22 33])
+        y2 (vctr factory1 [22 33 3 0])]
+    (facts
+     "Vector transfer tests."
+     (transfer! (float-array [1 2 3]) x0) => x1
+     (transfer! (double-array [1 2 3]) x0) => x1
+     (transfer! (int-array [1 2 3 0 44]) x0) => x1
+     (transfer! (long-array [1 2 3]) x0) => x1
+     (seq (transfer! x1 (float-array 2))) => (seq (float-array [1 2]))
+     (seq (transfer! x1 (double-array 2))) => (seq (double-array [1 2]))
+     (transfer! y1 x0) => x2
+     (transfer! x2 y0) => y2)))
+
+(defn test-ge-transfer [factory0 factory1]
+  (let [x0 (vctr factory0 6)
+        x1 (vctr factory0 [1 2 3 4 5 6])
+        y0 (vctr factory1 6)
+        y1 (vctr factory1 [1 2 3 4 5 6])
+        a0 (ge factory0 2 3)
+        a1 (ge factory0 2 3 [1 2 3])
+        a2 (ge factory0 2 3 [22 33])
+        b0 (ge factory1 2 3)
+        b1 (ge factory1 2 3 [22 33])
+        b2 (ge factory1 2 3 [22 33])]
+    (facts
+     "GE transfer tests."
+     (transfer! (float-array [1 2 3]) a0) => a1
+     (transfer! (double-array [1 2 3]) a0) => a1
+     (transfer! (int-array [1 2 3 0]) a0) => a1
+     (transfer! (long-array [1 2 3]) a0) => a1
+     (seq (transfer! a1 (float-array 2))) => (seq (float-array [1 2]))
+     (seq (transfer! a1 (double-array 2))) => (seq (double-array [1 2]))
+     (transfer! b1 a0) => a2
+     (transfer! a2 b0) => b2
+     (transfer! (transfer! x1 a0) x0) => x1
+     (transfer! (transfer! y1 a1) y0) => y1)))
+
+(defn test-tr-transfer [factory0 factory1]
+  (let [a0 (tr factory0 3)
+        a1 (tr factory0 3 [1 2 3])
+        a2 (tr factory0 3 [22 33])
+        b0 (tr factory1 3)
+        b1 (tr factory1 3 [22 33])
+        b2 (tr factory1 3 [22 33])]
+    (facts
+     "TR transfer tests."
+     (transfer! (float-array [1 2 3]) a0) => a1
+     (transfer! (double-array [1 2 3]) a0) => a1
+     (transfer! (int-array [1 2 3 0]) a0) => a1
+     (transfer! (long-array [1 2 3]) a0) => a1
+     (seq (transfer! a1 (float-array 2))) => (seq (float-array [1 2]))
+     (seq (transfer! a1 (double-array 2))) => (seq (double-array [1 2]))
+     (transfer! b1 a0) => a2
+     (transfer! a2 b0) => b2)))
 
 ;; ================= Vector  ========================================
 
@@ -340,12 +400,16 @@
          => (list (list) (list 1.0) (list 2.0 3.0))))
 
 (defn test-all [factory]
-  (do
-    (test-create factory)
-    (test-equality factory)
-    (test-release factory)
-    (test-vctr-op factory)
-    (test-ge-op factory)))
+  (test-create factory)
+  (test-equality factory)
+  (test-release factory)
+  (test-vctr-op factory)
+  (test-ge-op factory))
+
+(defn test-both-factories [factory0 factory1]
+  (test-vctr-transfer factory0 factory1)
+  (test-ge-transfer factory0 factory1)
+  (test-tr-transfer factory0 factory1))
 
 (defn test-host [factory]
   (test-vctr-ifn factory)

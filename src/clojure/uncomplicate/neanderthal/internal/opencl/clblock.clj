@@ -28,7 +28,8 @@
            [uncomplicate.neanderthal.internal.api DataAccessor Block Vector
             RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable
             RealOrderNavigator UploNavigator StripeNavigator]
-           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix RealTRMatrix]))
+           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector IntegerBlockVector
+            RealGEMatrix RealTRMatrix]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -46,6 +47,19 @@
   (let [mapped-host (mmap cl :write-invalidate-region)]
     (try
       (copy! host mapped-host)
+      cl
+      (finally (unmap cl mapped-host)))))
+
+(defn cl-to-obj [cl obj]
+  (let [mapped-host (mmap cl :read)]
+    (try
+      (transfer! mapped-host obj)
+      (finally (unmap cl mapped-host)))))
+
+(defn obj-to-cl [obj cl]
+  (let [mapped-host (mmap cl :write-invalidate-region)]
+    (try
+      (transfer! obj mapped-host)
       cl
       (finally (unmap cl mapped-host)))))
 
@@ -271,10 +285,37 @@
   [source destination]
   (host-to-cl source destination))
 
+(defmethod transfer! [CLBlockVector IntegerBlockVector]
+  [source destination]
+  (cl-to-host source destination))
+
+(defmethod transfer! [IntegerBlockVector CLBlockVector]
+  [source destination]
+  (host-to-cl source destination))
+
 (defmethod transfer! [clojure.lang.Sequential CLBlockVector]
   [source ^CLBlockVector destination]
-  (with-release [host (raw destination (native-factory destination))]
-    (host-to-cl (transfer! source host) destination)))
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[D") CLBlockVector]
+  [source ^CLBlockVector destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[F") CLBlockVector]
+  [source ^CLBlockVector destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[J") CLBlockVector]
+  [source ^CLBlockVector destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[I") CLBlockVector]
+  [source ^CLBlockVector destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [CLBlockVector Object]
+  [source destination]
+  (cl-to-obj source destination))
 
 ;; ================== CL Matrix ============================================
 
@@ -451,14 +492,49 @@
   [source destination]
   (cl-to-host source destination))
 
+(defmethod transfer! [CLGEMatrix RealBlockVector]
+  [source destination]
+  (cl-to-host source destination))
+
+(defmethod transfer! [RealBlockVector CLGEMatrix]
+  [source destination]
+  (host-to-cl source destination))
+
+(defmethod transfer! [CLGEMatrix IntegerBlockVector]
+  [source destination]
+  (cl-to-host source destination))
+
+(defmethod transfer! [IntegerBlockVector CLGEMatrix]
+  [source destination]
+  (host-to-cl source destination))
+
 (defmethod transfer! [RealGEMatrix CLGEMatrix]
   [source destination]
   (host-to-cl source destination))
 
 (defmethod transfer! [clojure.lang.Sequential CLGEMatrix]
   [source destination]
-  (with-release [host (raw destination (native-factory destination))]
-    (host-to-cl (transfer! source host) destination)))
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[D") CLGEMatrix]
+  [source ^CLGEMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[F") CLGEMatrix]
+  [source ^CLGEMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[J") CLGEMatrix]
+  [source ^CLGEMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[I") CLGEMatrix]
+  [source ^CLGEMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [CLGEMatrix Object]
+  [source destination]
+  (cl-to-obj source destination))
 
 ;; ============ OpenCL Triangular Matrix =======================================
 
@@ -664,5 +740,24 @@
 
 (defmethod transfer! [clojure.lang.Sequential CLTRMatrix]
   [source destination]
-  (with-release [host (raw destination (native-factory destination))]
-    (host-to-cl (transfer! source host) destination)))
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[D") CLTRMatrix]
+  [source ^CLTRMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[F") CLTRMatrix]
+  [source ^CLTRMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[J") CLTRMatrix]
+  [source ^CLTRMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [(Class/forName "[I") CLTRMatrix]
+  [source ^CLTRMatrix destination]
+  (obj-to-cl source destination))
+
+(defmethod transfer! [CLTRMatrix Object]
+  [source destination]
+  (cl-to-obj source destination))

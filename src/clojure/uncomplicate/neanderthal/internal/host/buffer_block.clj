@@ -14,8 +14,9 @@
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
-             [core :refer [transfer! copy!]]
-             [real :refer [entry]]]
+             [core :refer [transfer! copy! subvector]]
+             [real :refer [entry]]
+             [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [common :refer [format-vector format-matrix format-a format-f format-g]]
@@ -329,19 +330,65 @@
   [^Vector x ^java.io.Writer w]
   (.write w (format "%s%s" (str x) (pr-str (take 100 (seq x))))))
 
+(defmacro ^:private transfer-vector-vector [source destination]
+  `(do
+     (if (and (compatible? ~source ~destination) (fits? ~source ~destination))
+       (copy! ~source ~destination)
+       (dotimes [i# (min (.dim ~source) (.dim ~destination))]
+         (.set ~destination i# (.entry ~source i#))))
+     ~destination))
+
+(defmacro ^:private transfer-vector-array [source destination]
+  `(let [n# (min (.dim ~source) (alength ~destination))]
+     (dotimes [i# n#]
+       (aset ~destination i# (.entry ~source i#)))
+     ~destination))
+
+(defmacro ^:private transfer-array-vector [source destination]
+  `(let [n# (min (alength ~source) (.dim ~destination))]
+     (dotimes [i# n#]
+       (.set ~destination i# (aget ~source i#)))
+     ~destination))
+
+(defmacro ^:private transfer-seq-vector [source destination]
+  `(let [n# (.dim ~destination)]
+     (loop [i# 0 src# ~source]
+       (when (and src# (< i# n#))
+         (.set ~destination i# (first src#))
+         (recur (inc i#) (next src#))))
+     ~destination))
+
 (defmethod transfer! [IntegerBlockVector IntegerBlockVector]
-  [source destination]
-  (copy! source destination))
+  [^IntegerBlockVector source ^IntegerBlockVector destination]
+  (transfer-vector-vector source destination))
 
 (defmethod transfer! [clojure.lang.Sequential IntegerBlockVector]
   [source ^IntegerBlockVector destination]
-  (let [n (.dim destination)]
-    (loop [i 0 src source]
-      (if (and src (< i n))
-        (do
-          (.set destination i (first src))
-          (recur (inc i) (next src)))
-        destination))))
+  (transfer-seq-vector source destination))
+
+(defmethod transfer! [(Class/forName "[D") IntegerBlockVector]
+  [^doubles source ^IntegerBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [(Class/forName "[F") IntegerBlockVector]
+  [^floats source ^IntegerBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [(Class/forName "[J") IntegerBlockVector]
+  [^longs source ^IntegerBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [(Class/forName "[I") IntegerBlockVector]
+  [^ints source ^IntegerBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [IntegerBlockVector (Class/forName "[J")]
+  [^IntegerBlockVector source ^longs destination]
+  (transfer-vector-array source destination))
+
+(defmethod transfer! [IntegerBlockVector (Class/forName "[I")]
+  [^IntegerBlockVector source ^ints destination]
+  (transfer-vector-array source destination))
 
 ;; ============ Real Vector ====================================================
 
@@ -527,18 +574,44 @@
     (.write w (str x))))
 
 (defmethod transfer! [RealBlockVector RealBlockVector]
-  [source destination]
-  (copy! source destination))
+  [^RealBlockVector source ^RealBlockVector destination]
+  (transfer-vector-vector source destination))
+
+(defmethod transfer! [IntegerBlockVector RealBlockVector]
+  [^IntegerBlockVector source ^RealBlockVector destination]
+  (transfer-vector-vector source destination))
+
+(defmethod transfer! [RealBlockVector IntegerBlockVector]
+  [^RealBlockVector source ^IntegerBlockVector destination]
+  (transfer-vector-vector source destination))
 
 (defmethod transfer! [clojure.lang.Sequential RealBlockVector]
   [source ^RealBlockVector destination]
-  (let [n (.dim destination)]
-    (loop [i 0 src source]
-      (if (and src (< i n))
-        (do
-          (.set destination i (first src))
-          (recur (inc i) (next src)))
-        destination))))
+  (transfer-seq-vector source destination))
+
+(defmethod transfer! [(Class/forName "[D") RealBlockVector]
+  [^doubles source ^RealBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [(Class/forName "[F") RealBlockVector]
+  [^floats source ^RealBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [(Class/forName "[J") RealBlockVector]
+  [^longs source ^RealBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [(Class/forName "[I") RealBlockVector]
+  [^ints source ^RealBlockVector destination]
+  (transfer-array-vector source destination))
+
+(defmethod transfer! [RealBlockVector (Class/forName "[D")]
+  [^RealBlockVector source ^doubles destination]
+  (transfer-vector-array source destination))
+
+(defmethod transfer! [RealBlockVector (Class/forName "[F")]
+  [^RealBlockVector source ^floats destination]
+  (transfer-vector-array source destination))
 
 ;; =================== Real Matrix =============================================
 
@@ -776,26 +849,137 @@
     (.write w (str a))))
 
 (defmethod transfer! [RealGEMatrix RealGEMatrix]
-  [source destination]
-  (copy! source destination))
+  [^RealGEMatrix source ^RealGEMatrix destination]
+  (if (and (compatible? source destination) (fits? source destination))
+    (copy! source destination)
+    (let [navigator ^RealOrderNavigator (.navigator source)
+          sd (min (.sd source) (.sd navigator (.mrows destination) (.ncols destination)))
+          fd (min (.fd source) (.fd navigator (.mrows destination) (.ncols destination)))]
+      (dotimes [j fd]
+        (dotimes [i sd]
+          (.set navigator destination i j (.get navigator source i j))))
+      destination)))
 
 (defmethod transfer! [clojure.lang.Sequential RealGEMatrix]
   [source ^RealGEMatrix destination]
-  (let [ofst (.offset destination)
-        ld (.ld destination)
-        sd (.sd destination)
+  (let [sd (.sd destination)
         fd (.fd destination)
-        da (data-accessor destination)
-        buf (.buffer destination)]
+        navigator ^RealOrderNavigator (.navigator destination)]
     (loop [j 0 src source]
       (if (and src (< j fd))
         (recur (inc j)
                (loop [i 0 src src]
                  (if (and src (< i sd))
-                   (do (.set ^RealBufferAccessor da buf (+ ofst (* ld j) i) (first src))
+                   (do (.set navigator destination i j (first src))
                        (recur (inc i) (next src)))
                    src)))
         destination))))
+
+(defmacro ^:private transfer-vector-ge [navigator source destination]
+  `(let [dim# (.dim ~source)
+         sd# (.sd ~destination)
+         n# (min (.fd ~destination) (ceil (/ dim# sd#)))]
+     (dotimes [j# n#]
+       (dotimes [i# sd#]
+         (let [idx# (+ (* sd# j#) i#)]
+           (when (< idx# dim#)
+             (.set ~navigator ~destination i# j# (.entry ~source idx#))))))
+     ~destination))
+
+(defmacro ^:private transfer-ge-vector [navigator source destination]
+  `(let [dim# (.dim ~destination)
+         sd# (.sd ~source)
+         n# (min (.fd ~source) (ceil (/ dim# sd#)))]
+     (dotimes [j# n#]
+       (dotimes [i# sd#]
+         (let [idx# (+ (* sd# j#) i#)]
+           (when (< idx# dim#)
+             (.set ~destination idx# (.get ~navigator ~source i# j#))))))
+     ~destination))
+
+(defmethod transfer! [RealBlockVector RealGEMatrix]
+  [^RealBlockVector source ^RealGEMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)
+        m (.mrows destination)
+        n (.ncols destination)]
+    (if (and (compatible? (data-accessor source) destination) (<= (* m n) (.dim source)))
+      (copy! (real-ge-matrix (factory source) false (.buffer source)
+                             m n (.offset source) 0 (.order destination))
+             destination)
+      (transfer-vector-ge navigator source destination))))
+
+(defmethod transfer! [RealGEMatrix RealBlockVector]
+  [^RealGEMatrix source ^RealBlockVector destination]
+  (let [navigator ^RealOrderNavigator (.navigator source)
+        m (.mrows source)
+        n (.ncols source)]
+    (if (and (compatible? (data-accessor destination) source) (<= (* m n) (.dim destination)))
+      (copy! source (real-ge-matrix (factory destination) false (.buffer destination)
+                                    m n (.offset destination) 0 (.order source)))
+      (transfer-ge-vector navigator source destination))
+    destination))
+
+(defmethod transfer! [IntegerBlockVector RealGEMatrix]
+  [^IntegerBlockVector source ^RealGEMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)]
+    (transfer-vector-ge navigator source destination)))
+
+(defmethod transfer! [RealGEMatrix IntegerBlockVector]
+  [^RealGEMatrix source ^IntegerBlockVector destination]
+  (let [navigator ^RealOrderNavigator (.navigator source)]
+    (transfer-ge-vector navigator source destination)))
+
+(defmacro ^:private transfer-array-ge [navigator source destination]
+  `(let [len# (alength ~source)
+         sd# (.sd ~destination)
+         n# (min (.fd ~destination) (ceil (/ len# sd#)))]
+     (dotimes [j# n#]
+       (dotimes [i# sd#]
+         (let [idx# (+ (* sd# j#) i#)]
+           (when (< idx# len#)
+             (.set ~navigator ~destination i# j# (aget ~source idx#))))))
+     ~destination))
+
+(defmacro ^:private transfer-ge-array [navigator source destination]
+  `(let [len# (alength ~destination)
+         sd# (.sd ~source)
+         n# (min (.fd ~source) (ceil (/ len# sd#)))]
+     (dotimes [j# n#]
+       (dotimes [i# sd#]
+         (let [idx# (+ (* sd# j#) i#)]
+           (when (< idx# len#)
+             (aset ~destination idx# (.get ~navigator ~source i# j#))))))
+     ~destination))
+
+(defmethod transfer! [(Class/forName "[D") RealGEMatrix]
+  [^doubles source ^RealGEMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)]
+    (transfer-array-ge navigator source destination)))
+
+(defmethod transfer! [(Class/forName "[F") RealGEMatrix]
+  [^floats source ^RealGEMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)]
+    (transfer-array-ge navigator source destination)))
+
+(defmethod transfer! [(Class/forName "[J") RealGEMatrix]
+  [^longs source ^RealGEMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)]
+    (transfer-array-ge navigator source destination)))
+
+(defmethod transfer! [(Class/forName "[I") RealGEMatrix]
+  [^ints source ^RealGEMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)]
+    (transfer-array-ge navigator source destination)))
+
+(defmethod transfer! [RealGEMatrix (Class/forName "[D")]
+  [^RealGEMatrix source ^doubles destination]
+  (let [navigator ^RealOrderNavigator (.navigator source)]
+    (transfer-ge-array navigator source destination)))
+
+(defmethod transfer! [RealGEMatrix (Class/forName "[F")]
+  [^RealGEMatrix source ^floats destination]
+  (let [navigator ^RealOrderNavigator (.navigator source)]
+    (transfer-ge-array navigator source destination)))
 
 ;; =================== Real Triangular Matrix ==================================
 
@@ -1063,26 +1247,94 @@
     (.write w (str a))))
 
 (defmethod transfer! [RealTRMatrix RealTRMatrix]
-  [source destination]
-  (do
+  [^RealTRMatrix source ^RealTRMatrix destination]
+  (if (and (compatible? source destination) (fits? source destination))
     (copy! source destination)
-    destination))
+    (let [navigator ^RealOrderNavigator (.navigator source)
+          stripe-nav ^StripeNavigator (.stripe-nav source)
+          n (min (.ncols source) (.ncols destination))]
+      (dotimes [j n]
+        (let [start (.start stripe-nav n j)]
+          (dotimes [i (- (.end stripe-nav n j) start)]
+            (.set navigator destination (+ start i) j (.get navigator source (+ start i) j)))))
+      destination)))
 
 (defmethod transfer! [clojure.lang.Sequential RealTRMatrix]
   [source ^RealTRMatrix destination]
-  (let [ofst (.ofst destination)
-        ld (.ld destination)
-        n (.n destination)
-        stripe-nav ^StripeNavigator (.stripe-nav destination)
-        da (data-accessor destination)
-        buf (.buf destination)]
+  (let [n (.n destination)
+        navigator ^RealOrderNavigator (.navigator destination)
+        stripe-nav ^StripeNavigator (.stripe-nav destination)]
     (loop [j 0 src source]
       (if (and src (< j n))
         (recur (inc j)
                (let [end (.end stripe-nav n j)]
                  (loop [i (.start stripe-nav n j) src src]
                    (if (and src (< i end))
-                     (do (.set ^RealBufferAccessor da buf (+ ofst (* ld j) i) (first src))
+                     (do (.set navigator destination i j (first src))
                          (recur (inc i) (next src)))
                      src))))
         destination))))
+
+(defmacro ^:private transfer-array-tr [navigator stripe-nav source destination]
+  `(let [len# (alength ~source)
+         n# (.n ~destination)]
+     (loop [j# 0 cnt# 0]
+       (if (and (< cnt# len#) (< j# n#))
+         (recur (inc j#)
+                (long (let [end# (.end ~stripe-nav n# j#)]
+                        (loop [i# (.start ~stripe-nav n# j#) idx# cnt#]
+                          (if (and (< idx# len#) (< i# end#))
+                            (do (.set ~navigator ~destination i# j# (aget ~source idx#))
+                                (recur (inc i#) (inc idx#)))
+                            idx#)))))
+         ~destination))))
+
+(defmacro ^:private transfer-tr-array [navigator stripe-nav source destination]
+  `(let [len# (alength ~destination)
+         n# (.n ~source)]
+     (loop [j# 0 cnt# 0]
+       (if (and (< cnt# len#) (< j# n#))
+         (recur (inc j#)
+                (long (let [end# (.end ~stripe-nav n# j#)]
+                        (loop [i# (.start ~stripe-nav n# j#) idx# cnt#]
+                          (if (and (< idx# len#) (< i# end#))
+                            (do (aset ~destination idx# (.get ~navigator ~source i# j#))
+                                (recur (inc i#) (inc idx#)))
+                            idx#)))))
+         ~destination))))
+
+(defmethod transfer! [(Class/forName "[D") RealTRMatrix]
+  [^doubles source ^RealTRMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)
+        stripe-nav ^StripeNavigator (.stripe-nav destination)]
+    (transfer-array-tr navigator stripe-nav source destination)))
+
+(defmethod transfer! [(Class/forName "[F") RealTRMatrix]
+  [^floats source ^RealTRMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)
+        stripe-nav ^StripeNavigator (.stripe-nav destination)]
+    (transfer-array-tr navigator stripe-nav source destination)))
+
+(defmethod transfer! [(Class/forName "[J") RealTRMatrix]
+  [^longs source ^RealTRMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)
+        stripe-nav ^StripeNavigator (.stripe-nav destination)]
+    (transfer-array-tr navigator stripe-nav source destination)))
+
+(defmethod transfer! [(Class/forName "[I") RealTRMatrix]
+  [^ints source ^RealTRMatrix destination]
+  (let [navigator ^RealOrderNavigator (.navigator destination)
+        stripe-nav ^StripeNavigator (.stripe-nav destination)]
+    (transfer-array-tr navigator stripe-nav source destination)))
+
+(defmethod transfer! [RealTRMatrix (Class/forName "[D")]
+  [^RealTRMatrix source ^doubles destination]
+  (let [navigator ^RealOrderNavigator (.navigator source)
+        stripe-nav ^StripeNavigator (.stripe-nav source)]
+    (transfer-tr-array navigator stripe-nav source destination)))
+
+(defmethod transfer! [RealTRMatrix (Class/forName "[F")]
+  [^RealTRMatrix source ^floats destination]
+  (let [navigator ^RealOrderNavigator (.navigator source)
+        stripe-nav ^StripeNavigator (.stripe-nav source)]
+    (transfer-tr-array navigator stripe-nav source destination)))
