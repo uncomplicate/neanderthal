@@ -455,6 +455,14 @@
   "Alters the `i`-th entry of vector `x`, or `(i, j)`-th entry of matrix `a` by
   evaluating function f on one or all of its elements.
 
+  If no index is passed, the function f will alter all elements and feeds the indices to f.
+
+      (alter! (dge 2 2) (fn ^double [^long i ^long j ^double x] (double (+ i j))))
+      => #RealGEMatrix[double, mxn:2x2, order:column, offset:0, ld:2]
+
+      0.00   1.00
+      1.00   2.00
+
   If the structure holds primitive elements, the function f must accept appropriate primitive
   unboxed arguments, and it will work faster if it also returns unboxed result.
 
