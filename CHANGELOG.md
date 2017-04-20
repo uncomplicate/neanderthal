@@ -7,6 +7,7 @@
 * Added aux namespace for auxiliary functions.
 * Sorting of vectors, GE, and TR host matrices.
 * Bulk alter! method added.
+* view-vctr and view-ge support stride multiplier.
 
 ### Enhancements
 

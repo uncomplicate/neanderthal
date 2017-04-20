@@ -39,6 +39,8 @@
          (vctr? (vctr factory [1 2 3])) => true
          (vctr factory 1 2 3) => (vctr factory [1 2 3])
          (vctr factory 3) => (vctr factory [0 0 0])
+         (view-vctr (vctr factory (range 8))) => (vctr factory (range 8))
+         (view-vctr (vctr factory (range 8)) 3) => (vctr factory [0 3 6])
          (view-ge (vctr factory 1 2 3 4)) => (ge factory 4 1 [1 2 3 4])
          (vctr factory nil) => (throws IllegalArgumentException)
          (dim (vctr factory [])) => 0
@@ -281,11 +283,16 @@
 
 (defn test-ge-constructor [factory]
   (facts "Create a GE matrix."
-         (with-release [a (ge factory 2 3 [1 2 3 4 5 6])
-                        b (tr factory 2 [1 2 4])]
-           (ge factory 2 3 [1 2 3 4 5 6]) => a
-           (ge factory 2 3 nil) => (zero a)
+         (with-release [a (ge factory 2 4 [1 2 5 6 9 10 13 14])
+                        a1 (ge factory 2 4 [1 2 5 6 9 10 13 14])
+                        v (vctr factory [1 2 5 6 9 10 13 14])
+                        b (tr factory 2 [1 2 6])
+                        c (ge factory 2 7 (range 1 15))]
+           a1 => a
+           (ge factory 2 4 nil) => (zero a)
+           (view-vctr a) => v
            (view-ge a) => a
+           (view-ge c 2) => a
            (view-tr a) => b)))
 
 (defn test-ge [factory]

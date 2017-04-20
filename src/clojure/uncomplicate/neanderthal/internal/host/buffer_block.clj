@@ -430,8 +430,16 @@
   (native [x]
     x)
   DenseContainer
+  (view-vctr [_]
+    (real-block-vector fact false buf n ofst strd))
+  (view-vctr [_ stride-mult]
+    (real-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
     (real-ge-matrix fact false buf n 1 ofst n COLUMN_MAJOR))
+  (view-ge [x stride-mult]
+    (view-ge (view-ge x) stride-mult))
+  (view-tr [x uplo diag]
+    (view-tr (view-ge x) uplo diag))
   MemoryContext
   (compatible? [_ y]
     (compatible? da y))
@@ -674,8 +682,18 @@
   (native [a]
     a)
   DenseContainer
+  (view-vctr [_]
+    (if (= ld sd)
+      (real-block-vector fact false buf (* m n) ofst 1)
+      (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:ld ld :sd sd}))))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-vctr a) stride-mult))
   (view-ge [_]
     (real-ge-matrix fact false buf m n ofst ld ord))
+  (view-ge [_ stride-mult]
+   (let [shrinked (ceil (/ fd (long stride-mult)))]
+     (real-ge-matrix fact false buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
+                     ofst (* ld (long stride-mult)) ord)))
   (view-tr [_ uplo diag]
     (real-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
   MemoryContext
@@ -1040,8 +1058,14 @@
   (native [a]
     a)
   DenseContainer
+  (view-vctr [a]
+    (view-vctr (view-ge a)))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-ge a) stride-mult))
   (view-ge [_]
     (real-ge-matrix fact false buf n n ofst ld ord))
+  (view-ge [a stride-mult]
+   (view-ge (view-ge a) stride-mult))
   (view-tr [_ uplo diag]
     (real-tr-matrix fact false buf n ofst ld ord uplo diag))
   MemoryContext

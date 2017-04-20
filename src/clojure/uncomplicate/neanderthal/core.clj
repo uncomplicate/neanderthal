@@ -49,7 +49,7 @@
 
   [Naming conventions for BLAS routines](https://software.intel.com/en-us/node/468382).
 
-  * Create: [[vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[raw]], [[zero]].
+  * Create: [[vctr]], [[view-vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[raw]], [[zero]].
 
   * Move data around: [[transfer!]], [[transfer]], [[native]], [[copy!]], [[copy]], [[swp!]].
 
@@ -160,6 +160,21 @@
   ([factory x & xs]
    (vctr factory (cons x xs))))
 
+(defn view-vctr
+  "Attach a dense vector to the raw data of `x`.
+
+  Changes to the resulting object affect the source `x`, even the parts of data that might not
+  be accessible by `x`. Use with caution!
+
+      (view-vctr (ge float-factory 2 3 (range 6)))
+  "
+  ([a]
+   (api/view-vctr a))
+  ([a ^long stride-mult]
+   (if (< 0 stride-mult)
+     (api/view-vctr a stride-mult)
+     (throw (ex-info "Cannot use a negative stride multiplier." {:stirde-mult stride-mult})))))
+
 (defn vctr?
   "Tests if x is a (neanderthal) vector."
   [x]
@@ -211,7 +226,11 @@
       (view-ge (tr float-factory 3 (range 6)))
   "
   ([a]
-   (api/view-ge a)))
+   (api/view-ge a))
+  ([a ^long stride-mult]
+   (if (< 0 stride-mult)
+     (api/view-ge a stride-mult)
+     (throw (ex-info "Cannot use a negative stride multiplier." {:stirde-mult stride-mult})))))
 
 (defn ge?
   "Tests if x is a dense matrix (GE)."

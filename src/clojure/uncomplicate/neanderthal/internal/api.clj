@@ -114,8 +114,9 @@
   (native [this]))
 
 (defprotocol DenseContainer
-  (view-ge [this])
-  (view-tr [this uplo diag]))
+  (view-ge [this] [this stride-mult])
+  (view-tr [this uplo diag])
+  (view-vctr [this] [this stride-mult]))
 
 ;; ============ Realeaseable ===================================================
 

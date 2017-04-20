@@ -14,6 +14,7 @@
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal
+             [math :refer [ceil]]
              [core :refer [transfer! copy!]]
              [real :refer [entry]]]
             [uncomplicate.neanderthal.internal
@@ -163,8 +164,16 @@
   (native [x]
     (host x))
   DenseContainer
+  (view-vctr [_]
+    (cl-block-vector fact false @buf n ofst strd))
+  (view-vctr [_ stride-mult]
+    (cl-block-vector fact false @buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
     (cl-ge-matrix fact false @buf n 1 ofst n COLUMN_MAJOR))
+  (view-ge [x stride-mult]
+    (view-ge (view-ge x) stride-mult))
+  (view-tr [x uplo diag]
+    (view-tr (view-ge x) uplo diag))
   MemoryContext
   (compatible? [_ y]
     (compatible? da y))
@@ -368,8 +377,18 @@
   (native [a]
     (host a))
   DenseContainer
+  (view-vctr [_]
+    (if (= ld sd)
+      (cl-block-vector fact false @buf (* m n) ofst 1)
+      (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:ld ld :sd sd}))))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-vctr a) stride-mult))
   (view-ge [_]
     (cl-ge-matrix fact false @buf m n ofst ld ord))
+  (view-ge [_ stride-mult]
+    (let [shrinked (ceil (/ fd (long stride-mult)))]
+      (cl-ge-matrix fact false @buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
+                      ofst (* ld (long stride-mult)) ord)))
   (view-tr [_ uplo diag]
     (cl-tr-matrix fact false @buf (min m n) ofst ld ord uplo diag))
   MemoryContext
@@ -587,8 +606,14 @@
   (native [a]
     (host a))
   DenseContainer
+  (view-vctr [a]
+    (view-vctr (view-ge a)))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-ge a) stride-mult))
   (view-ge [_]
     (cl-ge-matrix fact false @buf n n ofst ld ord))
+  (view-ge [a stride-mult]
+    (view-ge (view-ge a) stride-mult))
   (view-tr [_ uplo diag]
     (cl-tr-matrix fact false @buf n ofst ld ord uplo diag))
   MemoryContext
