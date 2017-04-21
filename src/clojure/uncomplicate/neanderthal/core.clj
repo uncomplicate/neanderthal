@@ -161,7 +161,7 @@
    (vctr factory (cons x xs))))
 
 (defn view-vctr
-  "Attach a dense vector to the raw data of `x`.
+  "Attach a dense vector to the raw data of `x`, with optional stride multiplicator `stride-mult`.
 
   Changes to the resulting object affect the source `x`, even the parts of data that might not
   be accessible by `x`. Use with caution!
@@ -218,7 +218,7 @@
    (ge factory (.mrows a) (.ncols a) a nil)))
 
 (defn view-ge
-  "Attach a GE matrix to the raw data of `a`.
+  "Attach a GE matrix to the raw data of `a`, with optional stride multiplicator.
 
   Changes to the resulting object affect the source `a`, even the parts of data that might not
   be accessible by a. Use with caution!
