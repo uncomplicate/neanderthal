@@ -16,9 +16,11 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [uncomplicate/commons "0.3.0"]
                  [uncomplicate/fluokitten "0.6.0"]
-                 [uncomplicate/clojurecl "0.7.1"]
                  [uncomplicate/neanderthal-native "0.9.0"]
+                 [uncomplicate/clojurecl "0.7.1"]
                  [org.jocl/jocl-blast "0.10.0"]
+                 [uncomplicate/clojurecuda "0.1.1-SNAPSHOT"]
+                 [org.jcuda/jcublas "0.8.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [vertigo "0.1.4"]]
 

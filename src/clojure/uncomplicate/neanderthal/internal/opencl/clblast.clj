@@ -8,7 +8,6 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.opencl.clblast
-  (:refer-clojure :exclude [accessor])
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release wrap-int wrap-double wrap-float]]

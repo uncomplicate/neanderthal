@@ -11,15 +11,12 @@
   "Specialized constructors that use OpenCL engine by default, and convenient macros for
   creating and maintaining engines in appropriate OpenCL context. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.commons.core
-             :refer [release let-release wrap-float wrap-double]]
+  (:require [uncomplicate.commons.core :refer [release]]
             [uncomplicate.clojurecl
-             [core :refer [*context* *command-queue* cl-buffer?]]
+             [core :refer [*context* *command-queue*]]
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr]]
-            [uncomplicate.neanderthal.internal.opencl
-             [clblock :refer [->TypedCLAccessor cl-to-host host-to-cl]]
-             [clblast :refer [clblast-double clblast-float]]])
+            [uncomplicate.neanderthal.internal.opencl.clblast :refer [clblast-double clblast-float]])
   (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
 
 (def ^{:dynamic true
@@ -42,11 +39,11 @@
           (with-release [gpu-x (clv (range 3))]
             (sum gpu-x))))
   "
-  ([factory queue & body]
-   `(binding [*opencl-factory* (~factory (queue-context ~queue) ~queue)]
-      (try
-        ~@body
-        (finally (release *opencl-factory*))))))
+  [factory queue & body]
+  `(binding [*opencl-factory* (~factory (queue-context ~queue) ~queue)]
+     (try
+       ~@body
+       (finally (release *opencl-factory*)))))
 
 (defmacro with-default-engine
   "Creates an OpenCL factory using the default OpenCL factory (single precision floating point),
