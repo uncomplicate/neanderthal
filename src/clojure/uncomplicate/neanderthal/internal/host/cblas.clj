@@ -45,23 +45,27 @@
 
 (defn vector-imax [^RealVector x]
   (let [cnt (.dim x)]
-    (loop [i 1 max-idx 0 max-val (.entry x 0)]
-      (if (< i cnt)
-        (let [v (.entry x i)]
-          (if (< max-val v)
-            (recur (inc i) i v)
-            (recur (inc i) max-idx max-val)))
-        max-idx))))
+    (if (< 0 cnt)
+      (loop [i 1 max-idx 0 max-val (.entry x 0)]
+        (if (< i cnt)
+          (let [v (.entry x i)]
+            (if (< max-val v)
+              (recur (inc i) i v)
+              (recur (inc i) max-idx max-val)))
+          max-idx))
+      0)))
 
 (defn vector-imin [^RealVector x]
   (let [cnt (.dim x)]
-    (loop [i 1 min-idx 0 min-val (.entry x 0)]
-      (if (< i cnt)
-        (let [v (.entry x i)]
-          (if (< v min-val)
-            (recur (inc i) i v)
-            (recur (inc i) min-idx min-val)))
-        min-idx))))
+    (if (< 0 cnt)
+      (loop [i 1 min-idx 0 min-val (.entry x 0)]
+        (if (< i cnt)
+          (let [v (.entry x i)]
+            (if (< v min-val)
+              (recur (inc i) i v)
+              (recur (inc i) min-idx min-val)))
+          min-idx))
+      0)))
 
 ;; =============== Common GE matrix macros and functions =======================
 
