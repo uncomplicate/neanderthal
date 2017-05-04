@@ -19,7 +19,7 @@
                  [uncomplicate/neanderthal-native "0.9.0"]
                  [uncomplicate/clojurecl "0.7.1"]
                  [org.jocl/jocl-blast "0.10.0"]
-                 [uncomplicate/clojurecuda "0.1.1-SNAPSHOT"]
+                 [uncomplicate/clojurecuda "0.2.0-SNAPSHOT"]
                  [org.jcuda/jcublas "0.8.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [vertigo "0.1.4"]]
@@ -48,6 +48,6 @@
                    :dependencies [[midje "1.8.3"]]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
-  :source-paths ["src/clojure" "src/opencl"]
+  :source-paths ["src/clojure" "src/opencl" "src/cuda"]
   :java-source-paths ["src/java"]
   :test-paths ["test"])

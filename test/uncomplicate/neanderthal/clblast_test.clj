@@ -2,9 +2,8 @@
   (:require [midje.sweet :refer :all]
             [uncomplicate.clojurecl.core
              :refer [with-default *command-queue*]]
-            [uncomplicate.fluokitten.core :refer [op]]
             [uncomplicate.neanderthal
-             [opencl :refer [with-engine *opencl-factory* clge]]
+             [opencl :refer [with-engine *opencl-factory*]]
              [block-test :as block-test]
              [real-test :as real-test]
              [opencl-test :as opencl-test]]

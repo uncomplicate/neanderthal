@@ -23,6 +23,8 @@
            [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor StripeNavigator]
            [uncomplicate.neanderthal.internal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
+(def ^:private NA_MSG "Not available in OpenCL. Please use a host instance.")
+
 ;; =============== OpenCL and CLBlast error handling functions =================
 
 (defn ^:private error [^long err-code details]
@@ -540,13 +542,13 @@
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiDamax ^CLBlockVector x))
   (rot [_ _ _ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (rotm [_ _ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (rotmg [_ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (scal [_ alpha x]
     (vector-scal-set queue CLBlast/CLBlastDscal alpha ^CLBlockVector x)
     x)
@@ -594,13 +596,13 @@
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSamax ^CLBlockVector x))
   (rot [_ _ y c s]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (rotm [_ _ y p]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (rotmg [_ _ args]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. NA_MSG)))
   (scal [_ alpha x]
     (vector-scal-set queue CLBlast/CLBlastSscal alpha ^CLBlockVector x)
     x)

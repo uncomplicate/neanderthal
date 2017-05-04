@@ -11,6 +11,8 @@
              [core :refer [wrap]]
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 int32 int64 wrap-byte-seq]]]
+            [uncomplicate.commons.core
+             :refer [Releaseable release let-release clean-buffer wrap-float wrap-double wrap-int wrap-long]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
@@ -21,8 +23,7 @@
              [api :refer :all]
              [common :refer [format-vector format-matrix format-a format-f format-g]]
              [navigation :refer :all]]
-            [uncomplicate.neanderthal.internal.host.fluokitten :refer :all]
-            [uncomplicate.commons.core :refer [Releaseable release let-release clean-buffer]])
+            [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
   (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL]
@@ -67,6 +68,8 @@
       (dotimes [i (.count this b)]
         (.putFloat ^ByteBuffer b (* strd i) v))
       b))
+  (wrapPrim [_ s]
+    (wrap-float s))
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -107,6 +110,8 @@
       (dotimes [i (.count this b)]
         (.putDouble ^ByteBuffer b (* strd i) v))
       b))
+  (wrapPrim [_ s]
+    (wrap-double s))
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -147,6 +152,8 @@
       (dotimes [i (.count this b)]
         (.putInt ^ByteBuffer b (* strd i) v))
       b))
+  (wrapPrim [_ s]
+    (wrap-int s))
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -187,6 +194,8 @@
       (dotimes [i (.count this b)]
         (.putInt ^ByteBuffer b (* strd i) v))
       b))
+  (wrapPrim [_ s]
+    (wrap-long s))
   DataAccessorProvider
   (data-accessor [this]
     this)
