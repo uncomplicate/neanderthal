@@ -13,16 +13,14 @@
 
 ;; =============== Common vector engine  macros and functions ==================
 
-(defmacro vector-rot
-  ([method x y c s]
-   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y) ~c ~s)))
+(defmacro vector-rot [method x y c s]
+  `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y) ~c ~s))
 
 (defmacro vector-rotm [method x y param]
-  `(when (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
-     (if (= 1 (.stride ~param))
-       (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
-        (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
-       (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)})))))
+  `(if (= 1 (.stride ~param))
+     (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
+      (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
+     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
 
 (defmacro vector-rotmg [method d1d2xy param]
   `(if (= 1 (.stride ~param))

@@ -23,8 +23,6 @@
            [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor StripeNavigator]
            [uncomplicate.neanderthal.internal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
-(def ^:private NA_MSG "Not available in OpenCL. Please use a host instance.")
-
 ;; =============== OpenCL and CLBlast error handling functions =================
 
 (defn ^:private error [^long err-code details]
@@ -102,6 +100,7 @@
           (set-args! ge-set-kernel (.wrapPrim da alpha)
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a)))
           (enq-nd! queue ge-set-kernel (work-size-2d (.sd a) (.fd a))))))))
+
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -541,14 +540,16 @@
     (vector-sum-nrm2 ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDasum ^CLBlockVector x))
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiDamax ^CLBlockVector x))
+  (iamin [_ x]
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rot [_ _ _ _ _]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rotg [_ _]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rotm [_ _ _ _]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rotmg [_ _ _]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (scal [_ alpha x]
     (vector-scal-set queue CLBlast/CLBlastDscal alpha ^CLBlockVector x)
     x)
@@ -595,14 +596,16 @@
     (vector-sum-nrm2 ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSasum ^CLBlockVector x))
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSamax ^CLBlockVector x))
+  (iamin [_ x]
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rot [_ _ y c s]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rotg [_ _]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rotm [_ _ y p]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (rotmg [_ _ args]
-    (throw (UnsupportedOperationException. NA_MSG)))
+    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
   (scal [_ alpha x]
     (vector-scal-set queue CLBlast/CLBlastSscal alpha ^CLBlockVector x)
     x)

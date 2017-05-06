@@ -66,7 +66,7 @@
   `pure`, `op`, `id`, from the `uncomplicate.fluokitten.core` namespace.
 
   * [Compute level 1](https://software.intel.com/en-us/node/468390): [[dot]], [[nrm2]], [[asum]],
-  [[iamax]], [[amax]], [[iamin]], [[imax]], [[imin]], [[swp!]], [[copy!]], [[copy!]], [[scal!]],
+  [[iamax]], [[iamin]], [[amax]], [[iamin]], [[imax]], [[imin]], [[swp!]], [[copy!]], [[copy!]], [[scal!]],
   [[scal]], [[rot!]], [[rotg!]], [[rotm!]], [[rotmg!]], [[axpy!]], [[axpy]], [[ax]], [[xpy]],
   [[axpby!]], [[sum]].
 
@@ -699,15 +699,17 @@
   See related info about [cblas_?rotm](https://software.intel.com/en-us/node/520741).
   "
   [^Vector x ^Vector y ^Vector param]
-  (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
-    (api/rotm (api/engine x) x y param)
-    (throw (ex-info "You cannot apply modified plane rotation with incompatible or ill-fitting vectors."
-                    {:x (str x) :y (str y) :param (str param) :errors
-                     (cond-into []
-                                (not (api/compatible? x y)) "incompatible x and y"
-                                (not (api/compatible? x param)) "incompatible x and param"
-                                (not (api/fits? x y)) "ill-fitting x and y"
-                                (not (< 4 (.dim param))) "param is shorter than 4")}))))
+  (if (and (< 0 (.dim x)) (< 0 (.dim y)))
+    (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
+      (api/rotm (api/engine x) x y param)
+      (throw (ex-info "You cannot apply modified plane rotation with incompatible or ill-fitting vectors."
+                      {:x (str x) :y (str y) :param (str param) :errors
+                       (cond-into []
+                                  (not (api/compatible? x y)) "incompatible x and y"
+                                  (not (api/compatible? x param)) "incompatible x and param"
+                                  (not (api/fits? x y)) "ill-fitting x and y"
+                                  (not (< 4 (.dim param))) "param is shorter than 4")})))
+    x))
 
 (defn rotmg!
   "BLAS 1: Generate modified plane rotation.

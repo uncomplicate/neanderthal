@@ -132,6 +132,26 @@
           (offset-cu-ptr da# (.buffer ~y) (.offset ~y)) (.stride ~y))
          nil))))
 
+(defmacro ^:private vector-rot [cublas-handle method x y c s]
+  `(let [da# (data-accessor ~x)]
+     (with-check cublas-error
+       (~method ~cublas-handle (.dim ~x)
+        (offset-cu-ptr da# (.buffer ~x) (.offset ~x)) (.stride ~x)
+        (offset-cu-ptr da# (.buffer ~y) (.offset ~y)) (.stride ~y)
+        (ptr ~c) (ptr ~s))
+       nil)))
+
+(defmacro ^:private vector-rotm [cublas-handle method x y param]
+  `(if (= 1 (.stride ~param))
+     (let [da# (data-accessor ~x)]
+       (with-check cublas-error
+         (~method ~cublas-handle (.dim ~x)
+          (offset-cu-ptr da# (.buffer ~x) (.offset ~x)) (.stride ~x)
+          (offset-cu-ptr da# (.buffer ~y) (.offset ~y)) (.stride ~y)
+          (ptr (.buffer ~param)))
+         nil))
+     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
+
 (deftype DoubleVectorEngine [cublas-handle modl]
   BlockEngine
   (equals-block [_ x y]
@@ -150,15 +170,19 @@
   (asum [_ x]
     (vector-reducer cublas-handle double-array JCublas2/cublasDasum ^CUBlockVector x))
   (iamax [_ x]
-    (vector-reducer cublas-handle double-array JCublas2/cublasIdamax ^CUBlockVector x))
-  (rot [_ _ _ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (max 0 (dec (long (vector-reducer cublas-handle int-array JCublas2/cublasIdamax ^CUBlockVector x)))))
+  (iamin [_ x]
+    (max 0 (dec (long (vector-reducer cublas-handle int-array JCublas2/cublasIdamin ^CUBlockVector x)))))
+  (rot [_ x y c s]
+    (vector-rot cublas-handle JCublas2/cublasDrot ^CUBlockVector x ^CUBlockVector y (double c) (double s))
+    x)
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "TODO.")))
-  (rotm [_ _ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+  (rotm [_ x y param]
+    (vector-rotm cublas-handle JCublas2/cublasDrotm  ^CUBlockVector x ^CUBlockVector y ^CUBlockVector param)
+    x)
   (rotmg [_ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
   (scal [_ alpha x]
     (vector-scal cublas-handle JCublas2/cublasDscal (double alpha) ^CUBlockVector x)
     x)
@@ -200,15 +224,19 @@
   (asum [_ x]
     (vector-reducer cublas-handle float-array JCublas2/cublasSasum ^CUBlockVector x))
   (iamax [_ x]
-    (vector-reducer cublas-handle float-array JCublas2/cublasIsamax ^CUBlockVector x))
-  (rot [_ _ _ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (max 0 (dec (long (vector-reducer cublas-handle int-array JCublas2/cublasIsamax ^CUBlockVector x)))))
+  (iamin [_ x]
+    (max 0 (dec (long (vector-reducer cublas-handle int-array JCublas2/cublasIsamin ^CUBlockVector x)))))
+  (rot [_ x y c s]
+    (vector-rot cublas-handle JCublas2/cublasSrot ^CUBlockVector x ^CUBlockVector y (float c) (float s))
+    x)
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "TODO.")))
-  (rotm [_ _ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+  (rotm [_ x y param]
+    (vector-rotm cublas-handle JCublas2/cublasSrotm  ^CUBlockVector x ^CUBlockVector y ^CUBlockVector param)
+    x)
   (rotmg [_ _ _]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
   (scal [_ alpha x]
     (vector-scal cublas-handle JCublas2/cublasSscal (float alpha) ^CUBlockVector x)
     x)

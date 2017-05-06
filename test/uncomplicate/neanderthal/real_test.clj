@@ -1094,7 +1094,6 @@
   (test-dot factory)
   (test-sum factory)
   (test-iamax factory)
-  (test-iamin factory)
   (test-imax factory)
   (test-imin factory)
   (test-vctr-nrm2 factory)
@@ -1123,6 +1122,7 @@
   (test-tr-mm factory))
 
 (defn test-blas-host [factory]
+  (test-iamin factory)
   (test-rot factory)
   (test-rotg factory)
   (test-rotm factory)

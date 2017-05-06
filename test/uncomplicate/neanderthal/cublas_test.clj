@@ -4,8 +4,7 @@
             [uncomplicate.neanderthal
              [cuda :refer [with-engine *cuda-factory* cuda-handle cuda-float cuda-double]]
              [block-test :as block-tes]
-             [real-test :refer :all]
-             ]))
+             [real-test :refer :all]]))
 
 (defn test-blas1 [factory]
   ;;(test-group factory)
@@ -15,12 +14,17 @@
   (test-dot factory)
   (test-sum factory)
   (test-iamax factory)
+  (test-iamin factory)
   (test-vctr-nrm2 factory)
   (test-vctr-asum factory)
   (test-vctr-swap factory)
   (test-vctr-copy factory)
   (test-vctr-scal factory)
   (test-vctr-axpy factory)
+  (test-rot factory)
+  ;;(test-rotg factory)
+  (test-rotm factory)
+  ;;(test-rotmg factory)
   ;;(test-ge-constructor factory)
   ;;(test-ge factory)
   ;;(test-ge-bulk-entry! factory)
