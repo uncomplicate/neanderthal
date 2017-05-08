@@ -56,3 +56,25 @@
    (vctr *cuda-factory* source))
   ([x & xs]
    (cuv (cons x xs))))
+
+(defn cuge
+  "Creates a GE matrix using CUDA GPU engine provided to the bound [[*cuda-factory*]]
+  (see [[uncomplicate.neanderthal.core/ge]])."
+  ([^long m ^long n source options]
+   (ge *cuda-factory* m n source options))
+  ([^long m ^long n arg]
+   (ge *cuda-factory* m n arg))
+  ([^long m ^long n]
+   (ge *cuda-factory* m n))
+  ([a]
+   (ge *cuda-factory* a)))
+
+(defn cutr
+  "Creates a TR matrix using CUDA GPU engine provided to the bound [[*cuda-factory*]]
+  (see [[uncomplicate.neanderthal.core/tr]])."
+  ([^long n source options]
+   (tr *cuda-factory* n source options))
+  ([^long n arg]
+   (tr *cuda-factory* n arg))
+  ([arg]
+   (tr *cuda-factory* arg)))

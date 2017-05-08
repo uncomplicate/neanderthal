@@ -32,63 +32,63 @@
     (let [err (dec-error err-code)]
       (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
 
-(defn ^:private equals-vector [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
+(defn ^:private vector-equals [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
   (if (< 0 (.dim x))
-    (with-release [equals-vector-kernel (kernel prog "equals_vector")
+    (with-release [vector-equals-kernel (kernel prog "vector_equals")
                    eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
       (let [res (wrap-int 0)]
         (enq-fill! queue eq-flag-buf res)
-        (set-args! equals-vector-kernel eq-flag-buf
+        (set-args! vector-equals-kernel eq-flag-buf
                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-        (enq-nd! queue equals-vector-kernel (work-size-1d (.dim x)))
+        (enq-nd! queue vector-equals-kernel (work-size-1d (.dim x)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.dim y))))
 
-(defn ^:private equals-ge [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
+(defn ^:private ge-equals [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
   (if (< 0 (.count a))
-    (with-release [equals-matrix-kernel (kernel prog (if (= (.order a) (.order b))
-                                                       "equals_ge_no_transp"
-                                                       "equals_ge_transp"))
+    (with-release [ge-equals-kernel (kernel prog (if (= (.order a) (.order b))
+                                                   "ge_equals_no_transp"
+                                                   "ge_equals_transp"))
                    eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
       (let [res (wrap-int 0)]
         (enq-fill! queue eq-flag-buf res)
-        (set-args! equals-matrix-kernel eq-flag-buf
+        (set-args! ge-equals-kernel eq-flag-buf
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
-        (enq-nd! queue equals-matrix-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-nd! queue ge-equals-kernel (work-size-2d (.sd a) (.fd a)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
 
-(defn ^:private equals-tr [ctx queue prog ^CLTRMatrix a ^CLTRMatrix b]
+(defn ^:private tr-equals [ctx queue prog ^CLTRMatrix a ^CLTRMatrix b]
   (if (< 0 (.count a))
     (let [res (wrap-int 0)
           bottom (if (= (.order a) COLUMN_MAJOR) (= (.uplo a) LOWER) (= (.uplo a) UPPER))
           kernel-name (if (= (.order a) (.order b))
-                        (if bottom "equals_tr_bottom" "equals_tr_top")
-                        (if bottom "equals_tr_bottom_transp" "equals_tr_top_transp"))]
-      (with-release [equals-matrix-kernel (kernel prog kernel-name)
+                        (if bottom "tr_equals_bottom" "tr_equals_top")
+                        (if bottom "tr_equals_bottom_transp" "tr_equals_top_transp"))]
+      (with-release [tr-equals-kernel (kernel prog kernel-name)
                      eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
         (enq-fill! queue eq-flag-buf res)
-        (set-args! equals-matrix-kernel eq-flag-buf (wrap-int (.diag a))
+        (set-args! tr-equals-kernel eq-flag-buf (wrap-int (.diag a))
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
-        (enq-nd! queue equals-matrix-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-nd! queue tr-equals-kernel (work-size-2d (.sd a) (.fd a)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
 
-(defn ^:private vctr-set [ctx queue prog alpha ^CLBlockVector x]
+(defn ^:private vector-set [ctx queue prog alpha ^CLBlockVector x]
   (if (< 0 (.dim x))
     (let [da (data-accessor x)]
       (if (= (.dim x) (.count da (.buffer x)))
         (.initialize da (.buffer x) alpha)
-        (with-release [vctr-set-kernel (kernel prog "vctr_set")]
-          (set-args! vctr-set-kernel (.wrapPrim da alpha)
+        (with-release [vector-set-kernel (kernel prog "vector_set")]
+          (set-args! vector-set-kernel (.wrapPrim da alpha)
                      (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
-          (enq-nd! queue vctr-set-kernel (work-size-1d (.dim x))))))))
+          (enq-nd! queue vector-set-kernel (work-size-1d (.dim x))))))))
 
 (defn ^:private ge-set [ctx queue prog alpha ^CLGEMatrix a]
   (if (< 0 (.count a))
@@ -518,12 +518,9 @@
 ;; =============== CLBlast based engines =======================================
 
 (deftype DoubleVectorEngine [ctx queue prog]
-  Releaseable
-  (release [_]
-    true)
   BlockEngine
   (equals-block [_ x y]
-    (equals-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
+    (vector-equals ctx queue prog ^CLBlockVector x ^CLBlockVector y))
   Blas
   (swap [_ x y]
     (vector-method queue CLBlast/CLBlastDswap ^CLBlockVector x ^CLBlockVector y)
@@ -567,7 +564,7 @@
   (imin [this x]
     (vector-ipeak ctx queue CLBlast/CLBlastiDmin ^CLBlockVector x))
   (set-all [_ alpha x]
-    (vctr-set ctx queue prog alpha x)
+    (vector-set ctx queue prog alpha x)
     x)
   (axpby [_ alpha x beta y]
     (vector-axpby queue CLBlast/CLBlastDaxpy CLBlast/CLBlastDscal
@@ -575,12 +572,9 @@
     y))
 
 (deftype FloatVectorEngine [ctx queue prog]
-  Releaseable
-  (release [_]
-    true)
   BlockEngine
   (equals-block [_ x y]
-    (equals-vector ctx queue prog ^CLBlockVector x ^CLBlockVector y))
+    (vector-equals ctx queue prog ^CLBlockVector x ^CLBlockVector y))
   Blas
   (swap [_ x y]
     (vector-method queue CLBlast/CLBlastSswap ^CLBlockVector x ^CLBlockVector y)
@@ -623,7 +617,7 @@
   (imin [this x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSmin ^CLBlockVector x))
   (set-all [_ alpha x]
-    (vctr-set ctx queue prog alpha x)
+    (vector-set ctx queue prog alpha x)
     x)
   (axpby [_ alpha x beta y]
     (vector-axpby queue CLBlast/CLBlastSaxpy CLBlast/CLBlastSscal
@@ -631,21 +625,18 @@
     y))
 
 (deftype DoubleGEEngine [ctx queue prog]
-  Releaseable
-  (release [_]
-    true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-ge ctx queue prog a b))
+    (ge-equals ctx queue prog a b))
   Blas
   (swap [_ a b]
-    (ge-swap queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
+    (ge-swap queue CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b);;TODO my kernel
     a)
   (copy [_ a b]
     (ge-copy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a ^CLGEMatrix b)
     b)
   (scal [_ alpha a]
-    (ge-scal-set queue CLBlast/CLBlastDscal alpha ^CLGEMatrix a)
+    (ge-scal-set queue CLBlast/CLBlastDscal alpha ^CLGEMatrix a);;TODO my kernel
     a)
   (axpy [_ alpha a b]
     (ge-axpy queue CLBlast/CLBlastDaxpy alpha ^CLGEMatrix a ^CLGEMatrix b)
@@ -665,19 +656,16 @@
     c)
   BlasPlus
   (set-all [_ alpha a]
-    (ge-set ctx queue prog alpha a)
+    (ge-set ctx queue prog alpha a);;TODO use (double alpha) instead of wrapPrim
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby queue CLBlast/CLBlastDaxpy CLBlast/CLBlastDscal alpha ^CLGEMatrix a beta ^CLGEMatrix b)
     b))
 
 (deftype FloatGEEngine [ctx queue prog]
-  Releaseable
-  (release [_]
-    true)
   BlockEngine
   (equals-block [_ a b]
-    (equals-ge ctx queue prog a b))
+    (ge-equals ctx queue prog a b))
   Blas
   (swap [_ a b]
     (ge-swap queue CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
@@ -715,7 +703,7 @@
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    (equals-tr ctx queue prog a b))
+    (tr-equals ctx queue prog a b))
   Blas
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)
@@ -757,7 +745,7 @@
 (deftype FloatTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    (equals-tr ctx queue prog a b))
+    (tr-equals ctx queue prog a b))
   Blas
   (swap [_ a b]
     (tr-swap-copy queue ^StripeNavigator (.stripe-nav ^CLTRMatrix a)

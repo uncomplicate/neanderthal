@@ -18,7 +18,7 @@
              [core :refer :all]]
             [uncomplicate.neanderthal
              [math :refer [ceil]]
-             [core :refer [transfer! copy! vctr]]
+             [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
@@ -29,9 +29,8 @@
              [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix]]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD]
            [jcuda.jcublas JCublas2 cublasStatus]
-           [uncomplicate.neanderthal.internal.api DataAccessor Block Vector
-            RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable
-            RealOrderNavigator UploNavigator StripeNavigator]
+           [uncomplicate.neanderthal.internal.api DataAccessor Block Vector RealVector Matrix
+            RealMatrix GEMatrix TRMatrix RealChangeable RealOrderNavigator UploNavigator StripeNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector IntegerBlockVector
             RealGEMatrix RealTRMatrix]))
 
@@ -50,8 +49,8 @@
 ;; ================== Accessors ================================================
 
 (defprotocol CUAccessor
-  ;;(get-stream [this])
-  (offset-cu-ptr [this buf ofst]))
+  ;;TODO (get-stream [this])
+  (offset [this buf ofst]))
 
 (deftype TypedCUAccessor [ctx et ^long w wrap-fn]
   DataAccessor
@@ -69,10 +68,10 @@
   (wrapPrim [_ s]
     (wrap-fn s))
   CUAccessor
-  (offset-cu-ptr [_ buf ofst]
+  (offset [_ buf-ptr ofst]
     (if (= 0 (long ofst))
-      (cu-ptr buf)
-      (with-offset (cu-ptr buf) (* (long ofst) w))))
+      buf-ptr
+      (with-offset buf-ptr (* (long ofst) w))))
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -109,38 +108,52 @@
              {:name err :code err-code :type :cublas-error :details details})))
 
 (defn get-vector! [^Block cu ^Block host]
-  (let [width (.entryWidth (data-accessor cu))]
+  (let [da (data-accessor cu)
+        width (.entryWidth da)]
     (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
       (with-check cublas-error
         (JCublas2/cublasGetVector (.dim ^Vector cu) width
-                                  (cu-ptr (.buffer cu)) (.stride cu) (ptr (.buffer host)) (.stride host))
+                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
+                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
         host)
       (throw (ex-info "You cannot get  incompatible or ill-fitting vector."
                       {:cu (str cu) :host (str host)})))))
 
 (defn set-vector! [^Block host ^Block cu]
-  (let [width (.entryWidth (data-accessor cu))]
+  (let [da (data-accessor cu)
+        width (.entryWidth da)]
     (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
       (with-check cublas-error
-        (JCublas2/cublasSetVector (.dim ^Vector cu) (.entryWidth (data-accessor cu))
-                                  (ptr (.buffer host)) (.stride host) (cu-ptr (.buffer cu)) (.stride cu))
+        (JCublas2/cublasSetVector (.dim ^Vector cu) width
+                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
+                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu))
         cu)
       (throw (ex-info "You cannot set incompatible or ill-fitting vector."
                       {:cu (str cu) :host (str host)})))))
 
-(defn cl-to-obj [cl obj]
-  (let [mapped-host (mmap cl :read)]
-    (try
-      (transfer! mapped-host obj)
-      (finally (unmap cl mapped-host)))))
+(defn get-matrix! [^Block cu ^Block host]
+  (let [da (data-accessor cu)
+        width (.entryWidth da)]
+    (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
+      (with-check cublas-error
+        (JCublas2/cublasGetMatrix (.mrows ^Matrix cu) (.ncols ^Matrix cu) width
+                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
+                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
+        host)
+      (throw (ex-info "You cannot get incompatible or ill-fitting vector."
+                      {:cu (str cu) :host (str host)})))))
 
-#_(defn obj-to-cl [obj cl]
-  (let [mapped-host (mmap cl :write-invalidate-region)]
-    (try
-      (transfer! obj mapped-host)
-      cl
-      (finally (unmap cl mapped-host)))))
-
+(defn set-matrix! [^Block host ^Block cu]
+  (let [da (data-accessor cu)
+        width (.entryWidth da)]
+    (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
+      (with-check cublas-error
+        (JCublas2/cublasSetMatrix (.mrows ^Matrix cu) (.ncols ^Matrix cu) width
+                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
+                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu))
+        cu)
+      (throw (ex-info "You cannot set incompatible or ill-fitting vector."
+                      {:cu (str cu) :host (str host)})))))
 
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))
@@ -298,40 +311,197 @@
   [source destination]
   (set-vector! source destination))
 
-(defmethod transfer! [CUBlockVector IntegerBlockVector]
-  [source destination]
-  (get-vector! source destination))
-
-(defmethod transfer! [IntegerBlockVector CUBlockVector]
-  [source destination]
-  (set-vector! source destination))
-
-(defmethod transfer! [clojure.lang.Sequential CUBlockVector]
-  [source ^CUBlockVector destination]
-  (with-release [h (vctr (native-factory destination) source)]
-    (set-vector! h destination)))
-
-(defmethod transfer! [(Class/forName "[D") CUBlockVector]
-  [source ^CUBlockVector destination]
-  (with-release [h (vctr (native-factory destination) source)]
-    (set-vector! h destination)))
-
-(defmethod transfer! [(Class/forName "[F") CUBlockVector]
-  [source ^CUBlockVector destination]
-  (with-release [h (vctr (native-factory destination) source)]
-    (set-vector! h destination)))
-
-(defmethod transfer! [(Class/forName "[J") CUBlockVector]
-  [source ^CUBlockVector destination]
-  (with-release [h (vctr (native-factory destination) source)]
-    (set-vector! h destination)))
-
-(defmethod transfer! [(Class/forName "[I") CUBlockVector]
-  [source ^CUBlockVector destination]
-  (with-release [h (vctr (native-factory destination) source)]
-    (set-vector! h destination)))
-
 (defmethod transfer! [CUBlockVector Object]
   [source destination]
   (with-release [h (host source)]
-    (transfer! (get-vector! source h) destination)))
+    (transfer! h destination)))
+
+(defmethod transfer! [Object CUBlockVector]
+  [source destination]
+  (with-release [h (vctr (native-factory destination) source)]
+    (set-vector! h destination)))
+
+;; ================== CUDA Matrix ============================================
+
+(deftype CUGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
+                     ^DataAccessor da eng master buf ^long m ^long n
+                     ^long ofst ^long ld ^long sd ^long fd ^long ord]
+  Object
+  (hashCode [a]
+    (-> (hash :CUGEMatrix) (hash-combine m) (hash-combine n)
+        (hash-combine (nrm2 eng (.stripe navigator a 0)))))
+  (equals [a b]
+    (cond
+      (nil? b) false
+      (identical? a b) true
+      (and (instance? CUGEMatrix b) (compatible? a b) (fits? a b))
+      (equals-block eng a b)
+      :default false))
+  (toString [_]
+    (format "#CUGEMatrix[%s, mxn:%dx%d, order%s, offset:%d, ld:%d]"
+            (.entryType da) m n (dec-property ord) ofst ld))
+  Releaseable
+  (release [_]
+    (when (compare-and-set! master true false)
+      (release @buf))
+    (reset! buf nil)
+    true)
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  (native-factory [_]
+    (native-factory fact))
+  DataAccessorProvider
+  (data-accessor [_]
+    da)
+  Container
+  (raw [_]
+    (cu-ge-matrix fact m n ord))
+  (raw [_ fact]
+    (create-ge fact m n ord false))
+  (zero [a]
+    (zero a fact))
+  (zero [_ fact]
+    (create-ge fact m n ord true))
+  (host [a]
+    (let-release [res (raw a (native-factory fact))]
+      (get-matrix! a res)))
+  (native [a]
+    (host a))
+  DenseContainer
+  (view-vctr [_]
+    (if (= ld sd)
+      (cu-block-vector fact false @buf (* m n) ofst 1)
+      (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:ld ld :sd sd}))))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-vctr a) stride-mult))
+  (view-ge [_]
+    (cu-ge-matrix fact false @buf m n ofst ld ord))
+  (view-ge [_ stride-mult]
+    (let [shrinked (ceil (/ fd (long stride-mult)))]
+      (cu-ge-matrix fact false @buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
+                    ofst (* ld (long stride-mult)) ord)))
+  (view-tr [_ uplo diag]
+    (cu-tr-matrix fact false @buf (min m n) ofst ld ord uplo diag))
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [_ b]
+    (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
+  GEMatrix
+  (buffer [_]
+    @buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    ld)
+  (order [_]
+    ord)
+  (count [_]
+    (* m n))
+  (sd [_]
+    sd)
+  (fd [_]
+    fd)
+  IFn$LLD
+  (invokePrim [a i j]
+    (.entry a i j))
+  IFn
+  (invoke [a i j]
+    (.entry a i j))
+  (invoke [a]
+    sd)
+  IFn$L
+  (invokePrim [a]
+    sd)
+  RealChangeable
+  (isAllowed [a i j]
+    true)
+  (set [a val]
+    (set-all eng val a)
+    a)
+  (set [_ _ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (alter [a _ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  RealMatrix
+  (mrows [_]
+    m)
+  (ncols [_]
+    n)
+  (entry [_ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (boxedEntry [a i j]
+    (.entry a i j))
+  (row [a i]
+    (cu-block-vector fact false @buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
+  (col [a j]
+    (cu-block-vector fact false @buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+  (dia [a]
+    (cu-block-vector fact false @buf (min m n) ofst (inc ld)))
+  (submatrix [a i j k l]
+    (cu-ge-matrix fact false @buf k l (.index navigator ofst ld i j) ld ord))
+  (transpose [a]
+    (cu-ge-matrix fact false @buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+  Monoid
+  (id [a]
+    (cu-ge-matrix fact 0 0)))
+
+(defn cu-ge-matrix
+  ([fact master buf m n ofst ld ord]
+   (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
+     (->CUGEMatrix (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
+                   (ge-engine fact) (atom master) (atom buf) m n ofst (max (long ld) (.sd navigator m n))
+                   (.sd navigator m n) (.fd navigator m n) ord)))
+  ([fact ^long m ^long n ord]
+   (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
+     (cu-ge-matrix fact true buf m n 0 0 ord)))
+  ([fact ^long m ^long n]
+   (cu-ge-matrix fact m n DEFAULT_ORDER)))
+
+(extend CUGEMatrix
+  Applicative
+  {:pure matrix-pure}
+  Magma
+  {:op (constantly matrix-op)})
+
+(defmethod print-method CUGEMatrix [^CUGEMatrix a ^java.io.Writer w]
+  (if (and (< 0 (.count a)) (.buffer a))
+    (let-release [host-a (host a)]
+      (.write w (str a "\n"))
+      (let [max-value (double (amax (engine host-a) host-a))
+            formatter (if (< max-value 10000.0) format-f format-g)]
+        (format-matrix w formatter host-a max-value))
+      (.write w "\n"))
+    (.write w (str a))))
+
+(defmethod transfer! [CUGEMatrix CUGEMatrix]
+  [source destination]
+  (copy! source destination))
+
+(defmethod transfer! [CUGEMatrix RealGEMatrix]
+  [source destination]
+  (get-matrix! source destination))
+
+(defmethod transfer! [RealGEMatrix CUGEMatrix]
+  [source destination]
+  (set-matrix! source destination))
+
+(defmethod transfer! [CUGEMatrix Object]
+  [source destination]
+  (with-release [h (host source)]
+    (transfer! h destination)))
+
+(defmethod transfer! [Object CUGEMatrix]
+  [source destination]
+  (with-release [h (raw destination (native-factory destination))]
+    (set-matrix! (transfer! source h) destination)))
