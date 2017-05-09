@@ -188,8 +188,8 @@
   Releaseable
   (release [_]
     (when (compare-and-set! master true false)
-      (release @buf))
-    (reset! buf nil)
+      (release @buf)
+      (reset! buf nil))
     true)
   Container
   (raw [_]
@@ -354,8 +354,8 @@
   Releaseable
   (release [_]
     (when (compare-and-set! master true false)
-      (release @buf))
-    (reset! buf nil)
+      (release @buf)
+      (reset! buf nil))
     true)
   EngineProvider
   (engine [_]

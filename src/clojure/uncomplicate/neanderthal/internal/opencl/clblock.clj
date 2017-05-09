@@ -145,8 +145,8 @@
   Releaseable
   (release [_]
     (when (compare-and-set! master true false)
-      (release @buf))
-    (reset! buf nil)
+      (release @buf)
+      (reset! buf nil))
     true)
   Container
   (raw [_]
@@ -164,11 +164,11 @@
     (host x))
   DenseContainer
   (view-vctr [_]
-    (cl-block-vector fact false @buf n ofst strd))
+    (cl-block-vector fact false buf n ofst strd))
   (view-vctr [_ stride-mult]
-    (cl-block-vector fact false @buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
+    (cl-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
-    (cl-ge-matrix fact false @buf n 1 ofst n COLUMN_MAJOR))
+    (cl-ge-matrix fact false buf n 1 ofst n COLUMN_MAJOR))
   (view-ge [x stride-mult]
     (view-ge (view-ge x) stride-mult))
   (view-tr [x uplo diag]
@@ -231,7 +231,7 @@
   (boxedEntry [x i]
     (.entry x i))
   (subvector [_ k l]
-    (cl-block-vector fact (atom false) @buf l (+ ofst (* k strd)) strd))
+    (cl-block-vector fact (atom false) buf l (+ ofst (* k strd)) strd))
   Monoid
   (id [x]
     (cl-block-vector fact 0))
@@ -252,14 +252,14 @@
     x))
 
 (defn cl-block-vector
-  ([fact ^Boolean master ^CLBuffer buf n ofst strd]
+  ([fact ^Boolean master buf-atom n ofst strd]
    (let [da (data-accessor fact)]
-     (if (and (<= 0 n (.count da buf)))
-       (->CLBlockVector fact da (vector-engine fact) (atom master) (atom buf) n ofst strd)
-       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da buf)})))))
+     (if (and (<= 0 n (.count da @buf-atom)))
+       (->CLBlockVector fact da (vector-engine fact) (atom master) buf-atom n ofst strd)
+       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da @buf-atom)})))))
   ([fact n]
    (let-release [buf (.createDataSource (data-accessor fact) n)]
-     (cl-block-vector fact true buf n 0 1))))
+     (cl-block-vector fact true (atom buf) n 0 1))))
 
 (extend CLBlockVector
   Applicative
@@ -323,8 +323,8 @@
   Releaseable
   (release [_]
     (when (compare-and-set! master true false)
-      (release @buf))
-    (reset! buf nil)
+      (release @buf)
+      (reset! buf nil))
     true)
   EngineProvider
   (engine [_]
@@ -354,18 +354,18 @@
   DenseContainer
   (view-vctr [_]
     (if (= ld sd)
-      (cl-block-vector fact false @buf (* m n) ofst 1)
+      (cl-block-vector fact false buf (* m n) ofst 1)
       (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:ld ld :sd sd}))))
   (view-vctr [a stride-mult]
     (view-vctr (view-vctr a) stride-mult))
   (view-ge [_]
-    (cl-ge-matrix fact false @buf m n ofst ld ord))
+    (cl-ge-matrix fact false buf m n ofst ld ord))
   (view-ge [_ stride-mult]
     (let [shrinked (ceil (/ fd (long stride-mult)))]
-      (cl-ge-matrix fact false @buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
+      (cl-ge-matrix fact false buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
                       ofst (* ld (long stride-mult)) ord)))
   (view-tr [_ uplo diag]
-    (cl-tr-matrix fact false @buf (min m n) ofst ld ord uplo diag))
+    (cl-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -423,15 +423,15 @@
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
-    (cl-block-vector fact false @buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
+    (cl-block-vector fact false buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
   (col [a j]
-    (cl-block-vector fact false @buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+    (cl-block-vector fact false buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
   (dia [a]
-    (cl-block-vector fact false @buf (min m n) ofst (inc ld)))
+    (cl-block-vector fact false buf (min m n) ofst (inc ld)))
   (submatrix [a i j k l]
-    (cl-ge-matrix fact false @buf k l (.index navigator ofst ld i j) ld ord))
+    (cl-ge-matrix fact false buf k l (.index navigator ofst ld i j) ld ord))
   (transpose [a]
-    (cl-ge-matrix fact false @buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+    (cl-ge-matrix fact false buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
   Monoid
   (id [a]
     (cl-ge-matrix fact 0 0))
@@ -449,14 +449,14 @@
     this))
 
 (defn cl-ge-matrix
-  ([fact master ^CLBuffer buf m n ofst ld ord]
+  ([fact master buf-atom m n ofst ld ord]
    (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
      (->CLGEMatrix (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
-                   (ge-engine fact) (atom master) (atom buf) m n ofst (max (long ld) (.sd navigator m n))
+                   (ge-engine fact) (atom master) buf-atom m n ofst (max (long ld) (.sd navigator m n))
                    (.sd navigator m n) (.fd navigator m n) ord)))
   ([fact ^long m ^long n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
-     (cl-ge-matrix fact true buf m n 0 0 ord)))
+     (cl-ge-matrix fact true (atom buf) m n 0 0 ord)))
   ([fact ^long m ^long n]
    (cl-ge-matrix fact m n DEFAULT_ORDER)))
 
@@ -520,8 +520,8 @@
   Releaseable
   (release [_]
     (when (compare-and-set! master true false)
-      (release @buf))
-    (reset! buf nil)
+      (release @buf)
+      (reset! buf nil))
     true)
   EngineProvider
   (engine [_]
@@ -554,11 +554,11 @@
   (view-vctr [a stride-mult]
     (view-vctr (view-ge a) stride-mult))
   (view-ge [_]
-    (cl-ge-matrix fact false @buf n n ofst ld ord))
+    (cl-ge-matrix fact false buf n n ofst ld ord))
   (view-ge [a stride-mult]
     (view-ge (view-ge a) stride-mult))
   (view-tr [_ uplo diag]
-    (cl-tr-matrix fact false @buf n ofst ld ord uplo diag))
+    (cl-tr-matrix fact false buf n ofst ld ord uplo diag))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -623,21 +623,21 @@
     (.entry this i j))
   (row [a i]
     (let [start (.rowStart uplo-nav n i)]
-      (cl-block-vector fact false @buf (- (.rowEnd uplo-nav n i) start)
+      (cl-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
                        (.index navigator ofst ld i start) (if (= ROW_MAJOR ord) 1 ld))))
   (col [a j]
     (let [start (.colStart uplo-nav n j)]
-      (cl-block-vector fact false @buf (- (.colEnd uplo-nav n j) start)
+      (cl-block-vector fact false buf (- (.colEnd uplo-nav n j) start)
                        (.index navigator ofst ld start j) (if (= COLUMN_MAJOR ord) 1 ld))))
   (dia [a]
-    (cl-block-vector fact false @buf n ofst (inc ld)))
+    (cl-block-vector fact false buf n ofst (inc ld)))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
-      (cl-tr-matrix fact false @buf k (.index navigator ofst ld i j) ld ord fuplo fdiag)
+      (cl-tr-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo fdiag)
       (throw (ex-info "You cannot use regions outside the triangle in TR submatrix"
                       {:a (str a) :i i :j j :k k :l l}))))
   (transpose [a]
-    (cl-tr-matrix fact false @buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
+    (cl-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
                   (if (= LOWER fuplo) UPPER LOWER) fdiag))
   Mappable
   (mmap [a flags]
@@ -659,7 +659,7 @@
   {:op (constantly matrix-op)})
 
 (defn cl-tr-matrix
-  ([fact master ^CLBuffer buf n ofst ld ord uplo diag]
+  ([fact master buf-atom n ofst ld ord uplo diag]
    (let [unit (= DIAG_UNIT diag)
          lower (= LOWER uplo)
          column (= COLUMN_MAJOR ord)
@@ -672,10 +672,10 @@
                       (if unit unit-bottom-navigator non-unit-bottom-navigator)
                       (if unit unit-top-navigator non-unit-top-navigator))]
      (->CLTRMatrix order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
-                   (atom master) (atom buf) n ofst (max (long ld) (long n)) ord uplo diag)))
+                   (atom master) buf-atom n ofst (max (long ld) (long n)) ord uplo diag)))
   ([fact n ord uplo diag]
    (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
-     (cl-tr-matrix fact true buf n 0 n ord uplo diag)))
+     (cl-tr-matrix fact true (atom buf) n 0 n ord uplo diag)))
   ([fact n]
    (cl-tr-matrix fact n DEFAULT_ORDER DEFAULT_UPLO DEFAULT_DIAG)))
 
