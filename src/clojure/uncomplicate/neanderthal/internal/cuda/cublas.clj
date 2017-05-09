@@ -18,7 +18,9 @@
              [toolbox :refer [launch-reduce! count-blocks]]
              [nvrtc :refer [program compile!]]
              [utils :refer [error]]]
-            [uncomplicate.neanderthal.native :refer [native-float native-double]]
+            [uncomplicate.neanderthal
+             [native :refer [native-float native-double]]
+             [block :as block]]
             [uncomplicate.neanderthal.internal.api :refer :all]
            [uncomplicate.neanderthal.internal.cuda.cublock :refer :all])
   (:import jcuda.runtime.JCuda
@@ -244,16 +246,14 @@
 
 (defmacro ^:private ge-rk [cublas-handle method alpha x y a]
   `(when (< 0 (.count ~a))
-     (if (= COLUMN_MAJOR (.order ~a))
-       (let [da# (data-accessor ~a)]
-         (with-check cublas-error
+     (let [da# (data-accessor ~a)]
+       (with-check cublas-error
+         (let [[v# w#] (if (= COLUMN_MAJOR (.order ~a)) [~x ~y] [~y ~x])]
            (~method ~cublas-handle (.sd ~a) (.fd ~a)
-            (ptr ~alpha) (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-            (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
-            (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld ~a))
-           nil))
-       (throw (ex-info "cuBLAS engine doesn't support rank-1 on non-column oriented GE matrices."
-                       {:a (str ~a)})))))
+            (ptr ~alpha) (offset da# (cu-ptr (block/buffer v#)) (block/offset v#)) (block/stride v#)
+            (offset da# (cu-ptr (block/buffer w#)) (block/offset w#)) (block/stride w#)
+            (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld ~a)))
+         nil))))
 
 (defmacro ^:private ge-mm
   ([alpha a b left]
@@ -263,18 +263,19 @@
   ([cublas-handle method alpha a b beta c]
    `(when (< 0 (.count ~a))
       (let [da# (data-accessor ~a)]
-        (if (= COLUMN_MAJOR (.order ~a))
-          (with-check cublas-error
+        (with-check cublas-error
+          (let [[x# y# trans-x# trans-y#]
+                (if (= COLUMN_MAJOR (.order ~c))
+                  [~a ~b (= (.order ~c) (.order ~a)) (= (.order ~c) (.order ~b))]
+                  [~b ~a (= (.order ~c) (.order ~b)) (= (.order ~c) (.order ~a))])]
             (~method ~cublas-handle
-             (if (= (.order ~a) (.order ~c)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
-             (if (= (.order ~b) (.order ~c)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
-             (.mrows ~a) (.ncols ~b) (.ncols ~a)
-             (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
-             (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.stride ~b)
-             (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.stride ~c))
-            nil)
-          (throw (ex-info "cuBLAS engine doesn't support multiplication of non-column oriented GE matrices."
-                          {:a (str ~a)})))))))
+             (if trans-x# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
+             (if trans-y# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
+             (.sd ~c) (.fd ~c) (.ncols ~a)
+             (ptr ~alpha) (offset da# (cu-ptr (block/buffer x#)) (block/offset x#)) (block/stride x#)
+             (offset da# (cu-ptr (block/buffer y#)) (block/offset y#)) (block/stride y#)
+             (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.stride ~c)))
+          nil)))))
 
 (deftype DoubleVectorEngine [cublas-handle modl]
   BlockEngine

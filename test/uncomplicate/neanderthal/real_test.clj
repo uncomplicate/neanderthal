@@ -482,8 +482,10 @@
 
 (defn test-rk [factory]
   (facts "BLAS 2 rk!"
-         (with-release [a (ge factory 2 3)]
-           (identical? (rk! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) a) a))
+         (with-release [a (ge factory 2 3)
+                        b (ge factory 2 3 {:order :row})]
+           (identical? (rk! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) a) a)
+           (identical? (rk! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) b) b))
          => true
 
          (rk! (vctr factory 3 2 1 4) (vctr factory 1 2 3)

@@ -19,8 +19,14 @@
 (defn stride ^long [^Block x]
   (.stride x))
 
-(defn order ^long [^ContiguousBlock x]
+(defn order [^ContiguousBlock x]
   (dec-property (.order x)))
+
+(defn sd ^long [^ContiguousBlock b]
+  (.sd b))
+
+(defn fd ^long [^ContiguousBlock b]
+  (.fd b))
 
 (defn block? [x]
   (instance? Block x))

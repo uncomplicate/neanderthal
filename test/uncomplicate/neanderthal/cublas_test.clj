@@ -3,7 +3,7 @@
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.neanderthal
              [cuda :refer [with-engine *cuda-factory* cuda-handle cuda-float cuda-double]]
-             [block-test :as block-tes]
+             [block-test :as block-test]
              [real-test :refer :all]]))
 
 (defn test-blas1 [factory]
@@ -34,7 +34,7 @@
   (test-ge-axpy factory)
   (test-ge-mv factory)
   (test-rk factory)
-  ;;(test-ge-mm factory)
+  (test-ge-mm factory)
   ;;(test-tr factory)
   ;;(test-tr-constructor factory)
   ;;(test-tr-copy factory)
