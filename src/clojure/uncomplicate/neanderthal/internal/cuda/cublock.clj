@@ -27,10 +27,11 @@
             [uncomplicate.neanderthal.internal.host
              [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
              [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix]]])
-  (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD]
+  (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD ExceptionInfo]
            [jcuda.jcublas JCublas2 cublasStatus]
-           [uncomplicate.neanderthal.internal.api DataAccessor Block Vector RealVector Matrix
-            RealMatrix GEMatrix TRMatrix RealChangeable RealOrderNavigator UploNavigator StripeNavigator]
+           [uncomplicate.neanderthal.internal.api DataAccessor Block ContiguousBlock Vector
+            RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable RealOrderNavigator
+            UploNavigator StripeNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector IntegerBlockVector
             RealGEMatrix RealTRMatrix]))
 
@@ -108,52 +109,62 @@
              {:name err :code err-code :type :cublas-error :details details})))
 
 (defn get-vector! [^Block cu ^Block host]
-  (let [da (data-accessor cu)
-        width (.entryWidth da)]
-    (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
-      (with-check cublas-error
-        (JCublas2/cublasGetVector (.dim ^Vector cu) width
-                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
-                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
-        host)
-      (throw (ex-info "You cannot get  incompatible or ill-fitting vector."
-                      {:cu (str cu) :host (str host)})))))
+  (if (< 0 (.count host))
+    (let [da (data-accessor cu)
+          width (.entryWidth da)]
+      (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
+        (with-check cublas-error
+          (JCublas2/cublasGetVector (.dim ^Vector cu) width
+                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
+                                    (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
+          host)
+        (throw (ex-info "You cannot get  incompatible or ill-fitting vector."
+                        {:cu (str cu) :host (str host)}))))
+    host))
 
 (defn set-vector! [^Block host ^Block cu]
-  (let [da (data-accessor cu)
-        width (.entryWidth da)]
-    (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
-      (with-check cublas-error
-        (JCublas2/cublasSetVector (.dim ^Vector cu) width
-                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
-                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu))
-        cu)
-      (throw (ex-info "You cannot set incompatible or ill-fitting vector."
-                      {:cu (str cu) :host (str host)})))))
+  (if (< 0 (.count cu))
+    (let [da (data-accessor cu)
+          width (.entryWidth da)]
+      (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
+        (with-check cublas-error
+          (JCublas2/cublasSetVector (.dim ^Vector cu) width
+                                    (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
+                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu))
+          cu)
+        (throw (ex-info "You cannot set incompatible or ill-fitting vector."
+                        {:cu (str cu) :host (str host)}))))
+    cu))
 
-(defn get-matrix! [^Block cu ^Block host]
-  (let [da (data-accessor cu)
-        width (.entryWidth da)]
-    (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
-      (with-check cublas-error
-        (JCublas2/cublasGetMatrix (.mrows ^Matrix cu) (.ncols ^Matrix cu) width
-                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
-                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
-        host)
-      (throw (ex-info "You cannot get incompatible or ill-fitting vector."
-                      {:cu (str cu) :host (str host)})))))
+(defn get-matrix! [^ContiguousBlock cu ^ContiguousBlock host]
+  (if (< 0 (.count host))
+    (let [da (data-accessor cu)
+          width (.entryWidth da)]
+      (if (and (fits? cu host) (= width (.entryWidth (data-accessor host)))
+               (= (.order cu) (.order host)))
+        (with-check cublas-error
+          (JCublas2/cublasGetMatrix (.sd cu) (.fd cu) width
+                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
+                                    (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
+          host)
+        (throw (ex-info "You cannot get an incompatible or ill-fitting matrix."
+                        {:cu (str cu) :host (str host)}))))
+    host))
 
-(defn set-matrix! [^Block host ^Block cu]
-  (let [da (data-accessor cu)
-        width (.entryWidth da)]
-    (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
-      (with-check cublas-error
-        (JCublas2/cublasSetMatrix (.mrows ^Matrix cu) (.ncols ^Matrix cu) width
-                                  (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
-                                  (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu))
-        cu)
-      (throw (ex-info "You cannot set incompatible or ill-fitting vector."
-                      {:cu (str cu) :host (str host)})))))
+(defn set-matrix! [^ContiguousBlock host ^ContiguousBlock cu]
+  (if (< 0 (.count cu))
+    (let [da (data-accessor cu)
+          width (.entryWidth da)]
+      (if (and (fits? cu host) (= width (.entryWidth (data-accessor host)))
+               (= (.order cu) (.order host)))
+        (with-check cublas-error
+          (JCublas2/cublasSetMatrix (.sd cu) (.fd cu) width
+                                    (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
+                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu))
+          cu)
+        (throw (ex-info "You cannot set an incompatible or ill-fitting matrix."
+                        {:cu (str cu) :host (str host)}))))
+    cu))
 
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))
@@ -196,11 +207,11 @@
     (host x))
   DenseContainer
   (view-vctr [_]
-    (cu-block-vector fact false @buf n ofst strd))
+    (cu-block-vector fact false buf n ofst strd))
   (view-vctr [_ stride-mult]
-    (cu-block-vector fact false @buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
+    (cu-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
-    (cu-ge-matrix fact false @buf n 1 ofst n COLUMN_MAJOR))
+    (cu-ge-matrix fact false buf n 1 ofst n COLUMN_MAJOR))
   (view-ge [x stride-mult]
     (view-ge (view-ge x) stride-mult))
   (view-tr [x uplo diag]
@@ -263,7 +274,7 @@
   (boxedEntry [x i]
     (.entry x i))
   (subvector [_ k l]
-    (cu-block-vector fact (atom false) @buf l (+ ofst (* k strd)) strd))
+    (cu-block-vector fact (atom false) buf l (+ ofst (* k strd)) strd))
   Monoid
   (id [x]
     (cu-block-vector fact 0))
@@ -272,14 +283,14 @@
     (sum eng x)))
 
 (defn cu-block-vector
-  ([fact ^Boolean master buf n ofst strd]
+  ([fact ^Boolean master buf-atom n ofst strd]
    (let [da (data-accessor fact)]
-     (if (and (<= 0 n (.count da buf)))
-       (->CUBlockVector fact da (vector-engine fact) (atom master) (atom buf) n ofst strd)
-       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da buf)})))))
+     (if (and (<= 0 n (.count da @buf-atom)))
+       (->CUBlockVector fact da (vector-engine fact) (atom master) buf-atom n ofst strd)
+       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da @buf-atom)})))))
   ([fact n]
    (let-release [buf (.createDataSource (data-accessor fact) n)]
-     (cu-block-vector fact true buf n 0 1))))
+     (cu-block-vector fact true (atom buf) n 0 1))))
 
 (extend CUBlockVector
   Applicative
@@ -374,18 +385,18 @@
   DenseContainer
   (view-vctr [_]
     (if (= ld sd)
-      (cu-block-vector fact false @buf (* m n) ofst 1)
+      (cu-block-vector fact false buf (* m n) ofst 1)
       (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:ld ld :sd sd}))))
   (view-vctr [a stride-mult]
     (view-vctr (view-vctr a) stride-mult))
   (view-ge [_]
-    (cu-ge-matrix fact false @buf m n ofst ld ord))
+    (cu-ge-matrix fact false buf m n ofst ld ord))
   (view-ge [_ stride-mult]
     (let [shrinked (ceil (/ fd (long stride-mult)))]
-      (cu-ge-matrix fact false @buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
+      (cu-ge-matrix fact false buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
                     ofst (* ld (long stride-mult)) ord)))
   (view-tr [_ uplo diag]
-    (cu-tr-matrix fact false @buf (min m n) ofst ld ord uplo diag))
+    (cu-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -443,28 +454,28 @@
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
-    (cu-block-vector fact false @buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
+    (cu-block-vector fact false buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
   (col [a j]
-    (cu-block-vector fact false @buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+    (cu-block-vector fact false buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
   (dia [a]
-    (cu-block-vector fact false @buf (min m n) ofst (inc ld)))
+    (cu-block-vector fact false buf (min m n) ofst (inc ld)))
   (submatrix [a i j k l]
-    (cu-ge-matrix fact false @buf k l (.index navigator ofst ld i j) ld ord))
+    (cu-ge-matrix fact false buf k l (.index navigator ofst ld i j) ld ord))
   (transpose [a]
-    (cu-ge-matrix fact false @buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+    (cu-ge-matrix fact false buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
   Monoid
   (id [a]
     (cu-ge-matrix fact 0 0)))
 
 (defn cu-ge-matrix
-  ([fact master buf m n ofst ld ord]
+  ([fact master buf-atom m n ofst ld ord]
    (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
      (->CUGEMatrix (if (= COLUMN_MAJOR ord) col-navigator row-navigator) fact (data-accessor fact)
-                   (ge-engine fact) (atom master) (atom buf) m n ofst (max (long ld) (.sd navigator m n))
+                   (ge-engine fact) (atom master) buf-atom m n ofst (max (long ld) (.sd navigator m n))
                    (.sd navigator m n) (.fd navigator m n) ord)))
   ([fact ^long m ^long n ord]
    (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
-     (cu-ge-matrix fact true buf m n 0 0 ord)))
+     (cu-ge-matrix fact true (atom buf) m n 0 0 ord)))
   ([fact ^long m ^long n]
    (cu-ge-matrix fact m n DEFAULT_ORDER)))
 
@@ -490,11 +501,17 @@
 
 (defmethod transfer! [CUGEMatrix RealGEMatrix]
   [source destination]
-  (get-matrix! source destination))
+  (if (= (.order ^CUGEMatrix source) (.order ^RealGEMatrix destination))
+    (get-matrix! source destination)
+    (with-release [h (host source)]
+      (copy! (get-matrix! source h) destination))))
 
 (defmethod transfer! [RealGEMatrix CUGEMatrix]
   [source destination]
-  (set-matrix! source destination))
+  (if (= (.order ^RealGEMatrix source) (.order ^CUGEMatrix destination))
+    (set-matrix! source destination)
+    (with-release [h (raw destination (factory host))]
+      (set-matrix! (copy! source h) destination))))
 
 (defmethod transfer! [CUGEMatrix Object]
   [source destination]
@@ -504,4 +521,4 @@
 (defmethod transfer! [Object CUGEMatrix]
   [source destination]
   (with-release [h (raw destination (native-factory destination))]
-    (set-matrix! (transfer! source h) destination)))
+    (transfer! (transfer! source h) destination)))

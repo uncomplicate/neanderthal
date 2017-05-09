@@ -190,7 +190,7 @@
        (if (= (.order ~a) (.order ~b))
          (if (= sd-a# (.sd ~b) ld-a# ld-b#)
            (with-check cublas-error
-             (~method ~cublas-handle (.count ~a) buff-a# 1 (cu-ptr buff-b#) 1)
+             (~method ~cublas-handle (.count ~a) buff-a# 1 buff-b# 1)
              nil)
            (dotimes [j# (.fd ~a)]
              (with-check cublas-error
@@ -212,7 +212,7 @@
            ld-a# (.ld ~a)]
        (with-check cublas-error
          (~method ~cublas-handle cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_N
-          (.mrows ~a) (.ncols ~a) (ptr ~alpha) a# ld-a# (ptr 0.0) a# ld-a# a# ld-a#)
+          (.sd ~a) (.fd ~a) (ptr ~alpha) a# ld-a# (ptr 0.0) a# ld-a# a# ld-a#)
          nil))))
 
 (defmacro ^:private ge-axpby [cublas-handle method alpha a beta b]
@@ -222,7 +222,7 @@
        (with-check cublas-error
          (~method ~cublas-handle
           (if (= (.order ~a) (.order ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
-          cublasOperation/CUBLAS_OP_N (.mrows ~b) (.ncols ~b)
+          cublasOperation/CUBLAS_OP_N (.sd ~b) (.fd ~b)
           (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld ~a)
           (ptr ~beta) b# (.ld ~b) b# (.ld ~b))
          nil))))
@@ -234,7 +234,7 @@
         (with-check cublas-error
           (~method ~cublas-handle
            (if (= COLUMN_MAJOR (.order ~a)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
-           (.mrows ~a) (.ncols ~a)
+           (.sd ~a) (.fd ~a)
            (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
            (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
            (ptr ~beta) (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y))
@@ -247,12 +247,13 @@
      (if (= COLUMN_MAJOR (.order ~a))
        (let [da# (data-accessor ~a)]
          (with-check cublas-error
-           (~method ~cublas-handle (.mrows ~a) (.ncols ~a)
+           (~method ~cublas-handle (.sd ~a) (.fd ~a)
             (ptr ~alpha) (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
             (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
             (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld ~a))
            nil))
-       (throw (ex-info "cuBLAS engine doesn't support rank-1 on non-column oriented GE matrices.")))))
+       (throw (ex-info "cuBLAS engine doesn't support rank-1 on non-column oriented GE matrices."
+                       {:a (str ~a)})))))
 
 (defmacro ^:private ge-mm
   ([alpha a b left]
@@ -272,7 +273,8 @@
              (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.stride ~b)
              (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.stride ~c))
             nil)
-          (throw (ex-info "cuBLAS engine doesn't support multiplication of non-column oriented GE matrices.")))))))
+          (throw (ex-info "cuBLAS engine doesn't support multiplication of non-column oriented GE matrices."
+                          {:a (str ~a)})))))))
 
 (deftype DoubleVectorEngine [cublas-handle modl]
   BlockEngine
@@ -401,7 +403,7 @@
     b)
   (mv [_ alpha a x beta y]
     (ge-mv cublas-handle JCublas2/cublasDgemv
-           (double alpha) ^CUGEMatrix a ^CUBlockVector x (beta beta) ^CUBlockVector y)
+           (double alpha) ^CUGEMatrix a ^CUBlockVector x (double beta) ^CUBlockVector y)
     y)
   (mv [this a x]
     (ge-mv a))
@@ -441,7 +443,7 @@
     b)
   (mv [_ alpha a x beta y]
     (ge-mv cublas-handle JCublas2/cublasSgemv
-           (float alpha) ^CUGEMatrix a ^CUBlockVector x (beta beta) ^CUBlockVector y)
+           (float alpha) ^CUGEMatrix a ^CUBlockVector x (float beta) ^CUBlockVector y)
     y)
   (mv [this a x]
     (ge-mv a))
