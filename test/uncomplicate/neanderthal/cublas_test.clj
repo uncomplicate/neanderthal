@@ -25,7 +25,7 @@
   ;;(test-rotg factory)
   (test-rotm factory)
   ;;(test-rotmg factory)
-  ;;(test-ge-constructor factory)
+  (test-ge-constructor factory)
   (test-ge factory)
   (test-ge-bulk-entry! factory)
   (test-ge-swap factory)
@@ -35,22 +35,21 @@
   (test-ge-mv factory)
   (test-rk factory)
   (test-ge-mm factory)
-  ;;(test-tr factory)
-  ;;(test-tr-constructor factory)
-  ;;(test-tr-copy factory)
-  ;;(test-tr-swap factory)
-  ;;(test-tr-scal factory)
-  ;;(test-tr-axpy factory)
-  ;;(test-tr-mv factory)
-  ;;(test-tr-mm factory)
-  )
+  (test-tr factory)
+  (test-tr-constructor factory)
+  (test-tr-copy factory)
+  (test-tr-swap factory)
+  (test-tr-scal factory)
+  (test-tr-axpy factory)
+  (test-tr-mv factory)
+  (test-tr-mm factory))
 
 (with-release [handle (cuda-handle)]
 
   (with-engine cuda-float handle
-;;    (block-test/test-all *cuda-factory*)
+    (block-test/test-all *cuda-factory*)
     (test-blas1 *cuda-factory*))
 
   (with-engine cuda-double handle
-;;    (block-test/test-all *cuda-factory*)
+    (block-test/test-all *cuda-factory*)
     (test-blas1 *cuda-factory*)))

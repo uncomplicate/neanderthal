@@ -679,10 +679,6 @@
   ([fact n]
    (cl-tr-matrix fact n DEFAULT_ORDER DEFAULT_UPLO DEFAULT_DIAG)))
 
-(defmethod print-method CLTRMatrix
-  [x ^java.io.Writer w]
-  (.write w (str x)))
-
 (defmethod print-method CLTRMatrix [^CLTRMatrix a ^java.io.Writer w]
   (if (and (< 0 (.count a)) (.buffer a))
     (let [mapped-a (mmap a :read)]

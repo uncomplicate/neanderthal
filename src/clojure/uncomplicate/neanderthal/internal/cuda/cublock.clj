@@ -522,3 +522,210 @@
   [source destination]
   (with-release [h (raw destination (native-factory destination))]
     (transfer! (transfer! source h) destination)))
+
+;; ============ CUDA Triangular Matrix =======================================
+
+(deftype CUTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
+                     ^uncomplicate.neanderthal.internal.api.Factory fact ^DataAccessor da
+                     eng master buf ^long n ^long ofst ^long ld
+                     ^long ord ^long fuplo ^long fdiag]
+  Object
+  (hashCode [this]
+    (-> (hash :CUTRMatrix) (hash-combine n) (hash-combine (nrm2 eng (.stripe navigator this 0)))))
+  (equals [a b]
+    (cond
+      (nil? b) false
+      (identical? a b) true
+      (and (instance? CUTRMatrix b) (compatible? da b) (fits? a b))
+      (equals-block eng a b)
+      :default false))
+  (toString [a]
+    (format "#CUTRMatrix[%s, mxn:%dx%d, order%s, uplo%s, diag%s, offset:%d, ld:%d]"
+            (.entryType da) n n (dec-property ord) (dec-property fuplo) (dec-property fdiag) ofst ld ))
+  Releaseable
+  (release [_]
+    (when (compare-and-set! master true false)
+      (release @buf)
+      (reset! buf nil))
+    true)
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  (native-factory [_]
+    (native-factory fact))
+  DataAccessorProvider
+  (data-accessor [_]
+    da)
+  Container
+  (raw [_]
+    (cu-tr-matrix fact n ord fuplo fdiag))
+  (raw [_ fact]
+    (create-tr fact n ord fuplo fdiag false))
+  (zero [_]
+    (zero _ fact))
+  (zero [_ fact]
+    (create-tr fact n ord fuplo fdiag true))
+  (host [a]
+    (let-release [res (raw a (native-factory fact))]
+      (get-matrix! a res)))
+  (native [a]
+    (host a))
+  DenseContainer
+  (view-vctr [a]
+    (view-vctr (view-ge a)))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-ge a) stride-mult))
+  (view-ge [_]
+    (cu-ge-matrix fact false buf n n ofst ld ord))
+  (view-ge [a stride-mult]
+    (view-ge (view-ge a) stride-mult))
+  (view-tr [_ uplo diag]
+    (cu-tr-matrix fact false buf n ofst ld ord uplo diag))
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [_ b]
+    (and (= n (.mrows ^TRMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
+  Monoid
+  (id [a]
+    (cu-tr-matrix fact 0))
+  TRMatrix
+  (buffer [_]
+    @buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    ld)
+  (count [_]
+    (* n n))
+  (uplo [_]
+    fuplo)
+  (diag [_]
+    fdiag)
+  (order [_]
+    ord)
+  (sd [_]
+    n)
+  (fd [_]
+    n)
+  IFn$LLD
+  (invokePrim [a i j]
+    (.entry a i j))
+  IFn
+  (invoke [a i j]
+    (.entry a i j))
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
+  RealChangeable
+  (isAllowed [a i j]
+    (= 2 (.defaultEntry uplo-nav i j)))
+  (set [a val]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (set [a i j val]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (alter [a _ _ _]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  RealMatrix
+  (mrows [_]
+    n)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (throw (UnsupportedOperationException. INEFFICIENT_OPERATION_MSG)))
+  (boxedEntry [this i j]
+    (.entry this i j))
+  (row [a i]
+    (let [start (.rowStart uplo-nav n i)]
+      (cu-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
+                       (.index navigator ofst ld i start) (if (= ROW_MAJOR ord) 1 ld))))
+  (col [a j]
+    (let [start (.colStart uplo-nav n j)]
+      (cu-block-vector fact false buf (- (.colEnd uplo-nav n j) start)
+                       (.index navigator ofst ld start j) (if (= COLUMN_MAJOR ord) 1 ld))))
+  (dia [a]
+    (cu-block-vector fact false buf n ofst (inc ld)))
+  (submatrix [a i j k l]
+    (if (and (= i j) (= k l))
+      (cu-tr-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo fdiag)
+      (throw (ex-info "You cannot use regions outside the triangle in TR submatrix"
+                      {:a (str a) :i i :j j :k k :l l}))))
+  (transpose [a]
+    (cu-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
+                  (if (= LOWER fuplo) UPPER LOWER) fdiag)))
+
+(extend CUTRMatrix
+  Applicative
+  {:pure matrix-pure}
+  Magma
+  {:op (constantly matrix-op)})
+
+(defn cu-tr-matrix
+  ([fact master buf-atom n ofst ld ord uplo diag]
+   (let [unit (= DIAG_UNIT diag)
+         lower (= LOWER uplo)
+         column (= COLUMN_MAJOR ord)
+         bottom (if lower column (not column))
+         order-nav (if column col-navigator row-navigator)
+         uplo-nav (if lower
+                    (if unit unit-lower-nav non-unit-lower-nav)
+                    (if unit unit-upper-nav non-unit-upper-nav))
+         stripe-nav (if bottom
+                      (if unit unit-bottom-navigator non-unit-bottom-navigator)
+                      (if unit unit-top-navigator non-unit-top-navigator))]
+     (->CUTRMatrix order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
+                   (atom master) buf-atom n ofst (max (long ld) (long n)) ord uplo diag)))
+  ([fact n ord uplo diag]
+   (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
+     (cu-tr-matrix fact true (atom buf) n 0 n ord uplo diag)))
+  ([fact n]
+   (cu-tr-matrix fact n DEFAULT_ORDER DEFAULT_UPLO DEFAULT_DIAG)))
+
+(defmethod print-method CUTRMatrix [^CUTRMatrix a ^java.io.Writer w]
+  (if (and (< 0 (.count a)) (.buffer a))
+    (let-release [host-a (host a)]
+      (.write w (str a "\n"))
+      (let [max-value (double (amax (engine host-a) host-a))
+            formatter (if (< max-value 10000.0) format-f format-g)]
+        (format-matrix w formatter host-a max-value))
+      (.write w "\n"))
+    (.write w (str a))))
+
+(defmethod transfer! [CUTRMatrix CUTRMatrix]
+  [source destination]
+  (copy! source destination))
+
+(defmethod transfer! [CUTRMatrix RealTRMatrix]
+  [source destination]
+  (if (= (.order ^CUTRMatrix source) (.order ^RealTRMatrix destination))
+    (get-matrix! source destination)
+    (with-release [h (host source)]
+      (copy! (get-matrix! source h) destination))))
+
+(defmethod transfer! [RealTRMatrix CUTRMatrix]
+  [source destination]
+  (if (= (.order ^RealTRMatrix source) (.order ^CUTRMatrix destination))
+    (set-matrix! source destination)
+    (with-release [h (raw destination (factory host))]
+      (set-matrix! (copy! source h) destination))))
+
+(defmethod transfer! [CUTRMatrix Object]
+  [source destination]
+  (with-release [h (host source)]
+    (transfer! h destination)))
+
+(defmethod transfer! [Object CUTRMatrix]
+  [source destination]
+  (with-release [h (raw destination (native-factory destination))]
+    (transfer! (transfer! source h) destination)))

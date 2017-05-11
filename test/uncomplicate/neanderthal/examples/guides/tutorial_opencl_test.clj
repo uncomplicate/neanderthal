@@ -342,24 +342,24 @@ multiplication and see how that goes.
 $code"
 
 #_(with-default
-  (with-default-engine
-    (let [cnt 8192]
-      (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
-                     host-b (copy host-a)
-                     host-c (copy host-a)
-                     gpu-a (transfer! host-a (clge cnt cnt))
-                     gpu-b (copy gpu-a)
-                     gpu-c (copy gpu-a)]
-        (facts
-         "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
+    (with-default-engine
+      (let [cnt 8192]
+        (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
+                       host-b (copy host-a)
+                       host-c (copy host-a)
+                       gpu-a (transfer! host-a (clge cnt cnt))
+                       gpu-b (copy gpu-a)
+                       gpu-c (copy gpu-a)]
+          (facts
+           "Matrix-matrix multiplication. Matrices of 8192x8192 (268 MB) are usually
 demanding enough."
 
-         (println "CPU:")
-         (time (mm! 3 host-a host-b 2 host-c)) => host-c
-         (mm! 3 gpu-a gpu-b 2 gpu-c) => gpu-c
-         (finish!)
-         (println "GPU:")
-         (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))))))))
+           (println "CPU:")
+           (time (mm! 3 host-a host-b 2 host-c)) => host-c
+           (mm! 3 gpu-a gpu-b 2 gpu-c) => gpu-c
+           (finish!)
+           (println "GPU:")
+           (time (do (mm! 3 gpu-a gpu-b 2 gpu-c) (finish!))))))))
 
 "$text
 
