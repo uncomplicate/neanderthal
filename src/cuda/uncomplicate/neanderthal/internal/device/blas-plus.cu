@@ -4,9 +4,10 @@ extern "C" {
 #define REAL float
 #endif
 
-    __global__ void vector_equals (const int n, int* eq_flag,
+    __global__ void vector_equals (const int n,
                                    const REAL* x, const int offset_x, const int stride_x,
-                                   const REAL* y, const int offset_y, const int stride_y) {
+                                   const REAL* y, const int offset_y, const int stride_y,
+                                   int* eq_flag) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -64,9 +65,10 @@ extern "C" {
         }
     }
 
-    __global__ void ge_equals_no_transp (const int sd, const int fd, int* eq_flag,
+    __global__ void ge_equals_no_transp (const int sd, const int fd,
                                          const REAL* a, const int offset_a, const int ld_a,
-                                         const REAL* b, const int offset_b, const int ld_b) {
+                                         const REAL* b, const int offset_b, const int ld_b,
+                                         int* eq_flag) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < fd);
@@ -79,9 +81,10 @@ extern "C" {
         }
     }
 
-    __global__ void ge_equals_transp (const int sd, const int fd, int* eq_flag,
+    __global__ void ge_equals_transp (const int sd, const int fd,
                                       const REAL* a, const int offset_a, const int ld_a,
-                                      const REAL* b, const int offset_b, const int ld_b) {
+                                      const REAL* b, const int offset_b, const int ld_b,
+                                      int* eq_flag) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < fd);
@@ -94,7 +97,8 @@ extern "C" {
         }
     }
 
-    __global__ void ge_swap_no_transp (const int sd, const int fd, REAL* a, const int offset_a, const int ld_a,
+    __global__ void ge_swap_no_transp (const int sd, const int fd,
+                                       REAL* a, const int offset_a, const int ld_a,
                                        REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
@@ -102,13 +106,14 @@ extern "C" {
         if (valid) {
             const int ia = offset_a + gid_0 + gid_1 * ld_a;
             const int ib = offset_b + gid_0 + gid_1 * ld_b;
-            REAL c = b[ib];
+            const REAL c = b[ib];
             b[ib] = a[ia];
             a[ia] = c;
         }
     }
 
-    __global__ void ge_swap_transp (const int sd, const int fd, REAL* a, const int offset_a, const int ld_a,
+    __global__ void ge_swap_transp (const int sd, const int fd,
+                                    REAL* a, const int offset_a, const int ld_a,
                                     REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
@@ -116,7 +121,7 @@ extern "C" {
         if (valid) {
             const int ia = offset_a + gid_0 + gid_1 * ld_a;
             const int ib = offset_b + gid_1 + gid_0 * ld_b;
-            REAL c = b[ib];
+            const REAL c = b[ib];
             b[ib] = a[ia];
             a[ia] = c;
         }
@@ -132,9 +137,10 @@ extern "C" {
         }
     }
 
-    __global__ void tr_equals_no_transp (const int sd, const int unit, const int bottom, int* eq_flag,
+    __global__ void tr_equals_no_transp (const int sd, const int unit, const int bottom,
                                          const REAL* a, const int offset_a, const int ld_a,
-                                         const REAL* b, const int offset_b, const int ld_b) {
+                                         const REAL* b, const int offset_b, const int ld_b,
+                                         int* eq_flag) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -149,9 +155,10 @@ extern "C" {
         }
     }
 
-    __global__ void tr_equals_transp (const int sd, const int unit, const int bottom, int* eq_flag,
+    __global__ void tr_equals_transp (const int sd, const int unit, const int bottom,
                                       const REAL* a, const int offset_a, const int ld_a,
-                                      const REAL* b, const int offset_b, const int ld_b) {
+                                      const REAL* b, const int offset_b, const int ld_b,
+                                      int* eq_flag) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -207,7 +214,7 @@ extern "C" {
         if (check) {
             const int ia = offset_a + gid_0 + gid_1 * ld_a;
             const int ib = offset_b + gid_0 + gid_1 * ld_b;
-            REAL c = b[ib];
+            const REAL c = b[ib];
             b[ib] = a[ia];
             a[ia] = c;
         }
@@ -224,7 +231,7 @@ extern "C" {
         if (check) {
             const int ia = offset_a + gid_0 + gid_1 * ld_a;
             const int ib = offset_b + gid_1 + gid_0 * ld_b;
-            REAL c = b[ib];
+            const REAL c = b[ib];
             b[ib] = a[ia];
             a[ia] = c;
         }
@@ -268,8 +275,7 @@ extern "C" {
         const bool check = valid &&
             ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
         if (check) {
-            const int ia = offset_a + gid_0 + gid_1 * ld_a;
-            a[ia] *= alpha;
+            a[offset_a + gid_0 + gid_1 * ld_a] *= alpha;
         }
     }
 
@@ -281,8 +287,7 @@ extern "C" {
         const bool check = valid &&
             ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
         if (check) {
-            const int ia = offset_a + gid_0 + gid_1 * ld_a;
-            a[ia] = alpha;
+            a[offset_a + gid_0 + gid_1 * ld_a] = alpha;
         }
     }
     
