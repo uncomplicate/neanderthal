@@ -16,7 +16,7 @@
              [core :refer [*context* *command-queue*]]
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr]]
-            [uncomplicate.neanderthal.internal.opencl.clblast :refer [clblast-double clblast-float]])
+            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-double clblast-float]])
   (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
 
 (def ^{:dynamic true

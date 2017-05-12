@@ -7,7 +7,7 @@
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]]
-            [uncomplicate.neanderthal.internal.opencl.clblast :refer [clblast-float clblast-double]]))
+            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-float clblast-double]]))
 
 (defn test-blas-clblast [factory]
   (real-test/test-imin factory)

@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.internal.cuda.cublock
+    uncomplicate.neanderthal.internal.device.cublock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Mappable mmap unmap
                            wrap-float wrap-double wrap-int wrap-long]]

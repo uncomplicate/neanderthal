@@ -13,7 +13,7 @@
   A convenience over agnostic [[uncomplicate.neanderthal.core]] functions."
   (:require [uncomplicate.commons.core :refer [release with-release]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr]]
-            [uncomplicate.neanderthal.internal.cuda.cublas
+            [uncomplicate.neanderthal.internal.device.cublas
              :refer [cublas-double cublas-float cublas-handle]])
   (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
 

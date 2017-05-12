@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.internal.opencl.clblock
+    uncomplicate.neanderthal.internal.device.clblock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Mappable mmap unmap
                            wrap-float wrap-double wrap-int wrap-long]]]

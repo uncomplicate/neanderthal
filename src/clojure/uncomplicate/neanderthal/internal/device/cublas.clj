@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.internal.cuda.cublas
+    uncomplicate.neanderthal.internal.device.cublas
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release wrap-int wrap-double wrap-float]]
@@ -22,13 +22,13 @@
              [native :refer [native-float native-double]]
              [block :as block]]
             [uncomplicate.neanderthal.internal.api :refer :all]
-            [uncomplicate.neanderthal.internal.cuda.cublock :refer :all])
+            [uncomplicate.neanderthal.internal.device.cublock :refer :all])
   (:import jcuda.runtime.JCuda
            [jcuda.jcublas JCublas2 cublasHandle cublasOperation cublasSideMode cublasDiagType
             cublasFillMode]
            [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix Block DataAccessor
             StripeNavigator RealBufferAccessor ContiguousBlock]
-           [uncomplicate.neanderthal.internal.cuda.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
+           [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
 
 ;; =============== Common vector macros and functions =======================
 
@@ -262,7 +262,7 @@
              (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.stride ~c)))
           nil)))))
 
-;; =============== Common GE matrix macros and functions =======================
+;; =============== Common TR matrix macros and functions =======================
 
 (defn tr-bottom
   ([^TRMatrix a] ;;TODO generic for opencl and cuda

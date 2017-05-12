@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.internal.opencl.clblast
+    uncomplicate.neanderthal.internal.device.clblast
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release wrap-int wrap-double wrap-float]]
@@ -18,10 +18,10 @@
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
             [uncomplicate.neanderthal.native :refer [native-float native-double]]
             [uncomplicate.neanderthal.internal.api :refer :all]
-            [uncomplicate.neanderthal.internal.opencl.clblock :refer :all])
+            [uncomplicate.neanderthal.internal.device.clblock :refer :all])
   (:import [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
            [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor StripeNavigator]
-           [uncomplicate.neanderthal.internal.opencl.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
+           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
 ;; =============== OpenCL and CLBlast error handling functions =================
 
@@ -201,7 +201,7 @@
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
 
-(defn ^:private ge-set [ctx queue prog alpha ^CLGEMatrix a]
+(defn ^:private ge-set [queue prog alpha ^CLGEMatrix a]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
       (if (and (= (.ld a) (.sd a)) (= 0 (.offset a))
@@ -655,7 +655,7 @@
     c)
   BlasPlus
   (set-all [_ alpha a]
-    (ge-set ctx queue prog alpha a);;TODO use (double alpha) instead of wrapPrim
+    (ge-set queue prog alpha a);;TODO use (double alpha) instead of wrapPrim
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby queue CLBlast/CLBlastDaxpy CLBlast/CLBlastDscal alpha ^CLGEMatrix a beta ^CLGEMatrix b)
@@ -693,7 +693,7 @@
     c)
   BlasPlus
   (set-all [_ alpha a]
-    (ge-set ctx queue prog alpha a)
+    (ge-set queue prog alpha a)
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby queue CLBlast/CLBlastSaxpy CLBlast/CLBlastSscal alpha ^CLGEMatrix a beta ^CLGEMatrix b)
