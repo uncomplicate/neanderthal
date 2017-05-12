@@ -649,7 +649,7 @@
     tr-eng))
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/cuda/kernels/blas-plus.cu")))]
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu")))]
 
   (JCublas2/setExceptionsEnabled false)
 

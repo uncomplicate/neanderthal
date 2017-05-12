@@ -826,7 +826,7 @@
   (tr-engine [_]
     tr-eng))
 
-(let [src [(slurp (io/resource "uncomplicate/neanderthal/opencl/kernels/blas-plus.cl"))]]
+(let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cl"))]]
 
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
