@@ -6,15 +6,23 @@
              [opencl :refer [with-engine *opencl-factory*]]
              [block-test :as block-test]
              [real-test :as real-test]
-             [opencl-test :as opencl-test]]
+             [device-test :as device-test]]
             [uncomplicate.neanderthal.internal.opencl.clblast :refer [clblast-float clblast-double]]))
 
+(defn test-blas-clblast [factory]
+  (real-test/test-imin factory)
+  (real-test/test-imax factory))
+
 (with-default
+
   (with-engine clblast-float *command-queue*
     (block-test/test-all *opencl-factory*)
     (real-test/test-blas *opencl-factory*)
-    (opencl-test/test-all *opencl-factory*))
+    (test-blas-clblast *opencl-factory*)
+    (device-test/test-all *opencl-factory*))
+
   (with-engine clblast-double *command-queue*
     (block-test/test-all *opencl-factory*)
     (real-test/test-blas *opencl-factory*)
-    (opencl-test/test-all *opencl-factory*)))
+    (test-blas-clblast *opencl-factory*)
+    (device-test/test-all *opencl-factory*)))

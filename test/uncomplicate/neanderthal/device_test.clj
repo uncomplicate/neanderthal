@@ -6,18 +6,17 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.opencl-test
+(ns uncomplicate.neanderthal.device-test
   (:require [midje.sweet :refer :all]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [opencl :refer :all]
              [math :refer [pow]]
              [block :refer [buffer]]]
             [uncomplicate.neanderthal.internal.api :refer [native-factory data-accessor]]))
 
-(defn test-clblock [ocl-factory]
-  (let [host-factory (native-factory ocl-factory)
+(defn test-clblock [factory]
+  (let [host-factory (native-factory factory)
         m 33
         n (long (+ 1000 (pow 2 12)))
         cnt n
@@ -28,15 +27,15 @@
                    host-b (entry! (ge host-factory m n) y-magic)
                    host-x (entry! (vctr host-factory cnt) x-magic)
                    host-y (entry! (vctr host-factory cnt) y-magic)
-                   cl-a (ge ocl-factory m n host-a)
-                   cl-b (ge ocl-factory m n)
-                   cl-x (vctr ocl-factory cnt)
-                   cl-y (vctr ocl-factory cnt)
-                   cl-z (vctr ocl-factory cnt)
+                   cl-a (ge factory m n host-a)
+                   cl-b (ge factory m n)
+                   cl-x (vctr factory cnt)
+                   cl-y (vctr factory cnt)
+                   cl-z (vctr factory cnt)
                    row-a (row cl-a 3)
                    subvector-x (subvector cl-x 3 (/ cnt 2))]
       (facts
-       "OpenCL Vector: equality and hashCode."
+       "Device Vector: equality and hashCode."
        (= cl-x nil) => false
        cl-x => cl-x
        (transfer! host-x cl-x) => (transfer! host-x cl-y)
@@ -46,7 +45,7 @@
        (row cl-a 4) =not=> (col cl-a 4))
 
       (facts
-       "OpenCL Matrix: equality and hashCode."
+       "Device Matrix: equality and hashCode."
        cl-a => cl-a
        (transfer! host-a cl-b) => cl-a
        (transfer! host-b cl-b) =not=> cl-a
@@ -62,17 +61,17 @@
                                (copy (col cl-a 6)))) 0)
        => magic))))
 
-(defn test-blas1 [ocl-factory]
+(defn test-blas1 [factory]
   (facts
    "BLAS methods"
-   (let [host-factory (native-factory ocl-factory)
+   (let [host-factory (native-factory factory)
          cnt (long (+ 1000 (pow 2 12)))
          x-magic 2
          y-magic 5]
      (with-release [host-x (entry! (vctr host-factory cnt) x-magic)
                     host-y (entry! (vctr host-factory cnt) y-magic)
-                    cl-x (vctr ocl-factory cnt)
-                    cl-y (vctr ocl-factory cnt)]
+                    cl-x (vctr factory cnt)
+                    cl-y (vctr factory cnt)]
 
        (dim cl-x) => cnt
 
@@ -94,14 +93,14 @@
 
        (transfer (axpy! 2 cl-x cl-y)) => (axpy! 2 host-x host-y)))
 
-   (let [host-factory (native-factory ocl-factory)
+   (let [host-factory (native-factory factory)
          cnt (long (+ 1000 (pow 2 12)))
          x-magic 2
          y-magic 5]
      (with-release [host-x (entry! (vctr host-factory cnt) 3.5)
                     host-y (entry! (vctr host-factory cnt) 1.1)
-                    cl-x (vctr ocl-factory cnt)
-                    cl-y (vctr ocl-factory cnt)]
+                    cl-x (vctr factory cnt)
+                    cl-y (vctr factory cnt)]
 
        (transfer! host-x cl-x) => cl-x
        (transfer! host-y cl-y) => cl-y
@@ -118,10 +117,10 @@
 
        (transfer! cl-y host-y) => host-x))))
 
-(defn test-blas2 [ocl-factory]
+(defn test-blas2 [factory]
   (facts
    "BLAS 2"
-   (let [host-factory (native-factory ocl-factory)
+   (let [host-factory (native-factory factory)
          m-cnt 2050
          n-cnt 337
          a-magic 3
@@ -130,19 +129,19 @@
      (with-release [host-a (entry! (ge host-factory m-cnt n-cnt) a-magic)
                     host-x (entry! (vctr host-factory n-cnt) x-magic)
                     host-y (entry! (vctr host-factory m-cnt) y-magic)
-                    cl-a-master (ge ocl-factory (* 3 m-cnt) (* 3 n-cnt))
+                    cl-a-master (ge factory (* 3 m-cnt) (* 3 n-cnt))
                     cl-a (transfer! host-a (submatrix cl-a-master m-cnt n-cnt m-cnt n-cnt))
-                    cl-x-master (ge ocl-factory m-cnt n-cnt)
-                    cl-y-master (ge ocl-factory n-cnt m-cnt)
+                    cl-x-master (ge factory m-cnt n-cnt)
+                    cl-y-master (ge factory n-cnt m-cnt)
                     cl-x (transfer! host-x (row cl-x-master 1))
                     cl-y (transfer! host-y (row cl-y-master 1))]
 
        (native (mv! 10 cl-a cl-x 100 cl-y)) => (mv! 10 host-a host-x 100 host-y)))))
 
-(defn test-blas3 [ocl-factory]
+(defn test-blas3 [factory]
   (facts
    "BLAS 3"
-   (let [host-factory (native-factory ocl-factory)
+   (let [host-factory (native-factory factory)
          m-cnt 123
          k-cnt 456
          n-cnt 789]
@@ -154,9 +153,9 @@
                     host-c (ge host-factory m-cnt n-cnt
                                (map (partial * 2)
                                     (repeatedly (* m-cnt n-cnt) rand)))
-                    cl-a-master (ge ocl-factory (* 2 m-cnt) (* 2 k-cnt))
-                    cl-b-master (ge ocl-factory (* 2 k-cnt) (* 2 n-cnt))
-                    cl-c-master (ge ocl-factory (* 2 m-cnt) (* 2 n-cnt))
+                    cl-a-master (ge factory (* 2 m-cnt) (* 2 k-cnt))
+                    cl-b-master (ge factory (* 2 k-cnt) (* 2 n-cnt))
+                    cl-c-master (ge factory (* 2 m-cnt) (* 2 n-cnt))
                     cl-a (transfer! host-a (submatrix cl-a-master m-cnt k-cnt m-cnt k-cnt))
                     cl-b (transfer! host-b (submatrix cl-b-master k-cnt n-cnt k-cnt n-cnt))
                     cl-c (transfer! host-c (submatrix cl-c-master m-cnt n-cnt m-cnt n-cnt))]
@@ -168,9 +167,9 @@
            (copy! (col diff j) (subvector diff-vec (* j m-cnt) m-cnt)))
          (< (double (nrm2 diff-vec)) (* 2 m-cnt n-cnt k-cnt 1e-8))) => true))))
 
-(defn test-all [ocl-factory]
+(defn test-all [factory]
   (do
-    (test-clblock ocl-factory)
-    (test-blas1 ocl-factory)
-    (test-blas2 ocl-factory)
-    (test-blas3 ocl-factory)))
+    (test-clblock factory)
+    (test-blas1 factory)
+    (test-blas2 factory)
+    (test-blas3 factory)))
