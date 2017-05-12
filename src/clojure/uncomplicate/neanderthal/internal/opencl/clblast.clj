@@ -32,6 +32,8 @@
     (let [err (dec-error err-code)]
       (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
 
+;; =============== Common vector macros and functions =======================
+
 (defn ^:private vector-equals [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
   (if (< 0 (.dim x))
     (with-release [vector-equals-kernel (kernel prog "vector_equals")
@@ -46,40 +48,6 @@
         (= 0 (aget res 0))))
     (= 0 (.dim y))))
 
-(defn ^:private ge-equals [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
-  (if (< 0 (.count a))
-    (with-release [ge-equals-kernel (kernel prog (if (= (.order a) (.order b))
-                                                   "ge_equals_no_transp"
-                                                   "ge_equals_transp"))
-                   eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
-      (let [res (wrap-int 0)]
-        (enq-fill! queue eq-flag-buf res)
-        (set-args! ge-equals-kernel eq-flag-buf
-                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
-                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
-        (enq-nd! queue ge-equals-kernel (work-size-2d (.sd a) (.fd a)))
-        (enq-read! queue eq-flag-buf res)
-        (= 0 (aget res 0))))
-    (= 0 (.mrows b) (.ncols b))))
-
-(defn ^:private tr-equals [ctx queue prog ^CLTRMatrix a ^CLTRMatrix b]
-  (if (< 0 (.count a))
-    (let [res (wrap-int 0)
-          bottom (if (= (.order a) COLUMN_MAJOR) (= (.uplo a) LOWER) (= (.uplo a) UPPER))
-          kernel-name (if (= (.order a) (.order b))
-                        (if bottom "tr_equals_bottom" "tr_equals_top")
-                        (if bottom "tr_equals_bottom_transp" "tr_equals_top_transp"))]
-      (with-release [tr-equals-kernel (kernel prog kernel-name)
-                     eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
-        (enq-fill! queue eq-flag-buf res)
-        (set-args! tr-equals-kernel eq-flag-buf (wrap-int (.diag a))
-                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
-                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
-        (enq-nd! queue tr-equals-kernel (work-size-2d (.sd a) (.fd a)))
-        (enq-read! queue eq-flag-buf res)
-        (= 0 (aget res 0))))
-    (= 0 (.mrows b) (.ncols b))))
-
 (defn ^:private vector-set [ctx queue prog alpha ^CLBlockVector x]
   (if (< 0 (.dim x))
     (let [da (data-accessor x)]
@@ -89,20 +57,6 @@
           (set-args! vector-set-kernel (.wrapPrim da alpha)
                      (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
           (enq-nd! queue vector-set-kernel (work-size-1d (.dim x))))))))
-
-(defn ^:private ge-set [ctx queue prog alpha ^CLGEMatrix a]
-  (if (< 0 (.count a))
-    (let [da (data-accessor a)]
-      (if (and (= (.ld a) (.sd a)) (= 0 (.offset a))
-               (= (* (.mrows a) (.ncols a)) (.count da (.buffer a))))
-        (.initialize da (.buffer a) alpha)
-        (with-release [ge-set-kernel (kernel prog "ge_set")]
-          (set-args! ge-set-kernel (.wrapPrim da alpha)
-                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a)))
-          (enq-nd! queue ge-set-kernel (work-size-2d (.sd a) (.fd a))))))))
-
-
-;; =============== Common vector engine  macros and functions ==================
 
 ;; NOTE: rotXX methods are not supported by CLBlast yet
 ;; These signatures might change a bit once they are supported
@@ -230,6 +184,33 @@
        nil)))
 
 ;; =============== Common GE matrix macros and functions =======================
+
+(defn ^:private ge-equals [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
+  (if (< 0 (.count a))
+    (with-release [ge-equals-kernel (kernel prog (if (= (.order a) (.order b))
+                                                   "ge_equals_no_transp"
+                                                   "ge_equals_transp"))
+                   eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
+      (let [res (wrap-int 0)]
+        (enq-fill! queue eq-flag-buf res)
+        (set-args! ge-equals-kernel eq-flag-buf
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
+        (enq-nd! queue ge-equals-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-read! queue eq-flag-buf res)
+        (= 0 (aget res 0))))
+    (= 0 (.mrows b) (.ncols b))))
+
+(defn ^:private ge-set [ctx queue prog alpha ^CLGEMatrix a]
+  (if (< 0 (.count a))
+    (let [da (data-accessor a)]
+      (if (and (= (.ld a) (.sd a)) (= 0 (.offset a))
+               (= (* (.mrows a) (.ncols a)) (.count da (.buffer a))))
+        (.initialize da (.buffer a) alpha)
+        (with-release [ge-set-kernel (kernel prog "ge_set")]
+          (set-args! ge-set-kernel (.wrapPrim da alpha)
+                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a)))
+          (enq-nd! queue ge-set-kernel (work-size-2d (.sd a) (.fd a))))))))
 
 (defmacro ^:private ge-swap [queue method a b]
   `(when (< 0 (.count ~a))
@@ -394,6 +375,24 @@
         nil))))
 
 ;; =============== Common TR matrix macros and functions ==========================
+
+(defn ^:private tr-equals [ctx queue prog ^CLTRMatrix a ^CLTRMatrix b]
+  (if (< 0 (.count a))
+    (let [res (wrap-int 0)
+          bottom (if (= (.order a) COLUMN_MAJOR) (= (.uplo a) LOWER) (= (.uplo a) UPPER))
+          kernel-name (if (= (.order a) (.order b))
+                        (if bottom "tr_equals_bottom" "tr_equals_top")
+                        (if bottom "tr_equals_bottom_transp" "tr_equals_top_transp"))]
+      (with-release [tr-equals-kernel (kernel prog kernel-name)
+                     eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
+        (enq-fill! queue eq-flag-buf res)
+        (set-args! tr-equals-kernel eq-flag-buf (wrap-int (.diag a))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld a))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.ld b)))
+        (enq-nd! queue tr-equals-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-read! queue eq-flag-buf res)
+        (= 0 (aget res 0))))
+    (= 0 (.mrows b) (.ncols b))))
 
 (defmacro ^:private tr-swap-copy [queue stripe-nav method a b]
   `(when (< 0 (.count ~a))

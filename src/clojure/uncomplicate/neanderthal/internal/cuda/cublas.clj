@@ -27,7 +27,7 @@
            [jcuda.jcublas JCublas2 cublasHandle cublasOperation cublasSideMode cublasDiagType
             cublasFillMode]
            [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix Block DataAccessor
-            StripeNavigator RealBufferAccessor]
+            StripeNavigator RealBufferAccessor ContiguousBlock]
            [uncomplicate.neanderthal.internal.cuda.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
 
 ;; =============== Common vector macros and functions =======================
@@ -160,11 +160,12 @@
 
 ;; =============== Common GE matrix macros and functions =======================
 
+(defn order-kernel [name ^ContiguousBlock a ^ContiguousBlock b];;TODO general cuda/opencl remove contiguoust from require
+  (format "%s_%s" name (if (= (.order a) (.order b)) "no_transp" "transp")))
+
 (defn ^:private ge-equals [modl ^CUGEMatrix a ^CUGEMatrix b]
   (if (< 0 (.count a))
-    (with-release [equals-kernel (function modl (if (= (.order a) (.order b))
-                                                  "ge_equals_no_transp"
-                                                  "ge_equals_transp"))
+    (with-release [equals-kernel (function modl (order-kernel "ge_equals" a b))
                    eq-flag-buf (mem-alloc Integer/BYTES)]
       (memset! eq-flag-buf 0)
       (launch! equals-kernel (grid-2d (.sd a) (.fd a))
@@ -180,56 +181,38 @@
         (launch! ge-set-kernel (grid-2d (.sd a) (.fd a))
                  (parameters (.sd a) (.fd a) alpha (.buffer a) (.offset a) (.ld a)))))))
 
-(defmacro ^:private ge-swap [cublas-handle method a b]
+(defmacro ^:private ge-swap [cublas-handle method modl a b]
   `(when (< 0 (.count ~a))
-     (let [da# (data-accessor ~a)
-           ld-a# (.stride ~a)
-           sd-a# (.sd ~a)
-           offset-a# (.offset ~a)
-           buff-a# (cu-ptr (.buffer ~a))
-           ld-b# (.stride ~b)
-           fd-b# (.fd ~b)
-           offset-b# (.offset ~b)
-           buff-b# (cu-ptr (.buffer ~b))]
-       (if (= (.order ~a) (.order ~b))
-         (if (= sd-a# (.sd ~b) ld-a# ld-b#)
-           (with-check cublas-error
-             (~method ~cublas-handle (.count ~a) buff-a# 1 buff-b# 1)
-             nil)
-           (dotimes [j# (.fd ~a)]
-             (with-check cublas-error
-               (~method ~cublas-handle sd-a#
-                (offset da# buff-a# (+ offset-a# (* ld-a# j#))) 1
-                (offset da# buff-b# (+ offset-b# (* ld-b# j#))) 1)
-               nil)))
-         (dotimes [j# (.fd ~a)]
-           (with-check cublas-error
-             (~method ~cublas-handle sd-a#
-              (offset da# buff-a# (+ offset-a# (* ld-a# j#))) 1
-              (offset da# buff-b# (+ offset-b# j#)) ld-b#)
-             nil))))))
-
-(defmacro ^:private ge-scal [cublas-handle method alpha a]
-  `(when (< 0 (.count ~a))
-     (let [da# (data-accessor ~a)
-           a# (offset da# (cu-ptr (.buffer ~a)) (.offset ~a))
-           ld-a# (.ld ~a)]
+     (if (and (= (.order ~a) (.order ~b)) (= (.sd ~a) (.sd ~b) (.ld ~a) (.ld ~b)))
        (with-check cublas-error
-         (~method ~cublas-handle cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_N
-          (.sd ~a) (.fd ~a) (ptr ~alpha) a# ld-a# (ptr 0.0) a# ld-a# a# ld-a#)
-         nil))))
+         (~method ~cublas-handle (.count ~a) (cu-ptr (.buffer ~a)) 1 (cu-ptr (.buffer ~b)) 1)
+         nil)
+       (with-release [ge-swap-kernel# (function ~modl (order-kernel "ge_swap" ~a ~b))]
+         (launch! ge-swap-kernel# (grid-2d (.sd ~a) (.fd ~a))
+                  (parameters (.sd ~a) (.fd ~a) (.buffer ~a) (.offset ~a) (.ld ~a)
+                              (.buffer ~b) (.offset ~b) (.ld ~b)))))))
 
-(defmacro ^:private ge-axpby [cublas-handle method alpha a beta b]
-  `(when (< 0 (.count ~a))
-     (let [da# (data-accessor ~a)
-           b# (offset da# (cu-ptr (.buffer ~b)) (.offset ~b))]
-       (with-check cublas-error
-         (~method ~cublas-handle
-          (if (= (.order ~a) (.order ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
-          cublasOperation/CUBLAS_OP_N (.sd ~b) (.fd ~b)
-          (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld ~a)
-          (ptr ~beta) b# (.ld ~b) b# (.ld ~b))
-         nil))))
+(defmacro ^:private ge-am
+  ([cublas-handle method alpha a beta b]
+   `(when (< 0 (.count ~a))
+      (let [da# (data-accessor ~a)
+            b# (offset da# (cu-ptr (.buffer ~b)) (.offset ~b))]
+        (with-check cublas-error
+          (~method ~cublas-handle
+           (if (= (.order ~a) (.order ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
+           cublasOperation/CUBLAS_OP_N (.sd ~b) (.fd ~b)
+           (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld ~a)
+           (ptr ~beta) b# (.ld ~b) b# (.ld ~b))
+          nil))))
+  ([cublas-handle method alpha a]
+   `(when (< 0 (.count ~a))
+      (let [da# (data-accessor ~a)
+            a# (offset da# (cu-ptr (.buffer ~a)) (.offset ~a))
+            ld-a# (.ld ~a)]
+        (with-check cublas-error
+          (~method ~cublas-handle cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_N
+           (.sd ~a) (.fd ~a) (ptr ~alpha) a# ld-a# (ptr 0.0) a# ld-a# a# ld-a#)
+          nil)))))
 
 (defmacro ^:private ge-mv
   ([cublas-handle method alpha a x beta y]
@@ -289,9 +272,7 @@
 
 (defn ^:private tr-equals [modl ^CUTRMatrix a ^CUTRMatrix b]
   (if (< 0 (.count a))
-    (with-release [tr-equals-kernel (function modl (if (= (.order a) (.order b))
-                                                     "tr_equals_no_transp"
-                                                     "tr_equals_transp"))
+    (with-release [tr-equals-kernel (function modl (order-kernel "tr_equals" a b))
                    eq-flag-buf (mem-alloc Integer/BYTES)]
       (memset! eq-flag-buf 0)
       (launch! tr-equals-kernel (grid-2d (.sd a) (.fd a))
@@ -303,10 +284,7 @@
 (defn ^:private tr-map [modl op-name ^CUTRMatrix a ^CUTRMatrix b]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
-      (with-release [tr-map-kernel (function modl (format "tr_%s_%s" op-name
-                                                          (if (= (.order a) (.order b))
-                                                            "no_transp"
-                                                            "transp")))]
+      (with-release [tr-map-kernel (function modl (order-kernel op-name a b))]
         (launch! tr-map-kernel (grid-2d (.sd a) (.fd a))
                  (parameters (.sd a) (.diag a) (if (tr-bottom a) 1 -1)
                              (.buffer a) (.offset a) (.ld a) (.buffer b) (.offset b) (.ld b)))))))
@@ -314,9 +292,7 @@
 (defn ^:private tr-axpby [modl alpha ^CUTRMatrix a beta ^CUTRMatrix b]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
-      (with-release [tr-map-kernel (function modl (format (if (= (.order a) (.order b))
-                                                            "tr_axpby_no_transp"
-                                                            "tr_axpby_transp")))]
+      (with-release [tr-map-kernel (function modl (format (order-kernel "tr_axpby" a b)))]
         (launch! tr-map-kernel (grid-2d (.sd a) (.fd a))
                  (parameters (.sd a) (.diag a) (if (tr-bottom a) 1 -1)
                              alpha (.buffer a) (.offset a) (.ld a)
@@ -355,7 +331,7 @@
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
 (defmacro ^:private tr-mm
-  ([cublas-handle method alpha a b left];;TODO support transposes
+  ([cublas-handle method alpha a b left]
    `(when (< 0 (.count ~a))
       (let [da# (data-accessor ~a)]
         (with-check cublas-error
@@ -487,16 +463,16 @@
     (ge-equals modl a b))
   Blas
   (swap [_ a b]
-    (ge-swap cublas-handle JCublas2/cublasDswap ^CUGEMatrix a ^CUGEMatrix b)
+    (ge-swap cublas-handle JCublas2/cublasDswap modl ^CUGEMatrix a ^CUGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-axpby cublas-handle JCublas2/cublasDgeam (double 1) ^CUGEMatrix a (double 0) ^CUGEMatrix b)
+    (ge-am cublas-handle JCublas2/cublasDgeam (double 1) ^CUGEMatrix a (double 0) ^CUGEMatrix b)
     b)
   (scal [_ alpha a]
-    (ge-scal cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a)
+    (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a)
     a)
   (axpy [_ alpha a b]
-    (ge-axpby cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double 1.0) ^CUGEMatrix b)
+    (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double 1.0) ^CUGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
     (ge-mv cublas-handle JCublas2/cublasDgemv
@@ -518,7 +494,7 @@
     (ge-set modl (double alpha) a)
     a)
   (axpby [_ alpha a beta b]
-    (ge-axpby cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double beta) ^CUGEMatrix b)
+    (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double beta) ^CUGEMatrix b)
     b))
 
 (deftype FloatGEEngine [cublas-handle modl]
@@ -527,16 +503,16 @@
     (ge-equals modl a b))
   Blas
   (swap [_ a b]
-    (ge-swap cublas-handle JCublas2/cublasSswap ^CUGEMatrix a ^CUGEMatrix b)
+    (ge-swap cublas-handle JCublas2/cublasSswap modl ^CUGEMatrix a ^CUGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-axpby cublas-handle JCublas2/cublasSgeam (float 1) ^CUGEMatrix a (float 0) ^CUGEMatrix b)
+    (ge-am cublas-handle JCublas2/cublasSgeam (float 1) ^CUGEMatrix a (float 0) ^CUGEMatrix b)
     b)
   (scal [_ alpha a]
-    (ge-scal cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a)
+    (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a)
     a)
   (axpy [_ alpha a b]
-    (ge-axpby cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float 1.0) ^CUGEMatrix b)
+    (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float 1.0) ^CUGEMatrix b)
     b)
   (mv [_ alpha a x beta y]
     (ge-mv cublas-handle JCublas2/cublasSgemv
@@ -558,7 +534,7 @@
     (ge-set modl (float alpha) a)
     a)
   (axpby [_ alpha a beta b]
-    (ge-axpby cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float beta) ^CUGEMatrix b)
+    (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float beta) ^CUGEMatrix b)
     b))
 
 (deftype DoubleTREngine [cublas-handle modl]
@@ -567,10 +543,10 @@
     (tr-equals modl a b))
   Blas
   (swap [_ a b]
-    (tr-map modl "swap" ^CUTRMatrix a ^CUTRMatrix b)
+    (tr-map modl "tr_swap" ^CUTRMatrix a ^CUTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-map modl "copy" ^CUTRMatrix a ^CUTRMatrix b)
+    (tr-map modl "tr_copy" ^CUTRMatrix a ^CUTRMatrix b)
     b)
   (scal [_ alpha a]
     (tr-set-scal modl "tr_scal" (double alpha) ^CUTRMatrix a)
@@ -602,10 +578,10 @@
     (tr-equals modl a b))
   Blas
   (swap [_ a b]
-    (tr-map modl "swap" ^CUTRMatrix a ^CUTRMatrix b)
+    (tr-map modl "tr_swap" ^CUTRMatrix a ^CUTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-map modl "copy" ^CUTRMatrix a ^CUTRMatrix b)
+    (tr-map modl "tr_copy" ^CUTRMatrix a ^CUTRMatrix b)
     b)
   (scal [_ alpha a]
     (tr-set-scal modl "tr_scal" (float alpha) ^CUTRMatrix a)

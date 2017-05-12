@@ -123,9 +123,6 @@
 (defn cl-long-accessor [ctx queue]
   (->TypedCLAccessor ctx queue Long/TYPE Long/BYTES long-array wrap-long))
 
-(defprotocol BlockEngine
-  (equals-block [_ cl-x cl-y]))
-
 ;; =============================================================================
 
 (deftype CLBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact

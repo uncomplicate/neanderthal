@@ -79,6 +79,9 @@
   (ev [this a w vl vr])
   (svd [this a s superb] [this a s u vt superb]))
 
+(defprotocol BlockEngine
+  (equals-block [_ cu-x cu-y]))
+
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
   (vector-reduce-map [f init g x] [f init g x y] [f init g x y z] [f init g x y z v]))

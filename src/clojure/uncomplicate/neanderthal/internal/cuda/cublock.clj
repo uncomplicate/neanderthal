@@ -166,9 +166,6 @@
                         {:cu (str cu) :host (str host)}))))
     cu))
 
-(defprotocol BlockEngine
-  (equals-block [_ cu-x cu-y]))
-
 ;; =============================================================================
 
 (deftype CUBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact
