@@ -25,7 +25,8 @@
             [uncomplicate.neanderthal.internal.device
              [common :refer :all]
              [cublock :refer :all]])
-  (:import jcuda.runtime.JCuda
+  (:import [jcuda.runtime JCuda cudaStream_t]
+           jcuda.driver.CUstream
            [jcuda.jcublas JCublas2 cublasHandle cublasOperation cublasSideMode cublasDiagType
             cublasFillMode]
            [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix Block DataAccessor
@@ -34,13 +35,13 @@
 
 ;; =============== Common vector macros and functions =======================
 
-(defn ^:private vector-equals [modl ^CUBlockVector x ^CUBlockVector y]
+(defn ^:private vector-equals [modl hstream ^CUBlockVector x ^CUBlockVector y]
   (let [cnt (.dim x)]
     (if (< 0 cnt)
       (with-release [equals-kernel (function modl "vector_equals")
                      eq-flag-buf (mem-alloc Integer/BYTES)]
         (memset! eq-flag-buf 0)
-        (launch! equals-kernel (grid-1d cnt)
+        (launch! equals-kernel (grid-1d cnt) hstream
                  (parameters cnt
                              (.buffer x) (.offset x) (.stride x)
                              (.buffer y) (.offset y) (.stride y)
@@ -48,17 +49,16 @@
         (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1)) 0)))
       (= 0 (.dim y)))))
 
-(defn ^:private vector-subcopy [modl ^CUBlockVector x ^CUBlockVector y kx lx ky]
+(defn ^:private vector-subcopy [modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky]
   (when (< 0 (long lx))
     (with-release [copy-kernel (function modl "vector_copy")]
-      (launch! copy-kernel (grid-1d lx)
+      (launch! copy-kernel (grid-1d lx) hstream
                (parameters (long lx) (.buffer x) (+ (.offset x) (* (long kx) (.stride x))) (.stride x)
                            (.buffer y) (+ (.offset y) (* (long ky) (.stride y))) (.stride y))))))
 
-(defn ^:private vector-sum [modl ^CUBlockVector x]
+(defn ^:private vector-sum [modl hstream ^CUBlockVector x]
   (let [cnt (.dim x)
-        block-dim 1024
-        hstream nil];;TODO change later
+        block-dim 1024]
     (if (< 0 cnt)
       (with-release [sum-kernel (function modl "vector_sum")
                      sum-reduction-kernel (function modl "sum_reduction")
@@ -68,14 +68,14 @@
         (get ^doubles (memcpy-host! cu-acc (double-array 1)) 0))
       0.0)))
 
-(defn ^:private vector-set [modl alpha ^CUBlockVector x]
+(defn ^:private vector-set [modl hstream alpha ^CUBlockVector x]
   (with-release [set-kernel (function modl "vector_set")]
-    (launch! set-kernel (grid-1d (.dim x))
+    (launch! set-kernel (grid-1d (.dim x)) hstream
              (parameters (.dim x) alpha (.buffer x) (.offset x) (.stride x)))))
 
-(defn ^:private vector-axpby [modl alpha ^CUBlockVector x beta ^CUBlockVector y]
+(defn ^:private vector-axpby [modl hstream alpha ^CUBlockVector x beta ^CUBlockVector y]
   (with-release [axpby-kernel (function modl "vector_axpby")]
-    (launch! axpby-kernel (grid-1d (.dim x))
+    (launch! axpby-kernel (grid-1d (.dim x)) hstream
              (parameters (.dim x)
                          alpha (.buffer x) (.offset x) (.stride x)
                          beta (.buffer y) (.offset y) (.stride y)))))
@@ -164,25 +164,25 @@
 
 ;; =============== Common GE matrix macros and functions =======================
 
-(defn ^:private ge-equals [modl ^CUGEMatrix a ^CUGEMatrix b]
+(defn ^:private ge-equals [modl hstream ^CUGEMatrix a ^CUGEMatrix b]
   (if (< 0 (.count a))
     (with-release [equals-kernel (function modl (name-transp "ge_equals" a b))
                    eq-flag-buf (mem-alloc Integer/BYTES)]
       (memset! eq-flag-buf 0)
-      (launch! equals-kernel (grid-2d (.sd a) (.fd a))
+      (launch! equals-kernel (grid-2d (.sd a) (.fd a)) hstream
                (parameters (.sd a) (.fd a) (.buffer a) (.offset a) (.stride a)
                            (.buffer b) (.offset b) (.stride b) eq-flag-buf))
       (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1)) 0)))
     (= 0 (.mrows b) (.ncols b))))
 
-(defn ^:private ge-set [modl alpha ^CUGEMatrix a]
+(defn ^:private ge-set [modl hstream alpha ^CUGEMatrix a]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
       (with-release [ge-set-kernel (function modl "ge_set")]
-        (launch! ge-set-kernel (grid-2d (.sd a) (.fd a))
+        (launch! ge-set-kernel (grid-2d (.sd a) (.fd a)) hstream
                  (parameters (.sd a) (.fd a) alpha (.buffer a) (.offset a) (.stride a)))))))
 
-(defmacro ^:private ge-swap [cublas-handle method modl a b]
+(defmacro ^:private ge-swap [cublas-handle method modl hstream a b]
   `(when (< 0 (.count ~a))
      (if (fits-buffer? ~a ~b)
        (let [da# (data-accessor ~a)]
@@ -192,7 +192,7 @@
             (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) 1)
            nil))
        (with-release [ge-swap-kernel# (function ~modl (name-transp "ge_swap" ~a ~b))]
-         (launch! ge-swap-kernel# (grid-2d (.sd ~a) (.fd ~a))
+         (launch! ge-swap-kernel# (grid-2d (.sd ~a) (.fd ~a)) ~hstream
                   (parameters (.sd ~a) (.fd ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
                               (.buffer ~b) (.offset ~b) (.stride ~b)))))))
 
@@ -268,40 +268,40 @@
 
 ;; =============== Common TR matrix macros and functions =======================
 
-(defn ^:private tr-equals [modl ^CUTRMatrix a ^CUTRMatrix b]
+(defn ^:private tr-equals [modl hstream ^CUTRMatrix a ^CUTRMatrix b]
   (if (< 0 (.count a))
     (with-release [tr-equals-kernel (function modl (name-transp "tr_equals" a b))
                    eq-flag-buf (mem-alloc Integer/BYTES)]
       (memset! eq-flag-buf 0)
-      (launch! tr-equals-kernel (grid-2d (.sd a) (.fd a))
+      (launch! tr-equals-kernel (grid-2d (.sd a) (.fd a)) hstream
                (parameters (.sd a) (.diag a) (if (tr-bottom a) 1 -1)
                            (.buffer a) (.offset a) (.stride a) (.buffer b) (.offset b) (.stride b)
                            eq-flag-buf))
       (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1)) 0)))
     (= 0 (.count b))))
 
-(defn ^:private tr-map [modl op-name ^CUTRMatrix a ^CUTRMatrix b]
+(defn ^:private tr-map [modl hstream op-name ^CUTRMatrix a ^CUTRMatrix b]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
       (with-release [tr-map-kernel (function modl (name-transp op-name a b))]
-        (launch! tr-map-kernel (grid-2d (.sd a) (.fd a))
+        (launch! tr-map-kernel (grid-2d (.sd a) (.fd a)) hstream
                  (parameters (.sd a) (.diag a) (if (tr-bottom a) 1 -1)
                              (.buffer a) (.offset a) (.stride a) (.buffer b) (.offset b) (.stride b)))))))
 
-(defn ^:private tr-axpby [modl alpha ^CUTRMatrix a beta ^CUTRMatrix b]
+(defn ^:private tr-axpby [modl hstream alpha ^CUTRMatrix a beta ^CUTRMatrix b]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
       (with-release [tr-axpby-kernel (function modl (name-transp "tr_axpby" a b))]
-        (launch! tr-axpby-kernel (grid-2d (.sd a) (.fd a))
+        (launch! tr-axpby-kernel (grid-2d (.sd a) (.fd a)) hstream
                  (parameters (.sd a) (.diag a) (if (tr-bottom a) 1 -1)
                              alpha (.buffer a) (.offset a) (.stride a)
                              beta (.buffer b) (.offset b) (.stride b)))))))
 
-(defn ^:private tr-set-scal [modl op-name alpha ^CUTRMatrix a]
+(defn ^:private tr-set-scal [modl hstream op-name alpha ^CUTRMatrix a]
   (if (< 0 (.count a))
     (let [da (data-accessor a)]
       (with-release [tr-op-kernel (function modl op-name)]
-        (launch! tr-op-kernel (grid-2d (.sd a) (.fd a))
+        (launch! tr-op-kernel (grid-2d (.sd a) (.fd a)) hstream
                  (parameters (.sd a) (.diag a) (if (tr-bottom a) 1 -1)
                              alpha (.buffer a) (.offset a) (.stride a)))))))
 
@@ -348,10 +348,10 @@
 
 ;; ======================== Engines ===========================================
 
-(deftype DoubleVectorEngine [cublas-handle modl]
+(deftype DoubleVectorEngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ x y]
-    (vector-equals modl ^CUBlockVector x ^CUBlockVector y))
+    (vector-equals modl hstream ^CUBlockVector x ^CUBlockVector y))
   Blas
   (swap [_ x y]
     (vector-method cublas-handle JCublas2/cublasDswap ^CUBlockVector x ^CUBlockVector y)
@@ -387,25 +387,25 @@
     y)
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy modl ^CUBlockVector x ^CUBlockVector y kx lx ky)
+    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky)
     y)
   (sum [_ x]
-    (vector-sum modl ^CUBlockVector x))
+    (vector-sum modl hstream ^CUBlockVector x))
   (imax [_ x]
     (throw (UnsupportedOperationException. "TODO.")))
   (imin [this x]
     (throw (UnsupportedOperationException. "TODO.")))
   (set-all [_ alpha x]
-    (vector-set modl (double alpha) ^CUBlockVector x)
+    (vector-set modl hstream (double alpha) ^CUBlockVector x)
     x)
   (axpby [_ alpha x beta y]
-    (vector-axpby modl (double alpha) x (double beta) y)
+    (vector-axpby modl hstream (double alpha) x (double beta) y)
     y))
 
-(deftype FloatVectorEngine [cublas-handle modl]
+(deftype FloatVectorEngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ x y]
-    (vector-equals modl ^CUBlockVector x ^CUBlockVector y))
+    (vector-equals modl hstream ^CUBlockVector x ^CUBlockVector y))
   Blas
   (swap [_ x y]
     (vector-method cublas-handle JCublas2/cublasSswap ^CUBlockVector x ^CUBlockVector y)
@@ -441,28 +441,28 @@
     y)
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy modl ^CUBlockVector x ^CUBlockVector y kx lx ky)
+    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky)
     y)
   (sum [_ x]
-    (vector-sum modl ^CUBlockVector x))
+    (vector-sum modl hstream ^CUBlockVector x))
   (imax [_ x]
     (throw (UnsupportedOperationException. "TODO.")))
   (imin [this x]
     (throw (UnsupportedOperationException. "TODO.")))
   (set-all [_ alpha x]
-    (vector-set modl (float alpha) ^CUBlockVector x)
+    (vector-set modl hstream (float alpha) ^CUBlockVector x)
     x)
   (axpby [_ alpha x beta y]
-    (vector-axpby modl (float alpha) x (float beta) y)
+    (vector-axpby modl hstream (float alpha) x (float beta) y)
     y))
 
-(deftype DoubleGEEngine [cublas-handle modl]
+(deftype DoubleGEEngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ a b]
-    (ge-equals modl a b))
+    (ge-equals modl hstream a b))
   Blas
   (swap [_ a b]
-    (ge-swap cublas-handle JCublas2/cublasDswap modl ^CUGEMatrix a ^CUGEMatrix b)
+    (ge-swap cublas-handle JCublas2/cublasDswap modl hstream ^CUGEMatrix a ^CUGEMatrix b)
     a)
   (copy [_ a b]
     (ge-am cublas-handle JCublas2/cublasDgeam (double 1) ^CUGEMatrix a (double 0) ^CUGEMatrix b)
@@ -490,19 +490,19 @@
     c)
   BlasPlus
   (set-all [_ alpha a]
-    (ge-set modl (double alpha) a)
+    (ge-set modl hstream (double alpha) a)
     a)
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double beta) ^CUGEMatrix b)
     b))
 
-(deftype FloatGEEngine [cublas-handle modl]
+(deftype FloatGEEngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ a b]
-    (ge-equals modl a b))
+    (ge-equals modl hstream a b))
   Blas
   (swap [_ a b]
-    (ge-swap cublas-handle JCublas2/cublasSswap modl ^CUGEMatrix a ^CUGEMatrix b)
+    (ge-swap cublas-handle JCublas2/cublasSswap modl hstream ^CUGEMatrix a ^CUGEMatrix b)
     a)
   (copy [_ a b]
     (ge-am cublas-handle JCublas2/cublasSgeam (float 1) ^CUGEMatrix a (float 0) ^CUGEMatrix b)
@@ -530,28 +530,28 @@
     c)
   BlasPlus
   (set-all [_ alpha a]
-    (ge-set modl (float alpha) a)
+    (ge-set modl hstream (float alpha) a)
     a)
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float beta) ^CUGEMatrix b)
     b))
 
-(deftype DoubleTREngine [cublas-handle modl]
+(deftype DoubleTREngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ a b]
-    (tr-equals modl a b))
+    (tr-equals modl hstream a b))
   Blas
   (swap [_ a b]
-    (tr-map modl "tr_swap" a b)
+    (tr-map modl hstream "tr_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map modl "tr_copy" a b)
+    (tr-map modl hstream "tr_copy" a b)
     b)
   (scal [_ alpha a]
-    (tr-set-scal modl "tr_scal" (double alpha) a)
+    (tr-set-scal modl hstream "tr_scal" (double alpha) a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpby modl (double alpha) ^CUTRMatrix a (double 1.0) b)
+    (tr-axpby modl hstream (double alpha) ^CUTRMatrix a (double 1.0) b)
     b)
   (mv [this alpha a x beta y]
     (tr-mv a))
@@ -565,28 +565,28 @@
     b)
   BlasPlus
   (set-all [_ alpha a]
-    (tr-set-scal modl "tr_set" (double alpha) a)
+    (tr-set-scal modl hstream "tr_set" (double alpha) a)
     a)
   (axpby [_ alpha a beta b]
-    (tr-axpby modl (double alpha) ^CUTRMatrix a (double beta) b)
+    (tr-axpby modl hstream (double alpha) ^CUTRMatrix a (double beta) b)
     b))
 
-(deftype FloatTREngine [cublas-handle modl]
+(deftype FloatTREngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ a b]
-    (tr-equals modl a b))
+    (tr-equals modl hstream a b))
   Blas
   (swap [_ a b]
-    (tr-map modl "tr_swap" a b)
+    (tr-map modl hstream "tr_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map modl "tr_copy" a b)
+    (tr-map modl hstream "tr_copy" a b)
     b)
   (scal [_ alpha a]
-    (tr-set-scal modl "tr_scal" (float alpha) a)
+    (tr-set-scal modl hstream "tr_scal" (float alpha) a)
     a)
   (axpy [_ alpha a b]
-    (tr-axpby modl (float alpha) a (float 1.0) b)
+    (tr-axpby modl hstream (float alpha) a (float 1.0) b)
     b)
   (mv [this alpha a x beta y]
     (tr-mv a))
@@ -600,17 +600,18 @@
     b)
   BlasPlus
   (set-all [_ alpha a]
-    (tr-set-scal modl "tr_set" (float alpha) a)
+    (tr-set-scal modl hstream "tr_set" (float alpha) a)
     a)
   (axpby [_ alpha a beta b]
-    (tr-axpby modl (float alpha) a (float beta) b)
+    (tr-axpby modl hstream (float alpha) a (float beta) b)
     b))
 
-(deftype CUFactory [modl ^DataAccessor da native-fact vector-eng ge-eng tr-eng]
+(deftype CUFactory [modl hstream ^DataAccessor da native-fact vector-eng ge-eng tr-eng]
   Releaseable
   (release [_]
     (release vector-eng)
     (release ge-eng)
+    (release tr-eng)
     (release modl)
     true)
   DataAccessorProvider
@@ -647,6 +648,30 @@
   (tr-engine [_]
     tr-eng))
 
+(extend-type cublasHandle
+  Releaseable
+  (release [this]
+    (with-check cublas-error (JCublas2/cublasDestroy this) true)))
+
+(defn ^:private get-stream [handle]
+  (let [res (cudaStream_t.)]
+    (with-check cublas-error (JCublas2/cublasGetStream handle res) (CUstream. res))))
+
+(defn cublas-handle
+  "Creates a cuBLAS context handler on the specific `device-id` (default `0`) and `stream`
+  (default is a per-thread cuda stream)"
+  ([^long device-id ^CUstream stream]
+   (with-check error (JCuda/cudaSetDevice device-id)
+     (let [handle (cublasHandle.)
+           cuda-stream (cudaStream_t. ^CUStream stream)]
+       (with-check cublas-error (JCublas2/cublasCreate handle)
+         (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream)
+           handle)))))
+  ([^long device-id]
+   (cublas-handle device-id default-stream))
+  ([]
+   (cublas-handle 0)))
+
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu")))]
 
@@ -654,27 +679,16 @@
 
   (defn cublas-double [handle]
     (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double" "-arch=compute_30"])]
-      (let-release [modl (module prog)]
-        (->CUFactory modl (->TypedCUAccessor (current-context) Double/TYPE Double/BYTES wrap-double)
-                     native-double (->DoubleVectorEngine handle modl) (->DoubleGEEngine handle modl)
-                     (->DoubleTREngine handle modl)))))
+      (let-release [modl (module prog)
+                    hstream (get-stream handle)]
+        (->CUFactory modl hstream (cu-double-accessor (current-context)) native-double
+                     (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
+                     (->DoubleTREngine handle modl hstream)))))
 
   (defn cublas-float [handle]
-    (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double""-arch=compute_30"])]
-      (let-release [modl (module prog)]
-        (->CUFactory modl (->TypedCUAccessor (current-context) Float/TYPE Float/BYTES wrap-float)
-                     native-float (->FloatVectorEngine handle modl) (->FloatGEEngine handle modl)
-                     (->FloatTREngine handle modl))))))
-
-(extend-type cublasHandle
-  Releaseable
-  (release [this]
-    (with-check cublas-error (JCublas2/cublasDestroy this) true)))
-
-(defn cublas-handle
-  "TODO"
-  ([]
-   (let [handle (cublasHandle.)]
-     (with-check cublas-error (JCublas2/cublasCreate handle) handle)))
-  ([^long device-id]
-   (with-check error (JCuda/cudaSetDevice device-id) (cublas-handle))))
+    (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double" "-arch=compute_30"])]
+      (let-release [modl (module prog)
+                    hstream (get-stream handle)]
+        (->CUFactory modl hstream (cu-float-accessor (current-context)) native-float
+                     (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
+                     (->FloatTREngine handle modl hstream))))))
