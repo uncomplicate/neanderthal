@@ -67,7 +67,7 @@
 
 ;; =============== Common GE matrix macros and functions =======================
 
-(defmacro ge-asum [method a]
+(defmacro ge-sum [method a]
   `(if (< 0 (.count ~a))
      (let [ld# (.stride ~a)
            sd# (.sd ~a)
@@ -146,6 +146,20 @@
                  n-j# (- (.end ~stripe-nav n# j#) start#)]
              (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
+
+(defmacro tr-sum [stripe-nav method a]
+  `(if (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)]
+       (loop [j# 0 acc# 0.0]
+         (if (< j# n#)
+           (let [start# (.start ~stripe-nav n# j#)
+                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+             (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1))))
+           acc#)))
+     0.0))
 
 (defmacro tr-axpy [stripe-nav method alpha a b]
   `(when (< 0 (.count ~a))

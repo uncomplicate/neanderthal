@@ -66,10 +66,6 @@ __kernel void ge_set (const REAL val, __global REAL* a, const uint offset_a, con
     a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] = val;
 }
 
-__kernel void ge_scal (const REAL val, __global REAL* a, const uint offset_a, const uint ld_a) {
-    a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] *= val;
-}
-
 __kernel void ge_axpby_no_transp (REAL alpha, __global const REAL* a, const uint offset_a, const uint ld_a,
                                   REAL beta, __global REAL* b, const uint offset_b, const uint ld_b) {
     const uint ia = offset_a + get_global_id(0) + get_global_id(1) * ld_a;

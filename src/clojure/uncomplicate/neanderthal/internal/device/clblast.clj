@@ -34,6 +34,9 @@
     (let [err (dec-error err-code)]
       (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
 
+(defn ^:private not-available []
+  (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+
 ;; =============== Common vector macros and functions =======================
 
 (defn ^:private vector-equals [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
@@ -143,8 +146,7 @@
   `(if (< 0 (.dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
        (with-check error
-         (~method
-          (.dim ~x) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
+         (~method (.dim ~x) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
          (~read-method ~queue res-buffer#)))
      0.0))
 
@@ -213,17 +215,6 @@
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a)))
           (enq-nd! queue ge-set-kernel (work-size-2d (.sd a) (.fd a))))))))
 
-(defmacro ^:private ge-scal [queue prog method alpha a]
-  `(when (< 0 (.count ~a))
-     (if (= (.sd ~a) (.stride ~a))
-       (with-check error
-         (~method (.count ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) 1 ~queue nil)
-         nil)
-       (with-release [ge-scal-kernel# (kernel ~prog "ge_scal")]
-         (set-args! ge-scal-kernel# 0 (.wrapPrim (data-accessor ~a) ~alpha)
-                    (.buffer ~a) (wrap-int (.offset ~a)) (wrap-int (.stride ~a)))
-         (enq-nd! ~queue ge-scal-kernel# (work-size-2d (.sd ~a) (.fd ~a)))))))
-
 (defmacro ^:private ge-swap [queue prog method a b]
   `(when (< 0 (.count ~a))
      (if (fits-buffer? ~a ~b)
@@ -237,15 +228,42 @@
                     (.buffer ~b) (wrap-int (.offset ~b)) (wrap-int (.stride ~b)))
          (enq-nd! ~queue ge-swap-kernel# (work-size-2d (.sd ~a) (.fd ~a)))))))
 
-(defmacro ^:private ge-copy [queue method a b]
-  `(when (< 0 (.count ~a))
-     (with-check error
-       (~method (.order ~a)
-        (if (= (.order ~a) (.order ~b)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
-        (.mrows ~a) (.ncols ~a) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-        (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-        ~queue nil)
-       nil)))
+(defmacro ^:private ge-sum-nrm2 [ctx queue prog res-bytes read-method method op-name a]
+  `(if (< 0 (.count ~a))
+     (if (no-stride? ~a)
+       (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
+         (with-check error
+           (~method (.count ~a) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~a)) (.offset ~a) 1 ~queue nil)
+           (~read-method ~queue res-buffer#)))
+       (not-available))
+     0.0))
+
+(defmacro ^:private ge-omatcopy
+  ([queue method alpha a b]
+   `(when (< 0 (.count ~a))
+      (with-check error
+        (~method (.order ~a)
+         (if (= (.order ~a) (.order ~b)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
+         (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+         (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+         ~queue nil)
+        nil)))
+  ([queue method alpha a]
+   `(when (< 0 (.count ~a))
+      (with-check error
+        (~method (.order ~a) CLBlastTranspose/CLBlastTransposeNo
+         (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+         (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+         ~queue nil)
+        nil)))
+  ([queue method a]
+   `(when (< 0 (.count ~a))
+      (with-check error
+        (~method COLUMN_MAJOR CLBlastTranspose/CLBlastTransposeYes
+         (.sd ~a) (.fd ~a) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+         (cl-mem (.buffer ~a)) (.offset ~a) (.fd ~a)
+         ~queue nil)
+        nil))))
 
 (defn ^:private ge-axpby [queue prog alpha ^CLGEMatrix a beta ^CLGEMatrix b]
   (when (< 0 (.count a))
@@ -397,16 +415,16 @@
     (vector-sum-nrm2 ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDasum ^CLBlockVector x))
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiDamax ^CLBlockVector x))
-  (iamin [_ x]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+  (iamin [_ _]
+    (not-available))
   (rot [_ _ _ _ _]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (rotm [_ _ _ _]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (rotmg [_ _ _]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (scal [_ alpha x]
     (vector-scal-set queue CLBlast/CLBlastDscal alpha ^CLBlockVector x)
     x)
@@ -414,6 +432,8 @@
     (vector-axpy queue CLBlast/CLBlastDaxpy alpha ^CLBlockVector x ^CLBlockVector y)
     y)
   BlasPlus
+  (amax [_ _]
+    (not-available))
   (subcopy [_ x y kx lx ky]
     (vector-subcopy queue CLBlast/CLBlastDcopy ^CLBlockVector x ^CLBlockVector y kx lx ky)
     y)
@@ -450,15 +470,15 @@
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSamax ^CLBlockVector x))
   (iamin [_ x]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (rot [_ _ y c s]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (rotm [_ _ y p]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (rotmg [_ _ args]
-    (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+    (not-available))
   (scal [_ alpha x]
     (vector-scal-set queue CLBlast/CLBlastSscal alpha ^CLBlockVector x)
     x)
@@ -466,6 +486,8 @@
     (vector-axpy queue CLBlast/CLBlastSaxpy alpha ^CLBlockVector x ^CLBlockVector y)
     y)
   BlasPlus
+  (amax [_ _]
+    (not-available))
   (subcopy [_ x y kx lx ky]
     (vector-subcopy queue CLBlast/CLBlastScopy ^CLBlockVector x ^CLBlockVector y kx lx ky)
     y)
@@ -491,10 +513,14 @@
     (ge-swap queue prog CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-copy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a ^CLGEMatrix b)
+    (ge-omatcopy queue CLBlast/CLBlastDomatcopy 1.0 ^CLGEMatrix a ^CLGEMatrix b)
     b)
   (scal [_ alpha a]
-    (ge-scal queue prog CLBlast/CLBlastDscal alpha ^CLGEMatrix a))
+    (ge-omatcopy queue CLBlast/CLBlastDomatcopy alpha ^CLGEMatrix a))
+  (nrm2 [this a]
+    (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDnrm2 "ge_nrm2" ^CLGEMatrix a))
+  (asum [this a]
+    (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDasum "ge_asum" ^CLGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpy queue prog CLBlast/CLBlastDaxpy alpha ^CLGEMatrix a ^CLGEMatrix b)
     b)
@@ -512,12 +538,19 @@
     (ge-mm queue CLBlast/CLBlastDgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
     c)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [this a]
+    (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDsum "ge_sum" ^CLGEMatrix a))
   (set-all [_ alpha a]
     (ge-set queue prog alpha a)
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby queue prog alpha a beta b)
-    b))
+    b)
+  (trans [_ a]
+    (ge-omatcopy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a)
+    a))
 
 (deftype FloatGEEngine [ctx queue prog]
   BlockEngine
@@ -528,11 +561,14 @@
     (ge-swap queue prog CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
     a)
   (copy [_ a b]
-    (ge-copy queue CLBlast/CLBlastSomatcopy ^CLGEMatrix a ^CLGEMatrix b)
+    (ge-omatcopy queue CLBlast/CLBlastSomatcopy 1.0 ^CLGEMatrix a ^CLGEMatrix b)
     b)
   (scal [_ alpha a]
-    (ge-scal queue prog CLBlast/CLBlastSscal alpha ^CLGEMatrix a)
-    a)
+    (ge-omatcopy queue  CLBlast/CLBlastSomatcopy alpha ^CLGEMatrix a))
+  (nrm2 [this a]
+    (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSnrm2 "ge_nrm2" ^CLGEMatrix a))
+  (asum [this a]
+    (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSasum "ge_asum" ^CLGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpy queue prog CLBlast/CLBlastSaxpy alpha ^CLGEMatrix a ^CLGEMatrix b)
     b)
@@ -550,12 +586,19 @@
     (ge-mm queue CLBlast/CLBlastSgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
     c)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [this a]
+    (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSsum "ge_sum" ^CLGEMatrix a))
   (set-all [_ alpha a]
     (ge-set queue prog alpha a)
     a)
   (axpby [_ alpha a beta b]
     (ge-axpby queue prog alpha a beta b)
-    b))
+    b)
+  (trans [_ a]
+    (ge-omatcopy queue CLBlast/CLBlastSomatcopy ^CLGEMatrix a)
+    a))
 
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine
@@ -571,6 +614,10 @@
   (scal [_ alpha a]
     (tr-set-scal queue prog "tr_scal" alpha a)
     a)
+  (nrm2 [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
   (axpy [_ alpha a b]
     (tr-axpby queue prog alpha a 1.0 b)
     b)
@@ -585,6 +632,10 @@
     (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
     b)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
   (set-all [_ alpha a]
     (tr-set-scal queue prog "tr_set" alpha a)
     a)
@@ -606,6 +657,10 @@
   (scal [_ alpha a]
     (tr-set-scal queue prog "tr_scal" alpha a)
     a)
+  (nrm2 [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
   (axpy [_ alpha a b]
     (tr-axpby queue prog alpha a 1.0 b)
     b)
@@ -620,6 +675,10 @@
     (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
     b)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
   (set-all [_ alpha a]
     (tr-set-scal queue prog "tr_set" alpha a)
     a)

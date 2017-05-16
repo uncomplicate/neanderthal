@@ -1,5 +1,12 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.11.0
+
+### New features:
+
+* CUDA/cuBLAS based engine (requires CUDA toolkit).
+* Additional methods from Blas supported by matrices.
+
 ## 0.10.0
 
 ### New features:

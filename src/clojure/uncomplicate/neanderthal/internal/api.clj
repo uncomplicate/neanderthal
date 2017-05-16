@@ -30,7 +30,6 @@
   (stripe [a ^long j]))
 
 (defprotocol Blas
-  (amax [this x])
   (iamax [this x])
   (iamin [this x])
   (swap [this x y])
@@ -49,6 +48,7 @@
   (mm [this alpha a b beta c] [this alpha a b left]))
 
 (defprotocol BlasPlus
+  (amax [this x])
   (sum [this x])
   (imax [this x])
   (imin [this x])
@@ -108,7 +108,8 @@
 (defprotocol MemoryContext
   (compatible? [this other])
   (fits? [this other])
-  (fits-navigation? [this other]))
+  (fits-navigation? [this other])
+  (no-stride? [this]))
 
 (defprotocol Container
   (raw [this] [this factory])

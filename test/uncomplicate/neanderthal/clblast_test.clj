@@ -11,7 +11,9 @@
 
 (defn test-blas-clblast [factory]
   (real-test/test-imin factory)
-  (real-test/test-imax factory))
+  (real-test/test-imax factory)
+  (real-test/test-ge-trans! factory)
+  (real-test/test-ge-sum factory))
 
 (with-default
 

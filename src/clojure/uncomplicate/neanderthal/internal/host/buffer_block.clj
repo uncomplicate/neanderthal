@@ -258,6 +258,8 @@
   (native [x]
     x)
   MemoryContext
+  (no-stride? [_]
+    (= 1 strd))
   (compatible? [_ y]
     (compatible? da y))
   (fits? [_ y]
@@ -450,6 +452,8 @@
   (view-tr [x uplo diag]
     (view-tr (view-ge x) uplo diag))
   MemoryContext
+  (no-stride? [_]
+    (= 1 strd))
   (compatible? [_ y]
     (compatible? da y))
   (fits? [_ y]
@@ -706,6 +710,8 @@
   (view-tr [_ uplo diag]
     (real-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
   MemoryContext
+  (no-stride? [_]
+    (= sd ld))
   (compatible? [_ b]
     (compatible? da b))
   (fits? [_ b]
@@ -1078,6 +1084,8 @@
   (view-tr [_ uplo diag]
     (real-tr-matrix fact false buf n ofst ld ord uplo diag))
   MemoryContext
+  (no-stride? [_]
+    false)
   (compatible? [_ b]
     (compatible? da b))
   (fits? [_ b]

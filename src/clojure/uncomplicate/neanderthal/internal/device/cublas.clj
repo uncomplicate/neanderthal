@@ -33,6 +33,9 @@
             StripeNavigator RealBufferAccessor]
            [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
 
+(defn ^:private not-available []
+  (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+
 ;; =============== Common vector macros and functions =======================
 
 (defn ^:private vector-equals [modl hstream ^CUBlockVector x ^CUBlockVector y]
@@ -195,6 +198,17 @@
          (launch! ge-swap-kernel# (grid-2d (.sd ~a) (.fd ~a)) ~hstream
                   (parameters (.sd ~a) (.fd ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
                               (.buffer ~b) (.offset ~b) (.stride ~b)))))))
+
+(defmacro ^:private ge-asum-nrm2 [cublas-handle array-fn method modl hstream op-name a]
+  `(if (< 0 (.count ~a))
+     (let [res# (~array-fn 1)]
+       (if (no-stride? ~a)
+         (with-check cublas-error
+           (~method ~cublas-handle (.count ~a)
+            (offset (data-accessor ~a) (cu-ptr (.buffer ~a)) (.offset ~a)) 1 (ptr res#))
+           (first res#))
+         (not-available)))
+     0.0))
 
 (defmacro ^:private ge-am
   ([cublas-handle method alpha a beta b]
@@ -373,12 +387,12 @@
     (vector-rot cublas-handle JCublas2/cublasDrot ^CUBlockVector x ^CUBlockVector y (double c) (double s))
     x)
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+    (not-available))
   (rotm [_ x y param]
     (vector-rotm cublas-handle JCublas2/cublasDrotm  ^CUBlockVector x ^CUBlockVector y ^CUBlockVector param)
     x)
   (rotmg [_ _ _]
-    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+    (not-available))
   (scal [_ alpha x]
     (vector-scal cublas-handle JCublas2/cublasDscal (double alpha) ^CUBlockVector x)
     x)
@@ -386,15 +400,17 @@
     (vector-axpy cublas-handle JCublas2/cublasDaxpy (double alpha) ^CUBlockVector x ^CUBlockVector y)
     y)
   BlasPlus
+  (amax [_ _]
+    (not-available))
   (subcopy [_ x y kx lx ky]
     (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky)
     y)
   (sum [_ x]
     (vector-sum modl hstream ^CUBlockVector x))
   (imax [_ x]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (not-available))
   (imin [this x]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (not-available))
   (set-all [_ alpha x]
     (vector-set modl hstream (double alpha) ^CUBlockVector x)
     x)
@@ -427,12 +443,12 @@
     (vector-rot cublas-handle JCublas2/cublasSrot ^CUBlockVector x ^CUBlockVector y (float c) (float s))
     x)
   (rotg [_ _]
-    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+    (not-available))
   (rotm [_ x y param]
     (vector-rotm cublas-handle JCublas2/cublasSrotm  ^CUBlockVector x ^CUBlockVector y ^CUBlockVector param)
     x)
   (rotmg [_ _ _]
-    (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+    (not-available))
   (scal [_ alpha x]
     (vector-scal cublas-handle JCublas2/cublasSscal (float alpha) ^CUBlockVector x)
     x)
@@ -440,15 +456,17 @@
     (vector-axpy cublas-handle JCublas2/cublasSaxpy (float alpha) ^CUBlockVector x ^CUBlockVector y)
     y)
   BlasPlus
+  (amax [_ _]
+    (not-available))
   (subcopy [_ x y kx lx ky]
     (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky)
     y)
   (sum [_ x]
     (vector-sum modl hstream ^CUBlockVector x))
   (imax [_ x]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (not-available))
   (imin [this x]
-    (throw (UnsupportedOperationException. "TODO.")))
+    (not-available))
   (set-all [_ alpha x]
     (vector-set modl hstream (float alpha) ^CUBlockVector x)
     x)
@@ -470,6 +488,10 @@
   (scal [_ alpha a]
     (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a)
     a)
+  (nrm2 [this a]
+    (ge-asum-nrm2 cublas-handle double-array JCublas2/cublasDnrm2 modl hstream "ge_nrm2" ^CUGEMatrix a))
+  (asum [this a]
+    (ge-asum-nrm2 cublas-handle double-array JCublas2/cublasDasum modl hstream "ge_asum" ^CUGEMatrix a))
   (axpy [_ alpha a b]
     (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double 1.0) ^CUGEMatrix b)
     b)
@@ -489,12 +511,19 @@
            (double alpha) ^CUGEMatrix a ^CUGEMatrix b (double beta) ^CUGEMatrix c)
     c)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
   (set-all [_ alpha a]
     (ge-set modl hstream (double alpha) a)
     a)
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double beta) ^CUGEMatrix b)
-    b))
+    b)
+  (trans [_ a]
+    (not-available)
+    a))
 
 (deftype FloatGEEngine [cublas-handle modl hstream]
   BlockEngine
@@ -510,6 +539,10 @@
   (scal [_ alpha a]
     (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a)
     a)
+  (nrm2 [this a]
+    (ge-asum-nrm2 cublas-handle float-array JCublas2/cublasSnrm2 modl hstream "ge_nrm2" ^CUGEMatrix a))
+  (asum [this a]
+    (ge-asum-nrm2 cublas-handle float-array JCublas2/cublasSasum modl hstream "ge_asum" ^CUGEMatrix a))
   (axpy [_ alpha a b]
     (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float 1.0) ^CUGEMatrix b)
     b)
@@ -529,12 +562,19 @@
            (float alpha) ^CUGEMatrix a ^CUGEMatrix b (float beta) ^CUGEMatrix c)
     c)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
   (set-all [_ alpha a]
     (ge-set modl hstream (float alpha) a)
     a)
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float beta) ^CUGEMatrix b)
-    b))
+    b)
+  (trans [_ a]
+    (not-available)
+    a))
 
 (deftype DoubleTREngine [cublas-handle modl hstream]
   BlockEngine
@@ -553,6 +593,10 @@
   (axpy [_ alpha a b]
     (tr-axpby modl hstream (double alpha) ^CUTRMatrix a (double 1.0) b)
     b)
+  (nrm2 [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
   (mv [this alpha a x beta y]
     (tr-mv a))
   (mv [_ a x]
@@ -564,6 +608,10 @@
     (tr-mm cublas-handle JCublas2/cublasDtrmm (double alpha) ^CUTRMatrix a ^CUGEMatrix b left)
     b)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
   (set-all [_ alpha a]
     (tr-set-scal modl hstream "tr_set" (double alpha) a)
     a)
@@ -588,6 +636,10 @@
   (axpy [_ alpha a b]
     (tr-axpby modl hstream (float alpha) a (float 1.0) b)
     b)
+  (nrm2 [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
   (mv [this alpha a x beta y]
     (tr-mv a))
   (mv [_ a x]
@@ -599,6 +651,10 @@
     (tr-mm cublas-handle JCublas2/cublasStrmm (float alpha) ^CUTRMatrix a ^CUGEMatrix b left)
     b)
   BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
   (set-all [_ alpha a]
     (tr-set-scal modl hstream "tr_set" (float alpha) a)
     a)

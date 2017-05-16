@@ -356,6 +356,11 @@
          (asum (ge factory 2 3 (range -3 3))) => 9.0
          (asum (ge factory 0 0 [])) => 0.0))
 
+(defn test-ge-sum [factory]
+  (facts "BLAS 1 GE sum."
+         (sum (ge factory 2 3 (range -3 3))) => -3.0
+         (sum (ge factory 0 0 [])) => 0.0))
+
 (defn test-ge-amax [factory]
   (facts "BLAS 1 GE amax."
          (amax (ge factory 2 3 [1 2 3 -7.1 -3 1])) => (roughly 7.1)
@@ -363,7 +368,8 @@
 
 (defn test-ge-trans! [factory]
   (facts "BLAS 1 GE trans!."
-         (trans! (ge factory 2 3 (range 6))) => (ge factory 2 3 [0 2 4 1 3 5])))
+         (trans! (ge factory 2 3 (range 6))) => (ge factory 2 3 [0 2 4 1 3 5])
+         (trans! (submatrix (ge factory 4 3 (range 12)) 1 0 2 3)) => (throws ExceptionInfo)))
 
 (defn test-ge-copy [factory]
   (facts "BLAS 1 copy! GE matrix"
@@ -591,6 +597,16 @@
   (facts "BLAS 1 TR amax."
          (amax (tr factory 3 [1 2 3 -4 -3 1 1 1 1 1 1 1])) => 4.0
          (amax (tr factory 0 [])) => 0.0))
+
+(defn test-tr-asum [factory]
+  (facts "BLAS 1 TR asum."
+         (asum (tr factory 3 (range -3 3))) => 9.0
+         (asum (tr factory 0 [])) => 0.0))
+
+(defn test-tr-sum [factory]
+  (facts "BLAS 1 TR sum."
+         (sum (tr factory 3 (range -3 3))) => -3.0
+         (sum (tr factory 0 [])) => 0.0))
 
 (defn test-tr-copy [factory]
   (facts "BLAS 1 copy! TR matrix"
@@ -1109,6 +1125,8 @@
   (test-ge-copy factory)
   (test-ge-scal factory)
   (test-ge-axpy factory)
+  (test-ge-asum factory)
+  (test-ge-nrm2 factory)
   (test-ge-mv factory)
   (test-rk factory)
   (test-ge-mm factory)
@@ -1136,18 +1154,19 @@
   (test-ge-entry factory)
   (test-ge-entry! factory)
   (test-ge-alter! factory)
+  (test-ge-amax factory)
+  (test-ge-sum factory)
   (test-ge-trans! factory)
   (test-tr-entry factory)
   (test-tr-entry! factory)
   (test-tr-bulk-entry! factory)
-  (test-tr-alter! factory))
+  (test-tr-alter! factory)
+  (test-tr-nrm2 factory)
+  (test-tr-asum factory)
+  (test-tr-sum factory)
+  (test-tr-amax factory))
 
 (defn test-lapack [factory]
-  (test-ge-asum factory)
-  (test-ge-nrm2 factory)
-  (test-ge-amax factory)
-  (test-tr-nrm2 factory)
-  (test-tr-amax factory)
   (test-vctr-srt factory)
   (test-ge-srt factory)
   (test-tr-srt factory)

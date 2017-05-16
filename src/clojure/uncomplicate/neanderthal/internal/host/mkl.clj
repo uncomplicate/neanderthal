@@ -165,8 +165,6 @@
     (vector-method CBLAS/idamax ^RealBlockVector x))
   (iamin [_ x]
     (vector-method CBLAS/idamin ^RealBlockVector x))
-  (amax [_ x]
-    (vector-amax ^RealBlockVector x))
   (rot [_ x y c s]
     (vector-rot CBLAS/drot ^RealBlockVector x ^RealBlockVector y c s)
     x)
@@ -189,6 +187,8 @@
                  (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
   BlasPlus
+  (amax [_ x]
+    (vector-amax ^RealBlockVector x))
   (subcopy [_ x y kx lx ky]
     (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
                  (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
@@ -229,8 +229,6 @@
     (vector-method CBLAS/isamax ^RealBlockVector x))
   (iamin [_ x]
     (vector-method CBLAS/isamin ^RealBlockVector x))
-  (amax [_ x]
-    (vector-amax ^RealBlockVector x))
   (rot [_ x y c s]
     (vector-rot CBLAS/srot ^RealBlockVector x ^RealBlockVector y c s)
     x)
@@ -253,6 +251,8 @@
                  (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
   BlasPlus
+  (amax [_ x]
+    (vector-amax ^RealBlockVector x))
   (subcopy [_ x y kx lx ky]
     (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
                  (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
@@ -277,13 +277,11 @@
 
 ;; ================= General Matrix Engines ====================================
 
-(def ^:private zero-matrix ^RealGEMatrix (->RealGEMatrix nil nil nil nil true (ByteBuffer/allocateDirect 0)
-                                                         0 0 0 1 0 0 CBLAS/ORDER_COLUMN_MAJOR))
+(def ^:private zero-matrix ^RealGEMatrix
+  (->RealGEMatrix nil nil nil nil true (ByteBuffer/allocateDirect 0) 0 0 0 1 0 0 CBLAS/ORDER_COLUMN_MAJOR))
 
 (deftype DoubleGEEngine []
   Blas
-  (amax [this a]
-    (ge-lan LAPACK/dlange (long \m) ^RealGEMatrix a))
   (swap [_ a b]
     (ge-swap CBLAS/dswap ^RealGEMatrix a ^RealGEMatrix b)
     a)
@@ -293,10 +291,10 @@
   (scal [_ alpha a]
     (ge-scal MKL/dimatcopy alpha ^RealGEMatrix a)
     a)
-  (asum [_ a]
-    (ge-asum CBLAS/dasum ^RealGEMatrix a))
   (nrm2 [_ a]
     (ge-lan LAPACK/dlange (long \f) ^RealGEMatrix a))
+  (asum [_ a]
+    (ge-sum CBLAS/dasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpby MKL/domatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
     b)
@@ -314,6 +312,10 @@
    (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
    c)
   BlasPlus
+  (amax [_ a]
+    (ge-lan LAPACK/dlange (long \m) ^RealGEMatrix a))
+  (sum [_ a]
+    (ge-sum CBLAS/dsum ^RealGEMatrix a))
   (set-all [_ alpha a]
     (ge-laset LAPACK/dlaset alpha alpha ^RealGEMatrix a)
     a)
@@ -376,8 +378,6 @@
 
 (deftype FloatGEEngine []
   Blas
-  (amax [this a]
-    (ge-lan LAPACK/slange (long \m) ^RealGEMatrix a))
   (swap [_ a b]
     (ge-swap CBLAS/sswap ^RealGEMatrix a ^RealGEMatrix b)
     a)
@@ -387,10 +387,10 @@
   (scal [_ alpha a]
     (ge-scal MKL/simatcopy alpha ^RealGEMatrix a)
     a)
-  (asum [_ a]
-    (ge-asum CBLAS/sasum ^RealGEMatrix a))
   (nrm2 [_ a]
     (ge-lan LAPACK/slange (long \f) ^RealGEMatrix a))
+  (asum [_ a]
+    (ge-sum CBLAS/sasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
     (ge-axpby MKL/somatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
     b)
@@ -408,6 +408,10 @@
    (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
    c)
   BlasPlus
+  (amax [_ a]
+    (ge-lan LAPACK/slange (long \m) ^RealGEMatrix a))
+  (sum [_ a]
+    (ge-sum CBLAS/ssum ^RealGEMatrix a))
   (set-all [_ alpha a]
     (ge-laset LAPACK/slaset alpha alpha ^RealGEMatrix a)
     a)
@@ -473,8 +477,6 @@
 
 (deftype DoubleTREngine []
   Blas
-  (amax [this a]
-    (tr-lan LAPACK/dlantr (long \m) ^RealTRMatrix a))
   (swap [_ a b]
     (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
@@ -487,6 +489,8 @@
     a)
   (nrm2 [_ a]
     (tr-lan LAPACK/dlantr (long \f) ^RealTRMatrix a))
+  (asum [_ a]
+    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dasum ^RealTRMatrix a))
   (axpy [_ alpha a b]
     (tr-axpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/daxpy
              alpha ^RealTRMatrix a ^RealTRMatrix b)
@@ -502,6 +506,10 @@
    (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
    b)
   BlasPlus
+  (amax [this a]
+    (tr-lan LAPACK/dlantr (long \m) ^RealTRMatrix a))
+  (sum [_ a]
+    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dsum ^RealTRMatrix a))
   (set-all [_ alpha a]
     (tr-laset LAPACK/dlaset alpha alpha ^RealTRMatrix a)
     a)
@@ -516,8 +524,6 @@
 
 (deftype FloatTREngine []
   Blas
-  (amax [this a]
-    (tr-lan LAPACK/slantr (long \m) ^RealTRMatrix a))
   (swap [_ a b]
     (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
@@ -530,6 +536,8 @@
     a)
   (nrm2 [_ a]
     (tr-lan LAPACK/slantr (long \f) ^RealTRMatrix a))
+  (asum [_ a]
+    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sasum ^RealTRMatrix a))
   (axpy [_ alpha a b]
     (tr-axpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/saxpy alpha
              ^RealTRMatrix a ^RealTRMatrix b)
@@ -545,6 +553,10 @@
    (tr-mm CBLAS/strmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
    b)
   BlasPlus
+  (amax [this a]
+    (tr-lan LAPACK/slantr (long \m) ^RealTRMatrix a))
+  (sum [_ a]
+    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/ssum ^RealTRMatrix a))
   (set-all [_ alpha a]
     (tr-laset LAPACK/slaset alpha alpha ^RealTRMatrix a)
     a)

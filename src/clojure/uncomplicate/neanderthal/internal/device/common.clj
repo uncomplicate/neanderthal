@@ -19,5 +19,6 @@
     (= (.uplo a) LOWER)
     (= (.uplo a) UPPER)))
 
-(defn fits-buffer? [^ContiguousBlock a ^ContiguousBlock b]
-  (and (= (.order a) (.order b)) (= (.sd a) (.sd b) (.stride a) (.stride b))))
+(defn fits-buffer?
+  ([^ContiguousBlock a ^ContiguousBlock b]
+   (and (= (.order a) (.order b)) (= (.sd a) (.sd b) (.stride a) (.stride b)))))
