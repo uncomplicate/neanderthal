@@ -230,7 +230,7 @@
 
 (defmacro ^:private ge-sum-nrm2 [ctx queue prog res-bytes read-method method op-name a]
   `(if (< 0 (.count ~a))
-     (if (no-stride? ~a)
+     (if (fully-packed? ~a)
        (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
          (with-check error
            (~method (.count ~a) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~a)) (.offset ~a) 1 ~queue nil)

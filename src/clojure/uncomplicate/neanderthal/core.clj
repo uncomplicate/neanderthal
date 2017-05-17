@@ -417,7 +417,7 @@
       (trans! (dge 2 3 [1 2, 3 4, 5 6])) => (dge 2 3 [1 3, 5 2, 4 ,6])
   "
   [^Matrix a]
-  (if (api/no-stride? a)
+  (if (api/fully-packed? a)
     (api/trans (api/engine a) a)
     (throw (ex-info "In-place destructive transpose is not available." {:a a}))))
 

@@ -171,7 +171,7 @@
   (view-tr [x uplo diag]
     (view-tr (view-ge x) uplo diag))
   MemoryContext
-  (no-stride? [_]
+  (fully-packed? [_]
     (= 1 strd))
   (compatible? [_ y]
     (compatible? da y))
@@ -366,7 +366,7 @@
   (view-tr [_ uplo diag]
     (cl-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
   MemoryContext
-  (no-stride? [_]
+  (fully-packed? [_]
     (= sd ld))
   (compatible? [_ b]
     (compatible? da b))
@@ -561,7 +561,7 @@
   (view-tr [_ uplo diag]
     (cl-tr-matrix fact false buf n ofst ld ord uplo diag))
   MemoryContext
-  (no-stride? [_]
+  (fully-packed? [_]
     false)
   (compatible? [_ b]
     (compatible? da b))

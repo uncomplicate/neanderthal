@@ -109,7 +109,7 @@
   (compatible? [this other])
   (fits? [this other])
   (fits-navigation? [this other])
-  (no-stride? [this]))
+  (fully-packed? [this]))
 
 (defprotocol Container
   (raw [this] [this factory])

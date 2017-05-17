@@ -202,7 +202,7 @@
 (defmacro ^:private ge-asum-nrm2 [cublas-handle array-fn method modl hstream op-name a]
   `(if (< 0 (.count ~a))
      (let [res# (~array-fn 1)]
-       (if (no-stride? ~a)
+       (if (fully-packed? ~a)
          (with-check cublas-error
            (~method ~cublas-handle (.count ~a)
             (offset (data-accessor ~a) (cu-ptr (.buffer ~a)) (.offset ~a)) 1 (ptr res#))

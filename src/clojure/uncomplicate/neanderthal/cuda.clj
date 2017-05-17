@@ -27,7 +27,8 @@
 (def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
   cuda-double cublas-double)
 
-(def cuda-handle cublas-handle)
+(def  ^{:doc "Creates the context handler for the cuda BLAS engine."}
+  cuda-handle cublas-handle)
 
 (defmacro with-engine
   "Creates a CUDA factory using the provided `factory` constructor function and a `handle` cuBLAS
