@@ -6,14 +6,16 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns hello-world.opencl2
-  (:require [uncomplicate.commons.core :refer [with-release]]
-            [uncomplicate.clojurecl.core :refer [with-default]]
-            [uncomplicate.neanderthal
-             [core :refer [asum]]
-             [opencl :refer [clv with-default-engine]]]))
+(ns hello-world.native
+  (:require [uncomplicate.neanderthal.core :refer :all]
+            [uncomplicate.neanderthal.native :refer :all]))
 
-(with-default
-  (with-default-engine
-    (with-release [gpu-x (clv 1 -2 5)]
-      (asum gpu-x))))
+;; We create two matrices...
+(def a (dge 2 3 [1 2 3 4 5 6]))
+(def b (dge 3 2 [1 3 5 7 9 11]))
+;; ... and multiply them
+(mm a b)
+
+;; If you see something like this:
+;; #RealGeneralMatrix[double, COL, mxn: 2x2, ld:2]((35.0 44.0) (89.0 116.0))
+;; It means that everything is set up and you can enjoy programming with Neanderthal :)
