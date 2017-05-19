@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.11.0-SNAPSHOT"
+(defproject uncomplicate/neanderthal "0.11.0"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -14,12 +14,12 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [uncomplicate/commons "0.3.1-SNAPSHOT"]
+                 [uncomplicate/commons "0.3.1"]
                  [uncomplicate/fluokitten "0.6.0"]
                  [uncomplicate/neanderthal-native "0.9.0"]
                  [uncomplicate/clojurecl "0.7.1"]
                  [org.jocl/jocl-blast "0.10.0"]
-                 [uncomplicate/clojurecuda "0.2.0-SNAPSHOT"]
+                 [uncomplicate/clojurecuda "0.2.0"]
                  [org.jcuda/jcublas "0.8.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [vertigo "0.1.4"]]
@@ -31,8 +31,10 @@
                        uncomplicate.neanderthal.linalg
                        uncomplicate.neanderthal.native
                        uncomplicate.neanderthal.opencl
+                       uncomplicate.neanderthal.cuda
                        uncomplicate.neanderthal.math
-                       uncomplicate.neanderthal.real]
+                       uncomplicate.neanderthal.real
+                       uncomplicate.neanderthal.aux]
           :output-path "docs/codox"}
 
   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
