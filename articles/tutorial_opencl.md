@@ -21,7 +21,7 @@ the benefits you see on NVIDIA and AMD websites.
 * The good: Neanderthal implements BLAS algorithms and abstracts most of that
 complexity for vector and matrix computations away, behind a frendly Clojure API.
 
-**TL/DR: Multiplication of large matrices is more than 1500x faster with Neanderthal
+**TL/DR: Multiplication of large matrices is more than 1500x (2850x with CUDA) faster with Neanderthal
 than with the other optimized pure Java library, 10x faster than Neanderthal native engine
 and many thousands of times faster than the nested looping code with primitives
 that you'd write yourself.**
