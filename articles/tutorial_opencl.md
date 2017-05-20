@@ -365,7 +365,7 @@ demanding enough."
 CPU: 3157 ms
 GPU: 293 ms
 
-Note: Nvidia GTX 1080: 220 ms.
+Note: Nvidia GTX 1080: 220 ms. With the new cuBLAS engine: 141 ms.
 
 That's almost 11x faster than the CPU working in 4 threads! But, still, shouldn't it be even faster?
 You've probably seen those benchmarks with 1000x speed improvements!
@@ -390,7 +390,7 @@ For 8192x8192 matrices, an optimized and decently fast pure Java library Vectorz
 (which is the core.matrix flagship implementation)
 working with primitives and optimizing cache use, needs 6.14 minutes to compute.
 That's 368400 milliseconds. Neanderthal GPU is 1250x faster than that (on the rather old AMD R9 290X,
-and **1675x** on the newer Nvidia GTX 1080)! And, there
+and **1675x** on the newer Nvidia GTX 1080, and, with CUDA engine **almost 3000x** faster)! And, there
 are several GPUs on the market that are considerably faster than my Radeon 290X.
 
 Of course, if you try to write your own nested loops to compute these matrices,
