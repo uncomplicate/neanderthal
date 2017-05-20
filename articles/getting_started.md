@@ -117,7 +117,7 @@ Please note that, if you use Windows or OS X, the binary file extensions are not
 
 **Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contain the `dll`s into the `PATH` environment variable, and you're ready to go. Some Windows users reported that `libiomp5.dll` is also in another folder; see the note for OSX users and to the equivalent Windows action.
 
-### GPU drivers for the GPU engine
+### GPU drivers for the OpenCL GPU engine
 
 Everything will magically work (no need to compile anything) on Nvidia, AMD, and Intel's GPUs and CPUs as long as you have appropriate GPU drivers.
 
@@ -126,6 +126,12 @@ Works on Linux, Windows, and OS X!
 Follow the [ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
 **If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` from the [ClojureCL's legacy namespace](https://github.com/uncomplicate/clojurecl/blob/master/src/clojure/uncomplicate/clojurecl/legacy.clj) instead of `command-queue` and `with-default` that are used in the examples.**
+
+### GPU drivers for the CUDA GPU engine
+
+Everything will magically work (no need to compile anything) on Nvidia, provided that you **installed Nvidia's CUDA Toolkit**.
+
+Follow the [ClojureCUDA getting started guide](http://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
 ## Where to Go Next
 
