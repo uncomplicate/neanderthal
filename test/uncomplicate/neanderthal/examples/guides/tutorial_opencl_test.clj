@@ -87,7 +87,7 @@ $code"
 
 
 (ns uncomplicate.neanderthal.examples.guides.tutorial-opencl-test
-  (:require [midje.sweet :refer [facts => truthy]]
+  (:require [midje.sweet :refer [facts => truthy roughly]]
             #_[criterium.core :refer [quick-bench with-progress-reporting]]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl.core
@@ -251,12 +251,12 @@ currently handle. Java 9 would hopefully increase that."
          ;; note the less precise result in the CPU vector. That's because single
          ;; precision floats are not precise enough for so many accumulations.
          ;; In real life, sometimes you must use doubles in such cases.
-         (asum host-x) => (float 3.6077906E16)
+         (asum host-x) => (roughly 3.6077906E16)
          #_(println "CPU:")
          #_(with-progress-reporting (quick-bench (asum host-x)))
 
          ;; GPU engine uses doubles for this accumulation, so the result is more precise.
-         (asum gpu-x) => (float 3.60287949E16)
+         (asum gpu-x) => (roughly 3.60287949E16)
          #_(println "GPU:")
          #_(with-progress-reporting (quick-bench (do (asum gpu-x) (finish!)))))))))
 
