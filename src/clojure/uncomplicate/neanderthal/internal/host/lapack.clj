@@ -121,6 +121,11 @@
      (~method (.order ~a) (.mrows ~a) (.ncols ~a)
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
 
+(defmacro ge-tri [method a ipiv]
+  `(with-sv-check ~ipiv
+     (~method (.order ~a) (.sd ~a)
+      (.buffer ~a) (.offset ~a) (.ld ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+
 (defmacro ge-trs [method a b ipiv]
   `(with-sv-check ~ipiv
      (~method (.order ~a) (int (if (= (.order ~a) (.order ~b)) \N \T))

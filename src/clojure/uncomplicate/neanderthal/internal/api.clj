@@ -60,6 +60,7 @@
 (defprotocol Lapack
   (srt [this x increasing])
   (trf [this a ipiv])
+  (tri [this a ipiv])
   (trs [this a b ipiv])
   (sv [this a b ipiv])
   (qrf [this a tau])

@@ -32,7 +32,7 @@
   - Other LAPACK documentation, as needed.
   "
   (:require [uncomplicate.commons
-             [core :refer [let-release]]
+             [core :refer [let-release with-release]]
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.core :refer [vctr vctr? ge]]
             [uncomplicate.neanderthal.internal.api :as api])
@@ -63,6 +63,34 @@
   (^Vector [^Matrix a]
    (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
      (trf! a ipiv))))
+
+(defn tri!
+  "Computes the inverse of a matrix `a`, previously LU-factorized by [[trf!]]. `ipiv` also
+  originates from [[trf!]]
+
+  Overwrites `a` with a `nxn` inverse of pre-LU `a`.
+  If the stride of `ipiv` is not `1`, or its dimension is not equals to `a`'s number of columns,
+  or some value is illegal, throws ExceptionInfo.
+  If U is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+
+  See related info about [lapacke_?getri](https://software.intel.com/en-us/mkl-developer-reference-c-getri).
+  "
+  (^Vector [^Matrix a ^Vector ipiv]
+   (if (= (.mrows a) (.ncols a) (.dim ipiv))
+     (api/tri (api/engine a) a ipiv)
+     (throw (ex-info "Can not compute an inverse of a non-square matrix, and an incompatible ipiv."
+                     {:m (.mrows a) :n (.ncols a) :dim (.dim ipiv)})))))
+
+(defn inv!
+  "Computes the inverse of a square matrix `a`, using LU factorization.
+
+  Overwrites `a` with its inverse.
+
+  If a is not square, or not invertible, throws ExceptionInfo."
+  ^Matrix [^Matrix a]
+  (with-release [ipiv (trf! a)]
+    (tri! a ipiv)))
 
 (defn trs!
   "Solves a system of linear equations with an LU factored matrix `lu`, with multiple right
@@ -430,8 +458,8 @@
                                  "a and vl dimensions do not fit"
                                  (not (or (nil? vr) (= (.mrows a) (.mrows vr) (.ncols vr))))
                                  "a and vr dimensions do not fit"
-                                 (not (api/fits-navigation? a vl)) "a and vl do not have the same orientation"
-                                 (not (api/fits-navigation? a vr)) "a and vr do not have the same orientation")}))))
+                                 (and vl (not (api/fits-navigation? a vl))) "a and vl do not have the same orientation"
+                                 (and vr (not (api/fits-navigation? a vr))) "a and vr do not have the same orientation")}))))
   ([a w]
    (ev! a w nil nil))
   ([^Matrix a vl vr]

@@ -859,6 +859,17 @@
 
      (det a (trf! a)) => (roughly -38406.4848))))
 
+(defn test-ge-inv [factory]
+  (facts
+   "LAPACK GE trf/tri and inv"
+   (with-release [a (ge factory 5 5 [0.378589,   0.971711,   0.016087,   0.037668,   0.312398,
+                                     0.756377,   0.345708,   0.922947,   0.846671,   0.856103,
+                                     0.732510,   0.108942,   0.476969,   0.398254,   0.507045,
+                                     0.162608,   0.227770,   0.533074,   0.807075,   0.180335,
+                                     0.517006,   0.315992,   0.914848,   0.460825,   0.731980])
+                  inv-a (inv! (copy a))]
+     (nrm2 (mm inv-a a)) => (roughly (sqrt 5.0)))))
+
 (defn test-ge-qr [factory]
   (facts
    "LAPACK GE qr!"
@@ -1173,6 +1184,7 @@
   (test-ge-trf factory)
   (test-ge-det factory)
   (test-ge-sv factory)
+  (test-ge-inv factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)

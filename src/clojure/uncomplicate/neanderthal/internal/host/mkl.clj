@@ -331,6 +331,9 @@
     a)
   (trf [_ a ipiv]
     (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
+  (tri [_ a ipiv]
+    (ge-tri LAPACK/dgetri ^RealGEMatrix a ^IntegerBlockVector ipiv)
+    a)
   (trs [_ a b ipiv]
     (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b ipiv]
@@ -424,10 +427,12 @@
   Lapack
   (srt [_ a increasing]
     (ge-lasrt LAPACK/slasrt ^RealGEMatrix a increasing)
-    a
     a)
   (trf [_ a ipiv]
     (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
+  (tri [_ a ipiv]
+    (ge-tri LAPACK/sgetri ^RealGEMatrix a ^IntegerBlockVector ipiv)
+    a)
   (trs [_ a b ipiv]
     (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b ipiv]

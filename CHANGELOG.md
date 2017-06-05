@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.12.0
+
+* Support for inverting matrices through trf/tri.
+
 ## 0.11.0
 
 ### New features:
