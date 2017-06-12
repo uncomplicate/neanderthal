@@ -90,3 +90,23 @@
    (pow 10 (floor (log10 (abs range)))))
   (^double [^double lower ^double upper]
    (magnitude (abs (- upper lower)))))
+
+(defn sin ^double [^double x]
+  (Math/sin x))
+
+(defn sinh ^double [^double x]
+  (Math/sinh x))
+
+(defn cos ^double [^double x]
+  (Math/cos x))
+
+(defn cosh ^double [^double x]
+  (Math/cosh x))
+
+(defn tan ^double [^double x]
+  (Math/tan x))
+
+(defn tanh ^double [^double x]
+  (Math/tanh x))
+
+(def ^:const pi Math/PI)
