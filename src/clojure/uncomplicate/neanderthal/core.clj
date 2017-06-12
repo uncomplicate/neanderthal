@@ -997,14 +997,46 @@
   ([a b]
    (mm! 1.0 a b)))
 
-(defn mm
-  "Pure matrix multiplication. A version of [[mm!]], that returns the result in a new matrix instance.
-  Computes `alpha a * b`."
-  ([alpha ^Matrix a ^Matrix b beta ^Matrix c]
-   (let-release [res (copy c)]
-     (mm! alpha a b beta res)))
-  ([alpha ^Matrix a ^Matrix b ^Matrix c]
-   (mm alpha a b 1.0 c))
+(defn ^:private elem* ^long [^longs a ^long n ^long i ^long j]
+  (aget a (+ (* n j) i)))
+
+(defn ^:private matrix-chain [ms]
+  (let [n (count ms)
+        p (long-array (inc n))
+        m (long-array (* n n))]
+    (aset p 0 (mrows (ms 0)))
+    (dotimes [i n]
+      (let [c (ms i)]
+        (if (= (mrows c) (aget p i))
+          (aset p (inc i) (ncols c))
+          (throw (ex-info "You cannot chain-multiply ill-fitting matrices." {:ill-fitting-idx i})))))
+    (loop [l 2]
+      (when (<= l n)
+        (dotimes [i (inc (- n l))]
+          (let [j (dec (+ i l))]
+            (aset m (+ (* n j) i) Long/MAX_VALUE)
+            (loop [k i]
+              (when (< k j)
+                (let [q (+ (elem* m n i k) (elem* m n (inc k) j)
+                           (* (aget p i) (aget p (inc k)) (aget p (inc j))))]
+                  (when (< q (elem* m n i j))
+                    (aset m (+ (* n j) i) q)
+                    (aset m (+ (* n i) j) k)))
+                (recur (inc k))))))
+        (recur (inc l))))
+    m))
+
+(defn ^:private mm*
+  ([ms ^longs s ^long i ^long j]
+   (if (= i j)
+     (ms i)
+     (let [k (elem* s (count ms) j i)
+           ml (mm* ms s i k)
+           mr (mm* ms s (inc k) j)
+           res (mm* 1.0 ml mr)]
+       (when (< i k) (release ml))
+       (when (< (inc k) j) (release mr))
+       res)))
   ([alpha ^Matrix a ^Matrix b]
    (if (ge? b)
      (if (ge? a)
@@ -1013,9 +1045,27 @@
        (let-release [res (copy b)]
          (mm! alpha a res)))
      (let-release [res (copy a)]
-       (mm! alpha res b))))
+       (mm! alpha res b)))))
+
+(defn mm
+  "Pure matrix multiplication that returns the resulting matrix in a new instance.
+  Computes `alpha a * b`, if alpha is scalar, or `alpha * a * b * c * ... * ds` if `alpha` is a vector.
+  Does matrix composition by optimally multiplying the chain of matrices.
+
+  If any consecutive pair's dimensions do not fit for matrix multiplication, throws `ExceptionInfo`.
+  "
+  ([a b c & ds]
+   (if ds
+     (let [ms (into [a b c] ds)]
+       (mm* ms (matrix-chain ms) 0 (dec (count ms))))
+     (mm a b c)))
+  ([alpha ^Matrix a ^Matrix b]
+   (if (matrix? alpha)
+     (let [ms [alpha a b]]
+       (mm* ms (matrix-chain ms) 0 (dec (count ms))))
+     (mm* alpha a b)))
   ([a b]
-   (mm 1.0 a b)))
+   (mm* 1.0 a b)))
 
 ;; ============================== BLAS Plus ====================================
 

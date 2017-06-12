@@ -525,10 +525,20 @@
               3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
 
          (mm 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order :row})
-             3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
+             3.0  (ge factory 2 2 [1 2 3 4])) => (throws ClassCastException)
 
          (mm (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]))
-         => (ge factory 2 2 (list 22.0 28.0 49.0 64.0))))
+         => (ge factory 2 2 (list 22.0 28.0 49.0 64.0))
+
+         (with-release [a (ge factory 2 3 (range 1 7 0.1))
+                        b (ge factory 3 2 (range 0.1 9 0.2))
+                        c (ge factory 2 3 (range 3 5 0.11))
+                        d (ge factory 3 2 (range 2 19))
+                        ab (mm a b)
+                        cd (mm c d)
+                        abcd (mm ab cd)
+                        abcd-comp (mm a b c d)]
+           abcd-comp => abcd)))
 
 ;; ====================== TR Matrix ============================
 
@@ -719,7 +729,7 @@
          => (ge factory 2 3 [10 13 22 29 20 25])
 
          (mm 2.0 (tr factory 3 [1 2 3 4 5 6]) (tr factory 3 [1 2 3 4 5 6])
-             3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws ExceptionInfo)))
+             3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
 
 ;; ==================== LAPACK tests =======================================
 

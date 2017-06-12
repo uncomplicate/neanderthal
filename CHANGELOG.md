@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.13.0
+
+* Support for chained matrix multiplication in mm.
+
 ## 0.12.0
 
 * Support for inverting matrices through trf/tri.
