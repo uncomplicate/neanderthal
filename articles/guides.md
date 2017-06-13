@@ -26,10 +26,11 @@ layout: article
 
 * [CUDA and cuBLAS GPU matrices in Clojure](http://dragan.rocks/articles/17/CUDA-and-cuBLAS-GPU-matrices-in-Clojure). The CUDA engine announcement blog post.
 
-## Further examples
+## Linear Algebra Tutorials
 
 * [Clojure Linear Algebra Refresher (1) - Vector Spaces](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Vector-Spaces)
-* [Clojure Linear Algebra Refresher (1) - Eigenvalues and eigenvectors](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Eigenvalues-and-Eigenvectors)
+* [Clojure Linear Algebra Refresher (2) - Eigenvalues and eigenvectors](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Eigenvalues-and-Eigenvectors)
+* [Clojure Linear Algebra Refresher (3) - Matrix Transformations](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Matrix-Transformations)
 * [Coding the Matrix in Neanderthal](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples/codingthematrix) contains examples that follow the [Coding the Matrix](http://codingthematrix.com/)
 book.
 
