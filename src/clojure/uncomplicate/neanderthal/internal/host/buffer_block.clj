@@ -17,7 +17,7 @@
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! subvector]]
-             [real :refer [entry]]
+             [real :refer [entry entry!]]
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
@@ -286,6 +286,9 @@
     strd)
   (count [_]
     n)
+  IFn$LLL
+  (invokePrim [x i v]
+    (.set x i v))
   IFn$LL
   (invokePrim [x i]
     (.entry x i))
@@ -293,6 +296,8 @@
   (invokePrim [x]
     n)
   IFn
+  (invoke [x i v]
+    (.set x i v))
   (invoke [x i]
     (.entry x i))
   (invoke [x]
@@ -480,6 +485,9 @@
     strd)
   (count [_]
     n)
+  IFn$LDD
+  (invokePrim [x i v]
+    (.set x i v))
   IFn$LD
   (invokePrim [x i]
     (entry x i))
@@ -487,6 +495,8 @@
   (invokePrim [x]
     n)
   IFn
+  (invoke [x i v]
+    (.set x i v))
   (invoke [x i]
     (entry x i))
   (invoke [x]
@@ -733,10 +743,15 @@
     sd)
   (fd [_]
     fd)
+  IFn$LLDD
+  (invokePrim [a i j v]
+    (entry! a i j v))
   IFn$LLD
   (invokePrim [a i j]
     (entry a i j))
   IFn
+  (invoke [a i j v]
+    (entry! a i j v))
   (invoke [a i j]
     (entry a i j))
   (invoke [a]
@@ -1117,10 +1132,15 @@
   Seqable
   (seq [a]
     (map #(seq (.stripe navigator a %)) (range 0 n)))
+  IFn$LLDD
+  (invokePrim [x i j v]
+    (entry! x i j v))
   IFn$LLD
   (invokePrim [a i j]
     (entry a i j))
   IFn
+  (invoke [x i j v]
+    (entry! x i j v))
   (invoke [a i j]
     (entry a i j))
   (invoke [a]
