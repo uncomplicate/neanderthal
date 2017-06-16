@@ -1,4 +1,4 @@
-(defproject benchmarks "0.11.0"
+(defproject benchmarks "0.13.2"
   :description "Benchmarks and comparisons between Neanderthal and other Java matrix libraries."
   :url "https://github.com/uncomplicate/neanderthal/tree/master/examples/benchmarks"
   :license {:name "Eclipse Public License"
@@ -12,7 +12,7 @@
                  [net.mikera/vectorz-clj "0.46.0"]
                  [clatrix/clatrix "0.5.0"]
                  [uncomplicate/fluokitten "0.6.0"]
-                 [uncomplicate/neanderthal "0.11.0"]]
+                 [uncomplicate/neanderthal "0.13.2"]]
 
   :jvm-opts ^:replace ["-Dserver -Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]

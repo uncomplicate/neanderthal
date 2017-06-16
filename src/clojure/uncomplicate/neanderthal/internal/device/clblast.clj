@@ -631,7 +631,7 @@
   (scal [_ alpha a]
     (tr-set-scal queue prog "tr_scal" alpha a)
     a)
-  (dot [_ _]
+  (dot [_ _ _]
     (not-available))
   (nrm2 [_ _]
     (not-available))
@@ -676,7 +676,7 @@
   (scal [_ alpha a]
     (tr-set-scal queue prog "tr_scal" alpha a)
     a)
-  (dot [_ _]
+  (dot [_ _ _]
     (not-available))
   (nrm2 [_ _]
     (not-available))
