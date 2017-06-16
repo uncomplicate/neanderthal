@@ -199,6 +199,20 @@
                   (parameters (.sd ~a) (.fd ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
                               (.buffer ~b) (.offset ~b) (.stride ~b)))))))
 
+(defmacro ^:private ge-dot [cublas-handle array-fn method a b]
+  `(if (< 0 (.count ~a))
+     (if (and (fully-packed? ~a) (fully-packed? ~b) (= (.order ~a) (.order ~b)))
+       (let [da# (data-accessor ~a)
+             res# (~array-fn 1)]
+         (with-check cublas-error
+           (~method ~cublas-handle (.count ~a)
+            (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) 1
+            (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) 1
+            (ptr res#))
+           (first res#)))
+       (not-available))
+     0.0))
+
 (defmacro ^:private ge-asum-nrm2 [cublas-handle array-fn method modl hstream op-name a]
   `(if (< 0 (.count ~a))
      (let [res# (~array-fn 1)]
@@ -488,6 +502,8 @@
   (scal [_ alpha a]
     (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a)
     a)
+  (dot [_ a b]
+    (ge-dot cublas-handle double-array JCublas2/cublasDdot ^CUGEMatrix a ^CUGEMatrix b))
   (nrm2 [this a]
     (ge-asum-nrm2 cublas-handle double-array JCublas2/cublasDnrm2 modl hstream "ge_nrm2" ^CUGEMatrix a))
   (asum [this a]
@@ -539,6 +555,8 @@
   (scal [_ alpha a]
     (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a)
     a)
+  (dot [_ a b]
+    (ge-dot cublas-handle float-array JCublas2/cublasSdot ^CUGEMatrix a ^CUGEMatrix b))
   (nrm2 [this a]
     (ge-asum-nrm2 cublas-handle float-array JCublas2/cublasSnrm2 modl hstream "ge_nrm2" ^CUGEMatrix a))
   (asum [this a]
@@ -593,6 +611,8 @@
   (axpy [_ alpha a b]
     (tr-axpby modl hstream (double alpha) ^CUTRMatrix a (double 1.0) b)
     b)
+  (dot [_ _ _]
+    (not-available))
   (nrm2 [_ _]
     (not-available))
   (asum [_ _]
@@ -636,6 +656,8 @@
   (axpy [_ alpha a b]
     (tr-axpby modl hstream (float alpha) a (float 1.0) b)
     b)
+  (dot [_ _ _]
+    (not-available))
   (nrm2 [_ _]
     (not-available))
   (asum [_ _]

@@ -502,7 +502,7 @@
 ;;================== BLAS 1 =======================
 
 (defn dot
-  "Computes the dot product of vectors `x` and `y`.
+  "Computes the dot product of vectors or matrices `x` and `y`.
 
   If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
 

@@ -84,7 +84,7 @@
 
 ;;================ BLAS functions =========================================
 
-(defn test-dot [factory]
+(defn test-vctr-dot [factory]
   (facts "BLAS 1 dot."
          (dot (vctr factory [1 2 3]) (vctr factory [10 30 -10])) => 40.0
          (dot (vctr factory [1 2 3]) nil) => (throws ExceptionInfo)
@@ -346,6 +346,25 @@
          (alter! (ge factory 2 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
          => (ge factory 2 3 [0 2 6 0 6 14] {:order :row})))
 
+(defn test-ge-dot [factory]
+  (facts "BLAS 1 GE dot"
+         (let [a (ge factory 2 3 (range -3 3))
+               b (ge factory 2 3 [1 2 3 4 5 6])
+               zero-point (ge factory 0 0 [])]
+           (sqrt (dot a a)) => (roughly (nrm2 a))
+           (dot a b) => (dot (view-vctr a) (view-vctr b))
+           (dot zero-point zero-point) => 0.0)))
+
+(defn test-ge-dot-strided [factory]
+  (facts "BLAS 1 GE dot"
+         (let [a (ge factory 2 3 (range -3 3))
+               b (ge factory 2 3 [1 2 3 4 5 6])
+               c (ge factory 3 4 (repeat 1))
+               d (ge factory 2 3 {:order :row})
+               zero-point (ge factory 0 0 [])]
+           (dot a (copy! b (submatrix c 1 1 2 3))) => (dot a b)
+           (dot a (copy! b d)) => (dot a b))))
+
 (defn test-ge-nrm2 [factory]
   (facts "BLAS 1 GE nrm2."
          (nrm2 (ge factory 2 3 (range -3 3))) => (roughly (Math/sqrt 19))
@@ -598,9 +617,20 @@
          (alter! (tr factory 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
          => (tr factory 3 [0 0 4 0 7 16] {:order :row})))
 
+(defn test-tr-dot [factory]
+  (facts "BLAS 1 TR dot"
+         (let [a (tr factory 3 (range -3 3))
+               b (tr factory 3 [1 2 3 4 5 6])
+               d (tr factory 3 {:order :row})
+               zero-point (tr factory 0 [])]
+           (sqrt (dot a a)) => (roughly (nrm2 a))
+           (dot a b) => 7.0
+           (dot a (copy! b d)) => (dot a b)
+           (dot zero-point zero-point) => 0.0)))
+
 (defn test-tr-nrm2 [factory]
   (facts "BLAS 1 TR nrm2."
-         (nrm2 (tr factory 3 (range -5 5))) => (roughly (Math/sqrt 29))
+         (nrm2 (tr factory 3 (range -5 5))) => (roughly (sqrt 55))
          (nrm2 (tr factory 0 [])) => 0.0))
 
 (defn test-tr-amax [factory]
@@ -1130,7 +1160,7 @@
   (test-vctr-constructor factory)
   (test-vctr factory)
   (test-vctr-bulk-entry! factory)
-  (test-dot factory)
+  (test-vctr-dot factory)
   (test-sum factory)
   (test-iamax factory)
   (test-vctr-nrm2 factory)
@@ -1147,6 +1177,7 @@
   (test-ge-scal factory)
   (test-ge-axpy factory)
   (test-ge-asum factory)
+  (test-ge-dot factory)
   (test-ge-nrm2 factory)
   (test-ge-mv factory)
   (test-rk factory)
@@ -1177,11 +1208,13 @@
   (test-ge-alter! factory)
   (test-ge-amax factory)
   (test-ge-sum factory)
+  (test-ge-dot-strided factory)
   (test-ge-trans! factory)
   (test-tr-entry factory)
   (test-tr-entry! factory)
   (test-tr-bulk-entry! factory)
   (test-tr-alter! factory)
+  (test-tr-dot factory)
   (test-tr-nrm2 factory)
   (test-tr-asum factory)
   (test-tr-sum factory)

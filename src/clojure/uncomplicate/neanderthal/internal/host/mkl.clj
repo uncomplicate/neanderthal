@@ -291,6 +291,8 @@
   (scal [_ alpha a]
     (ge-scal MKL/dimatcopy alpha ^RealGEMatrix a)
     a)
+  (dot [_ a b]
+    (ge-dot CBLAS/ddot ^RealGEMatrix a ^RealGEMatrix b))
   (nrm2 [_ a]
     (ge-lan LAPACK/dlange (long \f) ^RealGEMatrix a))
   (asum [_ a]
@@ -390,6 +392,8 @@
   (scal [_ alpha a]
     (ge-scal MKL/simatcopy alpha ^RealGEMatrix a)
     a)
+  (dot [_ a b]
+    (ge-dot CBLAS/sdot ^RealGEMatrix a ^RealGEMatrix b))
   (nrm2 [_ a]
     (ge-lan LAPACK/slange (long \f) ^RealGEMatrix a))
   (asum [_ a]
@@ -492,6 +496,8 @@
   (scal [_ alpha a]
     (tr-lascl LAPACK/dlascl alpha ^RealTRMatrix a)
     a)
+  (dot [_ a b]
+    (tr-dot ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/ddot ^RealTRMatrix a ^RealTRMatrix b))
   (nrm2 [_ a]
     (tr-lan LAPACK/dlantr (long \f) ^RealTRMatrix a))
   (asum [_ a]
@@ -539,6 +545,8 @@
   (scal [_ alpha a]
     (tr-lascl LAPACK/slascl alpha ^RealTRMatrix a)
     a)
+  (dot [_ a b]
+    (tr-dot ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sdot ^RealTRMatrix a ^RealTRMatrix b))
   (nrm2 [_ a]
     (tr-lan LAPACK/slantr (long \f) ^RealTRMatrix a))
   (asum [_ a]

@@ -55,16 +55,16 @@
 ;; it returns 0.0 as a result. To fix this, I had to do the uplo# trick.
 (defmacro tr-lan [method norm a]
   `(let [uplo# (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~a))
-                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U)
-                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \U \L))]
+                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \U \L)
+                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))]
      (~method CBLAS/ORDER_ROW_MAJOR ~norm
-      (int uplo#) (int (if (= (CBLAS/DIAG_UNIT) (.diag ~a)) \U \N))
+      (int uplo#) (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
       (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
 
 (defmacro tr-lacpy [stripe-nav lacpy copy a b]
   `(if (= (.order ~a) (.order ~b))
      (with-lapack-check
-       (~lacpy (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L)) (.mrows ~a) (.ncols ~a)
+       (~lacpy (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (.mrows ~a) (.ncols ~a)
         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
      (let [n# (.fd ~a)
            ld-a# (.stride ~a)
@@ -81,12 +81,12 @@
 
 (defmacro tr-lascl [method alpha a]
   `(with-lapack-check
-     (~method (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L))
+     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
       0 0 1.0 ~alpha (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
 
 (defmacro tr-laset [method alpha beta a]
   `(with-lapack-check
-     (~method (.order ~a) (int (if (= (CBLAS/UPLO_UPPER) (.uplo ~a)) \U \L))
+     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
       (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
 
 (defmacro tr-lasrt [stripe-nav method a increasing]

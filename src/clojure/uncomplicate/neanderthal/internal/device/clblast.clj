@@ -238,6 +238,19 @@
        (not-available))
      0.0))
 
+(defmacro ^:private ge-dot [ctx queue res-bytes read-method method a b]
+  `(if (< 0 (.count ~a))
+     (if (and (fully-packed? ~a) (fully-packed? ~b) (= (.order ~a) (.order ~b)))
+       (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
+         (with-check error
+           (~method (.count ~a) (cl-mem res-buffer#) 0
+            (cl-mem (.buffer ~a)) (.offset ~a) 1
+            (cl-mem (.buffer ~b)) (.offset ~b) 1
+            ~queue nil)
+           (~read-method ~queue res-buffer#)))
+       (not-available))
+     0.0))
+
 (defmacro ^:private ge-omatcopy
   ([queue method alpha a b]
    `(when (< 0 (.count ~a))
@@ -517,6 +530,8 @@
     b)
   (scal [_ alpha a]
     (ge-omatcopy queue CLBlast/CLBlastDomatcopy alpha ^CLGEMatrix a))
+  (dot [_ a b]
+    (ge-dot ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDdot ^CLGEMatrix a ^CLGEMatrix b))
   (nrm2 [this a]
     (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDnrm2 "ge_nrm2" ^CLGEMatrix a))
   (asum [this a]
@@ -565,6 +580,8 @@
     b)
   (scal [_ alpha a]
     (ge-omatcopy queue  CLBlast/CLBlastSomatcopy alpha ^CLGEMatrix a))
+  (dot [_ a b]
+    (ge-dot ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSdot ^CLGEMatrix a ^CLGEMatrix b))
   (nrm2 [this a]
     (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSnrm2 "ge_nrm2" ^CLGEMatrix a))
   (asum [this a]
@@ -614,6 +631,8 @@
   (scal [_ alpha a]
     (tr-set-scal queue prog "tr_scal" alpha a)
     a)
+  (dot [_ _]
+    (not-available))
   (nrm2 [_ _]
     (not-available))
   (asum [_ _]
@@ -657,6 +676,8 @@
   (scal [_ alpha a]
     (tr-set-scal queue prog "tr_scal" alpha a)
     a)
+  (dot [_ _]
+    (not-available))
   (nrm2 [_ _]
     (not-available))
   (asum [_ _]

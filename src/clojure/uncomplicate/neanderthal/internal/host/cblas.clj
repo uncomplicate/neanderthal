@@ -82,10 +82,11 @@
              acc#))))
      0.0))
 
-(defmacro ge-swap [method a b]
-  `(when (< 0 (.count ~a))
+(defmacro ge-dot [method a b]
+  `(if (< 0 (.count ~a))
      (let [ld-a# (.stride ~a)
            sd-a# (.sd ~a)
+           fd-a# (.fd ~a)
            offset-a# (.offset ~a)
            buff-a# (.buffer ~a)
            ld-b# (.stride ~b)
@@ -95,9 +96,35 @@
        (if (= (.order ~a) (.order ~b))
          (if (= sd-a# (.sd ~b) ld-a# ld-b#)
            (~method (.count ~a) buff-a# offset-a# 1 buff-b# offset-b# 1)
-           (dotimes [j# (.fd ~a)]
+           (loop [j# 0 acc# 0.0]
+             (if (< j# fd-a#)
+               (recur (inc j#) (+ acc# (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
+                                        buff-b# (+ offset-b# (* ld-b# j#)) 1)))
+               acc#)))
+         (loop [j# 0 acc# 0.0]
+           (if (< j# fd-a#)
+             (recur (inc j#) (+ acc# (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
+                                      buff-b# (+ offset-b# j#) ld-b#)))
+             acc#))))
+     0.0))
+
+(defmacro ge-swap [method a b]
+  `(when (< 0 (.count ~a))
+     (let [ld-a# (.stride ~a)
+           sd-a# (.sd ~a)
+           fd-a# (.fd ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           fd-b# (.fd ~b)
+           offset-b# (.offset ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (if (= sd-a# (.sd ~b) ld-a# ld-b#)
+           (~method (.count ~a) buff-a# offset-a# 1 buff-b# offset-b# 1)
+           (dotimes [j# fd-a#]
              (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# (* ld-b# j#)) 1)))
-         (dotimes [j# (.fd ~a)]
+         (dotimes [j# fd-a#]
            (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) ld-b#))))))
 
 (defmacro ge-mv
@@ -146,6 +173,32 @@
                  n-j# (- (.end ~stripe-nav n# j#) start#)]
              (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
+
+(defmacro tr-dot [stripe-nav method a b]
+  `(if (< 0 (.count ~a))
+     (let [n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (loop [j# 0 acc# 0.0]
+           (if (< j# n#)
+             (let [start# (.start ~stripe-nav n# j#)
+                   n-j# (- (.end ~stripe-nav n# j#) start#)]
+               (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+                                        buff-b# (+ offset-b# (* ld-b# j#) start#) 1))))
+             acc#))
+         (loop [j# 0 acc# 0.0]
+           (if (< j# n#)
+             (let [start# (.start ~stripe-nav n# j#)
+                   n-j# (- (.end ~stripe-nav n# j#) start#)]
+               (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+                                        buff-b# (+ offset-b# j# (* ld-b# start#)) n#))))
+             acc#))))
+     0.0))
 
 (defmacro tr-sum [stripe-nav method a]
   `(if (< 0 (.count ~a))
