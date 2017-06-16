@@ -76,7 +76,7 @@
 
   "
   (:require [uncomplicate.commons
-             [core :refer [release let-release]]
+             [core :refer [release let-release with-release]]
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
@@ -1000,16 +1000,25 @@
 (defn ^:private elem* ^long [^longs a ^long n ^long i ^long j]
   (aget a (+ (* n j) i)))
 
-(defn ^:private matrix-chain [ms]
-  (let [n (count ms)
-        p (long-array (inc n))
+(defn ^:private matrix-chain [as]
+  (let [cnt (count as)
+        p (long-array (inc cnt))
+        m (mrows (as 0))]
+    (aset p 0 m)
+    (if (loop [i 0 k m quad true]
+          (if (< i cnt)
+            (let [a (as i)
+                  n (ncols a)]
+              (if (= k (mrows a))
+                (recur (inc i) (aset p (inc i) n) (and quad (= m n) (ge? a)))
+                (throw (ex-info "You cannot chain-multiply ill-fitting matrices." {:ill-fitting-idx i}))))
+            quad))
+      nil
+      p)))
+
+(defn ^:private optimize-chain [^longs p]
+  (let [n (dec (alength p))
         m (long-array (* n n))]
-    (aset p 0 (mrows (ms 0)))
-    (dotimes [i n]
-      (let [c (ms i)]
-        (if (= (mrows c) (aget p i))
-          (aset p (inc i) (ncols c))
-          (throw (ex-info "You cannot chain-multiply ill-fitting matrices." {:ill-fitting-idx i})))))
     (loop [l 2]
       (when (<= l n)
         (dotimes [i (inc (- n l))]
@@ -1027,16 +1036,6 @@
     m))
 
 (defn ^:private mm*
-  ([ms ^longs s ^long i ^long j]
-   (if (= i j)
-     (ms i)
-     (let [k (elem* s (count ms) j i)
-           ml (mm* ms s i k)
-           mr (mm* ms s (inc k) j)
-           res (mm* 1.0 ml mr)]
-       (when (< i k) (release ml))
-       (when (< (inc k) j) (release mr))
-       res)))
   ([alpha ^Matrix a ^Matrix b]
    (if (ge? b)
      (if (ge? a)
@@ -1045,7 +1044,17 @@
        (let-release [res (copy b)]
          (mm! alpha a res)))
      (let-release [res (copy a)]
-       (mm! alpha res b)))))
+       (mm! alpha res b))))
+  ([ms ^longs s ^long i ^long j]
+   (if (= i j)
+     (ms i)
+     (let [k (elem* s (count ms) j i)]
+       (let-release [ml (mm* ms s i k)
+                     mr (mm* ms s (inc k) j)
+                     res (mm* 1.0 ml mr)]
+         (when (< i k) (release ml))
+         (when (< (inc k) j) (release mr))
+         res)))))
 
 (defn mm
   "Pure matrix multiplication that returns the resulting matrix in a new instance.
@@ -1055,15 +1064,18 @@
   If any consecutive pair's dimensions do not fit for matrix multiplication, throws `ExceptionInfo`.
   "
   ([a b c & ds]
-   (if ds
+   (if (or ds (matrix? a))
      (let [ms (into [a b c] ds)]
-       (mm* ms (matrix-chain ms) 0 (dec (count ms))))
-     (mm a b c)))
-  ([alpha ^Matrix a ^Matrix b]
-   (if (matrix? alpha)
-     (let [ms [alpha a b]]
-       (mm* ms (matrix-chain ms) 0 (dec (count ms))))
-     (mm* alpha a b)))
+       (if-let [p (matrix-chain ms)]
+         (mm* ms (optimize-chain p) 0 (dec (count ms)))
+         (let-release [temp-0 (raw a)
+                       temp-1 (raw a)]
+           (loop [a a qs (next ms) temp temp-0 res temp-1]
+             (if-let [b (first qs)]
+               (recur (mm! 1.0 a b 0.0 temp) (next qs) res temp)
+               (with-release [t temp]
+                 res))))))
+     (mm* a b c)))
   ([a b]
    (mm* 1.0 a b)))
 

@@ -557,6 +557,16 @@
                         cd (mm c d)
                         abcd (mm ab cd)
                         abcd-comp (mm a b c d)]
+           abcd-comp => abcd)
+
+         (with-release [a (ge factory 2 2 (range 1 7 0.1))
+                        b (ge factory 2 2 (range 0.1 9 0.2))
+                        c (ge factory 2 2 (range 3 5 0.11))
+                        d (ge factory 2 2 (range 2 19))
+                        ab (mm a b)
+                        abc (mm ab c)
+                        abcd (mm abc d)
+                        abcd-comp (mm a b c d)]
            abcd-comp => abcd)))
 
 ;; ====================== TR Matrix ============================
