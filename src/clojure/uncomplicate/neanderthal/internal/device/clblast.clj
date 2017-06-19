@@ -16,14 +16,24 @@
              [core :refer :all]
              [constants :refer [dec-error]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
-            [uncomplicate.neanderthal.native :refer [native-float native-double]]
+            [uncomplicate.neanderthal
+             [core :refer [transfer!]]
+             [native :refer [native-float native-double]]]
             [uncomplicate.neanderthal.internal.api :refer :all]
             [uncomplicate.neanderthal.internal.device
              [common :refer :all]
-             [clblock :refer :all]])
+             [clblock :refer :all]
+             [cublock :refer :all]])
   (:import [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
            [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor]
-           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
+           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]
+           [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
+
+;; =============== Transfer preferences ========================================
+
+(prefer-method transfer! [CLBlockVector Object] [Object CUBlockVector])
+(prefer-method transfer! [CLGEMatrix Object] [Object CUGEMatrix])
+(prefer-method transfer! [CLTRMatrix Object] [Object CUTRMatrix])
 
 ;; =============== OpenCL and CLBlast error handling functions =================
 

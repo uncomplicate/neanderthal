@@ -19,22 +19,31 @@
              [nvrtc :refer [program compile!]]
              [utils :refer [error]]]
             [uncomplicate.neanderthal
+             [core :refer [transfer!]]
              [native :refer [native-float native-double]]
              [block :as block]]
             [uncomplicate.neanderthal.internal.api :refer :all]
             [uncomplicate.neanderthal.internal.device
              [common :refer :all]
-             [cublock :refer :all]])
+             [cublock :refer :all]
+             [clblock :as clblock]])
   (:import [jcuda.runtime JCuda cudaStream_t]
            jcuda.driver.CUstream
            [jcuda.jcublas JCublas2 cublasHandle cublasOperation cublasSideMode cublasDiagType
             cublasFillMode]
            [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix Block DataAccessor
             StripeNavigator RealBufferAccessor]
-           [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
+           [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]
+           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
 (defn ^:private not-available []
   (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+
+;; =============== Transfer preferences ========================================
+
+(prefer-method transfer! [CUBlockVector Object] [Object CLBlockVector])
+(prefer-method transfer! [CUGEMatrix Object] [Object CLGEMatrix])
+(prefer-method transfer! [CUTRMatrix Object] [Object CLTRMatrix])
 
 ;; =============== Common vector macros and functions =======================
 
