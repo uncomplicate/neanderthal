@@ -170,7 +170,7 @@
 (defn segment-vector
   ([^Vector seg ^long n ^long start ^long unit-idx]
    (let [end (+ start (.dim seg))]
-     (if (and (<= 0 start end n) (or (= -1 unit-idx) (= (dec start) unit-idx) (= (inc end) unit-idx)))
+     (if (and (<= 0 start end n) (or (= -1 unit-idx) (= (dec start) unit-idx) (= end unit-idx)))
        (->WrappedSegmentVector seg n start unit-idx)
        (throw (ex-info "Segment not in scope." {:start start :end end :unit-index unit-idx})))))
   ([^Vector seg ^long n ^long start]
