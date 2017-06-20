@@ -58,6 +58,8 @@
     0)
   (rowEnd [_ n i]
     (inc i))
+  (unitIndex [_ i]
+    -1)
   (defaultEntry [_ i j]
     (* 2 (Long/signum (inc (Long/signum (- i j)))))))
 
@@ -70,6 +72,8 @@
   (rowStart [_ _ _]
     0)
   (rowEnd [_ _ i]
+    i)
+  (unitIndex [_ i]
     i)
   (defaultEntry [_ i j]
     (inc (Long/signum (- i j)))))
@@ -84,6 +88,8 @@
     i)
   (rowEnd [_ n _]
     n)
+  (unitIndex [_ i]
+    -1)
   (defaultEntry [_ i j]
     (* 2 (Long/signum (inc (Long/signum (- j i)))))))
 
@@ -97,6 +103,8 @@
     (inc i))
   (rowEnd [_ n _]
     n)
+  (unitIndex [_ i]
+    i)
   (defaultEntry [_ i j]
     (inc (Long/signum (- j i)))))
 

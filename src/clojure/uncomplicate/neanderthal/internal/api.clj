@@ -14,7 +14,8 @@
   (^long colEnd [^long n ^long i])
   (^long rowStart [^long n ^long i])
   (^long rowEnd [^long n ^long i])
-  (^long defaultEntry [^long i ^long j]))
+  (^long defaultEntry [^long i ^long j])
+  (^long unitIndex [^long i]))
 
 (definterface StripeNavigator
   (^long start [^long n ^long j])

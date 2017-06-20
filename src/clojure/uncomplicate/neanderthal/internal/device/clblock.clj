@@ -474,7 +474,7 @@
       (try
         (let [max-value (double (amax (engine mapped-a) mapped-a))
               formatter (if (< max-value 10000.0) format-f format-g)]
-          (format-matrix w formatter mapped-a max-value))
+          (format-ge w formatter mapped-a max-value))
         (finally (unmap a mapped-a)))
       (.write w "\n"))
     (.write w (str a))))
@@ -689,7 +689,7 @@
       (try
         (let [max-value (double (amax (engine mapped-a) mapped-a))
               formatter (if (< max-value 10000.0) format-f format-g)]
-          (format-matrix w formatter mapped-a max-value)))
+          (format-tr w formatter (.uplo-nav a) mapped-a max-value)))
       (.write w "\n"))
     (.write w (str a))))
 

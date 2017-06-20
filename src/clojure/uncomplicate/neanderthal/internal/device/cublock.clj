@@ -492,7 +492,7 @@
       (.write w (str a "\n"))
       (let [max-value (double (amax (engine host-a) host-a))
             formatter (if (< max-value 10000.0) format-f format-g)]
-        (format-matrix w formatter host-a max-value))
+        (format-ge w formatter host-a max-value))
       (.write w "\n"))
     (.write w (str a))))
 
@@ -701,7 +701,7 @@
       (.write w (str a "\n"))
       (let [max-value (double (amax (engine host-a) host-a))
             formatter (if (< max-value 10000.0) format-f format-g)]
-        (format-matrix w formatter host-a max-value))
+        (format-tr w formatter (.uplo-nav a) host-a max-value))
       (.write w "\n"))
     (.write w (str a))))
 

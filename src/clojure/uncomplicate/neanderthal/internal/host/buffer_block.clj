@@ -21,7 +21,7 @@
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [format-vector format-matrix format-a format-f format-g]]
+             [common :refer [format-vector format-ge format-a format-f format-g format-tr]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
   (:import [java.nio ByteBuffer DirectByteBuffer]
@@ -644,6 +644,7 @@
   [^RealBlockVector source ^floats destination]
   (transfer-vector-array source destination))
 
+
 ;; =================== Real Matrix =============================================
 
 (deftype RealGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
@@ -892,7 +893,7 @@
     (let [max-value (double (amax (engine a) a))
           formatter (if (< max-value 10000.0) format-f format-g)]
       (.write w (str a "\n"))
-      (format-matrix w formatter a max-value)
+      (format-ge w formatter a max-value)
       (.write w "\n"))
     (.write w (str a))))
 
@@ -1303,7 +1304,7 @@
     (let [max-value (double (amax (engine a) a))
           formatter (if (< max-value 10000.0) format-f format-g)]
       (.write w (str a "\n"))
-      (format-matrix w formatter a max-value)
+      (format-tr w formatter (.uplo-nav a) a max-value)
       (.write w "\n"))
     (.write w (str a))))
 
