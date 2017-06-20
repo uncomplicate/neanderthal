@@ -36,7 +36,7 @@
       (.write w "\n")
       (format-vector w formatter (.row a i)))
     (when (< m-print (.mrows a))
-      (let [width (* 0.1  n-print (.length ^String (cl-format nil formatter max-value)))]
+      (let [width (* 0.1 n-print (.length ^String (cl-format nil formatter max-value)))]
         (dotimes [_ 3]
           (.write w "\n")
           (dotimes [_ width]
