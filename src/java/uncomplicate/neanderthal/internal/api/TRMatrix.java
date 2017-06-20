@@ -8,7 +8,7 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface TRMatrix extends Block, ContiguousBlock {
+public interface TRMatrix extends DenseMatrix {
 
     long uplo ();
 

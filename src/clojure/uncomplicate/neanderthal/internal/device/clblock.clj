@@ -26,7 +26,7 @@
              [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix]]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD]
            [uncomplicate.clojurecl.core CLBuffer]
-           [uncomplicate.neanderthal.internal.api DataAccessor Block Vector RealVector Matrix
+           [uncomplicate.neanderthal.internal.api DataAccessor DenseVector Vector RealVector Matrix
             RealMatrix GEMatrix TRMatrix RealChangeable RealOrderNavigator UploNavigator StripeNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector IntegerBlockVector
             RealGEMatrix RealTRMatrix]))
@@ -188,7 +188,7 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  Block
+  DenseVector
   (buffer [_]
     @buf)
   (offset [_]
@@ -247,7 +247,7 @@
         (real-block-vector host-fact true mapped-buf n 0 strd)
         (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [x mapped]
-    (enq-unmap! (get-queue da) @buf (.buffer ^Block mapped))
+    (enq-unmap! (get-queue da) @buf (.buffer ^DenseVector mapped))
     x))
 
 (defn cl-block-vector
@@ -446,7 +446,7 @@
         (real-ge-matrix host-fact true mapped-buf m n 0 ld ord)
         (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (get-queue da) @buf (.buffer ^Block mapped))
+    (enq-unmap! (get-queue da) @buf (.buffer ^GEMatrix mapped))
     this))
 
 (defn cl-ge-matrix
@@ -652,7 +652,7 @@
         (real-tr-matrix host-fact true mapped-buf n 0 ld ord fuplo fdiag)
         (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (get-queue da) @buf (.buffer ^Block mapped))
+    (enq-unmap! (get-queue da) @buf (.buffer ^TRMatrix mapped))
     this))
 
 (extend CLTRMatrix

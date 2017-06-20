@@ -8,6 +8,12 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface GEMatrix extends DenseMatrix {
+public interface DenseMatrix extends Block, Matrix {
+
+    long sd ();
+
+    long fd ();
+
+    long order ();
 
 }

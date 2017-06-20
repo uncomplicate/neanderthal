@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.block
   (:require [uncomplicate.neanderthal.internal.api :refer [dec-property]])
-  (:import [uncomplicate.neanderthal.internal.api Block ContiguousBlock]))
+  (:import [uncomplicate.neanderthal.internal.api Block DenseMatrix]))
 
 (defn buffer [^Block x]
   (.buffer x))
@@ -19,13 +19,13 @@
 (defn stride ^long [^Block x]
   (.stride x))
 
-(defn order [^ContiguousBlock x]
+(defn order [^DenseMatrix x]
   (dec-property (.order x)))
 
-(defn sd ^long [^ContiguousBlock b]
+(defn sd ^long [^DenseMatrix b]
   (.sd b))
 
-(defn fd ^long [^ContiguousBlock b]
+(defn fd ^long [^DenseMatrix b]
   (.fd b))
 
 (defn block? [x]

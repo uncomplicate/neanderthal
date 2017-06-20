@@ -29,7 +29,7 @@
              [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix]]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD ExceptionInfo]
            [jcuda.jcublas JCublas2 cublasStatus]
-           [uncomplicate.neanderthal.internal.api DataAccessor Block ContiguousBlock Vector
+           [uncomplicate.neanderthal.internal.api DataAccessor DenseMatrix Vector DenseVector
             RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable RealOrderNavigator
             UploNavigator StripeNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector IntegerBlockVector
@@ -108,7 +108,7 @@
     (ex-info (format "cuBLAS error: %s." err)
              {:name err :code err-code :type :cublas-error :details details})))
 
-(defn get-vector! [^Block cu ^Block host]
+(defn get-vector! [^DenseVector cu ^DenseVector host]
   (if (< 0 (.count host))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
@@ -122,7 +122,7 @@
                         {:cu (str cu) :host (str host)}))))
     host))
 
-(defn set-vector! [^Block host ^Block cu]
+(defn set-vector! [^DenseVector host ^DenseVector cu]
   (if (< 0 (.count cu))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
@@ -136,7 +136,7 @@
                         {:cu (str cu) :host (str host)}))))
     cu))
 
-(defn get-matrix! [^ContiguousBlock cu ^ContiguousBlock host]
+(defn get-matrix! [^DenseMatrix cu ^DenseMatrix host]
   (if (< 0 (.count host))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
@@ -151,7 +151,7 @@
                         {:cu (str cu) :host (str host)}))))
     host))
 
-(defn set-matrix! [^ContiguousBlock host ^ContiguousBlock cu]
+(defn set-matrix! [^DenseMatrix host ^DenseMatrix cu]
   (if (< 0 (.count cu))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
@@ -231,7 +231,7 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  Block
+  DenseVector
   (buffer [_]
     @buf)
   (offset [_]

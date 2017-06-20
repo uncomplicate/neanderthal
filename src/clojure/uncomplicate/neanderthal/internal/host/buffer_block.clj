@@ -29,9 +29,9 @@
             IFn$LDD IFn$LLDD IFn$LLL]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
-            DataAccessor Block Vector Matrix RealVector IntegerVector RealMatrix GEMatrix TRMatrix
+            DataAccessor Vector Matrix RealVector IntegerVector RealMatrix GEMatrix TRMatrix
             RealChangeable IntegerChangeable RealOrderNavigator UploNavigator StripeNavigator
-            ContiguousBlock]))
+            DenseMatrix DenseVector]))
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
@@ -263,7 +263,7 @@
   (compatible? [_ y]
     (compatible? da y))
   (fits? [_ y]
-    (= n (.dim ^Vector y)))
+    (= n (.dim ^DenseVector y)))
   EngineProvider
   (engine [_]
     nil)
@@ -277,7 +277,7 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  Block
+  DenseVector
   (buffer [_]
     buf)
   (offset [_]
@@ -462,7 +462,7 @@
   (compatible? [_ y]
     (compatible? da y))
   (fits? [_ y]
-    (= n (.dim ^Vector y)))
+    (= n (.dim ^DenseVector y)))
   EngineProvider
   (engine [_]
     eng)
@@ -476,7 +476,7 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  Block
+  DenseVector
   (buffer [_]
     buf)
   (offset [_]
@@ -727,7 +727,7 @@
   (fits? [_ b]
     (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
   (fits-navigation? [_ b]
-    (= ord (.order ^ContiguousBlock b)))
+    (= ord (.order ^DenseMatrix b)))
   GEMatrix
   (buffer [_]
     buf)
@@ -1106,7 +1106,7 @@
   (fits? [_ b]
     (and (= n (.mrows ^TRMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
   (fits-navigation? [_ b]
-    (and (= ord (.order ^ContiguousBlock b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
+    (and (= ord (.order ^DenseMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
   Monoid
   (id [a]
     (real-tr-matrix fact 0))

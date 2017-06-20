@@ -9,9 +9,9 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.device.common
   (:require [uncomplicate.neanderthal.internal.api :refer [COLUMN_MAJOR LOWER UPPER]])
-  (:import [uncomplicate.neanderthal.internal.api ContiguousBlock TRMatrix]))
+  (:import [uncomplicate.neanderthal.internal.api DenseMatrix TRMatrix]))
 
-(defn name-transp [name ^ContiguousBlock a ^ContiguousBlock b]
+(defn name-transp [name ^DenseMatrix a ^DenseMatrix b]
   (format "%s_%s" name (if (= (.order a) (.order b)) "no_transp" "transp")))
 
 (defn tr-bottom [^TRMatrix a]
@@ -20,5 +20,5 @@
     (= (.uplo a) UPPER)))
 
 (defn fits-buffer?
-  ([^ContiguousBlock a ^ContiguousBlock b]
+  ([^DenseMatrix a ^DenseMatrix b]
    (and (= (.order a) (.order b)) (= (.sd a) (.sd b) (.stride a) (.stride b)))))

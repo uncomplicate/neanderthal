@@ -16,7 +16,7 @@
                      ReductionFunction vector-reduce vector-reduce-map]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
             IFn$DLDD IFn$ODO IFn$OLDO]
-           [uncomplicate.neanderthal.internal.api  Block ContiguousBlock
+           [uncomplicate.neanderthal.internal.api  Block DenseMatrix
             RealVector RealMatrix Vector Matrix GEMatrix RealChangeable]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
@@ -153,11 +153,11 @@
          (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))))
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 vectors."))))
 
-(defn matrix-op [^ContiguousBlock a & bs]
+(defn matrix-op [^DenseMatrix a & bs]
   (let-release [res (ge (factory a)
                         (.mrows a) (transduce (map ncols) + (.ncols a) bs)
                         {:order (dec-property (.order a))})]
-    (loop [pos 0 ^ContiguousBlock w a ws bs]
+    (loop [pos 0 ^DenseMatrix w a ws bs]
       (when w
         (if (compatible? res w)
           (copy! w (.submatrix ^Matrix res 0 pos (.mrows w) (.ncols w)))

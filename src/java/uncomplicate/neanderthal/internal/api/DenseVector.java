@@ -8,12 +8,6 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface ContiguousBlock extends Block, Matrix {
-
-    long sd ();
-
-    long fd ();
-
-    long order ();
+public interface DenseVector extends Block, Vector {
 
 }
