@@ -16,8 +16,8 @@
              [lapack :refer :all]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
-           [uncomplicate.neanderthal.internal.api DataAccessor BufferAccessor Block RealVector
-            StripeNavigator RealOrderNavigator]
+           [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
+            Block RealVector StripeNavigator RealOrderNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
             RealTRMatrix RealGEMatrix]))
 
@@ -65,7 +65,11 @@
     y)
   (dot [_ x y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm1 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (nrm2 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrmi [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (asum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -110,7 +114,11 @@
     y)
   (dot [_ x y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm1 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (nrm2 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrmi [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (asum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -157,8 +165,12 @@
     y)
   (dot [_ x y]
     (vector-method CBLAS/ddot ^RealBlockVector x ^RealBlockVector y))
+  (nrm1 [this x]
+    (asum this x))
   (nrm2 [_ x]
     (vector-method CBLAS/dnrm2 ^RealBlockVector x))
+  (nrmi [this x]
+    (amax this x))
   (asum [_ x]
     (vector-method CBLAS/dasum ^RealBlockVector x))
   (iamax [_ x]
@@ -221,8 +233,12 @@
     y)
   (dot [_ x y]
     (vector-method CBLAS/sdot ^RealBlockVector x ^RealBlockVector y))
+  (nrm1 [this x]
+    (asum this x))
   (nrm2 [_ x]
     (vector-method CBLAS/snrm2 ^RealBlockVector x))
+  (nrmi [this x]
+    (amax this x))
   (asum [_ x]
     (vector-method CBLAS/sasum ^RealBlockVector x))
   (iamax [_ x]
@@ -293,8 +309,12 @@
     a)
   (dot [_ a b]
     (ge-dot CBLAS/ddot ^RealGEMatrix a ^RealGEMatrix b))
+  (nrm1 [_ a]
+    (ge-lan LAPACK/dlange (long \O) ^RealGEMatrix a))
   (nrm2 [_ a]
-    (ge-lan LAPACK/dlange (long \f) ^RealGEMatrix a))
+    (ge-lan LAPACK/dlange (long \F) ^RealGEMatrix a))
+  (nrmi [_ a]
+    (ge-lan LAPACK/dlange (long \I) ^RealGEMatrix a))
   (asum [_ a]
     (ge-sum CBLAS/dasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
@@ -340,6 +360,14 @@
     (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b ipiv]
     (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (con [_ lu nrm nrm1?]
+    (let [da (data-accessor lu)]
+      (ge-con ^RealBufferAccessor da LAPACK/dgecon ^RealGEMatrix lu nrm nrm1?)))
+  (con [this a nrm1?]
+    (let-release [ipiv (create-vector (index-factory a) (.ncols ^RealGEMatrix a) nil)
+                  norm (if nrm1? (nrm1 this a) (nrmi this a))]
+      (trf this a ipiv)
+      (con this a norm nrm1?)))
   (qrf [_ a tau]
     (ge-lqrf LAPACK/dgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
@@ -394,8 +422,12 @@
     a)
   (dot [_ a b]
     (ge-dot CBLAS/sdot ^RealGEMatrix a ^RealGEMatrix b))
+  (nrm1 [_ a]
+    (ge-lan LAPACK/slange (long \O) ^RealGEMatrix a))
   (nrm2 [_ a]
-    (ge-lan LAPACK/slange (long \f) ^RealGEMatrix a))
+    (ge-lan LAPACK/slange (long \F) ^RealGEMatrix a))
+  (nrmi [_ a]
+    (ge-lan LAPACK/slange (long \I) ^RealGEMatrix a))
   (asum [_ a]
     (ge-sum CBLAS/sasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
@@ -441,6 +473,14 @@
     (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b ipiv]
     (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (con [_ lu nrm nrm1?]
+    (let [da (data-accessor lu)]
+      (ge-con ^RealBufferAccessor da LAPACK/sgecon ^RealGEMatrix lu nrm nrm1?)))
+  (con [this a nrm1?]
+    (let-release [ipiv (create-vector (index-factory a) (.ncols ^RealGEMatrix a) nil)
+                  norm (if nrm1? (nrm1 this a) (nrmi this a))]
+      (trf this a ipiv)
+      (con this a norm nrm1?)))
   (qrf [_ a tau]
     (ge-lqrf LAPACK/sgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
@@ -498,8 +538,12 @@
     a)
   (dot [_ a b]
     (tr-dot ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/ddot ^RealTRMatrix a ^RealTRMatrix b))
+  (nrm1 [_ a]
+    (tr-lan LAPACK/dlantr (long \O) ^RealTRMatrix a))
   (nrm2 [_ a]
-    (tr-lan LAPACK/dlantr (long \f) ^RealTRMatrix a))
+    (tr-lan LAPACK/dlantr (long \F) ^RealTRMatrix a))
+  (nrmi [_ a]
+    (tr-lan LAPACK/dlantr (long \I) ^RealTRMatrix a))
   (asum [_ a]
     (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dasum ^RealTRMatrix a))
   (axpy [_ alpha a b]
@@ -531,7 +575,10 @@
   Lapack
   (srt [_ a increasing]
     (tr-lasrt ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/dlasrt ^RealTRMatrix a increasing)
-    a))
+    a)
+  (con [_ a nrm1?]
+    (let [da (data-accessor a)]
+      (tr-con ^RealBufferAccessor da LAPACK/dtrcon ^RealTRMatrix a nrm1?))))
 
 (deftype FloatTREngine []
   Blas
@@ -547,8 +594,12 @@
     a)
   (dot [_ a b]
     (tr-dot ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sdot ^RealTRMatrix a ^RealTRMatrix b))
+  (nrm1 [_ a]
+    (tr-lan LAPACK/slantr (long \O) ^RealTRMatrix a))
   (nrm2 [_ a]
-    (tr-lan LAPACK/slantr (long \f) ^RealTRMatrix a))
+    (tr-lan LAPACK/slantr (long \F) ^RealTRMatrix a))
+  (nrmi [_ a]
+    (tr-lan LAPACK/slantr (long \I) ^RealTRMatrix a))
   (asum [_ a]
     (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sasum ^RealTRMatrix a))
   (axpy [_ alpha a b]
@@ -580,7 +631,10 @@
   Lapack
   (srt [_ a increasing]
     (tr-lasrt ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/slasrt ^RealTRMatrix a increasing)
-    a))
+    a)
+  (con [_ a nrm1?]
+    (let [da (data-accessor a)]
+      (tr-con ^RealBufferAccessor da LAPACK/strcon ^RealTRMatrix a nrm1?))))
 
 ;; =============== Factories ==================================================
 

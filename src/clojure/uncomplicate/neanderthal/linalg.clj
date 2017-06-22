@@ -144,6 +144,22 @@
    (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
      (sv! a b ipiv))))
 
+(defn con!
+  "Computes the reciprocal of the condition number of `a`, from its `lu` factorization.
+
+  If `nrm1?` is true, computes the reciprocal based on 1 norm, if not, on infinity norm.
+  If `lu` factorization is supplied, then `nrm` and matching `nrm1?` has to be supplied.
+
+  Overwrites `a` by the LU factorization.
+
+  If the LU factorization cannot be done, throws ExceptionInfo."
+  (^double [^Matrix lu nrm nrm1?]
+   (api/con (api/engine lu) lu nrm nrm1?))
+  (^double [^Matrix a nrm1?]
+   (api/con (api/engine a) a nrm1?))
+  (^double [^Matrix a]
+   (api/con (api/engine a) a true)))
+
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 
 (defn ^:private min-mn ^long [^Matrix a]

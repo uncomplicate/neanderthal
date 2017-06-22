@@ -137,6 +137,28 @@
      (~method (.order ~a) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
       (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
 
+;; ------------------ Condition Number ----------------------------------------------
+
+(defmacro ge-con [da method lu nrm nrm1?]
+  `(let [res# (.createDataSource ~da 1)
+         info# (~method (.order ~lu) (int (if ~nrm1? \O \I))(min (.mrows ~lu) (.ncols ~lu))
+                (.buffer ~lu) (.offset ~lu) (.stride ~lu) ~nrm res#)]
+     (if (= 0 info#)
+       (.get ~da res# 0)
+       (throw (ex-info "There has been an illegal argument in the native function call."
+                       {:arg-index (- info#)})))))
+
+(defmacro tr-con [da method a nrm1?]
+  `(let [res# (.createDataSource ~da 1)
+         info# (~method (.order ~a) (int (if ~nrm1? \O \I))
+                (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+                (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
+                (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) res#)]
+     (if (= 0 info#)
+       (.get ~da res# 0)
+       (throw (ex-info "There has been an illegal argument in the native function call."
+                       {:arg-index (- info#)})))))
+
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 
 (defmacro with-lqr-check [tau res expr]

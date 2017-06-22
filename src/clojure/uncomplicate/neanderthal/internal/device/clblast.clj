@@ -432,8 +432,12 @@
   (dot [_ x y]
     (vector-dot ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDdot
                 ^CLBlockVector x ^CLBlockVector y))
+  (nrm1 [this x]
+    (asum this x))
   (nrm2 [_ x]
     (vector-sum-nrm2 ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDnrm2 ^CLBlockVector x))
+  (nrmi [this x]
+    (amax this x))
   (asum [_ x]
     (vector-sum-nrm2 ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDasum ^CLBlockVector x))
   (iamax [_ x]
@@ -486,8 +490,12 @@
     y)
   (dot [_ x y]
     (vector-dot ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSdot ^CLBlockVector x ^CLBlockVector y))
+  (nrm1 [this x]
+    (asum this x))
   (nrm2 [_ x]
     (vector-sum-nrm2 ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSnrm2 ^CLBlockVector x))
+  (nrmi [this x]
+    (amax this x))
   (asum [_ x]
     (vector-sum-nrm2 ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSasum ^CLBlockVector x))
   (iamax [_ x]
@@ -542,8 +550,12 @@
     (ge-omatcopy queue CLBlast/CLBlastDomatcopy alpha ^CLGEMatrix a))
   (dot [_ a b]
     (ge-dot ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDdot ^CLGEMatrix a ^CLGEMatrix b))
+  (nrm1 [_ _]
+    (not-available))
   (nrm2 [this a]
     (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDnrm2 "ge_nrm2" ^CLGEMatrix a))
+  (nrmi [_ _]
+    (not-available))
   (asum [this a]
     (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDasum "ge_asum" ^CLGEMatrix a))
   (axpy [_ alpha a b]
@@ -592,8 +604,12 @@
     (ge-omatcopy queue  CLBlast/CLBlastSomatcopy alpha ^CLGEMatrix a))
   (dot [_ a b]
     (ge-dot ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSdot ^CLGEMatrix a ^CLGEMatrix b))
+  (nrm1 [_ _]
+    (not-available))
   (nrm2 [this a]
     (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSnrm2 "ge_nrm2" ^CLGEMatrix a))
+  (nrmi [_ _]
+    (not-available))
   (asum [this a]
     (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSasum "ge_asum" ^CLGEMatrix a))
   (axpy [_ alpha a b]
@@ -643,7 +659,11 @@
     a)
   (dot [_ _ _]
     (not-available))
+  (nrm1 [_ _]
+    (not-available))
   (nrm2 [_ _]
+    (not-available))
+  (nrmi [_ _]
     (not-available))
   (asum [_ _]
     (not-available))
@@ -688,7 +708,11 @@
     a)
   (dot [_ _ _]
     (not-available))
+  (nrm1 [_ _]
+    (not-available))
   (nrm2 [_ _]
+    (not-available))
+  (nrmi [_ _]
     (not-available))
   (asum [_ _]
     (not-available))

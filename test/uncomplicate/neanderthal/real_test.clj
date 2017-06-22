@@ -920,6 +920,31 @@
                   inv-a (inv! (copy a))]
      (nrm2 (mm inv-a a)) => (roughly (sqrt 5.0)))))
 
+(defn test-ge-con [factory]
+  (facts
+   "LAPACK GE con!"
+
+   (with-release [a (ge factory 4 4  [1.80 2.88 2.05 -0.89
+                                      5.25 -2.95 -0.95 -3.80
+                                      1.58 -2.69 -2.90 -1.04
+                                      -1.11 -0.66 -0.59 0.80]
+                        {:order :row})]
+
+     (con! a) => (roughly (/ 152.1620)))))
+
+(defn test-tr-con [factory]
+  (facts
+   "LAPACK TR con!"
+
+   (with-release [a (ge factory 4 4  [1.80 0 0 0
+                                      5.25 -2.95 0 0
+                                      1.58 -2.69 -2.90 0
+                                      -1.11 -0.66 -0.59 0.80]
+                        {:order :row})
+                  b (copy (view-tr a))]
+
+     (con! b) => (roughly (con! a)))))
+
 (defn test-ge-qr [factory]
   (facts
    "LAPACK GE qr!"
@@ -1238,6 +1263,8 @@
   (test-ge-det factory)
   (test-ge-sv factory)
   (test-ge-inv factory)
+  (test-ge-con factory)
+  (test-tr-con factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)

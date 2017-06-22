@@ -398,8 +398,12 @@
     y)
   (dot [_ x y]
     (vector-dot cublas-handle double-array JCublas2/cublasDdot ^CUBlockVector x ^CUBlockVector y))
+  (nrm1 [this x]
+    (asum this x))
   (nrm2 [_ x]
     (vector-reducer cublas-handle double-array JCublas2/cublasDnrm2 ^CUBlockVector x))
+  (nrmi [_ _]
+    (not-available))
   (asum [_ x]
     (vector-reducer cublas-handle double-array JCublas2/cublasDasum ^CUBlockVector x))
   (iamax [_ x]
@@ -454,8 +458,12 @@
     y)
   (dot [_ x y]
     (vector-dot cublas-handle float-array JCublas2/cublasSdot ^CUBlockVector x ^CUBlockVector y))
+  (nrm1 [this x]
+    (asum this x))
   (nrm2 [_ x]
     (vector-reducer cublas-handle float-array JCublas2/cublasSnrm2 ^CUBlockVector x))
+  (nrmi [_ _]
+    (not-available))
   (asum [_ x]
     (vector-reducer cublas-handle float-array JCublas2/cublasSasum ^CUBlockVector x))
   (iamax [_ x]
@@ -513,8 +521,12 @@
     a)
   (dot [_ a b]
     (ge-dot cublas-handle double-array JCublas2/cublasDdot ^CUGEMatrix a ^CUGEMatrix b))
+  (nrm1 [_ _]
+    (not-available))
   (nrm2 [this a]
     (ge-asum-nrm2 cublas-handle double-array JCublas2/cublasDnrm2 modl hstream "ge_nrm2" ^CUGEMatrix a))
+  (nrmi [_ _]
+    (not-available))
   (asum [this a]
     (ge-asum-nrm2 cublas-handle double-array JCublas2/cublasDasum modl hstream "ge_asum" ^CUGEMatrix a))
   (axpy [_ alpha a b]
@@ -566,8 +578,12 @@
     a)
   (dot [_ a b]
     (ge-dot cublas-handle float-array JCublas2/cublasSdot ^CUGEMatrix a ^CUGEMatrix b))
+  (nrm1 [_ _]
+    (not-available))
   (nrm2 [this a]
     (ge-asum-nrm2 cublas-handle float-array JCublas2/cublasSnrm2 modl hstream "ge_nrm2" ^CUGEMatrix a))
+  (nrmi [_ _]
+    (not-available))
   (asum [this a]
     (ge-asum-nrm2 cublas-handle float-array JCublas2/cublasSasum modl hstream "ge_asum" ^CUGEMatrix a))
   (axpy [_ alpha a b]
@@ -622,7 +638,11 @@
     b)
   (dot [_ _ _]
     (not-available))
+  (nrm1 [_ _]
+    (not-available))
   (nrm2 [_ _]
+    (not-available))
+  (nrmi [_ _]
     (not-available))
   (asum [_ _]
     (not-available))

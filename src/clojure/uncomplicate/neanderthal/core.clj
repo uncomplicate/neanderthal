@@ -516,6 +516,11 @@
     (throw (ex-info "You cannot compute dot of incompatible or ill-fitting vectors."
                     {:x (str x) :y (str y)}))))
 
+(defn nrm1
+  "Computes the 1-norm of vector or matrix `x`."
+  [x]
+  (api/nrm1 (api/engine x) x))
+
 (defn nrm2
   "Computes the Euclidan norm of vector `x`, or Frobenius norm of matrix `x`.
 
@@ -525,6 +530,11 @@
   "
   [x]
   (api/nrm2 (api/engine x) x))
+
+(defn nrmi
+  "Computes the infinity-norm of vector or matrix `x`."
+  [x]
+  (api/nrmi (api/engine x) x))
 
 (defn asum
   "Sums absolute values of entries of vector or matrix `x`''.
