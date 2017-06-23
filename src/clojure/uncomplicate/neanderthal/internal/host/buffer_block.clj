@@ -1107,7 +1107,10 @@
   (fits? [_ b]
     (and (= n (.mrows ^TRMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
   (fits-navigation? [_ b]
-    (and (= ord (.order ^DenseMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
+    (and (= ord (.order ^DenseMatrix b))
+         (if (instance? TRMatrix b)
+           (and (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b)))
+           true)))
   Monoid
   (id [a]
     (real-tr-matrix fact 0))

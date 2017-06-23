@@ -31,7 +31,7 @@
            [jcuda.jcublas JCublas2 cublasStatus]
            [uncomplicate.neanderthal.internal.api DataAccessor DenseMatrix Vector DenseVector
             RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable RealOrderNavigator
-            UploNavigator StripeNavigator]
+            UploNavigator StripeNavigator DenseMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector IntegerBlockVector
             RealGEMatrix RealTRMatrix]))
 
@@ -403,6 +403,8 @@
     (compatible? da b))
   (fits? [_ b]
     (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
+  (fits-navigation? [_ b]
+    (= ord (.order ^DenseMatrix b)))
   GEMatrix
   (buffer [_]
     @buf)
@@ -592,6 +594,9 @@
     (compatible? da b))
   (fits? [_ b]
     (and (= n (.mrows ^TRMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
+  (fits-navigation? [_ b]
+    (and (= ord (.order ^DenseMatrix b))
+         (or (not (instance? TRMatrix b)) (= fuplo (.uplo ^TRMatrix b))) (= fdiag (.diag ^TRMatrix b))))
   Monoid
   (id [a]
     (cu-tr-matrix fact 0))

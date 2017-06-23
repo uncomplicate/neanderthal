@@ -856,9 +856,49 @@
                          {:order :row})]
 
      (trf! a ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
-     (trs! a b ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
-     (nrm2 (axpy! -1 a lu)) => (roughly 0.014)
-     (nrm2 (axpy! -1 b solution)) => (roughly 0.014))))
+     (trs! a b ipiv) => b
+     (nrm2 (axpy! -1 a lu)) => (roughly 0.0136)
+     (nrm2 (axpy! -1 b solution)) => (roughly 0.0120))))
+
+(defn test-tr-trs [factory]
+  (facts
+   "LAPACK TR trs!"
+
+   (with-release [t (tr factory 5 [6.80,
+                                   -6.05, -3.30,
+                                   -0.45,  2.58, -2.70,
+                                   8.32,  2.71,  4.35, -7.17,
+                                   -9.67, -5.14, -7.26,  6.08, -6.87])
+                  b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
+                                     -1.56,  4.00, -8.67,  1.75,  2.86,
+                                     9.81, -4.09, -4.57, -8.61,  8.99])
+                  a (copy (view-ge t))
+                  b1 (copy b)]
+
+     (nrm2 (axpy! -1 (trs! t b) (trs! a b1 (trf! a)))) => (roughly 0.0 0.0001))))
+
+(defn test-ge-inv [factory]
+  (facts
+   "LAPACK GE trf/tri and inv"
+   (with-release [a (ge factory 5 5 [0.378589,   0.971711,   0.016087,   0.037668,   0.312398,
+                                     0.756377,   0.345708,   0.922947,   0.846671,   0.856103,
+                                     0.732510,   0.108942,   0.476969,   0.398254,   0.507045,
+                                     0.162608,   0.227770,   0.533074,   0.807075,   0.180335,
+                                     0.517006,   0.315992,   0.914848,   0.460825,   0.731980])
+                  inv-a (inv! (copy a))]
+     (nrm2 (mm inv-a a)) => (roughly (sqrt 5.0)))))
+
+(defn test-tr-inv [factory]
+  (facts
+   "LAPACK GE tri and inv"
+   (with-release [a (tr factory 5 [0.378589,,
+                                   0.756377,   0.345708, ,
+                                   0.732510,   0.108942,   0.476969,,
+                                   0.162608,   0.227770,   0.533074,   0.807075, ,
+                                   0.517006,   0.315992,   0.914848,   0.460825,   0.731980]
+                        {:order :row})
+                  inv-a (inv! (copy a))]
+     (nrm2 (mm inv-a a)) => (roughly (sqrt 5.0)))))
 
 (defn test-ge-sv [factory]
   (facts
@@ -886,9 +926,31 @@
                                       -0.26   0.44  -0.59  -0.34  -3.43]
                          {:order :row})]
 
-     (sv! a b ipiv) => (vctr (index-factory factory) [5 5 3 4 5])
-     (nrm2 (axpy! -1 a lu)) => (roughly 0.01359)
-     (nrm2 (axpy! -1 b solution)) => (roughly 0.01201))))
+     (nrm2 (axpy! -1 (sv! a b ipiv) solution)) => (roughly 0.01201)
+     (nrm2 (axpy! -1 a lu)) => (roughly 0.01359))))
+
+(defn test-tr-sv [factory]
+  (facts
+   "LAPACK TR sv!"
+
+   (with-release [t (tr factory 5 [6.80,
+                                   -6.05, -3.30,
+                                   -0.45,  2.58, -2.70,
+                                   8.32,  2.71,  4.35, -7.17,
+                                   -9.67, -5.14, -7.26,  6.08, -6.87])
+                  b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
+                                     -1.56,  4.00, -8.67,  1.75,  2.86,
+                                     9.81, -4.09, -4.57, -8.61,  8.99])
+                  t1 (copy t)
+                  b1 (copy b)
+                  t2 (copy! t (tr factory 5 {:order :row}))
+                  b2 (copy b)
+                  t3 (copy t2)
+                  b3 (copy b)]
+
+     (sv! t b) => (trs! t1 b1)
+     (nrm2 (axpy! -1 (sv! t2 b2) b)) => (roughly 0 0.0001)
+     (nrm2 (axpy! -1 (sv! t3 b3) b2)) => (roughly 0 0.0001))))
 
 (defn test-ge-det [factory]
   (facts
@@ -909,17 +971,6 @@
 
      (det a (trf! a)) => (roughly -38406.4848))))
 
-(defn test-ge-inv [factory]
-  (facts
-   "LAPACK GE trf/tri and inv"
-   (with-release [a (ge factory 5 5 [0.378589,   0.971711,   0.016087,   0.037668,   0.312398,
-                                     0.756377,   0.345708,   0.922947,   0.846671,   0.856103,
-                                     0.732510,   0.108942,   0.476969,   0.398254,   0.507045,
-                                     0.162608,   0.227770,   0.533074,   0.807075,   0.180335,
-                                     0.517006,   0.315992,   0.914848,   0.460825,   0.731980])
-                  inv-a (inv! (copy a))]
-     (nrm2 (mm inv-a a)) => (roughly (sqrt 5.0)))))
-
 (defn test-ge-con [factory]
   (facts
    "LAPACK GE con!"
@@ -931,6 +982,17 @@
                         {:order :row})]
 
      (con! a) => (roughly (/ 152.1620)))))
+
+(defn test-tr-inv [factory]
+  (facts
+   "LAPACK TR tri and inv"
+   (with-release [a (ge factory 5 5 [0.378589,   0.971711,   0.016087,   0.037668,   0.312398,
+                                     0.756377,   0.345708,   0.922947,   0.846671,   0.856103,
+                                     0.732510,   0.108942,   0.476969,   0.398254,   0.507045,
+                                     0.162608,   0.227770,   0.533074,   0.807075,   0.180335,
+                                     0.517006,   0.315992,   0.914848,   0.460825,   0.731980])
+                  inv-a (inv! (copy a))]
+     (nrm2 (mm inv-a a)) => (roughly (sqrt 5.0)))))
 
 (defn test-tr-con [factory]
   (facts
@@ -1260,9 +1322,13 @@
   (test-ge-srt factory)
   (test-tr-srt factory)
   (test-ge-trf factory)
+  (test-ge-trs factory)
+  (test-tr-trs factory)
   (test-ge-det factory)
   (test-ge-sv factory)
+  (test-tr-sv factory)
   (test-ge-inv factory)
+  (test-tr-inv factory)
   (test-ge-con factory)
   (test-tr-con factory)
   (test-ge-qr factory)

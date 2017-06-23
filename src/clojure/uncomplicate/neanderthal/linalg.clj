@@ -76,11 +76,16 @@
 
   See related info about [lapacke_?getri](https://software.intel.com/en-us/mkl-developer-reference-c-getri).
   "
-  (^Vector [^Matrix a ^Vector ipiv]
+  ([^Matrix a ^Vector ipiv]
    (if (= (.mrows a) (.ncols a) (.dim ipiv))
      (api/tri (api/engine a) a ipiv)
      (throw (ex-info "Can not compute an inverse of a non-square matrix, and an incompatible ipiv."
-                     {:m (.mrows a) :n (.ncols a) :dim (.dim ipiv)})))))
+                     {:m (.mrows a) :n (.ncols a) :dim (.dim ipiv)}))))
+  ([^Matrix a]
+   (if (= (.mrows a) (.ncols a))
+     (api/tri (api/engine a) a)
+     (throw (ex-info "Can not compute an inverse of a non-square matrix."
+                     {:m (.mrows a) :n (.ncols a)})))))
 
 (defn inv!
   "Computes the inverse of a square matrix `a`, using LU factorization.
@@ -88,9 +93,11 @@
   Overwrites `a` with its inverse.
 
   If a is not square, or not invertible, throws ExceptionInfo."
-  ^Matrix [^Matrix a]
-  (with-release [ipiv (trf! a)]
-    (tri! a ipiv)))
+  [^Matrix a]
+  (if (= (.mrows a) (.ncols a))
+    (api/inv (api/engine a) a)
+    (throw (ex-info "Can not compute an inverse of a non-square matrix."
+                    {:m (.mrows a) :n (.ncols a)}))))
 
 (defn trs!
   "Solves a system of linear equations with an LU factored matrix `lu`, with multiple right
@@ -103,7 +110,7 @@
 
   See related info about [lapacke_?getrs](https://software.intel.com/en-us/node/520892).
   "
-  (^Vector [^Matrix lu ^Matrix b ^Vector ipiv]
+  ([^Matrix lu ^Matrix b ^Vector ipiv]
    (if (and (= (.ncols lu) (.mrows b) (.dim ipiv)) (api/fits-navigation? lu b))
      (api/trs (api/engine lu) lu b ipiv)
      (throw (ex-info "Dimensions and orientation of lu, b, and ipiv do not fit"
@@ -112,9 +119,14 @@
                                  (not (= (.ncols lu) (.mrows b))) "lu and b dimensions do not fit"
                                  (not (= (.ncols lu) (.dim ipiv))) "lu and ipiv do not fit"
                                  (not (api/fits-navigation? lu b) "lu and b do not have the same order"))}))))
-  (^Vector [^Matrix lu b]
-   (let-release [ipiv (vctr (api/index-factory lu) (.ncols lu))]
-     (trs! lu b ipiv))))
+  ([^Matrix a ^Matrix b]
+   (if (and (= (.ncols a) (.mrows b)) (api/fits-navigation? a b))
+     (api/trs (api/engine a) a b)
+     (throw (ex-info "Dimensions and orientation of a and b do not fit"
+                     {:a  (str a) :b (str b) :errors
+                      (cond-into []
+                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
+                                 (not (api/fits-navigation? a b)) "a and b do not have the same order")})))))
 
 (defn sv!
   "Solves a system of linear equations with a square coefficient matrix `a` and multiple right
@@ -131,7 +143,7 @@
 
   See related info about [lapacke_?gesv](https://software.intel.com/en-us/node/520973).
   "
-  (^Vector [^Matrix a ^Matrix b ^Vector ipiv]
+  ([^Matrix a ^Matrix b ^Vector ipiv]
    (if (and (= (.ncols a) (.mrows b) (.dim ipiv)) (api/fits-navigation? a b))
      (api/sv (api/engine a) a b ipiv)
      (throw (ex-info "Dimensions and orientation of a, b, and ipiv do not fit"
@@ -140,9 +152,11 @@
                                  (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
                                  (not (= (.ncols a) (.dim ipiv))) "a and ipiv do not fit"
                                  (not (api/fits-navigation? a b) "a and b do not have the same order"))}))))
-  (^Vector [^Matrix a b]
-   (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
-     (sv! a b ipiv))))
+  ([^Matrix a ^Matrix b]
+   (if (and (= (.ncols a) (.mrows b)))
+     (api/sv (api/engine a) a b)
+     (throw (ex-info "Dimensions of a and b do not fit."
+                     {:ncols-a (.ncols a) :mrows-b (.mrows b)})))))
 
 (defn con!
   "Computes the reciprocal of the condition number of `a`, from its `lu` factorization.

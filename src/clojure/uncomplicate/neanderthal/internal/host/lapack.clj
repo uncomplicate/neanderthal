@@ -7,8 +7,12 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.lapack
-  (:require [uncomplicate.neanderthal.block :refer [buffer offset]])
-  (:import [uncomplicate.neanderthal.internal.host CBLAS]))
+  (:require [uncomplicate.neanderthal.block :refer [buffer offset]]
+            [uncomplicate.neanderthal.internal.api
+             :refer [create-vector index-factory engine nrm1 nrmi trf tri trs con sv fits-navigation?]]
+            [uncomplicate.commons.core :refer [with-release let-release]])
+  (:import [uncomplicate.neanderthal.internal.host CBLAS]
+           [uncomplicate.neanderthal.internal.api GEMatrix]))
 
 (defmacro with-lapack-check [expr]
   ` (let [err# ~expr]
@@ -105,7 +109,7 @@
 
 ;; ------------- Singular Value Decomposition LAPACK -------------------------------
 
-(defmacro with-sv-check [ipiv expr]
+(defmacro with-ge-sv-check [ipiv expr]
   `(if (= 1 (.stride ~ipiv))
      (let [info# ~expr]
        (cond
@@ -117,36 +121,84 @@
      (throw (ex-info "You cannot use ipiv with stride different than 1." {:stride (.stride ~ipiv)}))))
 
 (defmacro ge-trf [method a ipiv]
-  `(with-sv-check ~ipiv
+  `(with-ge-sv-check ~ipiv
      (~method (.order ~a) (.mrows ~a) (.ncols ~a)
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
 
-(defmacro ge-tri [method a ipiv]
-  `(with-sv-check ~ipiv
-     (~method (.order ~a) (.sd ~a)
-      (.buffer ~a) (.offset ~a) (.ld ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+(defmacro ge-tri
+  ([method a ipiv]
+   `(with-ge-sv-check ~ipiv
+      (~method (.order ~a) (.sd ~a)
+       (.buffer ~a) (.offset ~a) (.ld ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+  ([a]
+   `(throw (ex-info "LU factorization have to be found first for GE matrices." {:a (str ~a)}))))
 
-(defmacro ge-trs [method a b ipiv]
-  `(with-sv-check ~ipiv
-     (~method (.order ~a) (int (if (= (.order ~a) (.order ~b)) \N \T))
-      (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-      (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+(defmacro ge-inv [a]
+  `(let [eng# (engine ~a)]
+     (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
+       (trf eng# ~a ipiv#)
+       (tri eng# ~a ipiv#))))
 
-(defmacro ge-sv [method a b ipiv]
-  `(with-sv-check ~ipiv
-     (~method (.order ~a) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-      (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+(defmacro tr-tri [method a]
+  `(~method (.order ~a)
+    (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+    (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
+    (.sd ~a) (.buffer ~a) (.offset ~a) (.ld ~a)))
+
+(defmacro ge-trs
+  ([method a b ipiv]
+   `(with-ge-sv-check ~ipiv
+      (~method (.order ~a) (int (if (= (.order ~a) (.order ~b)) \N \T))
+       (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+       (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
+  ([a b]
+   `(throw (ex-info "LU factorization have to be found first for GE matrices." {:a (str ~a)}))))
+
+(defmacro tr-trs [method a b]
+  `(~method (.order ~a)
+    (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (int (if (= (.order ~a) (.order ~b)) \N \T))
+    (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N)) (.mrows ~b)
+    (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
+
+(defmacro ge-sv
+  ([method a b ipiv]
+   `(if (fits-navigation? ~a ~b)
+      (with-ge-sv-check ~ipiv
+        (~method (.order ~a) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+         (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b)))
+      (throw (ex-info "Orientation of a and b do not fit." {:a (str ~a) :b (str ~b)}))))
+  ([a b]
+   `(if (instance? GEMatrix ~b)
+      (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
+        (sv (engine ~a) ~a ~b ipiv#))
+      (sv (engine ~b) ~b ~a false))))
+
+(defmacro tr-sv [method a b left]
+  `(~method (.order ~b) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
+    (if (= (.order ~a) (.order ~b))
+      (.uplo ~a)
+      (if (= CBLAS/UPLO_LOWER (.uplo ~a)) CBLAS/UPLO_UPPER CBLAS/UPLO_LOWER))
+    (if (= (.order ~a) (.order ~b)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+    (.diag ~a) (.mrows ~b) (.ncols ~b) 1.0
+    (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
 
 ;; ------------------ Condition Number ----------------------------------------------
 
-(defmacro ge-con [da method lu nrm nrm1?]
-  `(let [res# (.createDataSource ~da 1)
-         info# (~method (.order ~lu) (int (if ~nrm1? \O \I))(min (.mrows ~lu) (.ncols ~lu))
-                (.buffer ~lu) (.offset ~lu) (.stride ~lu) ~nrm res#)]
-     (if (= 0 info#)
-       (.get ~da res# 0)
-       (throw (ex-info "There has been an illegal argument in the native function call."
-                       {:arg-index (- info#)})))))
+(defmacro ge-con
+  ([da method lu nrm nrm1?]
+   `(let [res# (.createDataSource ~da 1)
+          info# (~method (.order ~lu) (int (if ~nrm1? \O \I)) (min (.mrows ~lu) (.ncols ~lu))
+                 (.buffer ~lu) (.offset ~lu) (.stride ~lu) ~nrm res#)]
+      (if (= 0 info#)
+        (.get ~da res# 0)
+        (throw (ex-info "There has been an illegal argument in the native function call."
+                        {:arg-index (- info#)})))))
+  ([a nrm1?]
+   `(let-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
+      (let [eng# (engine ~a)
+            norm# (if ~nrm1? (nrm1 eng# ~a) (nrmi eng# ~a))]
+        (trf eng# ~a ipiv#)
+        (con eng# ~a norm# ~nrm1?)))))
 
 (defmacro tr-con [da method a nrm1?]
   `(let [res# (.createDataSource ~da 1)
