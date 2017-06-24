@@ -20,7 +20,7 @@
                   [real :refer :all]]))
   "
   (:require [uncomplicate.commons.core :refer [with-release double-fn]]
-            [uncomplicate.fluokitten.core :refer [foldmap fold]]
+            [uncomplicate.fluokitten.core :refer [foldmap]]
             [uncomplicate.neanderthal
              [math :refer [sqr]]
              [core :as core]
@@ -95,18 +95,3 @@
         (entry! res j (foldmap sqr (.col residuals j))))
       res)
     (api/zero (.row b 0))))
-
-(def ^:private f* (double-fn *))
-
-(defn det
-  "Computes the determinant of a matrix from its `lu` factors and `ipiv` pivot,
-  which were obtained as an output from [[uncomplicate.neanderthal.linalg/trf!]] (LU factorization).
-  Overwrites the data in `lu`!"
-  ^double [^RealMatrix lu ^Vector ipiv]
-  (if (= (.mrows lu) (.ncols lu))
-    (let [res (double (fold f* 1.0 (.dia lu)))]
-      (if (even? (.dim ipiv))
-        res
-        (- res)))
-    (throw (ex-info "Determinant computation requires a square result of trf!."
-                    {:mrows (.mrows lu) :ncols (.ncols lu)}))))

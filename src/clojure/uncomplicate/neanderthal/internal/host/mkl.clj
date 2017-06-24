@@ -356,26 +356,15 @@
   (tri [_ a ipiv]
     (ge-tri LAPACK/dgetri ^RealGEMatrix a ^IntegerBlockVector ipiv)
     a)
-  (tri [_ a]
-    (ge-tri ^RealGEMatrix a))
-  (inv [_ a]
-    (ge-inv ^RealGEMatrix a))
   (trs [_ a b ipiv]
     (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)
     b)
-  (trs [_ a b]
-    (ge-trs ^RealGEMatrix a ^RealGEMatrix b))
-  (sv [_ a b ipiv]
-    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)
-    b)
-  (sv [this a b]
-    (ge-sv ^RealGEMatrix a ^RealGEMatrix b)
+  (sv [_ a b pure]
+    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b pure)
     b)
   (con [_ lu nrm nrm1?]
     (let [da (data-accessor lu)]
       (ge-con ^RealBufferAccessor da LAPACK/dgecon ^RealGEMatrix lu nrm nrm1?)))
-  (con [this a nrm1?]
-    (ge-con ^RealGEMatrix a nrm1?))
   (qrf [_ a tau]
     (ge-lqrf LAPACK/dgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
@@ -477,26 +466,15 @@
   (tri [_ a ipiv]
     (ge-tri LAPACK/sgetri ^RealGEMatrix a ^IntegerBlockVector ipiv)
     a)
-  (tri [_ a]
-    (ge-tri ^RealGEMatrix a))
-  (inv [_ a]
-    (ge-inv ^RealGEMatrix a))
   (trs [_ a b ipiv]
     (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)
     b)
-  (trs [_ a b]
-    (ge-trs ^RealGEMatrix a ^RealGEMatrix b))
-  (sv [_ a b ipiv]
-    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)
-    b)
-  (sv [this a b]
-    (ge-sv ^RealGEMatrix a ^RealGEMatrix b)
+  (sv [_ a b pure]
+    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b pure)
     b)
   (con [_ lu nrm nrm1?]
     (let [da (data-accessor lu)]
       (ge-con ^RealBufferAccessor da LAPACK/sgecon ^RealGEMatrix lu nrm nrm1?)))
-  (con [this a nrm1?]
-    (ge-con ^RealGEMatrix a nrm1?))
   (qrf [_ a tau]
     (ge-lqrf LAPACK/sgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
@@ -595,14 +573,11 @@
   (tri [_ a]
     (tr-tri LAPACK/dtrtri ^RealTRMatrix a)
     a)
-  (inv [_ a]
-    (tr-tri LAPACK/dtrtri ^RealTRMatrix a)
-    a)
   (trs [_ a b]
     (tr-trs LAPACK/dtrtrs ^RealTRMatrix a ^RealGEMatrix b)
     b)
-  (sv [this a b]
-    (tr-sv CBLAS/dtrsm ^RealTRMatrix a ^RealGEMatrix b true)
+  (sv [this a b _]
+    (tr-sv CBLAS/dtrsm ^RealTRMatrix a ^RealGEMatrix b)
     b)
   (con [_ a nrm1?]
     (let [da (data-accessor a)]
@@ -663,14 +638,11 @@
   (tri [_ a]
     (tr-tri LAPACK/strtri ^RealTRMatrix a)
     a)
-  (inv [_ a]
-    (tr-tri LAPACK/strtri ^RealTRMatrix a)
-    a)
   (trs [_ a b]
     (tr-trs LAPACK/strtrs ^RealTRMatrix a ^RealGEMatrix b)
     b)
-  (sv [this a b]
-    (tr-sv CBLAS/strsm ^RealTRMatrix a ^RealGEMatrix b true)
+  (sv [this a b _]
+    (tr-sv CBLAS/strsm ^RealTRMatrix a ^RealGEMatrix b)
     b)
   (con [_ a nrm1?]
     (let [da (data-accessor a)]

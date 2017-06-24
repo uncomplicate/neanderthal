@@ -12,9 +12,10 @@
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 int32 int64 wrap-byte-seq]]]
             [uncomplicate.commons.core
-             :refer [Releaseable release let-release clean-buffer wrap-float wrap-double wrap-int wrap-long]]
+             :refer [Releaseable release let-release clean-buffer double-fn
+                     wrap-float wrap-double wrap-int wrap-long]]
             [uncomplicate.fluokitten.protocols
-             :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative]]
+             :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! subvector]]
              [real :refer [entry entry!]]
@@ -35,6 +36,11 @@
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
+
+(def ^:private f* (double-fn *))
+
+(defn ^:private require-lu []
+  (throw (ex-info "Please do the LU factorization of this matrix first." {})))
 
 (extend-type DirectByteBuffer
   Releaseable
@@ -814,6 +820,19 @@
   Monoid
   (id [a]
     (real-ge-matrix fact 0 0))
+  LU
+  (lu-trs [_ _]
+    (require-lu))
+  (lu-tri! [_]
+    (require-lu))
+  (lu-tri [_]
+    (require-lu))
+  (lu-con [_ _ _]
+    (require-lu))
+  (lu-con [_ _]
+    (require-lu))
+  (lu-det [_]
+    (require-lu))
   PseudoFunctor
   (fmap! [a f]
     (ge-fmap navigator fd sd ^IFn$DD f a))
@@ -1218,6 +1237,20 @@
   (transpose [a]
     (real-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
                     (if (= LOWER fuplo) UPPER LOWER) fdiag))
+  LU
+  (lu-trs [a b]
+    (trs eng a b))
+  (lu-tri! [a]
+    (tri eng a))
+  (lu-tri [a]
+    (let-release [res (raw a)]
+      (tri eng (copy eng a res))))
+  (lu-con [a nrm1?]
+    (con eng a nrm1?))
+  (lu-det [a]
+    (if (= DIAG_NON_UNIT fdiag)
+      (fold (.diag a) f* 1.0)
+      1.0))
   PseudoFunctor
   (fmap! [a f]
     (tr-fmap navigator stripe-nav n ^IFn$DD f a))

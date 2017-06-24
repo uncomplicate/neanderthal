@@ -34,145 +34,174 @@
   (:require [uncomplicate.commons
              [core :refer [let-release with-release]]
              [utils :refer [cond-into]]]
-            [uncomplicate.neanderthal.core :refer [vctr vctr? ge]]
-            [uncomplicate.neanderthal.internal.api :as api])
+            [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy]]
+            [uncomplicate.neanderthal.internal
+             [api :as api]
+             [common :as generic]])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix Changeable]))
 
-;; ============================= LAPACK =======================================
+;; ============================= LAPACK =======================================================
 
-;; ------------- Singular Value Decomposition LAPACK -------------------------------
+;; =============  Triangular Linear Systems LAPACK ============================================
 
 (defn trf!
-  "Computes the LU factorization of a GE `mxn` matrix `a`.
+  "Triangularizes a GE matrix `a`. Destructively computes the LU factorization of a `mxn` matrix `a`,
+  and places it in a record that contains `:lu` and `:ipiv`.
 
   Overwrites `a` with L and U. L is stored as a lower unit triangle, and U as an upper triangle.
-  Pivot is  placed into the `ipiv`, a vector of **integers or longs**.
+  Pivot is  placed into the `:ipiv`, a vector of **integers or longs**.
 
-  If the stride of `ipiv` is not `1`, or its dimension is not equals to `a`'s number of columns,
-  or some value is illegal, throws ExceptionInfo.
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
   See related info about [lapacke_?getrf](https://software.intel.com/en-us/node/520877).
   "
-  (^Vector [^Matrix a ^Vector ipiv]
-   (if (= (.ncols a) (.dim ipiv))
-     (api/trf (api/engine a) a ipiv)
-     (throw (ex-info "Column number of a and the dimension of ipiv do not fit."
-                     {:n (.ncols a) :dim (.dim ipiv)}))))
-  (^Vector [^Matrix a]
-   (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
-     (trf! a ipiv))))
+  [^Matrix a]
+  (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
+    (api/trf (api/engine a) a ipiv)
+    (generic/create-lu a ipiv)))
 
-(defn tri!
-  "Computes the inverse of a matrix `a`, previously LU-factorized by [[trf!]]. `ipiv` also
-  originates from [[trf!]]
+(defn trf
+  "Triangularizes a GE matrix `a`. Computes the LU factorization of a `mxn` matrix `a`,
+  and places it in a record that contains `:lu`, `:a` and `:ipiv`.
 
-  Overwrites `a` with a `nxn` inverse of pre-LU `a`.
-  If the stride of `ipiv` is not `1`, or its dimension is not equals to `a`'s number of columns,
-  or some value is illegal, throws ExceptionInfo.
+  Pivot is  placed into the `:ipiv`, a vector of **integers or longs**.
+
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
+  See related info about [lapacke_?getrf](https://software.intel.com/en-us/node/520877).
+  "
+  [^Matrix a]
+  (let-release [ipiv (vctr (api/index-factory a) (.ncols a))
+                a-copy (copy a)]
+    (api/trf (api/engine a-copy) a-copy ipiv)
+    (generic/create-lu a-copy a ipiv)))
+
+(defn tri!
+  "Destructively computes the inverse of a triangularized matrix `a`.
+  Overwrites `a` (or `:lu`) with a `nxn` inverse.
+
+  If U is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+  If the matrix is not square, throws ExceptionInfo.
+
   See related info about [lapacke_?getri](https://software.intel.com/en-us/mkl-developer-reference-c-getri).
   "
-  ([^Matrix a ^Vector ipiv]
-   (if (= (.mrows a) (.ncols a) (.dim ipiv))
-     (api/tri (api/engine a) a ipiv)
-     (throw (ex-info "Can not compute an inverse of a non-square matrix, and an incompatible ipiv."
-                     {:m (.mrows a) :n (.ncols a) :dim (.dim ipiv)}))))
-  ([^Matrix a]
-   (if (= (.mrows a) (.ncols a))
-     (api/tri (api/engine a) a)
-     (throw (ex-info "Can not compute an inverse of a non-square matrix."
-                     {:m (.mrows a) :n (.ncols a)})))))
-
-(defn inv!
-  "Computes the inverse of a square matrix `a`, using LU factorization.
-
-  Overwrites `a` with its inverse.
-
-  If a is not square, or not invertible, throws ExceptionInfo."
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
-    (api/inv (api/engine a) a)
+    (api/lu-tri! a)
+    (throw (ex-info "Can not compute an inverse of a non-square matrix."
+                    {:m (.mrows a) :n (.ncols a)}))))
+
+(defn tri
+  "Computes the inverse of a triangularized matrix `a`. Returns the results in a new matrix instance.
+
+  If U is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+  If the matrix is not square, throws ExceptionInfo.
+
+  See related info about [lapacke_?getri](https://software.intel.com/en-us/mkl-developer-reference-c-getri).
+  "
+  [a]
+  (if (= (.mrows a) (.ncols a))
+    (api/lu-tri a)
     (throw (ex-info "Can not compute an inverse of a non-square matrix."
                     {:m (.mrows a) :n (.ncols a)}))))
 
 (defn trs!
-  "Solves a system of linear equations with an LU factored matrix `lu`, with multiple right
-  hand sides matrix `b`. Overwrites `b` by the solution matrix.
+  "Destructively solves a system of linear equations with a triangularized matrix `a`,
+  with multiple right hand sides matrix `b`. Overwrites `b` by the solution matrix.
 
-  If the stride of `ipiv` is not `1`, or its dimension is not equeals to `lu`'s number of columns,
-  or some value is illegal, throws ExceptionInfo.
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
   See related info about [lapacke_?getrs](https://software.intel.com/en-us/node/520892).
   "
-  ([^Matrix lu ^Matrix b ^Vector ipiv]
-   (if (and (= (.ncols lu) (.mrows b) (.dim ipiv)) (api/fits-navigation? lu b))
-     (api/trs (api/engine lu) lu b ipiv)
-     (throw (ex-info "Dimensions and orientation of lu, b, and ipiv do not fit"
-                     {:lu  (str lu) :b (str b) :ipiv (str ipiv) :errors
-                      (cond-into []
-                                 (not (= (.ncols lu) (.mrows b))) "lu and b dimensions do not fit"
-                                 (not (= (.ncols lu) (.dim ipiv))) "lu and ipiv do not fit"
-                                 (not (api/fits-navigation? lu b) "lu and b do not have the same order"))}))))
-  ([^Matrix a ^Matrix b]
-   (if (and (= (.ncols a) (.mrows b)) (api/fits-navigation? a b))
-     (api/trs (api/engine a) a b)
-     (throw (ex-info "Dimensions and orientation of a and b do not fit"
-                     {:a  (str a) :b (str b) :errors
-                      (cond-into []
-                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
-                                 (not (api/fits-navigation? a b)) "a and b do not have the same order")})))))
+  [^Matrix a ^Matrix b]
+  (if (and (= (.ncols a) (.mrows b)) (api/compatible? a b) (api/fits-navigation? a b))
+    (api/lu-trs a b)
+    (throw (ex-info "Dimensions and orientation of a and b do not fit"
+                    {:a  (str a) :b (str b) :errors
+                     (cond-into []
+                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
+                                (not (api/fits-navigation? a b)) "a and b do not have the same order")}))))
+
+(defn trs
+  "Solves a system of linear equations with a triangularized matrix `a`,
+  with multiple right hand sides matrix `b`. Returns the results in a new matrix instance.
+
+  If U is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+
+  See related info about [lapacke_?getrs](https://software.intel.com/en-us/node/520892).
+  "
+  [a b]
+  (let-release [res (copy b)]
+    (trs! a res)))
 
 (defn sv!
-  "Solves a system of linear equations with a square coefficient matrix `a` and multiple right
-  hand sides matrix `b`. Overwrites `b` by the solution matrix.
+  "Destructively solves a system of linear equations with a square coefficient matrix `a`,
+  and multiple right  hand sides matrix `b`. Overwrites `b` by the solution matrix.
 
-  Overwrites `a` with L and U, `b` with the solution, and `ipiv` with a pivoting vector.
-  L is stored as a lower unit triangle, and U as an upper triangle. Pivot is  placed into
-  the `ipiv`, a vector of **integers or longs**.
+  Overwrites `a` with L and U, and `b` with the solution.
+  L is stored as a lower unit triangle, and U as an upper triangle. Pivot is not retained.
+  If you need to reuse LU, use [[trf]], and [[trs]], or their destructive versions.
 
-  If the stride of `ipiv` is not `1`, or its dimension is not equeals to `a`'s number of columns,
-  or some value is illegal, throws ExceptionInfo.
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
   See related info about [lapacke_?gesv](https://software.intel.com/en-us/node/520973).
   "
-  ([^Matrix a ^Matrix b ^Vector ipiv]
-   (if (and (= (.ncols a) (.mrows b) (.dim ipiv)) (api/fits-navigation? a b))
-     (api/sv (api/engine a) a b ipiv)
-     (throw (ex-info "Dimensions and orientation of a, b, and ipiv do not fit"
-                     {:a  (str a) :b (str b) :ipiv (str ipiv) :errors
-                      (cond-into []
-                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
-                                 (not (= (.ncols a) (.dim ipiv))) "a and ipiv do not fit"
-                                 (not (api/fits-navigation? a b) "a and b do not have the same order"))}))))
-  ([^Matrix a ^Matrix b]
-   (if (and (= (.ncols a) (.mrows b)))
-     (api/sv (api/engine a) a b)
-     (throw (ex-info "Dimensions of a and b do not fit."
-                     {:ncols-a (.ncols a) :mrows-b (.mrows b)})))))
+  [^Matrix a ^Matrix b]
+  (if (and (and (= (.ncols a) (.mrows b))) (api/compatible? a b))
+    (api/sv (api/engine a) a b false)
+    (throw (ex-info "Dimensions of a and b do not fit."
+                    {:ncols-a (.ncols a) :mrows-b (.mrows b)}))))
 
-(defn con!
-  "Computes the reciprocal of the condition number of `a`, from its `lu` factorization.
+(defn sv
+  "Solves a system of linear equations with a square coefficient matrix `a`,
+  and multiple right  hand sides matrix `b`. Returns the results in a new matrix instance.
+
+  Overwrites `a` with L and U, and `b` with the solution.
+  L is stored as a lower unit triangle, and U as an upper triangle. Pivot is not retained.
+  If you need to reuse LU, use [[trf]], and [[trs]], or their destructive versions.
+
+  If U is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+
+  See related info about [lapacke_?gesv](https://software.intel.com/en-us/node/520973).
+  "
+  [a b]
+  (let-release [res (copy b)]
+    (api/sv (api/engine a) a res true)
+    res))
+
+(defn con
+  "Computes the reciprocal of the condition number of a triangularized matrix `a`.
 
   If `nrm1?` is true, computes the reciprocal based on 1 norm, if not, on infinity norm.
-  If `lu` factorization is supplied, then `nrm` and matching `nrm1?` has to be supplied.
+  If `lu` factorization is supplied, it has to have the reference to the original matrix `:a`,
+  or `nrm` and matching `nrm1?` have to be supplied.
 
-  Overwrites `a` by the LU factorization.
-
-  If the LU factorization cannot be done, throws ExceptionInfo."
+  If the LU has been stale, or norm is not possible to compute, throws ExceptionInfo.
+  "
   (^double [^Matrix lu nrm nrm1?]
-   (api/con (api/engine lu) lu nrm nrm1?))
+   (api/lu-con lu nrm nrm1?))
   (^double [^Matrix a nrm1?]
-   (api/con (api/engine a) a nrm1?))
+   (api/lu-con a nrm1?))
   (^double [^Matrix a]
-   (api/con (api/engine a) a true)))
+   (con a true)))
+
+(defn det
+  "Computes the determinant of a triangularized matrix `a`.
+
+  If the matrix is not square, throws ExceptionInfo."
+  [^Matrix a]
+  (if (= (.mrows a) (.ncols a))
+    (api/lu-det a)
+    (throw (ex-info "Determinant computation requires a square matrix."
+                    {:mrows (.mrows a) :ncols (.ncols a)}))))
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 
@@ -180,13 +209,13 @@
   (max 1 (min (.mrows a) (.ncols a))))
 
 (defmacro ^:private with-lqrf-check [a tau expr]
-  `(if (and (= (.dim ~tau) (min-mn ~a)))
+  `(if (and (= (.dim ~tau) (min-mn ~a)) (api/compatible? ~a ~tau))
      ~expr
      (throw (ex-info "Dimension of tau is not equals to (min ncols mrows) of a."
                      {:m (.mrows ~a) :n (.ncols ~a) :dim (.dim ~tau)}))))
 
 (defmacro ^:private with-gq*-check [a tau expr]
-  `(if (<= 1 (.dim ~tau) (.ncols ~a) (.mrows ~a))
+  `(if (and (<= 1 (.dim ~tau) (.ncols ~a) (.mrows ~a)) (api/compatible? ~a ~tau))
      ~expr
      (throw (ex-info "Dimensions of a and tau do not fit requirements for computing Q."
                      {:m (.mrows ~a) :n (.ncols ~a) :dim (.dim ~tau) :errors
@@ -195,7 +224,7 @@
                                  (not (<= (.ncols ~a) (.mrows ~a))) "(not (<= (ncols ~a) (mrows a)))")}))))
 
 (defmacro ^:private with-g*q-check [a tau expr]
-  `(if (<= (.dim ~tau) (.mrows ~a) (.ncols ~a))
+  `(if (and (<= (.dim ~tau) (.mrows ~a) (.ncols ~a)) (api/compatible? ~a ~tau))
      ~expr
      (throw (ex-info "Dimensions of a and tau do not fit requirements for computing Q."
                      {:m (.mrows ~a) :n (.ncols ~a) :dim (.dim ~tau) :errors
@@ -205,7 +234,8 @@
 
 (defmacro ^:private with-mq*-check [a tau c left expr]
   `(let [r# (long (if ~left (.mrows ~c) (.ncols ~c)))]
-     (if (and (<= (.dim ~tau) r#) (= r# (.mrows ~a)) (= (.ncols ~a) (.dim ~tau)))
+     (if (and (<= (.dim ~tau) r#) (= r# (.mrows ~a)) (= (.ncols ~a) (.dim ~tau))
+              (api/compatible? ~a ~tau))
        ~expr
        (throw (ex-info "Dimensions of a, tau, and c do not fit matrix multiplication."
                        {:a (str ~a) :c (str ~c) :tau (str ~tau) :errors
@@ -218,7 +248,8 @@
 
 (defmacro ^:private with-m*q-check [a tau c left expr]
   `(let [r# (long (if ~left (.mrows ~c) (.ncols ~c)))]
-     (if (and (<= (.dim ~tau) r#) (= (.mrows ~c) (.ncols ~a)) (= (.mrows ~a) (.dim ~tau)))
+     (if (and (<= (.dim ~tau) r#) (= (.mrows ~c) (.ncols ~a)) (= (.mrows ~a) (.dim ~tau))
+              (api/compatible? ~a ~tau))
        ~expr
        (throw (ex-info "Dimensions of a, tau, and c do not fit matrix multiplication."
                        {:a (str ~a) :c (str ~c) :tau (str ~tau) :errors
@@ -475,8 +506,10 @@
   ([^Matrix a ^Matrix w ^Matrix vl ^Matrix vr]
    (if (and (= (.mrows a) (.ncols a))
             (= (.mrows a) (.mrows w)) (< 1 (.ncols w))
-            (or (nil? vl) (and (= (.mrows a) (.mrows vl) (.ncols vl)) (api/fits-navigation? a vl)))
-            (or (nil? vr) (and (= (.mrows a) (.mrows vr) (.ncols vr)) (api/fits-navigation? a vr))))
+            (or (nil? vl) (and (= (.mrows a) (.mrows vl) (.ncols vl))
+                               (api/compatible? a vl) (api/fits-navigation? a vl)))
+            (or (nil? vr) (and (= (.mrows a) (.mrows vr) (.ncols vr))
+                               (api/compatible? a vr)(api/fits-navigation? a vr))))
      (api/ev (api/engine a) a w vl vr)
      (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
                      {:a (str a) :w (str w) :vl (str vl) :vr (str vr) :errors
@@ -518,10 +551,10 @@
          min-mn (min m n)]
      (if (and (or (nil? u) (and (or (= m (.mrows u) (.ncols u))
                                     (and (= m (.mrows u)) (= min-mn (.ncols u))))
-                                (api/fits-navigation? a u)))
+                                (api/compatible? a u) (api/fits-navigation? a u)))
               (or (nil? vt) (and (or (= n (.mrows vt) (.ncols vt))
                                      (and (= min-mn (.mrows vt)) (= n (.ncols vt))))
-                                 (api/fits-navigation? a vt)))
+                                 (api/compatible? a vt) (api/fits-navigation? a vt)))
               (= min-mn (.dim s) (.dim superb)))
        (api/svd (api/engine a) a s u vt superb)
        (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
@@ -539,7 +572,8 @@
                                  (not (or (nil? vt) (= min-mn (.mrows vt)))) "mrows of vt is not equals (min m n)"
                                  (not (or (nil? vt) (= n (.ncols vt)))) "ncols of vt is not equals n")})))))
   ([^Matrix a ^Vector s ^Vector superb]
-   (if (and (= (min (.mrows a) (.ncols a)) (.dim s) (.dim superb)))
+   (if (and (= (min (.mrows a) (.ncols a)) (.dim s) (.dim superb))
+            (api/compatible? a s) (api/compatible? a superb))
      (api/svd (api/engine a) a s superb)
      (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
                      {:a (str a) :s (str s) :superb (str superb) :errors

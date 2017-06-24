@@ -64,10 +64,10 @@
   (srt [this x increasing])
   (trf [this a ipiv])
   (tri [this a ipiv] [this a])
-  (inv [this a])
+  (det [this a ipiv] [this a])
   (trs [this a b ipiv] [this a b])
-  (con [this lu nrm nrm1?] [this a nrm1?])
-  (sv [this a b ipiv] [this a b])
+  (con [this lu a nrm1?] [this a nrm1?])
+  (sv [this a b pure])
   (qrf [this a tau])
   (qrfp [this a tau])
   (gqr [this a tau])
@@ -84,6 +84,13 @@
   (ls [this a b])
   (ev [this a w vl vr])
   (svd [this a s superb] [this a s u vt superb]))
+
+(defprotocol LU
+  (lu-trs [a b])
+  (lu-tri! [a])
+  (lu-tri [a])
+  (lu-con [a nrm nrm1?] [a nrm1?])
+  (lu-det [a]))
 
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))

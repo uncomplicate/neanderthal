@@ -8,11 +8,12 @@
 
 (ns uncomplicate.neanderthal.internal.common
   (:require [clojure.pprint :refer [cl-format]]
-            [uncomplicate.commons.core :refer [Releaseable release let-release]]
+            [uncomplicate.fluokitten.core :refer [fold]]
+            [uncomplicate.commons.core :refer [Releaseable release let-release double-fn]]
             [uncomplicate.neanderthal.math :refer [ceil floor]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang Seqable IFn]
-           [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix DataAccessor
+           [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix GEMatrix DataAccessor
             SegmentVector UploNavigator]))
 
 (defn ^:private unsupported []
@@ -137,35 +138,13 @@
         (if (= unit-idx i)
           1.0
           0.0))))
-  (subvector [_ _ _]
-    (unsupported))
   Blas
   (swap [_ x y]
     (swap (engine seg) (.segment ^SegmentVector x) (.segment ^SegmentVector y))
     x)
   (copy [_ x y]
     (copy (engine seg) (.segment ^SegmentVector x) (.segment ^SegmentVector y))
-    y)
-  (dot [_ x y]
-    (unsupported))
-  (nrm2 [_ x]
-    (unsupported))
-  (asum [_ x]
-    (unsupported))
-  (iamax [_ x]
-    (unsupported))
-  (rot [_ x y c s]
-    (unsupported))
-  (rotg [_ abcs]
-    (unsupported))
-  (rotm [_ x y param]
-    (unsupported))
-  (rotmg [_ d1d2xy param]
-    (unsupported))
-  (scal [_ alpha x]
-    (unsupported))
-  (axpy [_ alpha x y]
-    (unsupported)))
+    y))
 
 (defn segment-vector
   ([^Vector seg ^long n ^long start ^long unit-idx]
@@ -218,3 +197,68 @@
         (format-vector w formatter
                        (segment-vector (.row a i) (.ncols a)
                                        (.rowStart uplo-nav (.ncols a) i) (.unitIndex uplo-nav i)))))))
+
+;; ======================== LU factorization ==========================================
+
+(def ^:private f* (double-fn *))
+(def ^:private falsify (constantly false))
+
+(defn ^:private stale-factorization []
+  (throw (ex-info "Cannot compute with stale LU factorization." {})))
+
+(defrecord LUFactorization [^GEMatrix lu ^GEMatrix a ^Vector ipiv ^Boolean master fresh]
+  Releaseable
+  (release [_]
+    (when master (release lu))
+    (release ipiv))
+  LU
+  (lu-trs [_ b]
+    (if @fresh
+      (trs (engine lu) lu b ipiv)
+      (stale-factorization)))
+  (lu-tri! [_]
+    (if (compare-and-set! fresh true false)
+      (tri (engine lu) lu ipiv)
+      (stale-factorization)))
+  (lu-tri [_]
+    (if @fresh
+      (let-release [res (raw lu)]
+        (let [eng (engine lu)]
+          (tri eng (copy eng lu res) ipiv))
+        res)
+      (stale-factorization)))
+  (lu-con [_ nrm nrm1?]
+    (if @fresh
+      (con (engine lu) lu nrm nrm1?)
+      (stale-factorization)))
+  (lu-con [_ nrm1?]
+    (if a
+      (if @fresh
+        (con (engine lu) lu (if nrm1? (nrm1 (engine a) a) (nrmi (engine a) a)) nrm1?)
+        (stale-factorization))
+      (throw (ex-info "Cannot estimate the condition number without the reference to the original GE matrix." {}))))
+  (lu-det [_]
+    (if @fresh
+      (let [res (double (fold f* 1.0 (.dia lu)))]
+        (if (even? (.dim ipiv))
+          res
+          (- res)))
+      (stale-factorization)))
+  Matrix
+  (mrows [_]
+    (.mrows lu))
+  (ncols [_]
+    (.ncols lu))
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? lu b))
+  (fits? [_ b]
+    (fits? lu b))
+  (fits-navigation? [_ b]
+    (fits-navigation? lu b)))
+
+(defn create-lu
+  ([lu a ipiv]
+   (->LUFactorization lu a ipiv true (atom true)))
+  ([lu ipiv]
+   (->LUFactorization lu nil ipiv false (atom true))))
