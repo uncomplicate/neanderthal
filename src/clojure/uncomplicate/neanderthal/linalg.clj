@@ -103,7 +103,7 @@
 
   See related info about [lapacke_?getri](https://software.intel.com/en-us/mkl-developer-reference-c-getri).
   "
-  [a]
+  [^Matrix a]
   (if (= (.mrows a) (.ncols a))
     (api/lu-tri a)
     (throw (ex-info "Can not compute an inverse of a non-square matrix."
@@ -203,7 +203,7 @@
     (throw (ex-info "Determinant computation requires a square matrix."
                     {:mrows (.mrows a) :ncols (.ncols a)}))))
 
-;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
+;; =============== Orthogonal Factorization (L, Q, R) LAPACK =======================================
 
 (defn ^:private min-mn ^long [^Matrix a]
   (max 1 (min (.mrows a) (.ncols a))))
@@ -530,6 +530,8 @@
      (ev! a w vl vr)))
   ([^Matrix a]
    (ev! a nil nil)))
+
+;; ================= Singular Value Decomposition ================================================
 
 (defn svd!
   "Computes the singular value decomposition of a matrix `a`.

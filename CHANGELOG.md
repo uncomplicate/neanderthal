@@ -1,5 +1,21 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.14.0
+
+### Breaking changes:
+
+* tr* work with LUFactorization instead of GEMatrix.
+
+### New features:
+
+* Matrix inverse.
+* Condition number.
+* Pure tr* methods.
+
+### Enhancements
+
+* Improved TRMatrix printing.
+
 ## 0.13.0
 
 * Support for chained matrix multiplication in mm.
