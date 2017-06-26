@@ -35,6 +35,10 @@ layout: article
 * [Coding the Matrix in Neanderthal](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples/codingthematrix) contains examples that follow the [Coding the Matrix](http://codingthematrix.com/)
 book.
 
+## Clojure Numerics
+
+* [Clojure Numerics, Part 1 - Use Matrices Efficiently](http://dragan.rocks/articles/17/Clojure-Numerics-1-Use-Matrices-Efficiently)
+
 ## Internal details and edge cases
 
 * [Neanderthal Tests](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal) show many more details, but without explanations in prose. It will help when you are struggling with an edge case.
