@@ -13,8 +13,8 @@
             [uncomplicate.neanderthal.math :refer [ceil floor]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang Seqable IFn]
-           [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix GEMatrix DataAccessor
-            SegmentVector UploNavigator]))
+           [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix GEMatrix SYMatrix
+            DataAccessor SegmentVector UploNavigator]))
 
 (defn ^:private unsupported []
   (throw (UnsupportedOperationException. (format "This operation is not supported in wrappers."))))
@@ -197,6 +197,40 @@
         (format-vector w formatter
                        (segment-vector (.row a i) (.ncols a)
                                        (.rowStart uplo-nav (.ncols a) i) (.unitIndex uplo-nav i)))))))
+
+(deftype SYRowColumn [^Vector seg1 ^Vector seg2]
+  Vector
+  (dim [_]
+    (max 0 (dec (+ (.dim seg1) (.dim seg2)))))
+  (boxedEntry [x i]
+    (if (< -1 i (.dim seg1))
+      (.boxedEntry seg1 i)
+      (.boxedEntry seg2 (inc (- i (.dim seg1))) ))))
+
+(defn format-sy [^java.io.Writer w formatter ^SYMatrix a max-value]
+  (let [pl (long (or *print-length* 16))
+        m-print (min (.mrows a) pl)
+        n-print (min (.ncols a) pl)
+        m-start-2 (- (.mrows a) (floor (/ m-print 2)))
+        lower (= LOWER (.uplo a)) ]
+    (dotimes [i (ceil (/ m-print 2))]
+      (.write w "\n")
+      (format-vector w formatter (if lower
+                                   (->SYRowColumn (.row a i) (.col a i))
+                                   (->SYRowColumn (.col a i) (.row a i)))))
+    (when (< m-print (.mrows a))
+      (let [width (* 0.1 n-print (.length ^String (cl-format nil formatter max-value)))]
+        (dotimes [_ 3]
+          (.write w "\n")
+          (dotimes [_ width]
+            (.write w "     .     ")))
+        (.write w "\n")))
+    (dotimes [i (floor (/ m-print 2))]
+      (let [i (+ m-start-2 i)]
+        (.write w "\n")
+        (format-vector w formatter (if lower
+                                     (->SYRowColumn (.col a i) (.row a i))
+                                     (->SYRowColumn (.col a i) (.row a i))))))))
 
 ;; ======================== LU factorization ==========================================
 

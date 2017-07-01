@@ -23,3 +23,6 @@
 (real-test/test-blas-host mkl-float)
 (real-test/test-lapack mkl-double)
 (real-test/test-lapack mkl-float)
+
+(real-test/test-blas-sy mkl-double)
+(real-test/test-blas-sy-host mkl-double)

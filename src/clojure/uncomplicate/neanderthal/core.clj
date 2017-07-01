@@ -80,7 +80,7 @@
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix Changeable]))
+  (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix SYMatrix Changeable]))
 
 (defmulti transfer!
   "Transfers the data from source to destination regardless of the structure type or memory context.
@@ -292,6 +292,37 @@
   "Tests if `x` is a triangular matrix (TR)."
   [x]
   (instance? TRMatrix x))
+
+(defn sy
+  "TODO"
+  ([factory ^long n source options]
+   (if (<= 0 n)
+     (let-release [res (api/create-sy factory n (api/enc-order (get options :order :column))
+                                      (api/enc-uplo (get options :uplo :lower)) true)]
+       (if source
+         (transfer! source res)
+         res))
+     (throw (ex-info "SY matrix cannot have a negative dimension." {:n n}))))
+  ([factory ^long n arg]
+   (if (or (not arg) (map? arg))
+     (sy factory n nil arg)
+     (sy factory n arg nil)))
+  ([factory source]
+   (if (number? source)
+     (sy factory source nil nil)
+     (sy factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
+
+(defn view-sy
+  "TODO"
+  ([a]
+   (api/view-sy a api/DEFAULT_UPLO))
+  ([^Matrix a options]
+   (api/view-sy a (api/enc-uplo (get options :uplo :lower)))))
+
+(defn sy?
+  "TODO"
+  [x]
+  (instance? SYMatrix x))
 
 ;; ================= Container  ================================================
 
@@ -913,7 +944,7 @@
    (let-release [res (api/raw (col a 0))]
      (mv! alpha a x 0.0 res)))
   ([a x]
-   (if (ge? a)
+   (if-not (tr? a)
      (mv 1.0 a x)
      (let-release [res (copy x)]
        (mv! a x)))))
@@ -985,7 +1016,7 @@
   ([alpha ^Matrix a ^Matrix b beta ^Matrix c]
    (if (and (api/compatible? a b) (api/compatible? a c)
             (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
-     (api/mm (api/engine a) alpha a b beta c)
+     (api/mm (api/engine a) alpha a b beta c true)
      (throw (ex-info "You cannot multiply incompatible or ill-fitting matrices."
                      {:a (str a) :b (str b) :c (str c) :errors
                       (cond-into []
@@ -1047,8 +1078,8 @@
 
 (defn ^:private mm*
   ([alpha ^Matrix a ^Matrix b]
-   (if (ge? b)
-     (if (ge? a)
+   (if-not (tr? b)
+     (if-not (tr? a)
        (let-release [res (ge (api/factory b) (.mrows a) (.ncols b))]
          (mm! alpha a b 1.0 res))
        (let-release [res (copy b)]

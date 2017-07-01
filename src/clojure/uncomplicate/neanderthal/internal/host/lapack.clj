@@ -9,8 +9,8 @@
 (ns uncomplicate.neanderthal.internal.host.lapack
   (:require [uncomplicate.neanderthal.block :refer [buffer offset stride]]
             [uncomplicate.neanderthal.internal.api
-             :refer [create-vector index-factory engine nrm1 nrmi trf tri trs con sv
-                     fits-navigation? raw copy create-ge factory]]
+             :refer [factory index-factory engine stripe-navigator create-vector create-ge create-sy
+                     fits-navigation? nrm1 nrmi trf tri trs con sv copy]]
             [uncomplicate.commons.core :refer [with-release let-release]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
            [uncomplicate.neanderthal.internal.api GEMatrix]))
@@ -54,10 +54,27 @@
      (dotimes [j# n#]
        (with-lapack-check (~method incr# sd-a# buff-a# (+ offset-a# (* j# ld-a#)))))))
 
+;; ----------------- Common UPLO matrix macros and functions -----------------------
+
+(defmacro uplo-lasrt [method a increasing]
+  `(let [stripe-nav# (stripe-navigator ~a)
+         n# (.fd ~a)
+         ld-a# (.stride ~a)
+         sd-a# (.sd ~a)
+         offset-a# (.offset ~a)
+         buff-a# (.buffer ~a)
+         incr# (int (if ~increasing \I \D))]
+     (dotimes [j# n#]
+       (let [start# (.start stripe-nav# n# j#)
+             n-j# (- (.end stripe-nav# n# j#) start#)]
+         (with-lapack-check (~method incr# n-j# buff-a# (+ offset-a# (* j# ld-a#) start#)))))))
+
 ;; ----------------- Common TR matrix macros and functions -----------------------
 
 ;; There seems to be a bug in MKL's LAPACK_?lantr. If the order is column major,
 ;; it returns 0.0 as a result. To fix this, I had to do the uplo# trick.
+;; NOTE: This means that nrm1 and nrmi work regarding to max row instead of max col
+;; for column-oriented matrices...
 (defmacro tr-lan [method norm a]
   `(let [uplo# (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~a))
                  (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \U \L)
@@ -66,12 +83,61 @@
       (int uplo#) (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
       (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
 
-(defmacro tr-lacpy [stripe-nav lacpy copy a b]
+(defmacro tr-lacpy [lacpy copy a b]
+  `(let [stripe-nav# (stripe-navigator ~a)]
+     (if (= (.order ~a) (.order ~b))
+       (with-lapack-check
+         (let [stripe-nav# (stripe-navigator ~a)
+               unit# (= CBLAS/DIAG_UNIT (.diag ~a))
+               diag-pad# (long (if unit# 1 0))
+               diag-ofst# (.offsetPad stripe-nav# (.stride ~a))]
+           (~lacpy (.order ~a) (int (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))
+            (- (.mrows ~a) diag-pad#) (- (.ncols ~a) diag-pad#)
+            (.buffer ~a) (+ (.offset ~a) diag-ofst#) (.stride ~a)
+            (.buffer ~b) (+ (.offset ~b) diag-ofst#) (.stride ~b))))
+       (let [n# (.fd ~a)
+             ld-a# (.stride ~a)
+             offset-a# (.offset ~a)
+             buff-a# (.buffer ~a)
+             ld-b# (.stride ~b)
+             offset-b# (.offset ~b)
+             buff-b# (.buffer ~b)]
+         (dotimes [j# n#]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
+             (~copy n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+              buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
+
+(defmacro tr-lascl [method alpha a]
+  `(with-lapack-check
+     (let [diag-pad# (long (if (= CBLAS/DIAG_UNIT (.diag ~a)) 1 0))]
+       (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+        0 0 1.0 ~alpha (- (.mrows ~a) diag-pad#) (- (.ncols ~a) diag-pad#)
+        (.buffer ~a) (+ (.offset ~a) diag-pad#) (.stride ~a)))))
+
+(defmacro tr-laset [method alpha beta a]
+  `(with-lapack-check
+     (let [stripe-nav# (stripe-navigator ~a)
+           unit# (= CBLAS/DIAG_UNIT (.diag ~a))
+           diag-pad# (long (if unit# 1 0))
+           diag-ofst# (.offsetPad stripe-nav# (.stride ~a))]
+       (~method (.order ~a) (int (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))
+        (- (.mrows ~a) diag-pad#) (- (.ncols ~a) diag-pad#)
+        ~alpha ~beta (.buffer ~a) (+ (.offset ~a) diag-ofst#) (.stride ~a)))))
+
+;; ----------- Symmetric Matrix -----------------------------------------------------
+
+(defmacro sy-lan [method norm a]
+  `(~method (.order ~a) ~norm (int (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))
+    (.mrows ~a) (.buffer ~a) (.offset ~a) (.stride ~a)))
+
+(defmacro sy-lacpy [lacpy copy a b]
   `(if (= (.order ~a) (.order ~b))
      (with-lapack-check
        (~lacpy (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (.mrows ~a) (.ncols ~a)
         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
-     (let [n# (.fd ~a)
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
            ld-a# (.stride ~a)
            offset-a# (.offset ~a)
            buff-a# (.buffer ~a)
@@ -79,38 +145,26 @@
            offset-b# (.offset ~b)
            buff-b# (.buffer ~b)]
        (dotimes [j# n#]
-         (let [start# (.start ~stripe-nav n# j#)
-               n-j# (- (.end ~stripe-nav n# j#) start#)]
+         (let [start# (.start stripe-nav# n# j#)
+               n-j# (- (.end stripe-nav# n# j#) start#)]
            (~copy n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
             buff-b# (+ offset-b# j# (* ld-b# start#)) n#))))))
 
-(defmacro tr-lascl [method alpha a]
+(defmacro sy-lascl [method alpha a]
   `(with-lapack-check
      (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
       0 0 1.0 ~alpha (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
 
-(defmacro tr-laset [method alpha beta a]
+(defmacro sy-laset [method alpha beta a]
   `(with-lapack-check
      (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
       (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
-
-(defmacro tr-lasrt [stripe-nav method a increasing]
-  `(let [n# (.fd ~a)
-         ld-a# (.stride ~a)
-         sd-a# (.sd ~a)
-         offset-a# (.offset ~a)
-         buff-a# (.buffer ~a)
-         incr# (int (if ~increasing \I \D))]
-     (dotimes [j# n#]
-       (let [start# (.start ~stripe-nav n# j#)
-             n-j# (- (.end ~stripe-nav n# j#) start#)]
-         (with-lapack-check (~method incr# n-j# buff-a# (+ offset-a# (* j# ld-a#) start#)))))))
 
 ;; =========== Drivers and Computational LAPACK Routines ===========================
 
 ;; ------------- Singular Value Decomposition LAPACK -------------------------------
 
-(defmacro with-ge-sv-check [ipiv expr]
+(defmacro with-sv-check [ipiv expr]
   `(if (= 1 (stride ~ipiv))
      (let [info# ~expr]
        (cond
@@ -122,20 +176,19 @@
      (throw (ex-info "You cannot use ipiv with stride different than 1." {:stride (stride ~ipiv)}))))
 
 (defmacro ge-trf [method a ipiv]
-  `(with-ge-sv-check ~ipiv
+  `(with-sv-check ~ipiv
      (~method (.order ~a) (.mrows ~a) (.ncols ~a)
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
 
+(defmacro sy-trf [method a ipiv]
+  `(with-sv-check ~ipiv
+     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (.sd ~a)
+      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+
 (defmacro ge-tri [method a ipiv]
-  `(with-ge-sv-check ~ipiv
+  `(with-sv-check ~ipiv
      (~method (.order ~a) (.sd ~a)
       (.buffer ~a) (.offset ~a) (.ld ~a) (.buffer ~ipiv) (.offset ~ipiv))))
-
-(defmacro ge-inv [a]
-  `(let [eng# (engine ~a)]
-     (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
-       (trf eng# ~a ipiv#)
-       (tri eng# ~a ipiv#))))
 
 (defmacro tr-tri [method a]
   `(~method (.order ~a)
@@ -143,17 +196,28 @@
     (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
     (.sd ~a) (.buffer ~a) (.offset ~a) (.ld ~a)))
 
+(defmacro sy-tri [method a ipiv]
+  `(with-sv-check ~ipiv
+     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (.sd ~a)
+      (.buffer ~a) (.offset ~a) (.ld ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+
 (defmacro ge-trs [method a b ipiv]
-  `(with-ge-sv-check ~ipiv
-     (~method (.order ~a) (int (if (= (.order ~a) (.order ~b)) \N \T))
+  `(with-sv-check ~ipiv
+     (~method (.order ~b) (int (if (= (.order ~b) (.order ~a)) \N \T))
       (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
       (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
 
 (defmacro tr-trs [method a b]
-  `(~method (.order ~a)
-    (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (int (if (= (.order ~a) (.order ~b)) \N \T))
+  `(~method (.order ~b)
+    (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (int (if (= (.order ~b) (.order ~a)) \N \T))
     (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N)) (.mrows ~b)
     (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
+
+(defmacro sy-trs [method a b ipiv]
+  `(with-sv-check ~ipiv
+     (~method (.order ~b) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+      (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+      (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
 
 (defmacro ge-sv
   ([method a b pure]
@@ -163,8 +227,8 @@
         (sv (engine ~a) a# ~b false))
       (if (fits-navigation? ~a ~b)
         (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
-          (with-ge-sv-check ipiv#
-            (~method (.order ~a) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+          (with-sv-check ipiv#
+            (~method (.order ~b) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
              (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
         (throw (ex-info "Orientation of a and b do not fit." {:a (str ~a) :b (str ~b)}))))))
 
@@ -177,10 +241,24 @@
     (.diag ~a) (.mrows ~b) (.ncols ~b) 1.0
     (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
 
+(defmacro sy-sv
+  ([method a b pure]
+   `(if ~pure
+      (with-release [a# (create-sy (factory ~a) (.ncols ~a) (.order ~b) (.uplo ~a) false)]
+        (copy (engine ~a) ~a a#)
+        (sv (engine ~a) a# ~b false))
+      (if (fits-navigation? ~a ~b)
+        (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
+          (with-sv-check ipiv#
+            (~method (.order ~b) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+             (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+             (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
+        (throw (ex-info "Orientation of a and b do not fit." {:a (str ~a) :b (str ~b)}))))))
+
 ;; ------------------ Condition Number ----------------------------------------------
 
 (defmacro ge-con [da method lu nrm nrm1?]
-  `(let-release [res# (.createDataSource ~da 1)]
+  `(with-release [res# (.createDataSource ~da 1)]
      (let [info# (~method (.order ~lu) (int (if ~nrm1? \O \I)) (min (.mrows ~lu) (.ncols ~lu))
                   (.buffer ~lu) (.offset ~lu) (.stride ~lu) ~nrm res#)]
        (if (= 0 info#)
@@ -189,15 +267,24 @@
                          {:arg-index (- info#)}))))))
 
 (defmacro tr-con [da method a nrm1?]
-  `(let [res# (.createDataSource ~da 1)
-         info# (~method (.order ~a) (int (if ~nrm1? \O \I))
-                (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
-                (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
-                (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) res#)]
+  `(with-release [res# (.createDataSource ~da 1)
+                  info# (~method (.order ~a) (int (if ~nrm1? \O \I))
+                         (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+                         (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
+                         (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) res#)]
      (if (= 0 info#)
        (.get ~da res# 0)
        (throw (ex-info "There has been an illegal argument in the native function call."
                        {:arg-index (- info#)})))))
+
+(defmacro sy-con [da method ldl ipiv nrm]
+  `(with-release [res# (.createDataSource ~da 1)]
+     (let [info# (~method (.order ~ldl) (int (if (= CBLAS/UPLO_UPPER (.uplo ~ldl)) \U \L)) (.ncols ~ldl)
+                  (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv) ~nrm res#)]
+       (if (= 0 info#)
+         (.get ~da res# 0)
+         (throw (ex-info "There has been an illegal argument in the native function call."
+                         {:arg-index (- info#)}))))))
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 
@@ -235,7 +322,7 @@
      (cond
        (= 0 info#) ~b
        (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
-                                  {:arg-index (- info#)}))
+                                   {:arg-index (- info#)}))
        :else (throw (ex-info "The i-th diagonal element of a is zero, so the matrix does not have full rank."
                              {:arg-index info#})))))
 
@@ -254,7 +341,7 @@
          (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
                                      {:arg-index (- info#)}))
          :else (throw (ex-info "The QR algorithm failed to compute all the eigenvalues."
-                              {:first-converged (inc info#)}))))
+                               {:first-converged (inc info#)}))))
      (throw (ex-info "You cannot use w that is not column-oriented and has less than 2 columns."
                      {:order (.order ~w) :ncols (.ncols ~w)}))))
 

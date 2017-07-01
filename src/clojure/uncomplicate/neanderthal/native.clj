@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr]]
+  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 ;; ============ Creating real constructs  ==============
@@ -100,3 +100,23 @@
    (tr mkl-double n arg))
   ([arg]
    (tr mkl-double arg)))
+
+(defn fsy
+  "Creates a SY matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tr]])."
+  ([^long n source options]
+   (sy mkl-float n source options))
+  ([^long n arg]
+   (sy mkl-float n arg))
+  ([arg]
+   (sy mkl-float arg)))
+
+(defn dsy
+  "Creates a SY matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tr]])."
+  ([^long n source options]
+   (sy mkl-double n source options))
+  ([^long n arg]
+   (sy mkl-double n arg))
+  ([arg]
+   (sy mkl-double arg)))

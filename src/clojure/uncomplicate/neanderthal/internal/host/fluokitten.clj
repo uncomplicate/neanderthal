@@ -12,11 +12,11 @@
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal.core :refer [vctr ge copy copy! dim ncols]]
             [uncomplicate.neanderthal.internal.api
-             :refer [factory compatible? engine raw subcopy dec-property
-                     ReductionFunction vector-reduce vector-reduce-map]])
+             :refer [factory compatible? engine raw subcopy dec-property ReductionFunction
+                     vector-reduce vector-reduce-map stripe-navigator data-accessor]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
             IFn$DLDD IFn$ODO IFn$OLDO]
-           [uncomplicate.neanderthal.internal.api  Block DenseMatrix
+           [uncomplicate.neanderthal.internal.api  Block DenseMatrix StripeNavigator RealBufferAccessor
             RealVector RealMatrix Vector Matrix GEMatrix RealChangeable]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
@@ -184,9 +184,45 @@
        ~(first as))
     `(throw (UnsupportedOperationException. "Matrix fmap support up to 4 matrices."))))
 
-;; ============================ TR matrix fluokitten functions =================
+;; ============================ UPLO matrix fluokitten functions =================
 
-(defmacro tr-fmap
+(defn uplo-fold [^Block a]
+  (let [n (.ncols ^Matrix a)
+        stripe-nav (stripe-navigator a)
+        da ^RealBufferAccessor (data-accessor a)
+        buf (.buffer a)
+        ofst (.offset a)
+        ld (.stride a)]
+    (loop [j 0 acc 0.0]
+      (if (< j n)
+        (recur (inc j)
+               (double
+                (let [end (.end stripe-nav n j)]
+                  (loop [i (.start stripe-nav n j) acc acc]
+                    (if (< i end)
+                      (recur (inc i) (+ acc (.get da buf (+ ofst (* ld j) i))))
+                      acc)))))
+        acc))))
+
+(defn uplo-foldmap [^Block a ^IFn$DD g]
+  (let [n (.ncols ^Matrix a)
+        stripe-nav (stripe-navigator a)
+        da ^RealBufferAccessor (data-accessor a)
+        buf (.buffer a)
+        ofst (.offset a)
+        ld (.stride a)]
+    (loop [j 0 acc 0.0]
+      (if (< j n)
+        (recur (inc j)
+               (double
+                (let [end (.end stripe-nav n j)]
+                  (loop [i (.start stripe-nav n j) acc acc]
+                    (if (< i end)
+                      (recur (inc i) (.invokePrim g (.get da buf (+ ofst (* ld j) i))))
+                      acc)))))
+        acc))))
+
+(defmacro uplo-fmap
   [navigator stripe-nav n f & as]
   (if (< (count as) 5)
     `(do

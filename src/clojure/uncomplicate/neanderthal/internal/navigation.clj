@@ -118,28 +118,36 @@
   (start [_ _ _]
     0)
   (end [_ _ i]
-    i))
+    i)
+  (offsetPad [_ ld]
+    ld))
 
 (deftype NonUnitTopNavigator []
   StripeNavigator
   (start [_ _ i]
     0)
   (end [_ _ i]
-    (inc i)))
+    (inc i))
+  (offsetPad [_ _]
+    0))
 
 (deftype UnitBottomNavigator []
   StripeNavigator
   (start [_ _ i]
     (inc i))
   (end [_ n _]
-    n))
+    n)
+  (offsetPad [_ _]
+    1))
 
 (deftype NonUnitBottomNavigator []
   StripeNavigator
   (start [_ _ i]
     i)
   (end [_ n _]
-    n))
+    n)
+  (offsetPad [_ _]
+    0))
 
 (def non-unit-top-navigator (NonUnitTopNavigator.))
 (def unit-top-navigator (UnitTopNavigator.))

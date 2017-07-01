@@ -19,7 +19,8 @@
 
 (definterface StripeNavigator
   (^long start [^long n ^long j])
-  (^long end [^long n ^long j]))
+  (^long end [^long n ^long j])
+  (^long offsetPad [^long ld]))
 
 (definterface RealOrderNavigator
   (^long sd [^long m ^long n])
@@ -29,6 +30,11 @@
   (set [a ^long i ^long j ^double val])
   (invokePrimitive [f ^long i ^long j ^double val])
   (stripe [a ^long j]))
+
+(defprotocol Navigable
+  (order-navigator ^RealOrderNavigator [this])
+  (stripe-navigator ^StripeNavigator [this])
+  (uplo-navigator ^UploNavigator [this]))
 
 (defprotocol Blas
   (iamax [this x])
@@ -48,7 +54,7 @@
   (axpy [this alpha x y])
   (mv [this alpha a x beta y] [this a x])
   (rk [this alpha x y a])
-  (mm [this alpha a b beta c] [this alpha a b left]))
+  (mm [this alpha a b beta c left] [this alpha a b left]))
 
 (defprotocol BlasPlus
   (amax [this x])
@@ -66,7 +72,7 @@
   (tri [this a ipiv] [this a])
   (det [this a ipiv] [this a])
   (trs [this a b ipiv] [this a b])
-  (con [this lu a nrm1?] [this a nrm1?])
+  (con [this lu ipiv nrm nrm1?][this lu nrm nrm1?] [this a nrm1?])
   (sv [this a b pure])
   (qrf [this a tau])
   (qrfp [this a tau])
@@ -103,9 +109,11 @@
   (create-vector [this n init])
   (create-ge [this m n ord init])
   (create-tr [this n ord uplo diag init])
+  (create-sy [this n ord uplo init])
   (vector-engine [this])
   (ge-engine [this])
-  (tr-engine [this]))
+  (tr-engine [this])
+  (sy-engine [this]))
 
 (defprotocol EngineProvider
   (engine [this]))
@@ -133,6 +141,7 @@
 (defprotocol DenseContainer
   (view-ge [this] [this stride-mult])
   (view-tr [this uplo diag])
+  (view-sy [this uplo])
   (view-vctr [this] [this stride-mult]))
 
 ;; ============ Realeaseable ===================================================

@@ -7,9 +7,9 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.cblas
-  (:require [uncomplicate.neanderthal.internal.api :refer [engine mm iamax]])
+  (:require [uncomplicate.neanderthal.internal.api :refer [engine mm iamax stripe-navigator]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api RealVector]))
+           [uncomplicate.neanderthal.internal.api RealVector GEMatrix]))
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -140,22 +140,23 @@
     (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~a) (.offset ~a) (.stride ~a)))
 
 (defmacro ge-mm
-  ([alpha a b left]
-   `(if ~left
-      (mm (engine ~b) ~alpha ~b ~a false)
-      (throw (ex-info "In-place mm! is not supported for GE matrices." {:a (str ~a)}))))
+  ([alpha a b]
+   `(mm (engine ~b) ~alpha ~b ~a false))
   ([method alpha a b beta c]
-   `(~method (.order ~c)
-     (if (= (.order ~a) (.order ~c)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
-     (if (= (.order ~b) (.order ~c)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
-     (.mrows ~a) (.ncols ~b) (.ncols ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
-     (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c))))
+   `(if (instance? GEMatrix ~b)
+      (~method (.order ~c)
+       (if (= (.order ~a) (.order ~c)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+       (if (= (.order ~b) (.order ~c)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+       (.mrows ~a) (.ncols ~b) (.ncols ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+       (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
+      (mm (engine ~b) ~alpha ~b ~a ~beta ~c false))))
 
-;; =============== Common TR matrix macros and functions ==========================
+;; =============== Common UPLO matrix macros and functions ==========================
 
-(defmacro tr-swap [stripe-nav method a b]
+(defmacro uplo-swap [method a b]
   `(when (< 0 (.count ~a))
-     (let [n# (.fd ~a)
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
            ld-a# (.stride ~a)
            offset-a# (.offset ~a)
            buff-a# (.buffer ~a)
@@ -164,19 +165,70 @@
            buff-b# (.buffer ~b)]
        (if (= (.order ~a) (.order ~b))
          (dotimes [j# n#]
-           (let [start# (.start ~stripe-nav n# j#)
-                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
              (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
          (dotimes [j# n#]
-           (let [start# (.start ~stripe-nav n# j#)
-                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
              (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
               buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
 
-(defmacro tr-dot [stripe-nav method a b]
+(defmacro uplo-axpy [method alpha a b]
+  `(when (< 0 (.count ~a))
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (dotimes [j# n#]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
+             (~method n-j# ~alpha
+              buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
+         (dotimes [j# n#]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
+             (~method n-j# ~alpha
+              buff-a# (+ offset-a# j# (* ld-a# start#)) n#
+              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
+
+(defmacro uplo-axpby [method alpha a beta b]
+  `(when (< 0 (.count ~a))
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (.buffer ~b)]
+       (if (= (.order ~a) (.order ~b))
+         (dotimes [j# n#]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
+             (~method n-j#
+              ~alpha buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+              ~beta buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
+         (dotimes [j# n#]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
+             (~method n-j#
+              ~alpha buff-a# (+ offset-a# j# (* ld-a# start#)) n#
+              ~beta buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
+
+;; =============== Common TR matrix macros and functions ============================
+
+(defmacro tr-dot [method a b]
   `(if (< 0 (.count ~a))
-     (let [n# (.fd ~a)
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
            ld-a# (.stride ~a)
            offset-a# (.offset ~a)
            buff-a# (.buffer ~a)
@@ -186,79 +238,36 @@
        (if (= (.order ~a) (.order ~b))
          (loop [j# 0 acc# 0.0]
            (if (< j# n#)
-             (let [start# (.start ~stripe-nav n# j#)
-                   n-j# (- (.end ~stripe-nav n# j#) start#)]
+             (let [start# (.start stripe-nav# n# j#)
+                   n-j# (- (.end stripe-nav# n# j#) start#)]
                (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
                                         buff-b# (+ offset-b# (* ld-b# j#) start#) 1))))
              acc#))
          (loop [j# 0 acc# 0.0]
            (if (< j# n#)
-             (let [start# (.start ~stripe-nav n# j#)
-                   n-j# (- (.end ~stripe-nav n# j#) start#)]
+             (let [start# (.start stripe-nav# n# j#)
+                   n-j# (- (.end stripe-nav# n# j#) start#)]
                (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
                                         buff-b# (+ offset-b# j# (* ld-b# start#)) n#))))
              acc#))))
      0.0))
 
-(defmacro tr-sum [stripe-nav method a]
+(defmacro tr-sum [method a]
   `(if (< 0 (.count ~a))
-     (let [n# (.fd ~a)
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
            ld-a# (.stride ~a)
            offset-a# (.offset ~a)
            buff-a# (.buffer ~a)]
        (loop [j# 0 acc# 0.0]
          (if (< j# n#)
-           (let [start# (.start ~stripe-nav n# j#)
-                 n-j# (- (.end ~stripe-nav n# j#) start#)]
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
              (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1))))
            acc#)))
      0.0))
 
-(defmacro tr-axpy [stripe-nav method alpha a b]
-  `(when (< 0 (.count ~a))
-     (let [n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (dotimes [j# n#]
-           (let [start# (.start ~stripe-nav n# j#)
-                 n-j# (- (.end ~stripe-nav n# j#) start#)]
-             (~method n-j# ~alpha
-              buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
-         (dotimes [j# n#]
-           (let [start# (.start ~stripe-nav n# j#)
-                 n-j# (- (.end ~stripe-nav n# j#) start#)]
-             (~method n-j# ~alpha
-              buff-a# (+ offset-a# j# (* ld-a# start#)) n#
-              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
 
-(defmacro tr-axpby [stripe-nav method alpha a beta b]
-  `(when (< 0 (.count ~a))
-     (let [n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (dotimes [j# n#]
-           (let [start# (.start ~stripe-nav n# j#)
-                 n-j# (- (.end ~stripe-nav n# j#) start#)]
-             (~method n-j#
-              ~alpha buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-              ~beta buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
-         (dotimes [j# n#]
-           (let [start# (.start ~stripe-nav n# j#)
-                 n-j# (- (.end ~stripe-nav n# j#) start#)]
-             (~method n-j#
-              ~alpha buff-a# (+ offset-a# j# (* ld-a# start#)) n#
-              ~beta buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
 
 (defmacro tr-mv
   ([method a x]
@@ -275,3 +284,64 @@
      ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+
+;; -------------------- SY
+
+(defmacro sy-dot [method a b]
+  `(if (< 0 (.count ~a))
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)
+           ld-b# (.stride ~b)
+           offset-b# (.offset ~b)
+           buff-b# (.buffer ~b)]
+       (- (* 2.0 (double
+                  (if (= (.order ~a) (.order ~b))
+                    (loop [j# 0 acc# 0.0]
+                      (if (< j# n#)
+                        (let [start# (.start stripe-nav# n# j#)
+                              n-j# (- (.end stripe-nav# n# j#) start#)]
+                          (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+                                                   buff-b# (+ offset-b# (* ld-b# j#) start#) 1))))
+                        acc#))
+                    (loop [j# 0 acc# 0.0]
+                      (if (< j# n#)
+                        (let [start# (.start stripe-nav# n# j#)
+                              n-j# (- (.end stripe-nav# n# j#) start#)]
+                          (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
+                                                   buff-b# (+ offset-b# j# (* ld-b# start#)) n#))))
+                        acc#)))))
+          (~method n# buff-a# offset-a# (inc ld-a#) buff-b# offset-b# (inc ld-b#))))
+     0.0))
+
+(defmacro sy-sum [method a]
+  `(if (< 0 (.count ~a))
+     (let [stripe-nav# (stripe-navigator ~a)
+           n# (.fd ~a)
+           ld-a# (.stride ~a)
+           offset-a# (.offset ~a)
+           buff-a# (.buffer ~a)]
+       (loop [j# 0 acc# 0.0]
+         (if (< j# n#)
+           (let [start# (.start stripe-nav# n# j#)
+                 n-j# (- (.end stripe-nav# n# j#) start#)]
+             (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1))))
+           (- (* 2.0 acc#) (~method n# buff-a# offset-a# (inc ld-a#))))))
+     0.0))
+
+(defmacro sy-mv
+  ([method alpha a x beta y]
+   `(~method (.order ~a) (.uplo ~a) (.ncols ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+     (.buffer ~x) (.offset ~x) (.stride ~x) ~beta (.buffer ~y) (.offset ~y) (.stride ~y)))
+  ([a]
+   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (str ~a)}))))
+
+(defmacro sy-mm
+  ([method alpha a b beta c left]
+   `(~method (.order ~c) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT) (.uplo ~a)
+     (.mrows ~c) (.ncols ~c) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+     (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c)))
+  ([a]
+   `(throw (ex-info "In-place mm! is not supported for SY matrices." {:a (str ~a)}))))

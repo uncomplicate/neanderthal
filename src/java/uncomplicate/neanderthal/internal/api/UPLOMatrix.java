@@ -8,7 +8,8 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface TRMatrix extends UPLOMatrix, DenseMatrix {
+public interface UPLOMatrix {
 
-    long diag ();
+    long uplo ();
+
 }

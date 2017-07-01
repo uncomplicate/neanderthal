@@ -19,7 +19,7 @@
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
             Block RealVector StripeNavigator RealOrderNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
-            RealTRMatrix RealGEMatrix]))
+            RealTRMatrix RealGEMatrix RealSYMatrix]))
 
 (def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
   "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")
@@ -328,9 +328,9 @@
   (rk [_ alpha x y a]
     (ge-rk CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
-  (mm [_ alpha a b left]
-   (ge-mm alpha a b left))
-  (mm [_ alpha a b beta c]
+  (mm [_ alpha a b _]
+   (ge-mm alpha a b))
+  (mm [_ alpha a b beta c _]
    (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
    c)
   BlasPlus
@@ -438,9 +438,9 @@
   (rk [_ alpha x y a]
     (ge-rk CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
     a)
-  (mm [_ alpha a b left]
-   (ge-mm alpha a b left))
-  (mm [_ alpha a b beta c]
+  (mm [_ alpha a b _]
+   (ge-mm alpha a b))
+  (mm [_ alpha a b beta c _]
    (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
    c)
   BlasPlus
@@ -521,17 +521,16 @@
 (deftype DoubleTREngine []
   Blas
   (swap [_ a b]
-    (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
+    (uplo-swap CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-lacpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/dlacpy CBLAS/dcopy
-              ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-lacpy LAPACK/dlacpy CBLAS/dcopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
     (tr-lascl LAPACK/dlascl alpha ^RealTRMatrix a)
     a)
   (dot [_ a b]
-    (tr-dot ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/ddot ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-dot CBLAS/ddot ^RealTRMatrix a ^RealTRMatrix b))
   (nrm1 [_ a]
     (tr-lan LAPACK/dlantr (long \O) ^RealTRMatrix a))
   (nrm2 [_ a]
@@ -539,17 +538,16 @@
   (nrmi [_ a]
     (tr-lan LAPACK/dlantr (long \I) ^RealTRMatrix a))
   (asum [_ a]
-    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dasum ^RealTRMatrix a))
+    (tr-sum CBLAS/dasum ^RealTRMatrix a))
   (axpy [_ alpha a b]
-    (tr-axpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/daxpy
-             alpha ^RealTRMatrix a ^RealTRMatrix b)
+    (uplo-axpy CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
    (tr-mv a))
   (mv [_ a x]
    (tr-mv CBLAS/dtrmv ^RealTRMatrix a ^RealBlockVector x)
    x)
-  (mm [this alpha a b beta c]
+  (mm [this alpha a b beta c _]
    (tr-mm a))
   (mm [_ alpha a b left]
    (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
@@ -558,17 +556,16 @@
   (amax [this a]
     (tr-lan LAPACK/dlantr (long \m) ^RealTRMatrix a))
   (sum [_ a]
-    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/dsum ^RealTRMatrix a))
+    (tr-sum CBLAS/dsum ^RealTRMatrix a))
   (set-all [_ alpha a]
     (tr-laset LAPACK/dlaset alpha alpha ^RealTRMatrix a)
     a)
   (axpby [_ alpha a beta b]
-    (tr-axpby ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/daxpby
-              alpha ^RealTRMatrix a beta ^RealTRMatrix b)
+    (uplo-axpby MKL/daxpby alpha ^RealTRMatrix a beta ^RealTRMatrix b)
     b)
   Lapack
   (srt [_ a increasing]
-    (tr-lasrt ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/dlasrt ^RealTRMatrix a increasing)
+    (uplo-lasrt LAPACK/dlasrt ^RealTRMatrix a increasing)
     a)
   (tri [_ a]
     (tr-tri LAPACK/dtrtri ^RealTRMatrix a)
@@ -586,17 +583,16 @@
 (deftype FloatTREngine []
   Blas
   (swap [_ a b]
-    (tr-swap ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
+    (uplo-swap CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
     a)
   (copy [_ a b]
-    (tr-lacpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/slacpy CBLAS/scopy
-              ^RealTRMatrix a ^RealTRMatrix b)
+    (tr-lacpy LAPACK/slacpy CBLAS/scopy ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (scal [_ alpha a]
     (tr-lascl LAPACK/slascl alpha ^RealTRMatrix a)
     a)
   (dot [_ a b]
-    (tr-dot ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sdot ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-dot CBLAS/sdot ^RealTRMatrix a ^RealTRMatrix b))
   (nrm1 [_ a]
     (tr-lan LAPACK/slantr (long \O) ^RealTRMatrix a))
   (nrm2 [_ a]
@@ -604,17 +600,16 @@
   (nrmi [_ a]
     (tr-lan LAPACK/slantr (long \I) ^RealTRMatrix a))
   (asum [_ a]
-    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/sasum ^RealTRMatrix a))
+    (tr-sum CBLAS/sasum ^RealTRMatrix a))
   (axpy [_ alpha a b]
-    (tr-axpy ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/saxpy alpha
-             ^RealTRMatrix a ^RealTRMatrix b)
+    (uplo-axpy CBLAS/saxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
     b)
   (mv [this alpha a x beta y]
    (tr-mv a))
   (mv [_ a x]
    (tr-mv CBLAS/strmv ^RealTRMatrix a ^RealBlockVector x)
    x)
-  (mm [this alpha a b beta c]
+  (mm [this alpha a b beta c _]
    (tr-mm a))
   (mm [_ alpha a b left]
    (tr-mm CBLAS/strmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
@@ -623,17 +618,16 @@
   (amax [this a]
     (tr-lan LAPACK/slantr (long \m) ^RealTRMatrix a))
   (sum [_ a]
-    (tr-sum ^StripeNavigator (.stripe-nav ^RealTRMatrix a) CBLAS/ssum ^RealTRMatrix a))
+    (tr-sum  CBLAS/ssum ^RealTRMatrix a))
   (set-all [_ alpha a]
     (tr-laset LAPACK/slaset alpha alpha ^RealTRMatrix a)
     a)
   (axpby [_ alpha a beta b]
-    (tr-axpby ^StripeNavigator (.stripe-nav ^RealTRMatrix a) MKL/saxpby
-              alpha ^RealTRMatrix a beta ^RealTRMatrix b)
+    (uplo-axpby MKL/saxpby alpha ^RealTRMatrix a beta ^RealTRMatrix b)
     b)
   Lapack
   (srt [_ a increasing]
-    (tr-lasrt ^StripeNavigator (.stripe-nav ^RealTRMatrix a) LAPACK/slasrt ^RealTRMatrix a increasing)
+    (uplo-lasrt LAPACK/slasrt ^RealTRMatrix a increasing)
     a)
   (tri [_ a]
     (tr-tri LAPACK/strtri ^RealTRMatrix a)
@@ -648,9 +642,75 @@
     (let [da (data-accessor a)]
       (tr-con ^RealBufferAccessor da LAPACK/strcon ^RealTRMatrix a nrm1?))))
 
+;; =============== Symmetric Matrix Engines ===================================
+
+(deftype DoubleSYEngine []
+  Blas
+  (swap [_ a b]
+    (uplo-swap CBLAS/dswap ^RealSYMatrix a ^RealSYMatrix b)
+    a)
+  (copy [_ a b]
+    (sy-lacpy LAPACK/dlacpy CBLAS/dcopy ^RealSYMatrix a ^RealSYMatrix b)
+    b)
+  (scal [_ alpha a]
+    (sy-lascl LAPACK/dlascl alpha ^RealSYMatrix a)
+    a)
+  (dot [_ a b]
+    (sy-dot CBLAS/ddot ^RealSYMatrix a ^RealSYMatrix b))
+  (nrm1 [_ a]
+    (sy-lan LAPACK/dlansy (long \O) ^RealSYMatrix a))
+  (nrm2 [_ a]
+    (sy-lan LAPACK/dlansy (long \F) ^RealSYMatrix a))
+  (nrmi [_ a]
+    (sy-lan LAPACK/dlansy (long \I) ^RealSYMatrix a))
+  (asum [_ a]
+    (sy-sum CBLAS/dasum ^RealSYMatrix a))
+  (axpy [_ alpha a b]
+    (uplo-axpy CBLAS/daxpy alpha ^RealSYMatrix a ^RealSYMatrix b);;TODO sy
+    b)
+  (mv [this alpha a x beta y]
+    (sy-mv CBLAS/dsymv alpha ^RealSYMatrix a ^RealBlockVector x beta ^RealBlockVector y)
+    y)
+  (mv [_ a x]
+    (sy-mv a))
+  (mm [this alpha a b beta c left]
+    (sy-mm CBLAS/dsymm alpha ^RealSYMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left)
+    c)
+  (mm [_ alpha a b _]
+    (sy-mm a))
+  BlasPlus
+  (amax [this a]
+    (sy-lan LAPACK/dlansy (long \m) ^RealSYMatrix a))
+  (sum [_ a]
+    (sy-sum CBLAS/dsum ^RealSYMatrix a))
+  (set-all [_ alpha a]
+    (sy-laset LAPACK/dlaset alpha alpha ^RealSYMatrix a)
+    a)
+  (axpby [_ alpha a beta b]
+    (uplo-axpby MKL/daxpby alpha ^RealSYMatrix a beta ^RealSYMatrix b)
+    b)
+  Lapack
+  (srt [_ a increasing]
+    (uplo-lasrt LAPACK/dlasrt ^RealSYMatrix a increasing)
+    a)
+  (trf [_ a ipiv]
+    (sy-trf LAPACK/dsytrf ^RealSYMatrix a ^IntegerBlockVector ipiv))
+  (tri [_ a ipiv]
+    (sy-tri LAPACK/dsytri ^RealSYMatrix a ^IntegerBlockVector ipiv)
+    a)
+  (trs [_ a b ipiv]
+    (sy-trs LAPACK/dsytrs ^RealSYMatrix a ^RealSYMatrix b ^IntegerBlockVector ipiv)
+    b)
+  (sv [_ a b pure]
+    (sy-sv LAPACK/dsysv ^RealSYMatrix a ^RealSYMatrix b pure)
+    b)
+  (con [_ ldl ipiv nrm _]
+    (let [da (data-accessor ldl)]
+      (sy-con ^RealBufferAccessor da LAPACK/dsycon ^RealSYMatrix ldl ^IntegerBlockVector ipiv nrm))))
+
 ;; =============== Factories ==================================================
 
-(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng]
+(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -671,12 +731,16 @@
     (real-ge-matrix this m n ord))
   (create-tr [this n ord uplo diag _]
     (real-tr-matrix this n ord uplo diag))
+  (create-sy [this n ord uplo _]
+    (real-sy-matrix this n ord uplo))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
     ge-eng)
   (tr-engine [_]
-    tr-eng))
+    tr-eng)
+  (sy-engine [_]
+    sy-eng))
 
 (deftype MKLIntegerFactory [index-fact ^DataAccessor da vector-eng]
   DataAccessorProvider
@@ -708,10 +772,10 @@
 
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
-                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine)))
+                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
-                      (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine)))
+                      (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)))
 
   (vreset! index-fact mkl-int))

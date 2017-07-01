@@ -662,7 +662,9 @@
   (facts "BLAS 1 copy! TR matrix"
          (with-release [a (tr factory 3)
                         b (tr factory 3 (range 6) {:order :column})
-                        b-row (tr factory 3 (range 6) {:order :row})]
+                        b-row (tr factory 3 (range 6) {:order :row})
+                        c (ge factory 3 3 (range 1 10))]
+           (entry (view-ge (entry! (view-tr c {:diag :unit}) -1)) 2 2) => 9.0
            (identical? (copy a) a) => false
            (identical? (copy! (tr factory 3 [1 2 3 4 5 6]) a) a) => true
            (copy (tr factory 3 [1 2 3 4 5 6])) => a
@@ -674,59 +676,77 @@
          (copy! (tr factory 3 [1 2 3 4 5 6]) nil) => (throws ExceptionInfo)
          (copy! (tr factory 3 [10 20 30 40 50 60]) (tr factory 2)) => (throws ExceptionInfo)))
 
-(defn test-tr-swap [factory]
-   (facts
-    "BLAS 1 swap! TR matrix"
-    (with-release [a (tr factory 3 [1 2 3 4 5 6])]
-      (identical? (swp! a (tr factory 3)) a) => true
-      (swp! a (tr factory 3 [10 20 30 40 50 60])) => (tr factory 3 [10 20 30 40 50 60])
-      (swp! a nil) => (throws ExceptionInfo)
-      (identical? (swp! a (tr factory 3 [10 20 30 40 50 60])) a) => true
-      (swp! a (tr factory 2 [10 20])) => (throws ExceptionInfo))))
+(defn test-uplo-copy [factory uplo uplo-name]
+  (facts (format "BLAS 1 copy! %s matrix" uplo-name)
+         (with-release [a (uplo factory 3)
+                        b (uplo factory 3 (range 6) {:order :column})
+                        b-row (uplo factory 3 (range 6) {:order :row})
+                        c (ge factory 3 3 (range 1 10))]
+           (entry (view-ge (entry! (view-sy c) -1)) 1 2) => 8.0
+           (identical? (copy a) a) => false
+           (identical? (copy! (uplo factory 3 [1 2 3 4 5 6]) a) a) => true
+           (copy (uplo factory 3 [1 2 3 4 5 6])) => a
+           (copy! b b-row) => b)
 
-(defn test-tr-scal [factory]
-  (facts "BLAS 1 scal! TR matrix"
-         (with-release [a (tr factory 3 [1 2 3 4 5 6])]
+         (copy! (uplo factory 3 [10 20 30 40 50 60]) (uplo factory 3 [1 2 3 4 5 6]))
+         => (uplo factory 3 [10 20 30 40 50 60])
+
+         (copy! (uplo factory 3 [1 2 3 4 5 6]) nil) => (throws ExceptionInfo)
+         (copy! (uplo factory 3 [10 20 30 40 50 60]) (uplo factory 2)) => (throws ExceptionInfo)))
+
+(defn test-uplo-swap [factory uplo uplo-name]
+  (facts
+   (format "BLAS 1 swap! %s matrix" uplo-name)
+   (with-release [a (uplo factory 3 [1 2 3 4 5 6])]
+     (identical? (swp! a (uplo factory 3)) a) => true
+     (swp! a (uplo factory 3 [10 20 30 40 50 60])) => (uplo factory 3 [10 20 30 40 50 60])
+     (swp! a nil) => (throws ExceptionInfo)
+     (identical? (swp! a (uplo factory 3 [10 20 30 40 50 60])) a) => true
+     (swp! a (uplo factory 2 [10 20])) => (throws ExceptionInfo))))
+
+(defn test-uplo-scal [factory uplo uplo-name]
+  (facts (format "BLAS 1 scal! %s matrix" uplo-name)
+         (with-release [a (uplo factory 3 [1 2 3 4 5 6])]
            (identical? (scal! 3 a) a) => true)
-         (scal! 3 (tr factory 3 [1 -2 3 9 8 7])) => (tr factory 3 [3 -6 9 27 24 21])))
+         (scal! 3 (uplo factory 3 [1 -2 3 9 8 7])) => (uplo factory 3 [3 -6 9 27 24 21])))
 
-(defn test-tr-axpy [factory]
-  (facts "BLAS 1 axpy! TR matrix"
-         (with-release [a (tr factory 3 (range 6))]
+(defn test-uplo-axpy [factory uplo uplo-name]
+  (facts (format "BLAS 1 axpy! %s matrix" uplo-name)
+         (with-release [a (uplo factory 3 (range 6))]
 
-           (axpy! 2.0 (tr factory 3 (range 0 60 10)) a) => (tr factory 3 (range 0 121 21))
-           (identical? (axpy! 3.0 (tr factory 3 (range 6)) a) a) => true
-           (axpy! 2.0 (tr factory 2 (range 1 7)) a) => (throws ExceptionInfo)
+           (axpy! 2.0 (uplo factory 3 (range 0 60 10)) a) => (uplo factory 3 (range 0 121 21))
+           (identical? (axpy! 3.0 (uplo factory 3 (range 6)) a) a) => true
+           (axpy! 2.0 (uplo factory 2 (range 1 7)) a) => (throws ExceptionInfo)
 
-           (axpy! (tr factory 2 [10 20 30]) (tr factory 2 [1 2 3])) => (tr factory 2 [11 22 33]))
+           (axpy! (uplo factory 2 [10 20 30]) (uplo factory 2 [1 2 3])) => (uplo factory 2 [11 22 33]))
 
-         (axpy! 2 (tr factory 3 (range 6)) (tr factory 3 (range 6))
-                (tr factory 3 (range 2 9)) 4.0 (tr factory 3 (range 8 14)))
-         => (tr factory 3 (range 34 75 8))
+         (axpy! 2 (uplo factory 3 (range 6)) (uplo factory 3 (range 6))
+                (uplo factory 3 (range 2 9)) 4.0 (uplo factory 3 (range 8 14)))
+         => (uplo factory 3 (range 34 75 8))
 
-         (axpy! 2 (tr factory 3 (range 6)) (tr factory 3 (range 6))
-                (tr factory 2 3 (range 2 5)) 4.0) => (throws ExceptionInfo)
+         (axpy! 2 (uplo factory 3 (range 6)) (uplo factory 3 (range 6))
+                (uplo factory 2 3 (range 2 5)) 4.0) => (throws ExceptionInfo)
 
-         (axpy! (tr factory 3 (range 6)) (tr factory 3 (range 6))
-                (tr factory 3 (range 6)) (tr factory 3 (range 6))
-                (tr factory 3 (range 6)))
-         => (axpy! 5 (tr factory 3 (range 6)) (tr factory 3))
+         (axpy! (uplo factory 3 (range 6)) (uplo factory 3 (range 6))
+                (uplo factory 3 (range 6)) (uplo factory 3 (range 6))
+                (uplo factory 3 (range 6)))
+         => (axpy! 5 (uplo factory 3 (range 6)) (uplo factory 3))
 
-         (axpy! 4 "af" (tr factory 3 (range 6)) 3 "b" "c") => (throws ExceptionInfo)
+         (axpy! 4 "af" (uplo factory 3 (range 6)) 3 "b" "c") => (throws ExceptionInfo)
 
-         (with-release [a (tr factory 3 (range 6))]
-           (axpy! 2 (tr factory 3 (range 6)) a
-                  (tr factory 3 (range 1 7)) 4.0 (tr factory 3 (range 6))) => a)
+         (with-release [a (uplo factory 3 (range 6))]
+           (axpy! 2 (uplo factory 3 (range 6)) a
+                  (uplo factory 3 (range 1 7)) 4.0 (uplo factory 3 (range 6))) => a)
 
-         (with-release [a (tr factory 3 (range 6))]
-           (axpy 2.0 (tr factory 3 (range 10 70 10))) => (throws ExceptionInfo)
-           (identical? (axpy 3.0 (tr factory 3 (range 1 7)) a) a) => false
+         (with-release [a (uplo factory 3 (range 6))]
+           (axpy 2.0 (uplo factory 3 (range 10 70 10))) => (throws ExceptionInfo)
+           (identical? (axpy 3.0 (uplo factory 3 (range 1 7)) a) a) => false
 
-           (axpy (tr factory 3 (range 1 7)) (tr factory 3 (range 2 8))
-                 (tr factory 3 (range 3 9)) (tr factory 3))
-           => (tr factory 3 (range 6 25 3))
+           (axpy (uplo factory 3 (range 1 7)) (uplo factory 3 (range 2 8))
+                 (uplo factory 3 (range 3 9)) (uplo factory 3))
+           => (uplo factory 3 (range 6 25 3))
 
-           (axpy 2 (tr factory 3 (range 1 7)) (tr factory 3 (range 2 8))) => (tr factory 3 (range 4 23 3)))))
+           (axpy 2 (uplo factory 3 (range 1 7)) (uplo factory 3 (range 2 8))) => (uplo factory 3 (range 4 23 3)))))
 
 (defn test-tr-mv [factory]
   (facts "BLAS 2 TR mv!"
@@ -770,6 +790,132 @@
 
          (mm 2.0 (tr factory 3 [1 2 3 4 5 6]) (tr factory 3 [1 2 3 4 5 6])
              3.0 (tr factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
+
+;; ====================== SY Matrix ============================
+
+(defn test-sy-constructor [factory]
+  (facts "Create a SY matrix."
+         (with-release [a (sy factory 3 [1 2 3 4 5 6])
+                        b (ge factory 3 3 [1 2 3 2 4 5 3 5 6])]
+           (view-sy b) => a
+           (view-ge (view-sy b)) => b
+           (sy factory 3 nil) => (zero a))))
+
+(defn test-sy [factory]
+  (facts "SY Matrix methods."
+         (with-release [a-upper (sy factory 3 (range 15) {:uplo :upper})
+                        a-lower (sy factory 3 (range 15) {:uplo :lower})]
+           (= 3 (mrows a-upper) (ncols a-lower)) => true
+           (row a-upper 0) => (vctr factory [0 1 3])
+           (row a-upper 2) => (vctr factory [5])
+           (col a-upper 0) => (vctr factory [0])
+           (col a-upper 2) => (vctr factory [3 4 5])
+           (row a-lower 0) => (vctr factory [0])
+           (row a-lower 2) => (vctr factory [2 4 5])
+           (col a-lower 0) => (vctr factory [0 1 2])
+           (col a-lower 2) => (vctr factory [5])
+           (dia a-upper) => (vctr factory 0 2 5))))
+
+(defn test-sy-mv [factory]
+  (facts "BLAS 2 SY mv!"
+         (mv! 2.0 (sy factory 2 [1 2 3 4]) (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4]))
+         => (throws ExceptionInfo)
+
+         (with-release [y (vctr factory [1 2 3])]
+           (identical? (mv! 2 (sy factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3) 3 y) y)) => true
+
+         (mv! 3 (sy factory 3 [1 10 2 20 3 30] {:order :row}) (vctr factory 7 0 4) 3 (vctr factory 3))
+         => (vctr factory 261 246 780)
+
+         (mv! 2 (sy factory 3 [1 2 3 4 5 6] {:uplo :upper}) (vctr factory 1 2 3) 3 (vctr factory 3))
+         => (vctr factory 34 46 64)
+
+         (mv! (sy factory 3 [1 2 4 3 5 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 3))
+         => (mv! (sy factory 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3) (vctr factory 3))))
+
+(defn test-sy-mm [factory]
+  (facts "BLAS 3 SY mm!"
+         (mm! 2.0 (sy factory 3 [1 2 3 4 5 6]) (ge factory 3 3 (range 1 10))
+              3.0 (ge factory 3 3 (range 1 10))) => (ge factory 3 3 [31 56 71 76 131 164 121 206 257])
+
+         (mm! 2.0 (sy factory 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (ge factory 3 2 [31 56 71 76 131 164])
+
+         (with-release [c (ge factory 2 2 [1 2 3 4])]
+           (identical? (mm! 2.0 (sy factory 2 [1 2 3 4]) c 0.0 c) c)) => true
+
+         (mm! 2.0 (ge factory 2 3 (range 6)) (sy factory 3 (range 6)) 0.0 (ge factory 2 3))
+         => (mm! 2.0 (ge factory 2 3 (range 6)) (ge factory 3 3 [0 1 2 1 3 4 2 4 5]) 0.0 (ge factory 2 3))
+
+         (mm (sy factory 3 (range 6)) (ge factory 3 2 (range 6)))
+         => (ge factory 3 2 [5 11 14 14 35 47])
+
+         (mm (ge factory 2 3 (range 6)) (sy factory 3 (range 6)))
+         => (ge factory 2 3 [10 13 22 30 28 39])
+
+         (mm 2.0 (sy factory 3 [1 2 3 4 5 6]) (sy factory 3 [1 2 3 4 5 6])
+             3.0 (sy factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
+
+(defn test-sy-entry [factory]
+  (facts "SY Matrix entry."
+         (with-release [a-upper (sy factory 3 (range 6) {:uplo :upper})]
+           (entry a-upper 0 1) => 1.0
+           (entry a-upper 1 0) => 1.0
+           (entry a-upper 1 1) => 2.0
+           (entry a-upper 2 0) => 3.0
+           (entry a-upper 0 2) => 3.0
+           (entry a-upper -1 2) => (throws ExceptionInfo)
+           (entry a-upper 3 2) => (throws ExceptionInfo))))
+
+(defn test-sy-entry! [factory]
+  (facts "SY matrix entry!."
+         (with-release [a (sy factory 3 [1 2 3 4 5 6] {:uplo :upper})]
+           (entry (entry! a 0 1 88.0) 0 1) => 88.0
+           (entry (entry! a 1 0 3.0) 0 1) => (throws ExceptionInfo)
+           (entry (entry! a 1 0 4.0) 1 1) => (throws ExceptionInfo))))
+
+(defn test-sy-bulk-entry! [factory]
+  (facts "Bulk SY matrix entry!."
+         (sum (row (entry! (sy factory 3 [1 2 3 4 5 6]) 33.0) 1)) => 66.0
+         (sum (row (entry! (sy factory 3 [1 2 3 4 5 6] {:uplo :upper}) 22.0) 0)) => 66.0))
+
+(defn test-sy-alter! [factory]
+  (facts "SY alter!."
+         (entry (alter! (sy factory 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 4.0
+         (alter! (sy factory 3 [1 2 3 4 5 6]) val-ind+) => (sy factory 3 [0 0 0 5 7 16])
+         (alter! (sy factory 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
+         => (sy factory 3 [0 0 4 0 7 16] {:order :row})))
+
+(defn test-sy-dot [factory]
+  (facts "BLAS 1 SY dot"
+         (let [a (sy factory 3 (range -3 3))
+               b (sy factory 3 [1 2 3 4 5 6])
+               d (sy factory 3 {:order :row})
+               zero-point (sy factory 0 [])]
+           (sqrt (dot a a)) => (roughly (nrm2 a))
+           (dot a b) => 5.0
+           (dot a (copy! b d)) => (dot a b)
+           (dot zero-point zero-point) => 0.0)))
+
+(defn test-sy-nrm2 [factory]
+  (facts "BLAS 1 SY nrm2."
+         (nrm2 (sy factory 3 (range -5 5))) => (roughly (sqrt 81))
+         (nrm2 (sy factory 0 [])) => 0.0))
+
+(defn test-sy-amax [factory]
+  (facts "BLAS 1 SY amax."
+         (amax (sy factory 3 [1 2 3 -4 -3 1 1 1 1 1 1 1])) => 4.0
+         (amax (sy factory 0 [])) => 0.0))
+
+(defn test-sy-asum [factory]
+  (facts "BLAS 1 SY asum."
+         (asum (sy factory 3 (range -3 3))) => 13.0
+         (asum (sy factory 0 [])) => 0.0))
+
+(defn test-sy-sum [factory]
+  (facts "BLAS 1 SY sum."
+         (sum (sy factory 3 (range -3 3))) => -5.0
+         (sum (sy factory 0 [])) => 0.0))
 
 ;; ==================== LAPACK tests =======================================
 
@@ -1280,9 +1426,9 @@
   (test-tr factory)
   (test-tr-constructor factory)
   (test-tr-copy factory)
-  (test-tr-swap factory)
-  (test-tr-scal factory)
-  (test-tr-axpy factory)
+  (test-uplo-swap factory tr "TR")
+  (test-uplo-scal factory tr "TR")
+  (test-uplo-axpy factory tr "TR")
   (test-tr-mv factory)
   (test-tr-mm factory))
 
@@ -1336,3 +1482,24 @@
   (test-ge-ls factory)
   (test-ge-ev factory)
   (test-ge-svd factory))
+
+(defn test-blas-sy [factory]
+  (test-sy-constructor factory)
+  (test-sy factory)
+  (test-uplo-copy factory sy "SY")
+  (test-uplo-swap factory sy "SY")
+  (test-uplo-scal factory sy "SY")
+  (test-uplo-axpy factory sy "SY")
+  (test-sy-mv factory)
+  (test-sy-mm factory))
+
+(defn test-blas-sy-host [factory]
+  (test-sy-entry factory)
+  (test-sy-entry! factory)
+  (test-sy-bulk-entry! factory)
+  (test-sy-alter! factory)
+  (test-sy-dot factory)
+  (test-sy-nrm2 factory)
+  (test-sy-asum factory)
+  (test-sy-sum factory)
+  (test-sy-amax factory))
