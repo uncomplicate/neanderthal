@@ -13,7 +13,7 @@
             [uncomplicate.neanderthal.math :refer [ceil floor]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang Seqable IFn]
-           [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix GEMatrix SYMatrix
+           [uncomplicate.neanderthal.internal.api Block Vector Matrix TRMatrix GEMatrix SYMatrix
             DataAccessor SegmentVector UploNavigator]))
 
 (defn ^:private unsupported []
@@ -34,6 +34,23 @@
       (cl-format w format-a "..."))
     (dotimes [i (floor (/ n-print 2))]
       (cl-format w formatter (.boxedEntry x (+ start-2 i))))))
+
+(defn print-vector [^java.io.Writer w ^Vector x]
+  (when (< 0 (.dim x))
+    (let [max-value (double (amax (engine x) x))
+          min-value (.boxedEntry x (iamin (engine x) x))
+          formatter (if (and (not (< 0.0 min-value 0.01)) (< max-value 10000.0)) format-f format-g)]
+      (.write w "\n[")
+      (format-vector w formatter x)
+      (.write w "]\n"))))
+
+(defn print-matrix  [^java.io.Writer w format-fn ^Block a]
+  (when (< 0 (.count a))
+    (let [max-value (double (amax (engine a) a))
+          formatter (if (< max-value 10000.0) format-f format-g)]
+      (.write w "\n")
+      (format-fn w formatter a max-value)
+      (.write w "\n"))))
 
 (defn format-ge [^java.io.Writer w formatter ^Matrix a max-value]
   (let [pl (long (or *print-length* 16))
@@ -174,11 +191,12 @@
       (.write w "]\n"))
     (.write w (str x))))
 
-(defn format-tr [^java.io.Writer w formatter ^UploNavigator uplo-nav ^TRMatrix a max-value]
+(defn format-tr [^java.io.Writer w formatter ^TRMatrix a max-value]
   (let [pl (long (or *print-length* 16))
         m-print (min (.mrows a) pl)
         n-print (min (.ncols a) pl)
-        m-start-2 (- (.mrows a) (floor (/ m-print 2)))]
+        m-start-2 (- (.mrows a) (floor (/ m-print 2)))
+        uplo-nav (uplo-navigator a)]
     (dotimes [i (ceil (/ m-print 2))]
       (.write w "\n")
       (format-vector w formatter

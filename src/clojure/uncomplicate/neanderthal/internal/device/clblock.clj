@@ -19,7 +19,7 @@
              [real :refer [entry]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer :all]
+             [common :refer [format-ge format-tr format-sy print-matrix print-vector]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
              [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
@@ -269,17 +269,12 @@
 
 (defmethod print-method CLBlockVector
   [^CLBlockVector x ^java.io.Writer w]
-  (if (and (< 0 (.dim x)) (.buffer x))
+  (.write w (str x))
+  (when (and (< 0 (.dim x)) (.buffer x))
     (let [mapped-x (mmap x :read)]
-      (.write w (str x "\n["))
       (try
-        (let [max-value (double (amax (engine mapped-x) mapped-x))
-              min-value (entry mapped-x (iamin (engine mapped-x) mapped-x))
-              formatter (if (and (not (< 0.0 min-value 0.01)) (< max-value 10000.0)) format-f format-g)]
-          (format-vector w formatter mapped-x))
-        (finally (unmap x mapped-x)))
-      (.write w "]"))
-    (.write w (str x))))
+        (print-vector w mapped-x)
+        (finally (unmap x mapped-x))))))
 
 (defmethod transfer! [CLBlockVector CLBlockVector]
   [source destination]
@@ -366,6 +361,9 @@
                       ofst (* ld (long stride-mult)) ord)))
   (view-tr [_ uplo diag]
     (cl-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
+  Navigable
+  (order-navigator [_]
+    navigator)
   MemoryContext
   (fully-packed? [_]
     (= sd ld))
@@ -471,16 +469,12 @@
   {:op (constantly matrix-op)})
 
 (defmethod print-method CLGEMatrix [^CLGEMatrix a ^java.io.Writer w]
-  (if (and (< 0 (.count a)) (.buffer a))
+  (.write w (str a))
+  (when (and (< 0 (.count a)) (.buffer a))
     (let [mapped-a (mmap a :read)]
-      (.write w (str a "\n"))
       (try
-        (let [max-value (double (amax (engine mapped-a) mapped-a))
-              formatter (if (< max-value 10000.0) format-f format-g)]
-          (format-ge w formatter mapped-a max-value))
-        (finally (unmap a mapped-a)))
-      (.write w "\n"))
-    (.write w (str a))))
+        (print-matrix w format-ge mapped-a)
+        (finally (unmap a mapped-a))))))
 
 (defmethod transfer! [CLGEMatrix CLGEMatrix]
   [source destination]
@@ -563,6 +557,13 @@
     (view-ge (view-ge a) stride-mult))
   (view-tr [_ uplo diag]
     (cl-tr-matrix fact false buf n ofst ld ord uplo diag))
+  Navigable
+  (order-navigator [_]
+    navigator)
+  (stripe-navigator [_]
+    stripe-nav)
+  (uplo-navigator [_]
+    uplo-nav)
   MemoryContext
   (fully-packed? [_]
     false)
@@ -689,15 +690,12 @@
    (cl-tr-matrix fact n DEFAULT_ORDER DEFAULT_UPLO DEFAULT_DIAG)))
 
 (defmethod print-method CLTRMatrix [^CLTRMatrix a ^java.io.Writer w]
-  (if (and (< 0 (.count a)) (.buffer a))
+  (.write w (str a))
+  (when (and (< 0 (.count a)) (.buffer a))
     (let [mapped-a (mmap a :read)]
-      (.write w (str a "\n"))
       (try
-        (let [max-value (double (amax (engine mapped-a) mapped-a))
-              formatter (if (< max-value 10000.0) format-f format-g)]
-          (format-tr w formatter (.uplo-nav a) mapped-a max-value)))
-      (.write w "\n"))
-    (.write w (str a))))
+        (print-matrix w format-tr mapped-a)
+        (finally (unmap a mapped-a))))))
 
 (defmethod transfer! [CLTRMatrix CLTRMatrix]
   [source destination]

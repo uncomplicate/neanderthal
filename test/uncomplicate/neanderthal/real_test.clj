@@ -610,10 +610,12 @@
 
 (defn test-tr-entry! [factory]
   (facts "TR matrix entry!."
-         (with-release [a (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper})]
+         (with-release [a (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper})
+                        c (ge factory 3 3 (range 1 10))]
            (entry (entry! a 0 1 88.0) 0 1) => 88.0
            (entry (entry! a 1 0 3.0) 0 1) => (throws ExceptionInfo)
-           (entry (entry! a 1 0 4.0) 1 1) => (throws ExceptionInfo))))
+           (entry (entry! a 1 0 4.0) 1 1) => (throws ExceptionInfo)
+           (entry (view-ge (entry! (view-tr c {:diag :unit}) -1)) 2 2) => 9.0)))
 
 (defn test-tr-bulk-entry! [factory]
   (facts "Bulk TR matrix entry!."
@@ -658,31 +660,12 @@
          (sum (tr factory 3 (range -3 3))) => -3.0
          (sum (tr factory 0 [])) => 0.0))
 
-(defn test-tr-copy [factory]
-  (facts "BLAS 1 copy! TR matrix"
-         (with-release [a (tr factory 3)
-                        b (tr factory 3 (range 6) {:order :column})
-                        b-row (tr factory 3 (range 6) {:order :row})
-                        c (ge factory 3 3 (range 1 10))]
-           (entry (view-ge (entry! (view-tr c {:diag :unit}) -1)) 2 2) => 9.0
-           (identical? (copy a) a) => false
-           (identical? (copy! (tr factory 3 [1 2 3 4 5 6]) a) a) => true
-           (copy (tr factory 3 [1 2 3 4 5 6])) => a
-           (copy! b b-row) => b)
-
-         (copy! (tr factory 3 [10 20 30 40 50 60]) (tr factory 3 [1 2 3 4 5 6]))
-         => (tr factory 3 [10 20 30 40 50 60])
-
-         (copy! (tr factory 3 [1 2 3 4 5 6]) nil) => (throws ExceptionInfo)
-         (copy! (tr factory 3 [10 20 30 40 50 60]) (tr factory 2)) => (throws ExceptionInfo)))
-
 (defn test-uplo-copy [factory uplo uplo-name]
   (facts (format "BLAS 1 copy! %s matrix" uplo-name)
          (with-release [a (uplo factory 3)
                         b (uplo factory 3 (range 6) {:order :column})
-                        b-row (uplo factory 3 (range 6) {:order :row})
-                        c (ge factory 3 3 (range 1 10))]
-           (entry (view-ge (entry! (view-sy c) -1)) 1 2) => 8.0
+                        b-row (uplo factory 3 (range 6) {:order :row})]
+
            (identical? (copy a) a) => false
            (identical? (copy! (uplo factory 3 [1 2 3 4 5 6]) a) a) => true
            (copy (uplo factory 3 [1 2 3 4 5 6])) => a
@@ -869,7 +852,10 @@
 
 (defn test-sy-entry! [factory]
   (facts "SY matrix entry!."
-         (with-release [a (sy factory 3 [1 2 3 4 5 6] {:uplo :upper})]
+         (with-release [a (sy factory 3 [1 2 3 4 5 6] {:uplo :upper})
+                        c (ge factory 3 3 (range 1 10))]
+
+           (entry (view-ge (entry! (view-sy c) -1)) 1 2) => 8.0
            (entry (entry! a 0 1 88.0) 0 1) => 88.0
            (entry (entry! a 1 0 3.0) 0 1) => (throws ExceptionInfo)
            (entry (entry! a 1 0 4.0) 1 1) => (throws ExceptionInfo))))
@@ -1425,7 +1411,7 @@
   (test-ge-mm factory)
   (test-tr factory)
   (test-tr-constructor factory)
-  (test-tr-copy factory)
+  (test-uplo-copy factory tr "TR")
   (test-uplo-swap factory tr "TR")
   (test-uplo-scal factory tr "TR")
   (test-uplo-axpy factory tr "TR")

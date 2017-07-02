@@ -282,10 +282,8 @@
          nil))))
 
 (defmacro ^:private ge-mm
-  ([alpha a b left]
-   `(if ~left
-      (mm (engine ~b) ~alpha ~b ~a false)
-      (throw (ex-info "In-place mm! is not supported for GE matrices." {:a (str ~a)}))))
+  ([alpha a b]
+   `(mm (engine ~b) ~alpha ~b ~a false))
   ([cublas-handle method alpha a b beta c]
    `(when (< 0 (.count ~a))
       (let [da# (data-accessor ~a)]
@@ -541,9 +539,9 @@
   (rk [_ alpha x y a]
     (ge-rk cublas-handle JCublas2/cublasDger (double alpha) ^CUBlockVector x ^CUBlockVector y ^CUGEMatrix a)
     a)
-  (mm [_ alpha a b left]
-    (ge-mm alpha a b left))
-  (mm [_ alpha a b beta c]
+  (mm [_ alpha a b _]
+    (ge-mm alpha a b))
+  (mm [_ alpha a b beta c _]
     (ge-mm cublas-handle JCublas2/cublasDgemm
            (double alpha) ^CUGEMatrix a ^CUGEMatrix b (double beta) ^CUGEMatrix c)
     c)
@@ -598,9 +596,9 @@
   (rk [_ alpha x y a]
     (ge-rk cublas-handle JCublas2/cublasSger (float alpha) ^CUBlockVector x ^CUBlockVector y ^CUGEMatrix a)
     a)
-  (mm [_ alpha a b left]
-    (ge-mm alpha a b left))
-  (mm [_ alpha a b beta c]
+  (mm [_ alpha a b _]
+    (ge-mm alpha a b))
+  (mm [_ alpha a b beta c _]
     (ge-mm cublas-handle JCublas2/cublasSgemm
            (float alpha) ^CUGEMatrix a ^CUGEMatrix b (float beta) ^CUGEMatrix c)
     c)
@@ -651,7 +649,7 @@
   (mv [_ a x]
     (tr-mv cublas-handle JCublas2/cublasDtrmv ^CUTRMatrix a ^CUBlockVector x)
     x)
-  (mm [this alpha a b beta c]
+  (mm [this alpha a b beta c _]
     (tr-mm a))
   (mm [_ alpha a b left]
     (tr-mm cublas-handle JCublas2/cublasDtrmm (double alpha) ^CUTRMatrix a ^CUGEMatrix b left)
@@ -696,7 +694,7 @@
   (mv [_ a x]
     (tr-mv cublas-handle JCublas2/cublasStrmv ^CUTRMatrix a ^CUBlockVector x)
     x)
-  (mm [this alpha a b beta c]
+  (mm [this alpha a b beta c _]
     (tr-mm a))
   (mm [_ alpha a b left]
     (tr-mm cublas-handle JCublas2/cublasStrmm (float alpha) ^CUTRMatrix a ^CUGEMatrix b left)
