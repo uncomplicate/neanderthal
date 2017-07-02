@@ -1117,10 +1117,11 @@
                                       -1.11 -0.66 -0.59 0.80]
                         {:order :row})
                   lu-a (trf a)
+                  nrm (nrm1 a)
                   copy-a (copy a)
                   lu-copy-a (trf! copy-a)]
 
-     (con lu-a) => (roughly (/ 152.1620))
+     (con lu-a nrm true) => (roughly (/ 152.1620))
      (con lu-copy-a) => (throws ExceptionInfo))))
 
 (defn test-tr-con [factory]
@@ -1133,9 +1134,10 @@
                                       -1.11 -0.66 -0.59 0.80]
                         {:order :row})
                   b (copy (view-tr a))
-                  lu (trf a)]
+                  lu (trf a)
+                  nrm (nrm1 a)]
 
-     (con b) => (roughly (con lu)))))
+     (con b) => (roughly (con lu nrm)))))
 
 (defn test-ge-qr [factory]
   (facts

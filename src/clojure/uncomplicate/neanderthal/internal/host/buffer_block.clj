@@ -39,8 +39,8 @@
 
 (def ^:private f* (double-fn *))
 
-(defn ^:private require-lu []
-  (throw (ex-info "Please do the LU factorization of this matrix first." {})))
+(defn ^:private require-trf []
+  (throw (ex-info "Please do the triangular factorization of this matrix first." {})))
 
 (extend-type DirectByteBuffer
   Releaseable
@@ -930,19 +930,19 @@
   Monoid
   (id [a]
     (real-ge-matrix fact 0 0))
-  LU
-  (lu-trs [_ _]
-    (require-lu))
-  (lu-tri! [_]
-    (require-lu))
-  (lu-tri [_]
-    (require-lu))
-  (lu-con [_ _ _]
-    (require-lu))
-  (lu-con [_ _]
-    (require-lu))
-  (lu-det [_]
-    (require-lu))
+  TRF
+  (trtrs [_ _]
+    (require-trf))
+  (trtri! [_]
+    (require-trf))
+  (trtri [_]
+    (require-trf))
+  (trcon [_ _ _]
+    (require-trf))
+  (trcon [_ _]
+    (require-trf))
+  (trdet [_]
+    (require-trf))
   PseudoFunctor
   (fmap! [a f]
     (ge-fmap navigator fd sd ^IFn$DD f a))
@@ -1329,17 +1329,19 @@
   (transpose [a]
     (real-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
                     (if (= LOWER fuplo) UPPER LOWER) fdiag))
-  LU
-  (lu-trs [a b]
+  TRF
+  (trtrs [a b]
     (trs eng a b))
-  (lu-tri! [a]
+  (trtri! [a]
     (tri eng a))
-  (lu-tri [a]
+  (trtri [a]
     (let-release [res (raw a)]
       (tri eng (copy eng a res))))
-  (lu-con [a nrm1?]
+  (trcon [a _ nrm1?]
     (con eng a nrm1?))
-  (lu-det [a]
+  (trcon [a nrm1?]
+    (con eng a nrm1?))
+  (trdet [a]
     (if (= DIAG_NON_UNIT fdiag)
       (fold (.diag a) f* 1.0)
       1.0))

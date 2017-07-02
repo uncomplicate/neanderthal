@@ -45,7 +45,8 @@
 ;; =============  Triangular Linear Systems LAPACK ============================================
 
 (defn trf!
-  "Triangularizes a GE matrix `a`. Destructively computes the LU factorization of a `mxn` matrix `a`,
+  "Triangularizes a non-TR matrix `a`. Destructively computes the LU (or LDLt, or UDUt)
+  factorization of a `mxn` matrix `a`,
   and places it in a record that contains `:lu` and `:ipiv`.
 
   Overwrites `a` with L and U. L is stored as a lower unit triangle, and U as an upper triangle.
@@ -59,10 +60,11 @@
   [^Matrix a]
   (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
     (api/trf (api/engine a) a ipiv)
-    (generic/create-lu a ipiv)))
+    (generic/create-trf a ipiv)))
 
 (defn trf
-  "Triangularizes a GE matrix `a`. Computes the LU factorization of a `mxn` matrix `a`,
+  "Triangularizes a non-TR matrix `a`. Computes the LU (or LDLt, or UDUt)
+  factorization of a `mxn` matrix `a`,
   and places it in a record that contains `:lu`, `:a` and `:ipiv`.
 
   Pivot is  placed into the `:ipiv`, a vector of **integers or longs**.
@@ -76,7 +78,7 @@
   (let-release [ipiv (vctr (api/index-factory a) (.ncols a))
                 a-copy (copy a)]
     (api/trf (api/engine a-copy) a-copy ipiv)
-    (generic/create-lu a-copy a ipiv)))
+    (generic/create-trf a-copy a ipiv)))
 
 (defn tri!
   "Destructively computes the inverse of a triangularized matrix `a`.
@@ -90,7 +92,7 @@
   "
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
-    (api/lu-tri! a)
+    (api/trtri! a)
     (throw (ex-info "Can not compute an inverse of a non-square matrix."
                     {:m (.mrows a) :n (.ncols a)}))))
 
@@ -105,7 +107,7 @@
   "
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
-    (api/lu-tri a)
+    (api/trtri a)
     (throw (ex-info "Can not compute an inverse of a non-square matrix."
                     {:m (.mrows a) :n (.ncols a)}))))
 
@@ -120,7 +122,7 @@
   "
   [^Matrix a ^Matrix b]
   (if (and (= (.ncols a) (.mrows b)) (api/compatible? a b) (api/fits-navigation? a b))
-    (api/lu-trs a b)
+    (api/trtrs a b)
     (throw (ex-info "Dimensions and orientation of a and b do not fit"
                     {:a  (str a) :b (str b) :errors
                      (cond-into []
@@ -187,11 +189,13 @@
   If the LU has been stale, or norm is not possible to compute, throws ExceptionInfo.
   "
   (^double [^Matrix lu nrm nrm1?]
-   (api/lu-con lu nrm nrm1?))
-  (^double [^Matrix a nrm1?]
-   (api/lu-con a nrm1?))
+   (api/trcon lu nrm nrm1?))
+  (^double [^Matrix a nrm1-?]
+   (if (number? nrm1-?)
+     (api/trcon a nrm1-? true)
+     (api/trcon a nrm1-?)))
   (^double [^Matrix a]
-   (con a true)))
+   (api/trcon a true)))
 
 (defn det
   "Computes the determinant of a triangularized matrix `a`.
@@ -199,7 +203,7 @@
   If the matrix is not square, throws ExceptionInfo."
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
-    (api/lu-det a)
+    (api/trdet a)
     (throw (ex-info "Determinant computation requires a square matrix."
                     {:mrows (.mrows a) :ncols (.ncols a)}))))
 

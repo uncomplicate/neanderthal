@@ -258,38 +258,37 @@
 (defn ^:private stale-factorization []
   (throw (ex-info "Cannot compute with stale LU factorization." {})))
 
-(defrecord LUFactorization [^GEMatrix lu ^GEMatrix a ^Vector ipiv ^Boolean master fresh]
+(defn ^:private nrm-needed-for-con []
+  (throw (ex-info "Cannot compute condition number without nrm." {})))
+
+(defrecord TRFactorization [^Matrix lu ^Vector ipiv ^Boolean master fresh]
   Releaseable
   (release [_]
     (when master (release lu))
     (release ipiv))
-  LU
-  (lu-trs [_ b]
+  TRF
+  (trtrs [_ b]
     (if @fresh
       (trs (engine lu) lu b ipiv)
       (stale-factorization)))
-  (lu-tri! [_]
+  (trtri! [_]
     (if (compare-and-set! fresh true false)
       (tri (engine lu) lu ipiv)
       (stale-factorization)))
-  (lu-tri [_]
+  (trtri [_]
     (if @fresh
       (let-release [res (raw lu)]
         (let [eng (engine lu)]
           (tri eng (copy eng lu res) ipiv))
         res)
       (stale-factorization)))
-  (lu-con [_ nrm nrm1?]
+  (trcon [_ nrm nrm1?]
     (if @fresh
       (con (engine lu) lu nrm nrm1?)
       (stale-factorization)))
-  (lu-con [_ nrm1?]
-    (if a
-      (if @fresh
-        (con (engine lu) lu (if nrm1? (nrm1 (engine a) a) (nrmi (engine a) a)) nrm1?)
-        (stale-factorization))
-      (throw (ex-info "Cannot estimate the condition number without the reference to the original GE matrix." {}))))
-  (lu-det [_]
+  (trcon [_ nrm1?]
+    (nrm-needed-for-con))
+  (trdet [_]
     (if @fresh
       (let [res (double (fold f* 1.0 (.dia lu)))]
         (if (even? (.dim ipiv))
@@ -309,8 +308,8 @@
   (fits-navigation? [_ b]
     (fits-navigation? lu b)))
 
-(defn create-lu
+(defn create-trf
   ([lu a ipiv]
-   (->LUFactorization lu a ipiv true (atom true)))
+   (->TRFactorization lu ipiv true (atom true)))
   ([lu ipiv]
-   (->LUFactorization lu nil ipiv false (atom true))))
+   (->TRFactorization lu ipiv false (atom true))))

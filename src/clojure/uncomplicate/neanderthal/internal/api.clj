@@ -91,12 +91,12 @@
   (ev [this a w vl vr])
   (svd [this a s superb] [this a s u vt superb]))
 
-(defprotocol LU
-  (lu-trs [a b])
-  (lu-tri! [a])
-  (lu-tri [a])
-  (lu-con [a nrm nrm1?] [a nrm1?])
-  (lu-det [a]))
+(defprotocol TRF
+  (trtrs [a b])
+  (trtri! [a])
+  (trtri [a])
+  (trcon [a nrm nrm1?] [a nrm1?])
+  (trdet [a]))
 
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))

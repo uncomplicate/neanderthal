@@ -666,7 +666,7 @@
   (asum [_ a]
     (sy-sum CBLAS/dasum ^RealSYMatrix a))
   (axpy [_ alpha a b]
-    (uplo-axpy CBLAS/daxpy alpha ^RealSYMatrix a ^RealSYMatrix b);;TODO sy
+    (uplo-axpy CBLAS/daxpy alpha ^RealSYMatrix a ^RealSYMatrix b)
     b)
   (mv [this alpha a x beta y]
     (sy-mv CBLAS/dsymv alpha ^RealSYMatrix a ^RealBlockVector x beta ^RealBlockVector y)
@@ -707,6 +707,70 @@
   (con [_ ldl ipiv nrm _]
     (let [da (data-accessor ldl)]
       (sy-con ^RealBufferAccessor da LAPACK/dsycon ^RealSYMatrix ldl ^IntegerBlockVector ipiv nrm))))
+
+(deftype FloatSYEngine []
+  Blas
+  (swap [_ a b]
+    (uplo-swap CBLAS/sswap ^RealSYMatrix a ^RealSYMatrix b)
+    a)
+  (copy [_ a b]
+    (sy-lacpy LAPACK/slacpy CBLAS/scopy ^RealSYMatrix a ^RealSYMatrix b)
+    b)
+  (scal [_ alpha a]
+    (sy-lascl LAPACK/slascl alpha ^RealSYMatrix a)
+    a)
+  (dot [_ a b]
+    (sy-dot CBLAS/sdot ^RealSYMatrix a ^RealSYMatrix b))
+  (nrm1 [_ a]
+    (sy-lan LAPACK/slansy (long \O) ^RealSYMatrix a))
+  (nrm2 [_ a]
+    (sy-lan LAPACK/slansy (long \F) ^RealSYMatrix a))
+  (nrmi [_ a]
+    (sy-lan LAPACK/slansy (long \I) ^RealSYMatrix a))
+  (asum [_ a]
+    (sy-sum CBLAS/sasum ^RealSYMatrix a))
+  (axpy [_ alpha a b]
+    (uplo-axpy CBLAS/saxpy alpha ^RealSYMatrix a ^RealSYMatrix b)
+    b)
+  (mv [this alpha a x beta y]
+    (sy-mv CBLAS/ssymv alpha ^RealSYMatrix a ^RealBlockVector x beta ^RealBlockVector y)
+    y)
+  (mv [_ a x]
+    (sy-mv a))
+  (mm [this alpha a b beta c left]
+    (sy-mm CBLAS/ssymm alpha ^RealSYMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left)
+    c)
+  (mm [_ alpha a b _]
+    (sy-mm a))
+  BlasPlus
+  (amax [this a]
+    (sy-lan LAPACK/slansy (long \m) ^RealSYMatrix a))
+  (sum [_ a]
+    (sy-sum CBLAS/ssum ^RealSYMatrix a))
+  (set-all [_ alpha a]
+    (sy-laset LAPACK/slaset alpha alpha ^RealSYMatrix a)
+    a)
+  (axpby [_ alpha a beta b]
+    (uplo-axpby MKL/saxpby alpha ^RealSYMatrix a beta ^RealSYMatrix b)
+    b)
+  Lapack
+  (srt [_ a increasing]
+    (uplo-lasrt LAPACK/slasrt ^RealSYMatrix a increasing)
+    a)
+  (trf [_ a ipiv]
+    (sy-trf LAPACK/ssytrf ^RealSYMatrix a ^IntegerBlockVector ipiv))
+  (tri [_ a ipiv]
+    (sy-tri LAPACK/ssytri ^RealSYMatrix a ^IntegerBlockVector ipiv)
+    a)
+  (trs [_ a b ipiv]
+    (sy-trs LAPACK/ssytrs ^RealSYMatrix a ^RealSYMatrix b ^IntegerBlockVector ipiv)
+    b)
+  (sv [_ a b pure]
+    (sy-sv LAPACK/ssysv ^RealSYMatrix a ^RealSYMatrix b pure)
+    b)
+  (con [_ ldl ipiv nrm _]
+    (let [da (data-accessor ldl)]
+      (sy-con ^RealBufferAccessor da LAPACK/ssycon ^RealSYMatrix ldl ^IntegerBlockVector ipiv nrm))))
 
 ;; =============== Factories ==================================================
 
@@ -772,7 +836,7 @@
 
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
-                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) nil))
+                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
