@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.internal.navigation
   (:import [clojure.lang IFn$LLDD]
            [uncomplicate.neanderthal.internal.api RealOrderNavigator UploNavigator StripeNavigator
-            RealChangeable RealMatrix]))
+            BandNavigator RealChangeable RealMatrix]))
 
 (deftype ColumnRealOrderNavigator []
   RealOrderNavigator
@@ -19,6 +19,10 @@
     n)
   (index [_ offset ld i j]
     (+ offset (* ld j) i))
+  (index [_ offset ld k]
+    (if (< 0 k)
+      (+ offset (* ld k))
+      (- offset k)))
   (get [_ a i j]
     (.entry ^RealMatrix a i j))
   (set [_ a i j val]
@@ -36,6 +40,10 @@
     m)
   (index [_ offset ld i j]
     (+ offset (* ld i) j))
+  (index [_ offset ld k]
+    (if (< 0 k)
+      (+ offset k)
+      (- offset (* ld k))))
   (get [_ a i j]
     (.entry ^RealMatrix a j i))
   (set [_ a i j val]
@@ -58,6 +66,10 @@
     0)
   (rowEnd [_ n i]
     (inc i))
+  (diaDim [_ n k]
+    (if (< k 1)
+      (+ n k)
+      0))
   (unitIndex [_ i]
     -1)
   (defaultEntry [_ i j]
@@ -73,6 +85,10 @@
     0)
   (rowEnd [_ _ i]
     i)
+  (diaDim [_ n k]
+    (if (< k 0)
+      (+ n k)
+      0))
   (unitIndex [_ i]
     i)
   (defaultEntry [_ i j]
@@ -88,6 +104,10 @@
     i)
   (rowEnd [_ n _]
     n)
+  (diaDim [_ n k]
+    (if (< -1 k)
+      (- n k)
+      0))
   (unitIndex [_ i]
     -1)
   (defaultEntry [_ i j]
@@ -103,6 +123,10 @@
     (inc i))
   (rowEnd [_ n _]
     n)
+  (diaDim [_ n k]
+    (if (< 0 k)
+      (- n k)
+      0))
   (unitIndex [_ i]
     i)
   (defaultEntry [_ i j]
@@ -153,3 +177,52 @@
 (def unit-top-navigator (UnitTopNavigator.))
 (def non-unit-bottom-navigator (NonUnitBottomNavigator.))
 (def unit-bottom-navigator (UnitBottomNavigator.))
+
+(deftype ColumnBandNavigator []
+  BandNavigator
+  (height [_ _ _ kl ku]
+    (inc (+ kl ku)))
+  (width [_ m n _ ku]
+    (min n (+ (min m n) ku)))
+  (sd [_ m n kl _]
+    (min m (+ (min m n) kl)))
+  (fd [_ m n _ ku]
+    (min n (+ (min m n) ku)))
+  (start [_ _ ku j]
+    (max 0 (- j ku)))
+  (end [_ m _ kl _ j]
+    (min m (inc (+ j kl))))
+  (kd [_ _ ku]
+    ku)
+  (index [_ offset ld kl ku i j]
+    (+ offset (* j ld) (- ku j) i))
+  (index [this offset ld kl ku k]
+    (.index this offset ld kl ku (max 0 (- k)) (max 0 k)))
+  (stripeIndex [_ offset ld kl ku i j]
+    (+ offset (* j ld) (- ku j) i)))
+
+(deftype RowBandNavigator []
+  BandNavigator
+  (height [_ m n kl _]
+    (min m (+ (min m n) kl)))
+  (width [_ _ _ kl ku]
+    (inc (+ kl ku)))
+  (sd [_ m n _ ku]
+    (min n (+ (min m n) ku)))
+  (fd [_ m n kl _]
+    (min m (+ (min m n) kl)))
+  (start [_ kl _ i]
+    (max 0 (- i kl)))
+  (end [_ _ n _ ku i]
+    (min n (inc (+ i ku))))
+  (kd [_ kl _]
+    kl)
+  (index [_ offset ld kl _ i j]
+    (+ offset (* i ld) (- kl i) j))
+  (index [this offset ld kl ku k]
+    (.index this offset ld kl ku (max 0 (- k)) (max 0 k)))
+  (stripeIndex [_ offset ld kl ku i j]
+    (+ offset (* i ld) (- kl i) j)))
+
+(def col-band-navigator (ColumnBandNavigator.))
+(def row-band-navigator (RowBandNavigator.))

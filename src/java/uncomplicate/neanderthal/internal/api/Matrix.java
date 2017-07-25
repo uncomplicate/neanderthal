@@ -16,9 +16,17 @@ public interface Matrix {
 
     Vector row (long i);
 
+    Object rows ();
+
     Vector col (long j);
 
+    Object cols ();
+
     Vector dia ();
+
+    Vector dia (long k);
+
+    Object dias ();
 
     Object boxedEntry (long i, long j);
 

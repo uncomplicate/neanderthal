@@ -7,8 +7,9 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.block
-  (:require [uncomplicate.neanderthal.internal.api :refer [dec-property]])
-  (:import [uncomplicate.neanderthal.internal.api Block DenseMatrix]))
+  (:require [uncomplicate.neanderthal.internal.api
+             :refer [dec-property COLUMN_MAJOR ROW_MAJOR UPPER LOWER DIAG_UNIT DIAG_NON_UNIT]])
+  (:import [uncomplicate.neanderthal.internal.api Block BlockMatrix DenseMatrix UPLOMatrix TRMatrix]))
 
 (defn buffer [^Block x]
   (.buffer x))
@@ -40,3 +41,21 @@
   "
   ^long [^Block x]
   (.count x))
+
+(defn column? [^BlockMatrix a]
+  (= COLUMN_MAJOR (.order a)))
+
+(defn row? [^BlockMatrix a]
+  (= ROW_MAJOR (.order a)))
+
+(defn upper? [^UPLOMatrix a]
+  (= UPPER (.uplo a)))
+
+(defn lower? [^UPLOMatrix a]
+  (= LOWER (.uplo a)))
+
+(defn unit-diag? [^TRMatrix a]
+  (= DIAG_UNIT (.diag a)))
+
+(defn non-unit-diag? [^TRMatrix a]
+  (= DIAG_NON_UNIT (.diag a)))

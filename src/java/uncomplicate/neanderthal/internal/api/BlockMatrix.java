@@ -8,10 +8,8 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface DenseMatrix extends BlockMatrix {
+public interface BlockMatrix extends Block, Matrix {
 
-    long sd ();
-
-    long fd ();
+    long order ();
 
 }

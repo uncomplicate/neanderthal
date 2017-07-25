@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
+  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 ;; ============ Creating real constructs  ==============
@@ -103,7 +103,7 @@
 
 (defn fsy
   "Creates a SY matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/sy]])."
   ([^long n source options]
    (sy mkl-float n source options))
   ([^long n arg]
@@ -113,10 +113,74 @@
 
 (defn dsy
   "Creates a SY matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/sy]])."
   ([^long n source options]
    (sy mkl-double n source options))
   ([^long n arg]
    (sy mkl-double n arg))
   ([arg]
    (sy mkl-double arg)))
+
+(defn fgb
+  "Creates a GB matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tb]])."
+  ([m n kl ku source options]
+   (gb mkl-float m n kl ku source options))
+  ([m n kl ku arg]
+   (gb mkl-float m n kl ku arg))
+  ([m n kl ku]
+   (gb mkl-float m n kl ku))
+  ([arg]
+   (gb mkl-float arg)))
+
+(defn dgb
+  "Creates a GB matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tb]])."
+  ([m n kl ku source options]
+   (gb mkl-double m n kl ku source options))
+  ([m n kl ku arg]
+   (gb mkl-double m n kl ku arg))
+  ([m n kl ku]
+   (gb mkl-double m n kl ku))
+  ([arg]
+   (gb mkl-double arg)))
+
+(defn ftb
+  "Creates a TB matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tb]])."
+  ([^long n ^long k source options]
+   (tb mkl-float n k source options))
+  ([^long n ^long k arg]
+   (tb mkl-float n k arg))
+  ([arg]
+   (tb mkl-float arg)))
+
+(defn dtb
+  "Creates a TB matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tb]])."
+  ([^long n ^long k source options]
+   (tb mkl-double n k source options))
+  ([^long n ^long k arg]
+   (tb mkl-double n k arg))
+  ([arg]
+   (tb mkl-double arg)))
+
+(defn fsb
+  "Creates a SB matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/sb]])."
+  ([^long n ^long k source options]
+   (sb mkl-float n k source options))
+  ([^long n ^long k arg]
+   (sb mkl-float n k arg))
+  ([arg]
+   (sb mkl-float arg)))
+
+(defn dsb
+  "Creates a SB matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/sb]])."
+  ([^long n ^long k source options]
+   (sb mkl-double n k source options))
+  ([^long n ^long k arg]
+   (sb mkl-double n k arg))
+  ([arg]
+   (sb mkl-double arg)))

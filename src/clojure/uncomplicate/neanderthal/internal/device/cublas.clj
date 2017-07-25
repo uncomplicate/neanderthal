@@ -25,25 +25,17 @@
             [uncomplicate.neanderthal.internal.api :refer :all]
             [uncomplicate.neanderthal.internal.device
              [common :refer :all]
-             [cublock :refer :all]
-             [clblock :as clblock]])
+             [cublock :refer :all]])
   (:import [jcuda.runtime JCuda cudaStream_t]
            jcuda.driver.CUstream
            [jcuda.jcublas JCublas2 cublasHandle cublasOperation cublasSideMode cublasDiagType
             cublasFillMode]
            [uncomplicate.neanderthal.internal.api Vector Matrix TRMatrix Block DataAccessor
             StripeNavigator RealBufferAccessor]
-           [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]
-           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
+           [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
 
 (defn ^:private not-available []
   (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
-
-;; =============== Transfer preferences ========================================
-
-(prefer-method transfer! [CUBlockVector Object] [Object CLBlockVector])
-(prefer-method transfer! [CUGEMatrix Object] [Object CLGEMatrix])
-(prefer-method transfer! [CUTRMatrix Object] [Object CLTRMatrix])
 
 ;; =============== Common vector macros and functions =======================
 

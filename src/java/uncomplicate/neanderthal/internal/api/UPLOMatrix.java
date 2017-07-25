@@ -8,7 +8,7 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface UPLOMatrix {
+public interface UPLOMatrix extends BlockMatrix {
 
     long uplo ();
 

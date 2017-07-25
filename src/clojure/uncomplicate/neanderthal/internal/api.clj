@@ -15,6 +15,7 @@
   (^long rowStart [^long n ^long i])
   (^long rowEnd [^long n ^long i])
   (^long defaultEntry [^long i ^long j])
+  (^long diaDim [^long n ^long k])
   (^long unitIndex [^long i]))
 
 (definterface StripeNavigator
@@ -25,16 +26,30 @@
 (definterface RealOrderNavigator
   (^long sd [^long m ^long n])
   (^long fd [^long m ^long n])
+  (^long index [^long ofst ^long ld ^long k])
   (^long index [^long ofst ^long ld ^long i ^long j])
   (^double get [a ^long i ^long j])
   (set [a ^long i ^long j ^double val])
   (invokePrimitive [f ^long i ^long j ^double val])
   (stripe [a ^long j]))
 
+(definterface BandNavigator
+  (^long height [^long m ^long n ^long kl ^long ku])
+  (^long width [^long m ^long n ^long kl ^long ku])
+  (^long sd [^long m ^long n ^long kl ^long ku])
+  (^long fd [^long m ^long n ^long kl ^long ku])
+  (^long index [^long ofst ^long ld ^long kl ^long ku ^long i ^long j])
+  (^long index [^long ofst ^long ld ^long kl ^long ku ^long k])
+  (^long stripeIndex [^long offset ^long ld ^long kl ^long ku ^long i ^long j])
+  (^long start [^long kl ^long ku ^long stripe])
+  (^long end [^long m ^long n ^long kl ^long ku ^long stripe])
+  (^long kd [^long kl ^long ku]))
+
 (defprotocol Navigable
   (order-navigator ^RealOrderNavigator [this])
   (stripe-navigator ^StripeNavigator [this])
-  (uplo-navigator ^UploNavigator [this]))
+  (uplo-navigator ^UploNavigator [this])
+  (band-navigator ^BandNavigator [this]))
 
 (defprotocol Blas
   (iamax [this x])
@@ -110,10 +125,16 @@
   (create-ge [this m n ord init])
   (create-tr [this n ord uplo diag init])
   (create-sy [this n ord uplo init])
+  (create-gb [this m n kl ku ord init])
+  (create-tb [this n k ord uplo init])
+  (create-sb [this n k ord uplo init])
   (vector-engine [this])
   (ge-engine [this])
   (tr-engine [this])
-  (sy-engine [this]))
+  (sy-engine [this])
+  (gb-engine [this])
+  (tb-engine [this])
+  (sb-engine [this]))
 
 (defprotocol EngineProvider
   (engine [this]))
@@ -125,6 +146,9 @@
 
 (defprotocol DataAccessorProvider
   (data-accessor ^DataAccessor [this]))
+
+(defprotocol Info
+  (info [this]))
 
 (defprotocol MemoryContext
   (compatible? [this other])
@@ -142,7 +166,8 @@
   (view-ge [this] [this stride-mult])
   (view-tr [this uplo diag])
   (view-sy [this uplo])
-  (view-vctr [this] [this stride-mult]))
+  (view-vctr [this] [this stride-mult])
+  (view-gb [this kl ku] [this]))
 
 ;; ============ Realeaseable ===================================================
 
@@ -235,3 +260,28 @@
     132 132
     131 131
     (throw (ex-info "Invalid diag" {:diag diag}))))
+
+(defn flip-layout ^long [^long layout]
+  (case layout
+    101 102
+    102 101
+    (throw (ex-info "Invalid layout" {:layout layout}))))
+
+(defn flip-uplo ^long [^long uplo]
+  (case uplo
+    121 122
+    122 121
+    (throw (ex-info "Invalid uplo" {:uplo uplo}))))
+
+(defn flip ^long [^long property]
+  (case property
+    101 102
+    102 101
+    111 112
+    112 111
+    113 111
+    121 122
+    122 121
+    131 132
+    132 131
+    (throw (ex-info "Invalid property" {:property property}))))

@@ -28,3 +28,6 @@
 (real-test/test-blas-sy mkl-float)
 (real-test/test-blas-sy-host mkl-double)
 (real-test/test-blas-sy-host mkl-float)
+
+(real-test/test-blas-gb mkl-double)
+(real-test/test-blas-gb-host mkl-double)

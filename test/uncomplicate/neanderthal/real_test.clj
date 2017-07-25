@@ -903,6 +903,231 @@
          (sum (sy factory 3 (range -3 3))) => -5.0
          (sum (sy factory 0 [])) => 0.0))
 
+;; ==================== Banded Matrix ======================================
+
+(defn test-gb-constructor [factory]
+  (facts "Create a GB matrix."
+         (with-release [a (gb factory 5 8 2 1 (range 1 100))
+                        a-ge (ge factory 4 6 [0.00    4.00    8.00   12.00   15.00   17.00
+                                              1.00    5.00    9.00   13.00   16.00    0.00
+                                              2.00    6.00   10.00   14.00    0.00    0.00
+                                              3.00    7.00   11.00    0.00    0.00    0.00]
+                                 {:order :row})
+                        b (gb factory 5 8 4 7 (range 1 100))
+                        b-ge (ge factory 12 8 [0.00    0.00    0.00    0.00    0.00    0.00    0.00   36.00
+                                               0.00    0.00    0.00    0.00    0.00    0.00   31.00   37.00
+                                               0.00    0.00    0.00    0.00    0.00   26.00   32.00   38.00
+                                               0.00    0.00    0.00    0.00   21.00   27.00   33.00   39.00
+                                               0.00    0.00    0.00   16.00   22.00   28.00   34.00   40.00
+                                               0.00    0.00   11.00   17.00   23.00   29.00   35.00    0.00
+                                               0.00    6.00   12.00   18.00   24.00   30.00    0.00    0.00
+                                               1.00    7.00   13.00   19.00   25.00    0.00    0.00    0.00
+                                               2.00    8.00   14.00   20.00    0.00    0.00    0.00    0.00
+                                               3.00    9.00   15.00    0.00    0.00    0.00    0.00    0.00
+                                               4.00   10.00    0.00    0.00    0.00    0.00    0.00    0.00
+                                               5.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00]
+                                 {:order :row})
+                        c (gb factory 5 8 4 1 (range 1 100))
+                        c-ge (ge factory 6 6 [0.00    6.00   11.00   15.00   18.00   20.00
+                                              1.00    7.00   12.00   16.00   19.00    0.00
+                                              2.00    8.00   13.00   17.00    0.00    0.00
+                                              3.00    9.00   14.00    0.00    0.00    0.00
+                                              4.00   10.00    0.00    0.00    0.00    0.00
+                                              5.00    0.00    0.00    0.00    0.00    0.00]
+                                 {:order :row})
+                        d (gb factory 5 2 3 1 (range 1 100))
+                        d-ge (ge factory 5 2 [0.00    5.00
+                                              1.00    6.00
+                                              2.00    7.00
+                                              3.00    8.00
+                                              4.00    9.00 ]
+                                 {:order :row})
+                        a1 (gb factory 5 8 2 1 (range 1 100) {:order :row})
+                        a1-ge (ge factory 5 4 [0.00    0.00    1.00    2.00
+                                               0.00    3.00    4.00    5.00
+                                               6.00    7.00    8.00    9.00
+                                               10.00   11.00   12.00   13.00
+                                               14.00   15.00   16.00   17.00]
+                                  {:order :row})
+                        b1 (gb factory 5 8 4 7 (range 1 100) {:order :row})
+                        b1-ge (ge factory 5 12 [0.00 0.00 0.00 0.00 1.00 2.00 3.00 4.00 5.00 6.00 7.00 8.00
+                                                0.00 0.00 0.00 9.00 10.00 11.00 12.00 13.00 14.00 15.00 16.00 0.00
+                                                0.00 0.00 17.00 18.00 19.00 20.00 21.00 22.00 23.00 24.00 0.00 0.00
+                                                0.00 25.00 26.00 27.00 28.00 29.00 30.00 31.00 32.00 0.00 0.00 0.00
+                                                33.00 34.00 35.00 36.00 37.00 38.00 39.00 40.00 0.00 0.00 0.00 0.00]
+                                  {:order :row})
+                        c1 (gb factory 5 8 1 4 (range 1 100) {:order :row})
+                        c1-ge (ge factory 5 6 [0.00    1.00    2.00    3.00    4.00    5.00
+                                               6.00    7.00    8.00    9.00   10.00   11.00
+                                               12.00   13.00   14.00   15.00   16.00   17.00
+                                               18.00   19.00   20.00   21.00   22.00   23.00
+                                               24.00   25.00   26.00   27.00   28.00    0.00]
+                                  {:order :row})
+                        d1 (gb factory 5 2 3 1 (range 1 100) {:order :row})
+                        d1-ge (ge factory 5 5 [0.00    0.00    0.00    1.00    2.00
+                                               0.00    0.00    3.00    4.00    0.00
+                                               0.00    5.00    6.00    0.00    0.00
+                                               7.00    8.00    0.00    0.00    0.00
+                                               9.00    0.00    0.00    0.00    0.00]
+                                  {:order :row})]
+           ;; TODO (view-gb a-ge) => a
+           (view-ge a) => a-ge
+           (view-ge b) => b-ge
+           (view-ge c) => c-ge
+           (view-ge d) => d-ge
+           (view-ge a1) => a1-ge
+           (view-ge b1) => b1-ge
+           (view-ge c1) => c1-ge
+           (view-ge d1) => d1-ge
+           (gb factory 5 8 2 1 nil) => (zero a)
+           (gb factory 5 8 5 1) => (throws ExceptionInfo)
+           (gb factory 5 8 2 8) => (throws ExceptionInfo))))
+
+(defn test-gb [factory];;TODO
+  (facts "GB Matrix methods."
+         (with-release [a-row (gb factory 4 3 2 1 (range 1 100) {:order :row})
+                        a-col (gb factory 4 3 2 1 (range 1 100))]
+           (row a-row 0) => (vctr factory 1 2)
+           (row a-row 2) => (vctr factory 6 7 8)
+           (col a-row 0) => (vctr factory 1 3 6)
+           (col a-row 2) => (vctr factory 5 8 10)
+           (dia a-row -2) => (vctr factory 6 9)
+           (row a-col 0) => (vctr factory 1 4)
+           (row a-col 2) => (vctr factory 3 6 9)
+           (col a-col 0) => (vctr factory 1 2 3)
+           (col a-col 2) => (vctr factory 8 9 10)
+           (dia a-col -2) => (vctr factory 3 7))))
+
+(defn test-gb-copy [factory]
+  (facts "BLAS 1 copy! GB matrix"
+         (with-release [a (gb factory 5 4 2 3 (range 1 20))
+                        b (gb factory 5 4 2 3 (range 100 200))
+                        b-row (gb factory 5 4 2 3 {:order :row})]
+           (identical? (copy! a b) b) => true
+           (copy! a b) => (gb factory 5 4 2 3 (range 1 20))
+           (copy (gb factory 5 4 2 3 (range 1 20))) => a
+           (copy! a b-row) => a)
+
+         (copy! (gb factory 5 4 2 3 [1 2 3 4 5 6]) nil) => (throws ExceptionInfo)
+
+         (copy! (gb factory 5 4 2 3 [10 20 30 40 50 60]) (gb factory 5 4 2 2)) => (throws ExceptionInfo)))
+
+(defn test-gb-swap [factory]
+  (facts
+   "BLAS 1 swap! GB matrix"
+   (with-release [a (gb factory 5 4 2 3 (range 1 20))
+                  b (gb factory 5 4 2 3 (range 100 200))
+                  b-row (gb factory 5 4 2 3 [100 103 107 112
+                                             101 104 108 113
+                                             102 105 109 114
+                                             106 110 115
+                                             111 116]
+                            {:order :row})]
+     (swp! a (gb factory 5 4 2 3)) => a
+     (swp! a (gb factory 5 4 2 3 (range 10 200 10))) => (gb factory 5 4 2 3 (range 10 200 10))
+     (swp! a b-row) => b
+
+     (swp! a nil) => (throws ExceptionInfo)
+     (identical? (swp! a (gb factory 5 4 2 3 (range 10 200 10))) a) => true
+     (swp! a (gb factory 5 4 1 3 (range 10 200 10))) => (throws ExceptionInfo))))
+
+(defn test-gb-scal [factory]
+  (facts "BLAS 1 scal! GB matrix"
+         (with-release [a (gb factory 5 4 2 3 (range 1 20))]
+           (identical? (scal! 3 a) a) => true)
+         (scal! 3 (gb factory 5 4 2 3 (range 1 20))) => (gb factory 5 4 2 3 (range 3 60 3))
+         (scal! 3 (submatrix (gb factory 5 4 2 3 (range 1 20)) 1 1 2 3))
+         => (gb factory 2 3 1 2 [15 18 27 30 42 45])))
+
+(defn test-gb-axpy [factory]
+  (facts "BLAS 1 axpy! GB matrix"
+         (with-release [a (gb factory 5 6 3 2 (range 1 100))
+                        b (gb factory 5 6 3 2
+                              [1 5 10 2 6 11 15 3 7 12 16 19 4 8 13 17 20 22 9 14 18 21 23]
+                              {:order :row})]
+           (axpy! -1 a b) => (gb factory 5 6 3 2)
+           (identical? (axpy! 3.0 (gb factory 5 6 3 2 (range 60)) a) a) => true
+           (axpy! 2.0 (gb factory 5 6 2 3 (range 1 70)) a) => (throws ExceptionInfo))))
+
+(defn test-gb-mv [factory]
+  (facts "BLAS 2 GB mv!"
+         (mv! 2.0 (gb factory 6 5 3 2 (range 1 100))
+              (vctr factory 1 2 3 4 5) 3 (vctr factory [1 2 3 4])) => (throws ExceptionInfo)
+
+         (with-release [y (vctr factory [1 2 3 4 5 6])]
+           (identical? (mv! 2 (gb factory 6 5 3 2 (range 1 100)) (vctr factory 1 2 3 4 5) 3 y) y))
+         => true
+
+         (mv! (gb factory 5 6 2 3 (range 1 100)) (vctr factory 1 2 3 4 5 6) (vctr factory 5))
+         => (vctr factory [85.00 185.00 332.00 349.00 353.00])))
+
+(defn test-gb-mm [factory]
+  (facts "BLAS 3 GB mm!"
+         (mm! 2.0 (gb factory 5 6 3 2 (range 1 100)) (ge factory 6 2 (range 1 13))
+              3.0 (ge factory 5 2 (range 10 30)))
+         => (ge factory 5 2 [112.00  319.00
+                             247.00  670.00
+                             460.00 1159.00
+                             757.00 1780.00
+                             792.00 1827.00]
+                {:order :row})
+
+         (with-release [c (ge factory 5 2)]
+           (identical? (mm! 2.0 (gb factory 5 6 2 3 [1 2 3 4 5 6]) (ge factory 6 2 (range 100)) 3.0 c) c))
+         => true))
+
+(defn test-gb-entry! [factory]
+  (facts "GB matrix entry!."
+         (with-release [a (gb factory 5 4 1 2 (range 1 100))
+                        c (ge factory 4 4 [0.00    0.00    6.00   10.00
+                                           0.00    3.00    7.00   11.00
+                                           1.00    4.00    8.00   12.00
+                                           2.00    5.00    9.00   13.00 ]
+                              {:order :row})]
+           (view-ge (entry! (view-sy c) -1)) => c
+           (entry c 1 2) => 7.0
+           (entry (entry! a 2 1 88.0) 2 1) => 88.0
+           (entry! a 0 4 3.0) => (throws ExceptionInfo)
+           (entry! a 4 0 4.0) => (throws ExceptionInfo))))
+
+(defn test-gb-alter! [factory]
+  (facts "GB alter!."
+         (entry (alter! (gb factory 5 3 1 2 (range 100) {:order :row}) 1 1 val+) 1 1) => 5.0
+         (alter! (gb factory 4 4 0 3 (range 100)) val-ind+) => (gb factory 4 4 0 3 [0 1 3 6 10 14 18 24 30 36])
+         (alter! (gb factory 100 2 2 1 (range 1 300) {:order :row}) val-ind+)
+         => (gb factory 100 2 2 1 [0 2 0 5 0 8 10] {:order :row})))
+
+(defn test-gb-dot [factory]
+  (facts "BLAS 1 GB dot"
+         (let [a (gb factory 5 2 1 1 (range -10 100))
+               b (gb factory 5 2 1 1 (range 1 100))
+               d (gb factory 5 2 1 1 {:order :row})
+               zero-point (gb factory 5 2 1 1)]
+           (sqrt (dot a a)) => (roughly (nrm2 a))
+           (dot a b) => -110.0
+           (dot a (copy! b d)) => (dot a b)
+           (dot zero-point zero-point) => 0.0)))
+
+(defn test-gb-nrm2 [factory]
+  (facts "BLAS 1 GB nrm2."
+         (nrm2 (gb factory 5 4 2 3 (repeat 1.0))) => (roughly (sqrt 17))
+         (nrm2 (gb factory 1 1 0 0 [])) => 0.0))
+
+(defn test-gb-amax [factory]
+  (facts "BLAS 1 GB amax."
+         (amax (gb factory 5 5 2 3 (range 1 100))) => 21.0
+         (amax (gb factory 0 0 0 0 [])) => 0.0))
+
+(defn test-gb-asum [factory]
+  (facts "BLAS 1 GB asum."
+         (asum (gb factory 5 4 2 3 (range 1 100))) => 153.0
+         (asum (sy factory 0 [])) => 0.0))
+
+(defn test-gb-sum [factory]
+  (facts "BLAS 1 gb sum."
+         (sum (gb factory 5 4 2 3 (range 1 100))) => 153.0
+         (sum (sy factory 0 [])) => 0.0))
+
 ;; ==================== LAPACK tests =======================================
 
 (defn test-vctr-srt [factory]
@@ -1491,3 +1716,22 @@
   (test-sy-asum factory)
   (test-sy-sum factory)
   (test-sy-amax factory))
+
+(defn test-blas-gb [factory]
+  (test-gb-constructor factory)
+  (test-gb factory)
+  (test-gb-copy factory)
+  (test-gb-swap factory)
+  (test-gb-scal factory)
+  (test-gb-axpy factory)
+  (test-gb-mv factory)
+  (test-gb-mm factory))
+
+(defn test-blas-gb-host [factory]
+  (test-gb-entry! factory)
+  (test-gb-alter! factory)
+  (test-gb-dot factory)
+  (test-gb-nrm2 factory)
+  (test-gb-asum factory)
+  (test-gb-sum factory)
+  (test-gb-amax factory))

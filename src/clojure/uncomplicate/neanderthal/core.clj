@@ -80,7 +80,13 @@
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix SYMatrix Changeable]))
+  (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix SYMatrix
+            BandedMatrix Changeable]))
+
+(defn info
+  "TODO"
+  [x]
+  (api/info x))
 
 (defmulti transfer!
   "Transfers the data from source to destination regardless of the structure type or memory context.
@@ -324,6 +330,81 @@
   [x]
   (instance? SYMatrix x))
 
+(defn gb
+  "TODO"
+  ([factory m n kl ku source options]
+   (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
+     (let-release [res (api/create-gb factory m n kl ku (api/enc-order (get options :order :column))
+                                      (not (:raw options)))]
+       (if source
+         (transfer! source res)
+         res))
+     (throw (ex-info "GB matrix cannot have a negative dimension nor overflow diagonals."
+                     {:m m :n n :kl kl :ku ku}))))
+  ([factory m n kl ku arg]
+   (if (or (not arg) (map? arg))
+     (gb factory m n kl ku nil arg)
+     (gb factory m n kl ku arg nil)))
+  ([factory m n kl ku]
+   (gb factory m n kl ku nil nil))
+  ([factory ^BandedMatrix a]
+   (gb factory (.mrows a) (.ncols a) (.kl a) (.ku a) a nil)))
+
+(defn gb?
+  "TODO"
+  [a]
+  (instance? BandedMatrix a))
+
+(defn tb?
+  "TODO"
+  [a]
+  (and (instance? BandedMatrix a) (= (.mrows ^Matrix a) (.ncols ^Matrix a))
+       (= 0 (min (.kl ^BandedMatrix a) (.ku ^BandedMatrix a)))))
+
+(defn tb
+  "TODO"
+  ([factory n k source options]
+   (if  (< -1 (long k) (long n))
+     (let-release [res (api/create-tb factory n k (api/enc-order (get options :order :column))
+                                      (api/enc-uplo (get options :uplo :lower)) (not (:raw options)))]
+       (if source
+         (transfer! source res)
+         res))
+     (throw (ex-info "TB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
+  ([factory n k arg]
+   (if (or (not arg) (map? arg))
+     (tb factory n k nil arg)
+     (tb factory n k arg nil)))
+  ([factory ^BandedMatrix a]
+   (if (tb? a)
+     (tb factory (.ncols a) (max (.kl a) (.ku a)) a nil)
+     (throw (ex-info "Cannot create a TB matrix from non-triangular source." {:a (str a)})))))
+
+(defn sb?
+  "TODO"
+  [a]
+  (and (instance? BandedMatrix a) (= (.mrows ^Matrix a) (.ncols ^Matrix a))
+       (= 0 (min (.kl ^BandedMatrix a) (.ku ^BandedMatrix a)))))
+
+(defn sb
+  "TODO"
+  ([factory n k source options]
+   (if  (< -1 (long k) (long n))
+     (let-release [res (api/create-sb factory n k (api/enc-order (get options :order :column))
+                                      (api/enc-uplo (get options :uplo :lower)) (not (:raw options)))]
+       (if source
+         (transfer! source res)
+         res))
+     (throw (ex-info "SB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
+  ([factory n k arg]
+   (if (or (not arg) (map? arg))
+     (sb factory n k nil arg)
+     (sb factory n k arg nil)))
+  ([factory ^BandedMatrix a]
+   (if (or (sb? a) (tb? a));;TODO distinguish sb and tb in banded-matrix
+     (sb factory (.ncols a) (max (.kl a) (.ku a)) a nil)
+     (throw (ex-info "Cannot create a SB matrix from non-triangular source." {:a (str a)})))))
+
 ;; ================= Container  ================================================
 
 (defn raw
@@ -398,25 +479,37 @@
     (throw (ex-info "Requested column is out of bounds." {:j j :ncols (.ncols a)}))))
 
 (defn dia
-  "Returns the diagonal elements of the matrix `a` in a vector.
+  "Returns the diagonal elements of the matrix `a` in a vector. If called with an
+  index `k`, returns a lower `(< k 0)` or upper `(< 0 k)` diagonal.
 
   The vector has access to and can change the same data as the original matrix."
-  [^Matrix a]
-  (.dia a))
+  ([^Matrix a]
+   (.dia a))
+  ([^Matrix a ^long k]
+   (if (< (- (.mrows a)) k (.ncols a))
+     (.dia a k)
+     (throw (ex-info "Requested diagonal is out of bounds." {:k k :mrows (.mrows a) :ncols (.ncols a)})))))
 
 (defn cols
   "Returns a lazy sequence of column vectors of the matrix `a`.
 
   The vectors has access to and can change the same data as the original matrix."
   [^Matrix a]
-  (map #(.col a %) (range (.ncols a))))
+  (.cols a))
 
 (defn rows
   "Returns a lazy sequence of row vectors of the matrix `a`.
 
   The vectors has access to and can change the same data as the original matrix."
   [^Matrix a]
-  (map #(.row a %) (range (.mrows a))))
+  (.rows a))
+
+(defn dias
+  "Returns a lazy sequence of diagonal vectors of the matrix `a`.
+
+  The vectors has access to and can change the same data as the original matrix."
+  [^Matrix a]
+  (.dias a))
 
 (defn submatrix
   "Returns a submatrix of the matrix `a` starting from row `i`, column `j`,

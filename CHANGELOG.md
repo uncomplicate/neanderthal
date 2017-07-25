@@ -1,5 +1,11 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.15.0
+
+### Fixes
+
+* Fix #29 - OpenCL engine does not try to load CUDA-related stuff any more.
+
 ## 0.14.0
 
 ### Breaking changes:

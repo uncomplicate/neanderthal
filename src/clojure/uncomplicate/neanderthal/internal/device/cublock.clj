@@ -22,18 +22,21 @@
              [real :refer [entry]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [format-ge format-tr format-sy print-matrix print-vector]]
+             [common :refer [dense-rows dense-cols dense-dias]]
+             [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
              [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
-             [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix]]])
+             [buffer-block :refer [real-block-vector real-ge-matrix real-tr-matrix]]]
+            [uncomplicate.neanderthal.internal.device.clblock :as clblock])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LLD ExceptionInfo]
            [jcuda.jcublas JCublas2 cublasStatus]
            [uncomplicate.neanderthal.internal.api DataAccessor DenseMatrix Vector DenseVector
             RealVector Matrix RealMatrix GEMatrix TRMatrix RealChangeable RealOrderNavigator
             UploNavigator StripeNavigator DenseMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector IntegerBlockVector
-            RealGEMatrix RealTRMatrix]))
+            RealGEMatrix RealTRMatrix]
+           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -168,8 +171,7 @@
 
 ;; =============================================================================
 
-(deftype CUBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact
-                        ^DataAccessor da eng master buf ^long n ^long ofst ^long strd]
+(deftype CUBlockVector [fact ^DataAccessor da eng master buf ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
     (-> (hash :CUBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))))
@@ -328,9 +330,8 @@
 
 ;; ================== CUDA Matrix ============================================
 
-(deftype CUGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
-                     ^DataAccessor da eng master buf ^long m ^long n
-                     ^long ofst ^long ld ^long sd ^long fd ^long ord]
+(deftype CUGEMatrix [^RealOrderNavigator navigator fact ^DataAccessor da eng master buf
+                     ^long m ^long n ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [a]
     (-> (hash :CUGEMatrix) (hash-combine m) (hash-combine n)
@@ -456,14 +457,20 @@
     (.entry a i j))
   (row [a i]
     (cu-block-vector fact false buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
+  (rows [a]
+    (dense-rows a))
   (col [a j]
     (cu-block-vector fact false buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+  (cols [a]
+    (dense-cols a))
   (dia [a]
     (cu-block-vector fact false buf (min m n) ofst (inc ld)))
+  (dias [a]
+    (dense-dias a))
   (submatrix [a i j k l]
     (cu-ge-matrix fact false buf k l (.index navigator ofst ld i j) ld ord))
   (transpose [a]
-    (cu-ge-matrix fact false buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+    (cu-ge-matrix fact false buf n m ofst ld (flip-layout ord)))
   Monoid
   (id [a]
     (cu-ge-matrix fact 0 0)))
@@ -490,7 +497,7 @@
   (.write w (str a))
   (when (and (< 0 (.count a)) (.buffer a))
     (with-release [host-a (host a)]
-      (print-matrix w format-ge host-a))))
+      (print-ge w host-a))))
 
 (defmethod transfer! [CUGEMatrix CUGEMatrix]
   [source destination]
@@ -523,9 +530,8 @@
 ;; ============ CUDA Triangular Matrix =======================================
 
 (deftype CUTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
-                     ^uncomplicate.neanderthal.internal.api.Factory fact ^DataAccessor da
-                     eng master buf ^long n ^long ofst ^long ld
-                     ^long ord ^long fuplo ^long fdiag]
+                     fact ^DataAccessor da eng master buf ^long n ^long ofst ^long ld ^long ord
+                     ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
     (-> (hash :CUTRMatrix) (hash-combine n) (hash-combine (nrm2 eng (.stripe navigator this 0)))))
@@ -671,8 +677,7 @@
       (throw (ex-info "You cannot use regions outside the triangle in TR submatrix"
                       {:a (str a) :i i :j j :k k :l l}))))
   (transpose [a]
-    (cu-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
-                  (if (= LOWER fuplo) UPPER LOWER) fdiag)))
+    (cu-tr-matrix fact false buf n ofst ld (flip-layout ord) (flip-uplo fuplo) fdiag)))
 
 (extend CUTRMatrix
   Applicative
@@ -705,7 +710,7 @@
   (.write w (str a))
   (when (and (< 0 (.count a)) (.buffer a))
     (with-release [host-a (host a)]
-      (print-matrix w format-tr host-a))))
+      (print-uplo w host-a))))
 
 (defmethod transfer! [CUTRMatrix CUTRMatrix]
   [source destination]
@@ -734,3 +739,12 @@
   [source destination]
   (with-release [h (raw destination (native-factory destination))]
     (transfer! (transfer! source h) destination)))
+
+;; =============== Transfer preferences ========================================
+
+(prefer-method transfer! [CUBlockVector Object] [Object CLBlockVector])
+(prefer-method transfer! [CUGEMatrix Object] [Object CLGEMatrix])
+(prefer-method transfer! [CUTRMatrix Object] [Object CLGEMatrix])
+(prefer-method transfer! [CLBlockVector Object] [Object CUBlockVector])
+(prefer-method transfer! [CLGEMatrix Object] [Object CUGEMatrix])
+(prefer-method transfer! [CLTRMatrix Object] [Object CUTRMatrix])

@@ -7,9 +7,11 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.cblas
-  (:require [uncomplicate.neanderthal.internal.api :refer [engine mm iamax stripe-navigator]])
+  (:require [uncomplicate.neanderthal.block :refer [buffer offset stride]]
+            [uncomplicate.neanderthal.internal.api
+             :refer [engine mm iamax stripe-navigator swap copy scal axpy axpby]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api RealVector GEMatrix]))
+           [uncomplicate.neanderthal.internal.api RealVector GEMatrix BandedMatrix]))
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -267,8 +269,6 @@
            acc#)))
      0.0))
 
-
-
 (defmacro tr-mv
   ([method a x]
    `(~method (.order ~a) (.uplo ~a) CBLAS/TRANSPOSE_NO_TRANS (.diag ~a) (.ncols ~a)
@@ -345,3 +345,70 @@
      (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c)))
   ([a]
    `(throw (ex-info "In-place mm! is not supported for SY matrices." {:a (str ~a)}))))
+
+;; ====================== Banded Matrix ===========================================
+
+(defn gb-map [fun ^BandedMatrix a ^BandedMatrix b]
+  (let [eng (engine (.dia a))]
+    (loop [i (- (.kl a))]
+      (when (< i (inc (.ku a)))
+        (fun eng (.dia a i) (.dia b i))
+        (recur (inc i))))
+    b))
+
+(defn gb-scalset [fun alpha ^BandedMatrix a]
+  (let [eng (engine (.dia a))]
+    (loop [i (- (.kl a))]
+      (when (< i (inc (.ku a)))
+        (fun eng alpha (.dia a i))
+        (recur (inc i)))))
+  a)
+
+(defn gb-reduce
+  ([fun ^BandedMatrix a]
+   (let [eng (engine (.dia a))]
+     (loop [i (- (.kl a)) acc 0.0]
+       (if (< i (inc (.ku a)))
+         (recur (inc i) (+ acc (double (fun eng (.dia a i)))))
+         acc))))
+  ([fun ^BandedMatrix a ^BandedMatrix b]
+   (let [eng (engine (.dia a))]
+     (loop [i (- (.kl a)) acc 0.0]
+       (if (< i (inc (.ku a)))
+         (recur (inc i) (+ acc (double (fun eng (.dia a i) (.dia b i)))))
+         acc)))))
+
+(defn gb-axpy [alpha ^BandedMatrix a ^BandedMatrix b]
+  (let [eng (engine (.dia a))]
+    (loop [i (- (.kl a))]
+      (when (< i (inc (.ku a)))
+        (axpy eng alpha (.dia a i) (.dia b i))
+        (recur (inc i))))
+    b))
+
+(defn gb-axpby [alpha ^BandedMatrix a beta ^BandedMatrix b]
+  (let [eng (engine (.dia a))]
+    (loop [i (- (.kl a))]
+      (when (< i (inc (.ku a)))
+        (axpby eng alpha (.dia a i) beta (.dia b i))
+        (recur (inc i))))
+    b))
+
+(defmacro gb-mv
+  ([method alpha a x beta y]
+   `(do
+      (~method (.order ~a) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a) (.kl ~a) (.ku ~a) ~alpha
+       (.buffer ~a) (.offset ~a) (.stride ~a) (buffer ~x) (offset ~x) (stride ~x)
+       ~beta (buffer ~y) (offset ~y) (stride ~y))
+      ~y))
+  ([a]
+   `(throw (ex-info "In-place mv! is not supported for GB matrices." {:a (str ~a)}))))
+
+(defmacro gb-mm
+  ([method alpha a b beta c _]
+   `(do
+      (dotimes [j# (.ncols ~b)]
+        (gb-mv ~method ~alpha ~a (.col ~b j#) ~beta (.col ~c j#)))
+      ~c))
+  ([a]
+   `(throw (ex-info "In-place mm! is not supported for GB matrices." {:a (str ~a)}))))

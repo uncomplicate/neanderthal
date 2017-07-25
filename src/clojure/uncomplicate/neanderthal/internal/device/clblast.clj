@@ -22,18 +22,10 @@
             [uncomplicate.neanderthal.internal.api :refer :all]
             [uncomplicate.neanderthal.internal.device
              [common :refer :all]
-             [clblock :refer :all]
-             [cublock :refer :all]])
+             [clblock :refer :all]])
   (:import [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
            [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor]
-           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]
-           [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUTRMatrix]))
-
-;; =============== Transfer preferences ========================================
-
-(prefer-method transfer! [CLBlockVector Object] [Object CUBlockVector])
-(prefer-method transfer! [CLGEMatrix Object] [Object CUGEMatrix])
-(prefer-method transfer! [CLTRMatrix Object] [Object CUTRMatrix])
+           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
 
 ;; =============== OpenCL and CLBlast error handling functions =================
 

@@ -19,7 +19,8 @@
              [real :refer [entry]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [format-ge format-tr format-sy print-matrix print-vector]]
+             [common :refer [dense-rows dense-cols dense-dias]]
+             [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
              [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
@@ -126,8 +127,7 @@
 
 ;; =============================================================================
 
-(deftype CLBlockVector [^uncomplicate.neanderthal.internal.api.Factory fact
-                        ^DataAccessor da eng master buf ^long n ^long ofst ^long strd]
+(deftype CLBlockVector [fact ^DataAccessor da eng master buf ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
     (-> (hash :CLBlockVector) (hash-combine n) (hash-combine (nrm2 eng x))))
@@ -298,9 +298,8 @@
 
 ;; ================== CL Matrix ============================================
 
-(deftype CLGEMatrix [^RealOrderNavigator navigator ^uncomplicate.neanderthal.internal.api.Factory fact
-                     ^DataAccessor da eng master buf ^long m ^long n
-                     ^long ofst ^long ld ^long sd ^long fd ^long ord]
+(deftype CLGEMatrix [^RealOrderNavigator navigator fact ^DataAccessor da eng master buf
+                     ^long m ^long n ^long ofst ^long ld ^long sd ^long fd ^long ord]
   Object
   (hashCode [a]
     (-> (hash :CLGEMatrix) (hash-combine m) (hash-combine n)
@@ -426,14 +425,20 @@
     (.entry a i j))
   (row [a i]
     (cl-block-vector fact false buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
+  (rows [a]
+    (dense-rows a))
   (col [a j]
     (cl-block-vector fact false buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+  (cols [a]
+    (dense-cols a))
   (dia [a]
     (cl-block-vector fact false buf (min m n) ofst (inc ld)))
+  (dias [a]
+    (dense-dias a))
   (submatrix [a i j k l]
     (cl-ge-matrix fact false buf k l (.index navigator ofst ld i j) ld ord))
   (transpose [a]
-    (cl-ge-matrix fact false buf n m ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)))
+    (cl-ge-matrix fact false buf n m ofst ld (flip-layout ord)))
   Monoid
   (id [a]
     (cl-ge-matrix fact 0 0))
@@ -473,7 +478,7 @@
   (when (and (< 0 (.count a)) (.buffer a))
     (let [mapped-a (mmap a :read)]
       (try
-        (print-matrix w format-ge mapped-a)
+        (print-ge w mapped-a)
         (finally (unmap a mapped-a))))))
 
 (defmethod transfer! [CLGEMatrix CLGEMatrix]
@@ -499,9 +504,8 @@
 ;; ============ OpenCL Triangular Matrix =======================================
 
 (deftype CLTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
-                     ^uncomplicate.neanderthal.internal.api.Factory fact ^DataAccessor da
-                     eng master buf ^long n ^long ofst ^long ld
-                     ^long ord ^long fuplo ^long fdiag]
+                     fact ^DataAccessor da eng master buf ^long n ^long ofst ^long ld ^long ord
+                     ^long fuplo ^long fdiag]
   Object
   (hashCode [this]
     (-> (hash :CLTRMatrix) (hash-combine n) (hash-combine (nrm2 eng (.stripe navigator this 0)))))
@@ -635,20 +639,25 @@
     (let [start (.rowStart uplo-nav n i)]
       (cl-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
                        (.index navigator ofst ld i start) (if (= ROW_MAJOR ord) 1 ld))))
+  (rows [a]
+    (dense-rows a))
   (col [a j]
     (let [start (.colStart uplo-nav n j)]
       (cl-block-vector fact false buf (- (.colEnd uplo-nav n j) start)
                        (.index navigator ofst ld start j) (if (= COLUMN_MAJOR ord) 1 ld))))
+  (cols [a]
+    (dense-cols a))
   (dia [a]
     (cl-block-vector fact false buf n ofst (inc ld)))
+  (dias [a]
+    (dense-dias a))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
       (cl-tr-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo fdiag)
       (throw (ex-info "You cannot use regions outside the triangle in TR submatrix"
                       {:a (str a) :i i :j j :k k :l l}))))
   (transpose [a]
-    (cl-tr-matrix fact false buf n ofst ld (if (= COLUMN_MAJOR ord) ROW_MAJOR COLUMN_MAJOR)
-                  (if (= LOWER fuplo) UPPER LOWER) fdiag))
+    (cl-tr-matrix fact false buf n ofst ld (flip-layout ord) (flip-uplo fuplo) fdiag))
   Mappable
   (mmap [a flags]
     (let [host-fact (native-factory fact)
@@ -694,7 +703,7 @@
   (when (and (< 0 (.count a)) (.buffer a))
     (let [mapped-a (mmap a :read)]
       (try
-        (print-matrix w format-tr mapped-a)
+        (print-uplo w mapped-a)
         (finally (unmap a mapped-a))))))
 
 (defmethod transfer! [CLTRMatrix CLTRMatrix]

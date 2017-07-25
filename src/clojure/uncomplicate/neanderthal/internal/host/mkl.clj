@@ -17,9 +17,12 @@
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
-            Block RealVector StripeNavigator RealOrderNavigator]
+            Block RealVector StripeNavigator RealOrderNavigator BandNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
-            RealTRMatrix RealGEMatrix RealSYMatrix]))
+            RealTRMatrix RealGEMatrix RealSYMatrix RealBandedMatrix]))
+
+(defn ^:private not-available [kind]
+  (throw (UnsupportedOperationException. "Operation not available for %s matrix")))
 
 (def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
   "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")
@@ -335,7 +338,7 @@
    c)
   BlasPlus
   (amax [_ a]
-    (ge-lan LAPACK/dlange (long \m) ^RealGEMatrix a))
+    (ge-lan LAPACK/dlange (long \M) ^RealGEMatrix a))
   (sum [_ a]
     (ge-sum CBLAS/dsum ^RealGEMatrix a))
   (set-all [_ alpha a]
@@ -445,7 +448,7 @@
    c)
   BlasPlus
   (amax [_ a]
-    (ge-lan LAPACK/slange (long \m) ^RealGEMatrix a))
+    (ge-lan LAPACK/slange (long \M) ^RealGEMatrix a))
   (sum [_ a]
     (ge-sum CBLAS/ssum ^RealGEMatrix a))
   (set-all [_ alpha a]
@@ -554,7 +557,7 @@
    b)
   BlasPlus
   (amax [this a]
-    (tr-lan LAPACK/dlantr (long \m) ^RealTRMatrix a))
+    (tr-lan LAPACK/dlantr (long \M) ^RealTRMatrix a))
   (sum [_ a]
     (tr-sum CBLAS/dsum ^RealTRMatrix a))
   (set-all [_ alpha a]
@@ -616,7 +619,7 @@
    b)
   BlasPlus
   (amax [this a]
-    (tr-lan LAPACK/slantr (long \m) ^RealTRMatrix a))
+    (tr-lan LAPACK/slantr (long \M) ^RealTRMatrix a))
   (sum [_ a]
     (tr-sum  CBLAS/ssum ^RealTRMatrix a))
   (set-all [_ alpha a]
@@ -668,19 +671,19 @@
   (axpy [_ alpha a b]
     (uplo-axpy CBLAS/daxpy alpha ^RealSYMatrix a ^RealSYMatrix b)
     b)
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (sy-mv CBLAS/dsymv alpha ^RealSYMatrix a ^RealBlockVector x beta ^RealBlockVector y)
     y)
   (mv [_ a x]
     (sy-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (sy-mm CBLAS/dsymm alpha ^RealSYMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left)
     c)
   (mm [_ alpha a b _]
     (sy-mm a))
   BlasPlus
-  (amax [this a]
-    (sy-lan LAPACK/dlansy (long \m) ^RealSYMatrix a))
+  (amax [_ a]
+    (sy-lan LAPACK/dlansy (long \M) ^RealSYMatrix a))
   (sum [_ a]
     (sy-sum CBLAS/dsum ^RealSYMatrix a))
   (set-all [_ alpha a]
@@ -732,19 +735,19 @@
   (axpy [_ alpha a b]
     (uplo-axpy CBLAS/saxpy alpha ^RealSYMatrix a ^RealSYMatrix b)
     b)
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (sy-mv CBLAS/ssymv alpha ^RealSYMatrix a ^RealBlockVector x beta ^RealBlockVector y)
     y)
   (mv [_ a x]
     (sy-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (sy-mm CBLAS/ssymm alpha ^RealSYMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left)
     c)
   (mm [_ alpha a b _]
     (sy-mm a))
   BlasPlus
-  (amax [this a]
-    (sy-lan LAPACK/slansy (long \m) ^RealSYMatrix a))
+  (amax [_ a]
+    (sy-lan LAPACK/slansy (long \M) ^RealSYMatrix a))
   (sum [_ a]
     (sy-sum CBLAS/ssum ^RealSYMatrix a))
   (set-all [_ alpha a]
@@ -772,9 +775,50 @@
     (let [da (data-accessor ldl)]
       (sy-con ^RealBufferAccessor da LAPACK/ssycon ^RealSYMatrix ldl ^IntegerBlockVector ipiv nrm))))
 
+;; =============== Banded Matrix Engines ===================================
+
+(deftype DoubleGBEngine []
+  Blas
+  (swap [_ a b]
+    (gb-map swap a b)
+    a)
+  (copy [_ a b]
+    (gb-map copy a b))
+  (scal [_ alpha a]
+    (gb-scalset scal alpha a))
+  (dot [_ a b]
+    (gb-reduce dot a b))
+  (nrm1 [_ a]
+    (gb-lan LAPACK/dlangb (long \O) ^RealBandedMatrix a))
+  (nrm2 [_ a]
+    (gb-lan LAPACK/dlangb (long \F) ^RealBandedMatrix a))
+  (nrmi [_ a]
+    (gb-lan LAPACK/dlangb (long \I) ^RealBandedMatrix a))
+  (asum [_ a]
+    (gb-reduce asum a))
+  (axpy [_ alpha a b]
+    (gb-axpy alpha a b))
+  (mv [this alpha a x beta y]
+    (gb-mv CBLAS/dgbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
+  (mv [_ a x]
+    (gb-mv a))
+  (mm [this alpha a b beta c _]
+    (gb-mm CBLAS/dgbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c true))
+  (mm [_ alpha a b left]
+    (gb-mm a))
+  BlasPlus
+  (sum [_ a]
+    (gb-reduce sum a))
+  (amax [_ a]
+    (gb-lan LAPACK/dlangb (long \M) ^RealBandedMatrix a))
+  (set-all [_ alpha a]
+    (gb-scalset set-all alpha a))
+  (axpby [_ alpha a beta b]
+    (gb-axpby alpha a beta b)))
+
 ;; =============== Factories ==================================================
 
-(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng]
+(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng gb-eng tb-eng sb-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -797,6 +841,14 @@
     (real-tr-matrix this n ord uplo diag))
   (create-sy [this n ord uplo _]
     (real-sy-matrix this n ord uplo))
+  (create-gb [this m n kl ku ord _]
+    (real-banded-matrix this m n kl ku ord gb-eng))
+  (create-tb [this n k ord uplo _]
+    (let [[kl ku] (if (= UPPER uplo) [0 k] [k 0])]
+      (real-banded-matrix this n n kl ku ord tb-eng)))
+  (create-sb [this n k ord uplo _]
+    (let [[kl ku] (if (= UPPER uplo) [0 k] [k 0])]
+      (real-banded-matrix this n n kl ku ord sb-eng)))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
@@ -804,7 +856,13 @@
   (tr-engine [_]
     tr-eng)
   (sy-engine [_]
-    sy-eng))
+    sy-eng)
+  (gb-engine [_]
+    gb-eng)
+  (tb-engine [_]
+    tb-eng)
+  (sb-engine [_]
+    tb-eng))
 
 (deftype MKLIntegerFactory [index-fact ^DataAccessor da vector-eng]
   DataAccessorProvider
@@ -836,10 +894,12 @@
 
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
-                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)))
+                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
+                      nil nil nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
-                      (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)))
+                      (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
+                      (->DoubleGBEngine) nil nil))
 
   (vreset! index-fact mkl-int))

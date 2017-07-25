@@ -7,19 +7,22 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.lapack
-  (:require [uncomplicate.neanderthal.block :refer [buffer offset stride]]
+  (:require [uncomplicate.neanderthal
+             [block :refer [buffer offset stride upper? lower? column? row? unit-diag?]]
+             [math :refer [pow sqrt]]]
             [uncomplicate.neanderthal.internal.api
-             :refer [factory index-factory engine stripe-navigator create-vector create-ge create-sy
-                     fits-navigation? nrm1 nrmi trf tri trs con sv copy]]
+             :refer [factory index-factory engine stripe-navigator band-navigator data-accessor
+                     create-vector create-ge create-sy fits-navigation? nrm1 nrmi trf tri trs con sv
+                     copy nrm2 flip-uplo amax]]
             [uncomplicate.commons.core :refer [with-release let-release]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api GEMatrix]))
+           [uncomplicate.neanderthal.internal.api GEMatrix BandNavigator]))
 
 (defmacro with-lapack-check [expr]
   ` (let [err# ~expr]
       (if (zero? err#)
         err#
-        (throw (ex-info "LAPACK error." {:error-code err#})))))
+        (throw (ex-info "LAPACK error." {:error-code err# :bad-argument (- err#)})))))
 
 ;; =========================== Auxiliary LAPACK Routines =========================
 
@@ -73,14 +76,14 @@
 
 ;; There seems to be a bug in MKL's LAPACK_?lantr. If the order is column major,
 ;; it returns 0.0 as a result. To fix this, I had to do the uplo# trick.
-;; NOTE: This means that nrm1 and nrmi work regarding to max row instead of max col
-;; for column-oriented matrices...
 (defmacro tr-lan [method norm a]
-  `(let [uplo# (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~a))
-                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \U \L)
-                 (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))]
-     (~method CBLAS/ORDER_ROW_MAJOR ~norm
-      (int uplo#) (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
+  `(let [row-order# (row? ~a)
+         uplo# (if row-order# (if (lower? ~a) \L \U) (if (lower? ~a) \U \L))
+         norm# (if row-order# ~norm (cond (= ~norm (int \I)) (int \O)
+                                          (= ~norm (int \O)) (int \I)
+                                          :default ~norm))]
+     (~method CBLAS/ORDER_ROW_MAJOR norm#
+      (int uplo#) (int (if (unit-diag? ~a) \U \N))
       (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
 
 (defmacro tr-lacpy [lacpy copy a b]
@@ -88,10 +91,10 @@
      (if (= (.order ~a) (.order ~b))
        (with-lapack-check
          (let [stripe-nav# (stripe-navigator ~a)
-               unit# (= CBLAS/DIAG_UNIT (.diag ~a))
+               unit# (unit-diag? ~a)
                diag-pad# (long (if unit# 1 0))
                diag-ofst# (.offsetPad stripe-nav# (.stride ~a))]
-           (~lacpy (.order ~a) (int (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))
+           (~lacpy (.order ~a) (int (if (lower? ~a) \L \U))
             (- (.mrows ~a) diag-pad#) (- (.ncols ~a) diag-pad#)
             (.buffer ~a) (+ (.offset ~a) diag-ofst#) (.stride ~a)
             (.buffer ~b) (+ (.offset ~b) diag-ofst#) (.stride ~b))))
@@ -110,31 +113,30 @@
 
 (defmacro tr-lascl [method alpha a]
   `(with-lapack-check
-     (let [diag-pad# (long (if (= CBLAS/DIAG_UNIT (.diag ~a)) 1 0))]
-       (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+     (let [diag-pad# (long (if (unit-diag? ~a) 1 0))]
+       (~method (.order ~a) (int (if (upper? ~a) \U \L))
         0 0 1.0 ~alpha (- (.mrows ~a) diag-pad#) (- (.ncols ~a) diag-pad#)
         (.buffer ~a) (+ (.offset ~a) diag-pad#) (.stride ~a)))))
 
 (defmacro tr-laset [method alpha beta a]
   `(with-lapack-check
      (let [stripe-nav# (stripe-navigator ~a)
-           unit# (= CBLAS/DIAG_UNIT (.diag ~a))
+           unit# (unit-diag? ~a)
            diag-pad# (long (if unit# 1 0))
            diag-ofst# (.offsetPad stripe-nav# (.stride ~a))]
-       (~method (.order ~a) (int (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))
+       (~method (.order ~a) (int (if (lower? ~a) \L \U))
         (- (.mrows ~a) diag-pad#) (- (.ncols ~a) diag-pad#)
         ~alpha ~beta (.buffer ~a) (+ (.offset ~a) diag-ofst#) (.stride ~a)))))
 
 ;; ----------- Symmetric Matrix -----------------------------------------------------
 
 (defmacro sy-lan [method norm a]
-  `(~method (.order ~a) ~norm (int (if (= CBLAS/UPLO_LOWER (.uplo ~a)) \L \U))
-    (.mrows ~a) (.buffer ~a) (.offset ~a) (.stride ~a)))
+  `(~method (.order ~a) ~norm (int (if (lower? ~a) \L \U)) (.mrows ~a) (.buffer ~a) (.offset ~a) (.stride ~a)))
 
 (defmacro sy-lacpy [lacpy copy a b]
   `(if (= (.order ~a) (.order ~b))
      (with-lapack-check
-       (~lacpy (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (.mrows ~a) (.ncols ~a)
+       (~lacpy (.order ~a) (int (if (upper? ~a) \U \L)) (.mrows ~a) (.ncols ~a)
         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
      (let [stripe-nav# (stripe-navigator ~a)
            n# (.fd ~a)
@@ -152,13 +154,33 @@
 
 (defmacro sy-lascl [method alpha a]
   `(with-lapack-check
-     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+     (~method (.order ~a) (int (if (upper? ~a) \U \L))
       0 0 1.0 ~alpha (.mrows ~a) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))))
 
 (defmacro sy-laset [method alpha beta a]
   `(with-lapack-check
-     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+     (~method (.order ~a) (int (if (upper? ~a) \U \L))
       (.mrows ~a) (.ncols ~a) ~alpha ~beta (.buffer ~a) (.offset ~a) (.stride ~a))))
+
+;; ----------- Banded Matrix --------------------------------------------------------
+
+(defmacro gb-lan [langb norm a]
+  `(let [sd# (.sd (band-navigator ~a) (.mrows ~a) (.ncols ~a) (.kl ~a) (.ku ~a))
+         fd# (.fd (band-navigator ~a) (.mrows ~a) (.ncols ~a) (.kl ~a) (.ku ~a))
+         [kl# ku#] (if CBLAS/ORDER_COLUMN_MAJOR [(.kl ~a) (.ku ~a)] [(.ku ~a) (.kl ~a)])
+         eng# (engine (.dia ~a))]
+     (cond
+       (= sd# fd#) (with-release [work# (.createDataSource (data-accessor ~a) (min sd# fd#))]
+                     (~langb ~norm fd# kl# ku# (.buffer ~a) (.offset ~a) (.stride ~a) work#))
+       (= ~norm (long \F)) (loop [i# (- (.kl ~a)) acc# 0.0]
+                             (if (< i# (inc (.ku ~a)))
+                               (recur (inc i#) (+ acc# (pow (nrm2 eng# (.dia ~a i#)) 2)))
+                               (sqrt acc#)))
+       (= ~norm (long \M)) (loop [i# (- (.kl ~a)) amax# 0.0]
+                             (if (< i# (inc (.ku ~a)))
+                               (recur (inc i#) (max amax# (double (amax eng# (.dia ~a i#)))))
+                               amax#))
+       :default (throw (ex-info "Dragan says: This operation has not been implemented for non-square banded matrix." {})))))
 
 ;; =========== Drivers and Computational LAPACK Routines ===========================
 
@@ -182,7 +204,7 @@
 
 (defmacro sy-trf [method a ipiv]
   `(with-sv-check ~ipiv
-     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (.sd ~a)
+     (~method (.order ~a) (int (if (upper? ~a) \U \L)) (.sd ~a)
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
 
 (defmacro ge-tri [method a ipiv]
@@ -192,13 +214,13 @@
 
 (defmacro tr-tri [method a]
   `(~method (.order ~a)
-    (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
-    (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
+    (int (if (upper? ~a) \U \L))
+    (int (if (unit-diag? ~a) \U \N))
     (.sd ~a) (.buffer ~a) (.offset ~a) (.ld ~a)))
 
 (defmacro sy-tri [method a ipiv]
   `(with-sv-check ~ipiv
-     (~method (.order ~a) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (.sd ~a)
+     (~method (.order ~a) (int (if (upper? ~a) \U \L)) (.sd ~a)
       (.buffer ~a) (.offset ~a) (.ld ~a) (.buffer ~ipiv) (.offset ~ipiv))))
 
 (defmacro ge-trs [method a b ipiv]
@@ -209,13 +231,13 @@
 
 (defmacro tr-trs [method a b]
   `(~method (.order ~b)
-    (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L)) (int (if (= (.order ~b) (.order ~a)) \N \T))
-    (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N)) (.mrows ~b)
+    (int (if (upper? ~a) \U \L)) (int (if (= (.order ~b) (.order ~a)) \N \T))
+    (int (if (unit-diag? ~a) \U \N)) (.mrows ~b)
     (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
 
 (defmacro sy-trs [method a b ipiv]
   `(with-sv-check ~ipiv
-     (~method (.order ~b) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+     (~method (.order ~b) (int (if (upper? ~a) \U \L))
       (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
       (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))
 
@@ -234,9 +256,7 @@
 
 (defmacro tr-sv [method a b]
   `(~method (.order ~b) CBLAS/SIDE_LEFT
-    (if (= (.order ~a) (.order ~b))
-      (.uplo ~a)
-      (if (= CBLAS/UPLO_LOWER (.uplo ~a)) CBLAS/UPLO_UPPER CBLAS/UPLO_LOWER))
+    (if (= (.order ~a) (.order ~b)) (.uplo ~a) (flip-uplo (.uplo ~a)))
     (if (= (.order ~a) (.order ~b)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
     (.diag ~a) (.mrows ~b) (.ncols ~b) 1.0
     (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
@@ -250,7 +270,7 @@
       (if (fits-navigation? ~a ~b)
         (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
           (with-sv-check ipiv#
-            (~method (.order ~b) (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
+            (~method (.order ~b) (int (if (upper? ~a) \U \L))
              (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
              (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
         (throw (ex-info "Orientation of a and b do not fit." {:a (str ~a) :b (str ~b)}))))))
@@ -269,8 +289,7 @@
 (defmacro tr-con [da method a nrm1?]
   `(with-release [res# (.createDataSource ~da 1)
                   info# (~method (.order ~a) (int (if ~nrm1? \O \I))
-                         (int (if (= CBLAS/UPLO_UPPER (.uplo ~a)) \U \L))
-                         (int (if (= CBLAS/DIAG_UNIT (.diag ~a)) \U \N))
+                         (int (if (upper? ~a) \U \L)) (int (if (unit-diag? ~a) \U \N))
                          (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) res#)]
      (if (= 0 info#)
        (.get ~da res# 0)
@@ -279,7 +298,7 @@
 
 (defmacro sy-con [da method ldl ipiv nrm]
   `(with-release [res# (.createDataSource ~da 1)]
-     (let [info# (~method (.order ~ldl) (int (if (= CBLAS/UPLO_UPPER (.uplo ~ldl)) \U \L)) (.ncols ~ldl)
+     (let [info# (~method (.order ~ldl) (int (if (upper? ~ldl) \U \L)) (.ncols ~ldl)
                   (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv) ~nrm res#)]
        (if (= 0 info#)
          (.get ~da res# 0)
@@ -329,7 +348,7 @@
 ;; ------------- Non-Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
 
 (defmacro ge-ev [method a w vl vr]
-  `(if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~w))
+  `(if (column? ~w)
      (let [wr# (.col ~w 0)
            wi# (.col ~w 1)
            info# (~method (.order ~a) (int (if (< 0 (.mrows ~vl)) \V \N)) (int (if (< 0 (.mrows ~vr)) \V \N))
