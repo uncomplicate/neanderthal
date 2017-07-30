@@ -2,6 +2,11 @@
 
 ## 0.15.0
 
+### New features
+
+* Symmetric matrices (SY)
+* Banded matrices (GB, TB, SB)
+
 ### Fixes
 
 * Fix #29 - OpenCL engine does not try to load CUDA-related stuff any more.

@@ -7,16 +7,17 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.lapack
-  (:require [uncomplicate.neanderthal
+  (:require [uncomplicate.commons.core :refer [with-release let-release]]
+            [uncomplicate.neanderthal
              [block :refer [buffer offset stride upper? lower? column? row? unit-diag?]]
              [math :refer [pow sqrt]]]
             [uncomplicate.neanderthal.internal.api
              :refer [factory index-factory engine stripe-navigator band-navigator data-accessor
                      create-vector create-ge create-sy fits-navigation? nrm1 nrmi trf tri trs con sv
-                     copy nrm2 flip-uplo amax]]
-            [uncomplicate.commons.core :refer [with-release let-release]])
+                     copy nrm2 flip-uplo amax navigator region]]
+            [uncomplicate.neanderthal.internal.host.cblas :refer [packed-len]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api GEMatrix BandNavigator]))
+           [uncomplicate.neanderthal.internal.api GEMatrix BandNavigator Region LayoutNavigator])) ;;TODO clean up
 
 (defmacro with-lapack-check [expr]
   ` (let [err# ~expr]
@@ -181,6 +182,26 @@
                                (recur (inc i#) (max amax# (double (amax eng# (.dia ~a i#)))))
                                amax#))
        :default (throw (ex-info "Dragan says: This operation has not been implemented for non-square banded matrix." {})))))
+
+;;------------------------ Packed Matrix -------------------------------------------
+
+(defmacro packed-laset [method alpha a]
+  `(do
+     (with-lapack-check
+       (~method CBLAS/ORDER_ROW_MAJOR (int \g) (packed-len ~a) 1 ~alpha ~alpha (.buffer ~a) (.offset ~a) 1))
+     ~a))
+
+(defmacro packed-lasrt [method a increasing]
+  `(let [increasing# (int (if ~increasing \I \D))
+         n# (.ncols ~a)
+         buff# (.buffer ~a)
+         ofst# (.offset ~a)
+         nav# (navigator ~a)
+         region# (region ~a)]
+     (dotimes [j# n#]
+       (with-lapack-check
+         (~method increasing# (- (.start nav# region# j#) (.end nav# region# j#)) buff# (+ ofst# (* j# n#)))))
+     ~a))
 
 ;; =========== Drivers and Computational LAPACK Routines ===========================
 

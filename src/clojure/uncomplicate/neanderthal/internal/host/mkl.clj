@@ -17,9 +17,9 @@
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
-            Block RealVector StripeNavigator RealOrderNavigator BandNavigator]
+            Block RealVector StripeNavigator RealOrderNavigator BandNavigator Region LayoutNavigator]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
-            RealTRMatrix RealGEMatrix RealSYMatrix RealBandedMatrix]))
+            RealTRMatrix RealGEMatrix RealSYMatrix RealBandedMatrix RealPackedMatrix]))
 
 (defn ^:private not-available [kind]
   (throw (UnsupportedOperationException. "Operation not available for %s matrix")))
@@ -816,9 +816,54 @@
   (axpby [_ alpha a beta b]
     (gb-axpby alpha a beta b)))
 
+;; =============== Packed Matrix Engines ===================================
+
+(deftype DoubleTPEngine []
+  Blas
+  (swap [_ a b]
+    (packed-map CBLAS/dswap ^RealPackedMatrix a ^RealPackedMatrix b)
+    a)
+  (copy [_ a b]
+    (packed-map CBLAS/dcopy ^RealPackedMatrix a ^RealPackedMatrix b))
+  (scal [_ alpha a]
+    (packed-scal CBLAS/dscal alpha ^RealPackedMatrix a))
+  (dot [_ a b]
+    (tp-dot CBLAS/ddot ^RealPackedMatrix a ^RealPackedMatrix b))
+  (nrm1 [this a]
+    (ex-info "TODO" nil))
+  (nrm2 [_ a]
+    (tp-reduce CBLAS/dnrm2 ^RealPackedMatrix a))
+  (nrmi [_ a]
+    (ex-info "TODO" nil))
+  (asum [_ a]
+    (tp-reduce CBLAS/dasum ^RealPackedMatrix a))
+  (axpy [_ alpha a b]
+    (packed-axpy CBLAS/daxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
+  (mv [this alpha a x beta y]
+    (tp-mv a))
+  (mv [_ a x]
+    (tp-mv CBLAS/dtpmv ^RealPackedMatrix a ^RealBlockVector x))
+  (mm [this _ a _ _ _ _]
+    (tp-mm a))
+  (mm [_ alpha a b left]
+    (tp-mm CBLAS/dtpmv alpha ^RealPackedMatrix a ^RealGEMatrix b left))
+  BlasPlus
+  (sum [_ a]
+    (tp-reduce CBLAS/dsum ^RealPackedMatrix a))
+  (amax [_ a]
+    (packed-amax CBLAS/idamax ^RealBufferAccessor (data-accessor a) ^RealPackedMatrix a))
+  (set-all [_ alpha a]
+    (packed-laset LAPACK/dlaset alpha ^RealPackedMatrix a))
+  (axpby [_ alpha a beta b]
+    (packed-axpby MKL/saxpby alpha ^RealPackedMatrix a beta ^RealPackedMatrix b))
+  Lapack
+  (srt [_ a increasing]
+    (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing)
+    a))
+
 ;; =============== Factories ==================================================
 
-(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng gb-eng tb-eng sb-eng]
+(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng gb-eng tb-eng sb-eng tp-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -849,6 +894,8 @@
   (create-sb [this n k ord uplo _]
     (let [[kl ku] (if (= UPPER uplo) [0 k] [k 0])]
       (real-banded-matrix this n n kl ku ord sb-eng)))
+  (create-packed [this n matrix-type column? lower? _]
+    (real-packed-matrix this n column? lower? matrix-type))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
@@ -862,7 +909,11 @@
   (tb-engine [_]
     tb-eng)
   (sb-engine [_]
-    tb-eng))
+    tb-eng)
+  (tp-engine [_]
+    tp-eng)
+  (sp-engine [_]
+    nil))
 
 (deftype MKLIntegerFactory [index-fact ^DataAccessor da vector-eng]
   DataAccessorProvider
@@ -895,11 +946,11 @@
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
-                      nil nil nil))
+                      nil nil nil nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
                       (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
-                      (->DoubleGBEngine) nil nil))
+                      (->DoubleGBEngine) nil nil (->DoubleTPEngine)))
 
   (vreset! index-fact mkl-int))

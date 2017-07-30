@@ -8,10 +8,11 @@
 
 (ns uncomplicate.neanderthal.internal.host.cblas
   (:require [uncomplicate.neanderthal.block :refer [buffer offset stride]]
-            [uncomplicate.neanderthal.internal.api
-             :refer [engine mm iamax stripe-navigator swap copy scal axpy axpby]])
+            [uncomplicate.neanderthal.internal
+             [api :refer [engine mm iamax stripe-navigator swap copy scal axpy axpby fits-navigation? region]]
+             [common :refer [dragan-says-ex]]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api RealVector GEMatrix BandedMatrix]))
+           [uncomplicate.neanderthal.internal.api RealVector GEMatrix BandedMatrix Matrix Region]))
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -412,3 +413,118 @@
       ~c))
   ([a]
    `(throw (ex-info "In-place mm! is not supported for GB matrices." {:a (str ~a)}))))
+
+;; ===================== Packed Matrix ==============================
+
+(defn packed-len ^long [^Matrix a]
+  (let [n (.ncols a)]
+    (unchecked-divide-int (* n (inc n)) 2)))
+
+(defmacro with-layout [a b & expr]
+  `(if (= (.order ~a) (.order ~b))
+     (do ~@expr)
+     (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matcking layout."
+                     {:a (str ~a) :b (str ~b)})))
+
+(defmacro packed-amax [method da a]
+  `(Math/abs (.get ~da (.buffer ~a) (+ (.offset ~a) (~method (packed-len ~a) (.buffer ~a) (.offset ~a) 1)))))
+
+(defmacro packed-map
+  ([method a]
+   `(do
+      (~method (packed-len ~a) (.buffer ~a) (.offset ~a) 1)
+      ~a))
+  ([method a b]
+   `(with-layout ~a ~b
+      (~method (packed-len ~a) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
+      ~b)))
+
+(defmacro packed-scal [method alpha a]
+  `(do
+     (~method (packed-len ~a) ~alpha (.buffer ~a) (.offset ~a) 1)
+     ~a))
+
+(defmacro packed-axpy [method alpha a b]
+  `(with-layout ~a ~b
+     (~method (packed-len ~a) ~alpha (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
+     ~b))
+
+(defmacro packed-axpby [method alpha a beta b]
+  `(with-layout ~a ~b
+     (~method (packed-len ~a) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
+     ~b))
+
+(defmacro packed-set-all [method alpha a]
+  `(do
+     (~method (packed-len ~a) ~alpha (.buffer ~a) (.offset ~a) 1)
+     ~a))
+
+(defn blas-uplo ^long [^Region region]
+  (if (.isLower region) CBLAS/UPLO_LOWER CBLAS/UPLO_UPPER))
+
+(defn blas-diag ^long [^Region region]
+  (if (.isDiagUnit region) CBLAS/DIAG_UNIT CBLAS/DIAG_NON_UNIT))
+
+(defmacro tp-reduce [method a]
+  `(~method (packed-len ~a) (.buffer ~a) (.offset ~a) 1))
+
+(defmacro tp-dot [method a b]
+  `(with-layout ~a ~b
+     (~method (packed-len ~a) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)))
+
+(defmacro tp-mv
+  ([method a x]
+   `(let [region# (region ~a)]
+      (~method (.order ~a) (blas-uplo region#) CBLAS/TRANSPOSE_NO_TRANS (blas-diag region#)
+       (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
+      ~x))
+  ([a]
+   `(dragan-says-ex "Out-of-place mv! is not supported by TP matrices." {:a (str ~a)})))
+
+(defmacro tp-mm
+  ([method alpha a b left]
+   `(if ~left
+      (let [region# (region ~a)
+            layout# (.order ~a)
+            n-a# (.ncols ~a)
+            buff-a# (.buffer ~a)
+            ofst-a# (.offset ~a)
+            buff-b# (.buffer ~b)
+            ofst-b# (.offset ~b)
+            ld-b# (.stride ~b)
+            uplo# (blas-uplo region#)
+            diag# (blas-diag region#)]
+        (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~b))
+          (dotimes [j# (.ncols ~b)]
+            (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
+             buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1))
+          (dotimes [j# (.ncols ~b)]
+            (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
+             buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#)))
+        ~b)
+      (dragan-says-ex "Transforming a TP matrix by another matrix type is not supported. Copy TP to TR."
+                       {:a (str ~a) :b (str ~b)})))
+  ([a]
+   `(dragan-says-ex "Out-of-place mm! is not supported by TP matrices. Copy to GE." {:a (str ~a)})))
+
+(defmacro sp-mv
+  ([method alpha a x beta y]
+   `(let [region# (region ~a)]
+      (~method (.order ~a) (blas-uplo region#) (.ncols ~a)
+       ~alpha (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x)
+       (.buffer ~y) (.offset ~y) (.stride ~y))
+      ~y))
+  ([a]
+   `(dragan-says-ex "In-place mv! is not supported by SY matrices." {:a (str ~a)})))
+
+(defmacro sp-mm
+  ([method alpha a b beta c left]
+   `(if ~left
+      (with-layout ~a ~b
+        (dotimes [j# (.ncols ~c)]
+          (sp-mv ~method ~alpha ~a (.col ~b j#) ~beta (.col ~c j#)))
+        ~b)
+      (dragan-says-ex "Transforming a SP matrix by another matrix type is not supported. Copy SP to SY."
+                       {:a (str ~a) :b (str ~b)})))
+  ([a]
+   `(dragan-says-ex "In-place mm! is not supported by SP matrices. Copy to GE." {:a (str ~a)})))

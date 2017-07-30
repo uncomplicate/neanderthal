@@ -8,9 +8,7 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface Vector {
-
-    long dim ();
+public interface Vector extends VectorSpace {
 
     Object boxedEntry (long i);
 

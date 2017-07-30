@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb]]
+  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 ;; ============ Creating real constructs  ==============
@@ -184,3 +184,43 @@
    (sb mkl-double n k arg))
   ([arg]
    (sb mkl-double arg)))
+
+(defn ftp
+  "Creates a TP matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tp]])."
+  ([^long n source options]
+   (tp mkl-float n source options))
+  ([^long n arg]
+   (tp mkl-float n arg))
+  ([arg]
+   (tp mkl-float arg)))
+
+(defn dtp
+  "Creates a TP matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/tp]])."
+  ([^long n source options]
+   (tp mkl-double n source options))
+  ([^long n arg]
+   (tp mkl-double n arg))
+  ([arg]
+   (tp mkl-double arg)))
+
+(defn fsp
+  "Creates a SP matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/sp]])."
+  ([^long n source options]
+   (sp mkl-float n source options))
+  ([^long n arg]
+   (sp mkl-float n arg))
+  ([arg]
+   (sp mkl-float arg)))
+
+(defn dsp
+  "Creates a SP matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/sp]])."
+  ([^long n source options]
+   (sp mkl-double n source options))
+  ([^long n arg]
+   (sp mkl-double n arg))
+  ([arg]
+   (sp mkl-double arg)))

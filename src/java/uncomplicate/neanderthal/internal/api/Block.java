@@ -16,6 +16,6 @@ public interface Block {
 
     long stride ();
 
-    long count ();
+    long count (); //TODO REMOVE
 
 }

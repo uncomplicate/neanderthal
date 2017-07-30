@@ -83,7 +83,7 @@
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix SYMatrix
             BandedMatrix Changeable]))
 
-(defn info
+(defn info ;;TODO when implemented, use is in messages instead of (str ~a)
   "TODO"
   [x]
   (api/info x))
@@ -405,6 +405,40 @@
      (sb factory (.ncols a) (max (.kl a) (.ku a)) a nil)
      (throw (ex-info "Cannot create a SB matrix from non-triangular source." {:a (str a)})))))
 
+(defn tp
+  "TODO"
+  ([factory n source options]
+   (if  (< -1 (long n))
+     (let-release [res (api/create-packed factory n :tr (not (= :row (:order options)))
+                                          (not (= :upper (:order options))) (not (:raw options)))]
+       (if source (transfer! source res) res))
+     (throw (ex-info "TP matrix cannot have a negative dimension." {:n n}))))
+  ([factory n arg]
+   (if (or (not arg) (map? arg))
+     (tp factory n nil arg)
+     (tp factory n arg nil)))
+  ([factory arg]
+   (if (number? arg)
+     (tp factory arg nil nil)
+     (tp factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
+
+(defn sp
+  "TODO"
+  ([factory n source options]
+   (if  (< -1 (long n))
+     (let-release [res (api/create-packed factory n :sy (not (= :row (:order options)))
+                                          (not (= :upper (:order options))) (not (:raw options)))]
+       (if source (transfer! source res) res))
+     (throw (ex-info "SP matrix cannot have a negative dimension." {:n n}))))
+  ([factory n arg]
+   (if (or (not arg) (map? arg))
+     (sp factory n nil arg)
+     (sp factory n arg nil)))
+  ([factory arg]
+   (if (number? arg)
+     (sp factory arg nil nil)
+     (sp factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
+
 ;; ================= Container  ================================================
 
 (defn raw
@@ -698,6 +732,7 @@
       (amax (dv 1 -3 2)) => 3
   "
   [x]
+  ;;TODO (if (.dim ^VectorSpace x))
   (api/amax (api/engine x) x))
 
 (defn imax

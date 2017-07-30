@@ -9,47 +9,105 @@
 (ns uncomplicate.neanderthal.internal.api
   (:require [uncomplicate.commons.core :refer [Releaseable]]))
 
-(definterface UploNavigator
+(definterface UploNavigator ;;TODO obsolete see  Navigator
+  (^boolean accessible [^long i ^long j])
   (^long colStart [^long n ^long i])
   (^long colEnd [^long n ^long i])
   (^long rowStart [^long n ^long i])
   (^long rowEnd [^long n ^long i])
   (^long defaultEntry [^long i ^long j])
-  (^long diaDim [^long n ^long k])
+  (^long diaDim [^long n ^long k]);;TODO it should be removed, since it is used at exactly one place (.dia)?
   (^long unitIndex [^long i]))
 
-(definterface StripeNavigator
+(definterface StripeNavigator;;TODO obsolete: see layoutnavigator
   (^long start [^long n ^long j])
   (^long end [^long n ^long j])
   (^long offsetPad [^long ld]))
 
 (definterface RealOrderNavigator
-  (^long sd [^long m ^long n])
-  (^long fd [^long m ^long n])
-  (^long index [^long ofst ^long ld ^long k])
-  (^long index [^long ofst ^long ld ^long i ^long j])
+  (^long sd [^long m ^long n]);TODO full storage
+  (^long fd [^long m ^long n]);;TODO full storage
+  (^long index [^long ofst ^long ld ^long k]);;TODO to storage
+  (^long index [^long ofst ^long ld ^long i ^long j]);;TODO to storage
+  (^double get [a ^long i ^long j]);;TODO real layout navigator
+  (set [a ^long i ^long j ^double val]);;TODO real layout navigator
+  (invokePrimitive [f ^long i ^long j ^double val]);;todo real layout navigator
+  (stripe [a ^long j]));;todo layoutnavigator
+
+(definterface BandNavigator;;TODO obsolete see navigators and storages
+  (^long height [^long m ^long n ^long kl ^long ku]);;TODO banded stoarage
+  (^long width [^long m ^long n ^long kl ^long ku]);;TODO band storage
+  (^long sd [^long m ^long n ^long kl ^long ku]);;TODO full storage
+  (^long fd [^long m ^long n ^long kl ^long ku]);;TODO full storage
+  (^long index [^long ofst ^long ld ^long kl ^long ku ^long i ^long j]);;todo storage
+  (^long index [^long ofst ^long ld ^long kl ^long ku ^long k]);;todo storage
+  (^long stripeIndex [^long offset ^long ld ^long kl ^long ku ^long i ^long j]);;TODO unused!!!!!!
+  (^long start [^long kl ^long ku ^long stripe]);;TODO layout navigator
+  (^long end [^long m ^long n ^long kl ^long ku ^long stripe]);;TODO layout navigator
+  (^long kd [^long kl ^long ku]));;TODO banded storage
+
+;; ================================ Navigation ===================================
+
+(definterface Region
+  (^boolean accessible [^long i ^long j])
+  (^long colStart [^long i])
+  (^long colEnd [^long i])
+  (^long rowStart [^long i])
+  (^long rowEnd [^long i])
+  (^boolean isUpper [])
+  (^boolean isLower [])
+  (^boolean isDiagUnit []))
+
+(definterface LayoutNavigator
+  (^long start [region ^long j])
+  (^long end [region ^long j])
+  (^long nstripes [a])
+  (stripe [a ^long j])
+  (^boolean isColumnMajor [])
+  (^boolean isRowMajor []))
+
+(definterface RealLayoutNavigator
   (^double get [a ^long i ^long j])
   (set [a ^long i ^long j ^double val])
-  (invokePrimitive [f ^long i ^long j ^double val])
-  (stripe [a ^long j]))
+  (invokePrimitive [f ^long i ^long j ^double val]))
 
-(definterface BandNavigator
-  (^long height [^long m ^long n ^long kl ^long ku])
-  (^long width [^long m ^long n ^long kl ^long ku])
-  (^long sd [^long m ^long n ^long kl ^long ku])
-  (^long fd [^long m ^long n ^long kl ^long ku])
-  (^long index [^long ofst ^long ld ^long kl ^long ku ^long i ^long j])
-  (^long index [^long ofst ^long ld ^long kl ^long ku ^long k])
-  (^long stripeIndex [^long offset ^long ld ^long kl ^long ku ^long i ^long j])
-  (^long start [^long kl ^long ku ^long stripe])
-  (^long end [^long m ^long n ^long kl ^long ku ^long stripe])
-  (^long kd [^long kl ^long ku]))
+;; ================================ Default entry =================================
 
-(defprotocol Navigable
+(definterface RealDefault
+  (entry [stor da buf ^long ofst ^long i ^long j]))
+
+;; ================================ Storage =======================================
+
+(definterface DenseStorage
+  (^long fd [])
+  (^long index [^long i ^long j])
+  (^boolean isColumnMajor []) ;;TODO probably obsolete
+  (^long layout [])) ;;TODO probably obsolete
+
+;;TODO ld and stride... Block should be incorporated in this system
+
+(definterface FullStorage
+  (^long ld [])
+  (^long sd []))
+
+(definterface BandStorage
+  (^long height [])
+  (^long width [])
+  (^long kd []))
+
+(defprotocol StorageProvider;;TODO rename
+  (region ^Region [this])
+  (storage ^DenseStorage [this])
+  (navigator ^LayoutNavigator [this]))
+
+
+(defprotocol Navigable ;;TODO probably remove after refactoring to navigators and storages
   (order-navigator ^RealOrderNavigator [this])
   (stripe-navigator ^StripeNavigator [this])
   (uplo-navigator ^UploNavigator [this])
   (band-navigator ^BandNavigator [this]))
+
+;; ====================== Computation engines ========================================
 
 (defprotocol Blas
   (iamax [this x])
@@ -128,13 +186,16 @@
   (create-gb [this m n kl ku ord init])
   (create-tb [this n k ord uplo init])
   (create-sb [this n k ord uplo init])
+  (create-packed [this n matrix-type column? lower? init])
   (vector-engine [this])
   (ge-engine [this])
   (tr-engine [this])
   (sy-engine [this])
   (gb-engine [this])
   (tb-engine [this])
-  (sb-engine [this]))
+  (sb-engine [this])
+  (tp-engine [this])
+  (sp-engine [this]))
 
 (defprotocol EngineProvider
   (engine [this]))
@@ -153,8 +214,8 @@
 (defprotocol MemoryContext
   (compatible? [this other])
   (fits? [this other])
-  (fits-navigation? [this other])
-  (fully-packed? [this]))
+  (fits-navigation? [this other]);; TODO remove. obsolete....
+  (fully-packed? [this]));; TODO move to storage/navigation/whatever
 
 (defprotocol Container
   (raw [this] [this factory])
@@ -261,18 +322,6 @@
     131 131
     (throw (ex-info "Invalid diag" {:diag diag}))))
 
-(defn flip-layout ^long [^long layout]
-  (case layout
-    101 102
-    102 101
-    (throw (ex-info "Invalid layout" {:layout layout}))))
-
-(defn flip-uplo ^long [^long uplo]
-  (case uplo
-    121 122
-    122 121
-    (throw (ex-info "Invalid uplo" {:uplo uplo}))))
-
 (defn flip ^long [^long property]
   (case property
     101 102
@@ -285,3 +334,15 @@
     131 132
     132 131
     (throw (ex-info "Invalid property" {:property property}))))
+
+(defn flip-layout ^long [^long layout] ;;TODO obsolete
+  (case layout
+    101 102
+    102 101
+    (throw (ex-info "Invalid layout" {:layout layout}))))
+
+(defn flip-uplo ^long [^long uplo];;TODO obsolete
+  (case uplo
+    121 122
+    122 121
+    (throw (ex-info "Invalid uplo" {:uplo uplo}))))

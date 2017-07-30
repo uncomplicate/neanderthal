@@ -12,6 +12,12 @@
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [uncomplicate.neanderthal.internal.api DenseMatrix BandedMatrix Matrix Vector]))
 
+(defn dragan-says-ex
+  ([message data]
+   (throw (ex-info (format "Dragan says: %s" message) data)))
+  ([message]
+   (dragan-says-ex message nil)))
+
 ;; ================= Core Functions ===================================
 
 (defn dense-rows [^DenseMatrix a]
@@ -42,6 +48,7 @@
 
 (defn ^:private nrm-needed-for-con []
   (throw (ex-info "Cannot compute condition number without nrm." {})))
+
 
 (defrecord TRFactorization [^Matrix lu ^Vector ipiv ^Boolean master fresh]
   Releaseable

@@ -32,7 +32,7 @@
 (defn block? [x]
   (instance? Block x))
 
-(defn ecount
+(defn ecount;;TODO moved to vectorspace's dim
   "Returns the total number of elements in all dimensions of a block x
   of (possibly strided) memory.
 

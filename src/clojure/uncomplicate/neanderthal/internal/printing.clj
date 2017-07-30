@@ -14,7 +14,8 @@
              [block :refer [ecount lower? column?]]
              [core :refer [rows dias submatrix subvector mrows ncols dim entry]]]
             [uncomplicate.neanderthal.internal.api :refer :all])
-  (:import [uncomplicate.neanderthal.internal.api UploNavigator BandNavigator BandedMatrix]))
+  (:import [uncomplicate.neanderthal.internal.api UploNavigator BandNavigator BandedMatrix Matrix
+            LayoutNavigator]));;TODO clean up
 
 ;; ====================================================================
 
@@ -160,4 +161,15 @@
      (when (< 0 (ecount a))
        (let [max-value (double (amax (engine a) a))
              formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
-         (print-banded w formatter a))))))
+         (print-banded w formatter a)))))
+
+  (defn print-packed
+    ([^java.io.Writer w formatter ^Matrix a]
+     (let [nav (navigator a)]
+       (dotimes [j (.ncols a)]
+         (print-vector w formatter (.stripe nav a j))
+         (.write w "\n"))))
+    ([^java.io.Writer w a]
+     (let [max-value (double (amax (engine a) a))
+           formatter (partial cl-format nil  (if (< max-value 10000.0) format-f format-g))]
+       (print-packed w formatter a)))))

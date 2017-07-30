@@ -8,30 +8,8 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface Matrix extends VectorSpace {
+public interface VectorSpace {
 
-    long mrows ();
-
-    long ncols ();
-
-    Vector row (long i);
-
-    Object rows ();
-
-    Vector col (long j);
-
-    Object cols ();
-
-    Vector dia ();
-
-    Vector dia (long k);
-
-    Object dias ();
-
-    Object boxedEntry (long i, long j);
-
-    Matrix transpose ();
-
-    Matrix submatrix (long i, long j, long k, long l);
+    long dim ();
 
 }
