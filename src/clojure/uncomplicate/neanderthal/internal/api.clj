@@ -59,9 +59,9 @@
   (^boolean isDiagUnit []))
 
 (definterface LayoutNavigator
-  (^long start [region ^long j])
-  (^long end [region ^long j])
-  (^long nstripes [a])
+  (^long start [reg ^long j])
+  (^long end [reg ^long j])
+  (^long index [stor ^long i ^long j])
   (stripe [a ^long j])
   (^boolean isColumnMajor [])
   (^boolean isRowMajor []))
@@ -80,9 +80,7 @@
 
 (definterface DenseStorage
   (^long fd [])
-  (^long index [^long i ^long j])
-  (^boolean isColumnMajor []) ;;TODO probably obsolete
-  (^long layout [])) ;;TODO probably obsolete
+  (^long index [^long i ^long j]))
 
 ;;TODO ld and stride... Block should be incorporated in this system
 
@@ -186,7 +184,7 @@
   (create-gb [this m n kl ku ord init])
   (create-tb [this n k ord uplo init])
   (create-sb [this n k ord uplo init])
-  (create-packed [this n matrix-type column? lower? init])
+  (create-packed [this n matrix-type column? lower? diag-unit? init])
   (vector-engine [this])
   (ge-engine [this])
   (tr-engine [this])

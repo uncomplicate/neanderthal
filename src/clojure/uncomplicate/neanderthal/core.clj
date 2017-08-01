@@ -80,7 +80,7 @@
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix SYMatrix
+  (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix GEMatrix TRMatrix SYMatrix
             BandedMatrix Changeable]))
 
 (defn info ;;TODO when implemented, use is in messages instead of (str ~a)
@@ -410,7 +410,8 @@
   ([factory n source options]
    (if  (< -1 (long n))
      (let-release [res (api/create-packed factory n :tr (not (= :row (:order options)))
-                                          (not (= :upper (:order options))) (not (:raw options)))]
+                                          (not (= :upper (:uplo options))) (= :unit (:diag options))
+                                          (not (:raw options)))]
        (if source (transfer! source res) res))
      (throw (ex-info "TP matrix cannot have a negative dimension." {:n n}))))
   ([factory n arg]
@@ -427,7 +428,7 @@
   ([factory n source options]
    (if  (< -1 (long n))
      (let-release [res (api/create-packed factory n :sy (not (= :row (:order options)))
-                                          (not (= :upper (:order options))) (not (:raw options)))]
+                                          (not (= :upper (:uplo options))) false (not (:raw options)))]
        (if source (transfer! source res) res))
      (throw (ex-info "SP matrix cannot have a negative dimension." {:n n}))))
   ([factory n arg]
@@ -711,8 +712,10 @@
 
       (iamax (dv 1 -3 2)) => 1
   "
-  ^long [x]
-  (api/iamax (api/engine x) x))
+  ^long [^VectorSpace x]
+  (if (< 0 (.dim x))
+    (api/iamax (api/engine x) x)
+    0))
 
 (defn iamin
   "The index of the first entry of vector `x` that has the smallest absolute value.
@@ -721,8 +724,10 @@
 
       (iamin (dv 1 -3 2)) => 0
   "
-  ^long [x]
-  (api/iamin (api/engine x) x))
+  ^long [^VectorSpace x]
+  (if (< 0 (.dim x))
+    (api/iamin (api/engine x) x)
+    0))
 
 (defn amax
   "Absolute value of the first entry of vector `x` that has the largest absolute value.
@@ -732,7 +737,6 @@
       (amax (dv 1 -3 2)) => 3
   "
   [x]
-  ;;TODO (if (.dim ^VectorSpace x))
   (api/amax (api/engine x) x))
 
 (defn imax
@@ -742,8 +746,10 @@
 
       (imax (dv 1 -3 2)) => 2
   "
-  ^long [x]
-  (api/imax (api/engine x) x))
+  ^long [^VectorSpace x]
+  (if (< 0 (.dim x))
+    (api/imax (api/engine x) x)
+    0))
 
 (defn imin
   "The index of the first entry of vector `x` that has the smallest value.
@@ -752,8 +758,10 @@
 
       (imin (dv 1 -3 2)) => 2
   "
-  ^long [x]
-  (api/imin (api/engine x) x))
+  ^long [^VectorSpace x]
+  (if (< 0 (.dim x))
+    (api/imin (api/engine x) x)
+    0))
 
 (defn swp!
   "Swaps all entries of vectors or matrices `x` and `y`.
@@ -764,10 +772,12 @@
 
   See related info about [cblas_?swap](https://software.intel.com/en-us/node/520744).
   "
-  [x y]
+  [^VectorSpace x y]
   (if (not (identical? x y))
     (if (and (api/compatible? x y) (api/fits? x y))
-      (api/swap (api/engine x) x y)
+      (if (< 0 (.dim x))
+        (api/swap (api/engine x) x y)
+        x)
       (throw (ex-info "You cannot swap data of incompatible or ill-fitting structures."
                       {:x (str x) :y (str y)})))
     x))
@@ -781,10 +791,12 @@
 
   See related info about [cblas_?copy](https://software.intel.com/en-us/node/520733).
   "
-  ([x y]
+  ([^VectorSpace x y]
    (if (not (identical? x y))
      (if (and (api/compatible? x y) (api/fits? x y))
-       (api/copy (api/engine x) x y)
+       (if (< 0 (.dim x))
+         (api/copy (api/engine x) x y)
+         y)
        (throw (ex-info "You cannot copy data of incompatible or ill-fitting structures."
                        {:x (str x) :y (str y)})))
      y))
@@ -793,7 +805,9 @@
      (if (and (api/compatible? x y)
               (<= (+ (long offset-x) (long length)) (.dim x))
               (<= (+ (long offset-y) (long length)) (.dim y)))
-       (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
+       (if (< 0 (.dim x))
+         (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
+         y)
        (throw (ex-info "You cannot copy data of incompatible vectors"
                        {:x (str x) :y (str y) :length length})))
      y)))
@@ -814,8 +828,9 @@
 
   See related info about [cblas_?scal](https://software.intel.com/en-us/node/520743).
   "
-  [alpha x]
-  (api/scal (api/engine x) alpha x)
+  [alpha ^VectorSpace x]
+  (when (< 0 (.dim x))
+    (api/scal (api/engine x) alpha x))
   x)
 
 (defn scal
@@ -920,7 +935,9 @@
   "
   ([alpha x y]
    (if (and (api/compatible? x y) (api/fits? x y))
-     (api/axpy (api/engine x) alpha x y)
+     (if (< 0 (.dim x))
+       (api/axpy (api/engine x) alpha x y)
+       y)
      (throw (ex-info "You cannot add incompatible or ill-fitting structures."
                      {:x (str x) :y (str y)}))))
   ([x y]
@@ -998,7 +1015,9 @@
   "
   ([alpha x beta y]
    (if (and (api/compatible? x y) (api/fits? x y))
-     (api/axpby (api/engine x) alpha x beta y)
+     (if (< 0 (.dim x))
+       (api/axpby (api/engine x) alpha x beta y)
+       y)
      (throw (ex-info "You cannot add incompatible or ill-fitting structures."
                      {:x (str x) :y (str y)}))))
   ([x beta y]
@@ -1068,8 +1087,8 @@
      (mv! alpha a x beta res)))
   ([alpha a x y]
    (mv 1.0 a x 1.0 y))
-  ([alpha a x]
-   (let-release [res (api/raw (col a 0))]
+  ([alpha ^Matrix a x]
+   (let-release [res (vctr (api/factory a) (.mrows a))]
      (mv! alpha a x 0.0 res)))
   ([a x]
    (if-not (tr? a)

@@ -17,7 +17,8 @@
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
-            Block RealVector StripeNavigator RealOrderNavigator BandNavigator Region LayoutNavigator]
+            Block RealVector StripeNavigator RealOrderNavigator BandNavigator Region LayoutNavigator
+            DenseStorage]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
             RealTRMatrix RealGEMatrix RealSYMatrix RealBandedMatrix RealPackedMatrix]))
 
@@ -30,7 +31,7 @@
 ;; =========== MKL-spicific routines ====================================================
 
 (defmacro ge-copy [method a b]
-  `(when (< 0 (.count ~a))
+  `(when (< 0 (.dim ~a))
      (let [no-trans# (= (.order ~a) (.order ~b))
            rows# (if no-trans# (.sd ~b) (.fd ~b))
            cols# (if no-trans# (.fd ~b) (.sd ~b))]
@@ -39,15 +40,15 @@
         1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
 (defmacro ge-scal [method alpha a]
-  `(when (< 0 (.count ~a))
+  `(when (< 0 (.dim ~a))
      (~method (int \c) (int \n) (.sd ~a) (.fd ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.stride ~a))))
 
 (defmacro ge-trans [method a]
-  `(when (< 0 (.count ~a))
+  `(when (< 0 (.dim ~a))
      (~method (int \c) (int \t) (.sd ~a) (.fd ~a) 1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.fd ~a))))
 
 (defmacro ge-axpby [method alpha a beta b]
-  `(when (< 0 (.count ~a))
+  `(when (< 0 (.dim ~a))
      (let [no-trans# (= (.order ~a) (.order ~b))
            rows# (if no-trans# (.sd ~a) (.fd ~a))
            cols# (if no-trans# (.fd ~a) (.sd ~a))]
@@ -828,15 +829,18 @@
   (scal [_ alpha a]
     (packed-scal CBLAS/dscal alpha ^RealPackedMatrix a))
   (dot [_ a b]
-    (tp-dot CBLAS/ddot ^RealPackedMatrix a ^RealPackedMatrix b))
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (tp-dot CBLAS/ddot da ^RealPackedMatrix a ^RealPackedMatrix b)))
   (nrm1 [this a]
     (ex-info "TODO" nil))
   (nrm2 [_ a]
-    (tp-reduce CBLAS/dnrm2 ^RealPackedMatrix a))
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (tp-nrm2 CBLAS/dnrm2 da ^RealPackedMatrix a)))
   (nrmi [_ a]
     (ex-info "TODO" nil))
   (asum [_ a]
-    (tp-reduce CBLAS/dasum ^RealPackedMatrix a))
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (tp-sum CBLAS/dasum Math/abs da ^RealPackedMatrix a)))
   (axpy [_ alpha a b]
     (packed-axpy CBLAS/daxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
   (mv [this alpha a x beta y]
@@ -849,7 +853,55 @@
     (tp-mm CBLAS/dtpmv alpha ^RealPackedMatrix a ^RealGEMatrix b left))
   BlasPlus
   (sum [_ a]
-    (tp-reduce CBLAS/dsum ^RealPackedMatrix a))
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (tp-sum CBLAS/dsum double da ^RealPackedMatrix a)))
+  (amax [_ a]
+    (packed-amax CBLAS/idamax ^RealBufferAccessor (data-accessor a) ^RealPackedMatrix a))
+  (set-all [_ alpha a]
+    (packed-laset LAPACK/dlaset alpha ^RealPackedMatrix a))
+  (axpby [_ alpha a beta b]
+    (packed-axpby MKL/saxpby alpha ^RealPackedMatrix a beta ^RealPackedMatrix b))
+  Lapack
+  (srt [_ a increasing]
+    (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing)
+    a))
+
+(deftype DoubleSPEngine []
+  Blas
+  (swap [_ a b]
+    (packed-map CBLAS/dswap ^RealPackedMatrix a ^RealPackedMatrix b)
+    a)
+  (copy [_ a b]
+    (packed-map CBLAS/dcopy ^RealPackedMatrix a ^RealPackedMatrix b))
+  (scal [_ alpha a]
+    (packed-scal CBLAS/dscal alpha ^RealPackedMatrix a))
+  (dot [_ a b]
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (sp-dot CBLAS/ddot da ^RealPackedMatrix a ^RealPackedMatrix b)))
+  (nrm1 [this a]
+    (ex-info "TODO" nil))
+  (nrm2 [_ a]
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (sp-nrm2 CBLAS/dnrm2 da ^RealPackedMatrix a)))
+  (nrmi [_ a]
+    (ex-info "TODO" nil))
+  (asum [_ a]
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (sp-sum CBLAS/dasum Math/abs da ^RealPackedMatrix a)))
+  (axpy [_ alpha a b]
+    (packed-axpy CBLAS/daxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
+  (mv [this alpha a x beta y]
+    (sp-mv CBLAS/dspmv alpha ^RealPackedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
+  (mv [_ a x]
+    (sp-mv a))
+  (mm [this alpha a b beta c left]
+    (sp-mm CBLAS/dspmv alpha ^RealPackedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
+  (mm [_ _ a _ _]
+    (sp-mm a))
+  BlasPlus
+  (sum [_ a]
+    (let [da ^RealBufferAccessor (data-accessor a)]
+      (sp-sum CBLAS/dsum double da ^RealPackedMatrix a)))
   (amax [_ a]
     (packed-amax CBLAS/idamax ^RealBufferAccessor (data-accessor a) ^RealPackedMatrix a))
   (set-all [_ alpha a]
@@ -863,7 +915,8 @@
 
 ;; =============== Factories ==================================================
 
-(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng gb-eng tb-eng sb-eng tp-eng]
+(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng gb-eng tb-eng sb-eng
+                         tp-eng sp-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -894,8 +947,8 @@
   (create-sb [this n k ord uplo _]
     (let [[kl ku] (if (= UPPER uplo) [0 k] [k 0])]
       (real-banded-matrix this n n kl ku ord sb-eng)))
-  (create-packed [this n matrix-type column? lower? _]
-    (real-packed-matrix this n column? lower? matrix-type))
+  (create-packed [this n matrix-type column? lower? diag-unit? _]
+    (real-packed-matrix this n column? lower? diag-unit? matrix-type))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
@@ -913,7 +966,7 @@
   (tp-engine [_]
     tp-eng)
   (sp-engine [_]
-    nil))
+    sp-eng))
 
 (deftype MKLIntegerFactory [index-fact ^DataAccessor da vector-eng]
   DataAccessorProvider
@@ -946,11 +999,11 @@
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
-                      nil nil nil nil))
+                      nil nil nil nil nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
                       (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
-                      (->DoubleGBEngine) nil nil (->DoubleTPEngine)))
+                      (->DoubleGBEngine) nil nil (->DoubleTPEngine) (->DoubleSPEngine)))
 
   (vreset! index-fact mkl-int))

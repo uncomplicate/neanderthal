@@ -75,7 +75,7 @@
 
   (defn print-ge
     ([^java.io.Writer w formatter a]
-     (when (< 0 (ecount a))
+     (when (< 0 (dim a))
        (let [print-height (min (mrows a) (long (:matrix-height @settings)))
              print-width (min (ncols a) (long (:matrix-width @settings)))
              print-top (long (if (= print-height (mrows a)) print-height (ceil (/ print-height 2))))
@@ -90,7 +90,7 @@
              (print-vector w formatter r)
              (.write w "\n"))))))
     ([^java.io.Writer w a]
-     (when (< 0 (ecount a))
+     (when (< 0 (dim a))
        (let [max-value (double (amax (engine a) a))
              formatter (partial cl-format nil  (if (< max-value 10000.0) format-f format-g))]
          (.write w (format "\n%s\n" (if (column? a) "\u25a5" "\u25a4")) )
@@ -98,7 +98,7 @@
 
   (defn print-uplo
     ([^java.io.Writer w formatter a]
-     (when (< 0 (ecount a))
+     (when (< 0 (dim a))
        (let [print-height (min (mrows a) (long (:matrix-height @settings)))
              print-width (min (ncols a) (long (:matrix-width @settings)))
              sub-a (submatrix a 0 0 print-height print-width)
@@ -112,7 +112,7 @@
            (.write w "\n"))
          (.write w (if (= print-height (mrows a)) "\u2517" " \u22ee\n\u2517")))))
     ([^java.io.Writer w a]
-     (when (< 0 (ecount a))
+     (when (< 0 (dim a))
        (let [max-value (double (amax (engine a) a))
              formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
          (print-uplo w formatter a)))))
@@ -158,7 +158,7 @@
                (recur (dec i) (next rs))))))
        (.write w (if full-height "\u2517" " \u22ee\n\u2517"))))
     ([^java.io.Writer w a]
-     (when (< 0 (ecount a))
+     (when (< 0 (dim a))
        (let [max-value (double (amax (engine a) a))
              formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
          (print-banded w formatter a)))))

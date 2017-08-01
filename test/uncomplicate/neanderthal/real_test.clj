@@ -89,7 +89,7 @@
          (dot (vctr factory [1 2 3]) (vctr factory [10 30 -10])) => 40.0
          (dot (vctr factory [1 2 3]) nil) => (throws ExceptionInfo)
          (dot (vctr factory []) (vctr factory [])) => 0.0
-         (dot (vctr factory [1]) (ge factory 3 3)) => (throws ClassCastException)
+         (dot (vctr factory [1]) (ge factory 3 3)) => (throws ExceptionInfo)
          (dot (vctr factory [1 2]) (vctr factory [1 2 3])) => (throws ExceptionInfo)))
 
 (defn test-sum [factory]
@@ -594,8 +594,8 @@
            (col a-lower 2) => (vctr factory [5])
            (dia a-upper) => (vctr factory 0 2 5))))
 
-(defn test-tr-entry [factory]
-  (facts "TR Matrix entry."
+(defn test-tr-entry [factory tr]
+  (facts "Triangular Matrix entry."
          (with-release [a-upper (tr factory 3 (range 6) {:uplo :upper})
                         b-diag (tr factory 3 (range 6) {:diag :unit})]
            (entry a-upper 0 1) => 1.0
@@ -608,8 +608,8 @@
            (entry b-diag 2 2) => 1.0
            (entry b-diag 2 1) => 2.0)))
 
-(defn test-tr-entry! [factory]
-  (facts "TR matrix entry!."
+(defn test-tr-entry! [factory tr]
+  (facts "Triangular matrix entry!."
          (with-release [a (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper})
                         c (ge factory 3 3 (range 1 10))]
            (entry (entry! a 0 1 88.0) 0 1) => 88.0
@@ -617,20 +617,20 @@
            (entry (entry! a 1 0 4.0) 1 1) => (throws ExceptionInfo)
            (entry (view-ge (entry! (view-tr c {:diag :unit}) -1)) 2 2) => 9.0)))
 
-(defn test-tr-bulk-entry! [factory]
-  (facts "Bulk TR matrix entry!."
-         (sum (row (entry! (tr factory 3 [1 2 3 4 5 6]) 33.0) 1)) => 66.0
-         (sum (row (entry! (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper}) 22.0) 0)) => 44.0))
+(defn test-tr-bulk-entry! [factory tr]
+  (facts "Bulk Triangular matrix entry!."
+         (sum (entry! (tr factory 3 [1 2 3 4 5 6]) 33.0)) => 198.0
+         (sum (entry! (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper}) 22.0)) => 69.0))
 
-(defn test-tr-alter! [factory]
-  (facts "TR alter!."
+(defn test-tr-alter! [factory tr]
+  (facts "Triangular alter!."
          (entry (alter! (tr factory 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 4.0
          (alter! (tr factory 3 [1 2 3 4 5 6]) val-ind+) => (tr factory 3 [0 0 0 5 7 16])
          (alter! (tr factory 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
          => (tr factory 3 [0 0 4 0 7 16] {:order :row})))
 
 (defn test-tr-dot [factory]
-  (facts "BLAS 1 TR dot"
+  (facts "BLAS 1 Triangular dot"
          (let [a (tr factory 3 (range -3 3))
                b (tr factory 3 [1 2 3 4 5 6])
                d (tr factory 3 {:order :row})
@@ -640,28 +640,28 @@
            (dot a (copy! b d)) => (dot a b)
            (dot zero-point zero-point) => 0.0)))
 
-(defn test-tr-nrm2 [factory]
-  (facts "BLAS 1 TR nrm2."
+(defn test-tr-nrm2 [factory tr]
+  (facts "BLAS 1 Triangular nrm2."
          (nrm2 (tr factory 3 (range -5 5))) => (roughly (sqrt 55))
          (nrm2 (tr factory 0 [])) => 0.0))
 
-(defn test-tr-amax [factory]
-  (facts "BLAS 1 TR amax."
+(defn test-tr-amax [factory tr]
+  (facts "BLAS 1 Triangular amax."
          (amax (tr factory 3 [1 2 3 -4 -3 1 1 1 1 1 1 1])) => 4.0
          (amax (tr factory 0 [])) => 0.0))
 
-(defn test-tr-asum [factory]
-  (facts "BLAS 1 TR asum."
+(defn test-tr-asum [factory tr]
+  (facts "BLAS 1 Triangular asum."
          (asum (tr factory 3 (range -3 3))) => 9.0
          (asum (tr factory 0 [])) => 0.0))
 
-(defn test-tr-sum [factory]
-  (facts "BLAS 1 TR sum."
+(defn test-tr-sum [factory tr]
+  (facts "BLAS 1 Triangular sum."
          (sum (tr factory 3 (range -3 3))) => -3.0
          (sum (tr factory 0 [])) => 0.0))
 
-(defn test-uplo-copy [factory uplo uplo-name]
-  (facts (format "BLAS 1 copy! %s matrix" uplo-name)
+(defn test-uplo-copy [factory uplo]
+  (facts "BLAS 1 copy! uplo matrix"
          (with-release [a (uplo factory 3)
                         b (uplo factory 3 (range 6) {:order :column})
                         b-row (uplo factory 3 (range 6) {:order :row})]
@@ -677,9 +677,9 @@
          (copy! (uplo factory 3 [1 2 3 4 5 6]) nil) => (throws ExceptionInfo)
          (copy! (uplo factory 3 [10 20 30 40 50 60]) (uplo factory 2)) => (throws ExceptionInfo)))
 
-(defn test-uplo-swap [factory uplo uplo-name]
+(defn test-uplo-swap [factory uplo]
   (facts
-   (format "BLAS 1 swap! %s matrix" uplo-name)
+   "BLAS 1 swap! uplo matrix" uplo-name
    (with-release [a (uplo factory 3 [1 2 3 4 5 6])]
      (identical? (swp! a (uplo factory 3)) a) => true
      (swp! a (uplo factory 3 [10 20 30 40 50 60])) => (uplo factory 3 [10 20 30 40 50 60])
@@ -687,14 +687,14 @@
      (identical? (swp! a (uplo factory 3 [10 20 30 40 50 60])) a) => true
      (swp! a (uplo factory 2 [10 20])) => (throws ExceptionInfo))))
 
-(defn test-uplo-scal [factory uplo uplo-name]
-  (facts (format "BLAS 1 scal! %s matrix" uplo-name)
+(defn test-uplo-scal [factory uplo]
+  (facts "BLAS 1 scal! uplo matrix"
          (with-release [a (uplo factory 3 [1 2 3 4 5 6])]
            (identical? (scal! 3 a) a) => true)
          (scal! 3 (uplo factory 3 [1 -2 3 9 8 7])) => (uplo factory 3 [3 -6 9 27 24 21])))
 
-(defn test-uplo-axpy [factory uplo uplo-name]
-  (facts (format "BLAS 1 axpy! %s matrix" uplo-name)
+(defn test-uplo-axpy [factory uplo]
+  (facts "BLAS 1 axpy! uplo matrix"
          (with-release [a (uplo factory 3 (range 6))]
 
            (axpy! 2.0 (uplo factory 3 (range 0 60 10)) a) => (uplo factory 3 (range 0 121 21))
@@ -731,8 +731,8 @@
 
            (axpy 2 (uplo factory 3 (range 1 7)) (uplo factory 3 (range 2 8))) => (uplo factory 3 (range 4 23 3)))))
 
-(defn test-tr-mv [factory]
-  (facts "BLAS 2 TR mv!"
+(defn test-tr-mv [factory tr]
+  (facts "BLAS 2 Triangular mv!"
          (mv! 2.0 (tr factory 2 [1 2 3 4])
               (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4])) => (throws ExceptionInfo)
 
@@ -799,7 +799,7 @@
            (col a-lower 2) => (vctr factory [5])
            (dia a-upper) => (vctr factory 0 2 5))))
 
-(defn test-sy-mv [factory]
+(defn test-sy-mv [factory mv]
   (facts "BLAS 2 SY mv!"
          (mv! 2.0 (sy factory 2 [1 2 3 4]) (vctr factory 1 2 3) 3 (vctr factory [1 2 3 4]))
          => (throws ExceptionInfo)
@@ -839,8 +839,8 @@
          (mm 2.0 (sy factory 3 [1 2 3 4 5 6]) (sy factory 3 [1 2 3 4 5 6])
              3.0 (sy factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
 
-(defn test-sy-entry [factory]
-  (facts "SY Matrix entry."
+(defn test-sy-entry [factory sy]
+  (facts "Symmetric Matrix entry."
          (with-release [a-upper (sy factory 3 (range 6) {:uplo :upper})]
            (entry a-upper 0 1) => 1.0
            (entry a-upper 1 0) => 1.0
@@ -850,8 +850,8 @@
            (entry a-upper -1 2) => (throws ExceptionInfo)
            (entry a-upper 3 2) => (throws ExceptionInfo))))
 
-(defn test-sy-entry! [factory]
-  (facts "SY matrix entry!."
+(defn test-sy-entry! [factory sy]
+  (facts "Symmetric matrix entry!."
          (with-release [a (sy factory 3 [1 2 3 4 5 6] {:uplo :upper})
                         c (ge factory 3 3 (range 1 10))]
 
@@ -860,13 +860,13 @@
            (entry (entry! a 1 0 3.0) 0 1) => (throws ExceptionInfo)
            (entry (entry! a 1 0 4.0) 1 1) => (throws ExceptionInfo))))
 
-(defn test-sy-bulk-entry! [factory]
-  (facts "Bulk SY matrix entry!."
-         (sum (row (entry! (sy factory 3 [1 2 3 4 5 6]) 33.0) 1)) => 66.0
-         (sum (row (entry! (sy factory 3 [1 2 3 4 5 6] {:uplo :upper}) 22.0) 0)) => 66.0))
+(defn test-sy-bulk-entry! [factory sy]
+  (facts "Bulk Symmetric matrix entry!."
+         (sum (entry! (sy factory 3 [1 2 3 4 5 6]) 33.0)) => 297.0
+         (sum (entry! (sy factory 3 [1 2 3 4 5 6] {:uplo :upper}) 22.0)) => 198.0))
 
-(defn test-sy-alter! [factory]
-  (facts "SY alter!."
+(defn test-sy-alter! [factory sy]
+  (facts "Symetric alter!."
          (entry (alter! (sy factory 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 4.0
          (alter! (sy factory 3 [1 2 3 4 5 6]) val-ind+) => (sy factory 3 [0 0 0 5 7 16])
          (alter! (sy factory 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
@@ -883,22 +883,22 @@
            (dot a (copy! b d)) => (dot a b)
            (dot zero-point zero-point) => 0.0)))
 
-(defn test-sy-nrm2 [factory]
+(defn test-sy-nrm2 [factory sy]
   (facts "BLAS 1 SY nrm2."
          (nrm2 (sy factory 3 (range -5 5))) => (roughly (sqrt 81))
          (nrm2 (sy factory 0 [])) => 0.0))
 
-(defn test-sy-amax [factory]
+(defn test-sy-amax [factory sy]
   (facts "BLAS 1 SY amax."
          (amax (sy factory 3 [1 2 3 -4 -3 1 1 1 1 1 1 1])) => 4.0
          (amax (sy factory 0 [])) => 0.0))
 
-(defn test-sy-asum [factory]
+(defn test-sy-asum [factory sy]
   (facts "BLAS 1 SY asum."
          (asum (sy factory 3 (range -3 3))) => 13.0
          (asum (sy factory 0 [])) => 0.0))
 
-(defn test-sy-sum [factory]
+(defn test-sy-sum [factory sy]
   (facts "BLAS 1 SY sum."
          (sum (sy factory 3 (range -3 3))) => -5.0
          (sum (sy factory 0 [])) => 0.0))
@@ -1128,6 +1128,112 @@
          (sum (gb factory 5 4 2 3 (range 1 100))) => 153.0
          (sum (sy factory 0 [])) => 0.0))
 
+;; ==================== Packed Matrix ======================================
+
+(defn test-packed-copy [factory uplo]
+  (facts "BLAS 1 copy! packed matrix"
+         (with-release [a (uplo factory 3)
+                        b (uplo factory 3 (range 6) {:order :column})
+                        b-row (uplo factory 3 (range 6) {:order :row})]
+
+           (identical? (copy a) a) => false
+           (identical? (copy! (uplo factory 3 [1 2 3 4 5 6]) a) a) => true
+           (copy (uplo factory 3 [1 2 3 4 5 6])) => a
+           (copy! b b-row) => (throws ExceptionInfo))
+
+         (copy! (uplo factory 3 [10 20 30 40 50 60]) (uplo factory 3 [1 2 3 4 5 6]))
+         => (uplo factory 3 [10 20 30 40 50 60])
+
+         (copy! (uplo factory 3 [1 2 3 4 5 6]) nil) => (throws ExceptionInfo)
+         (copy! (uplo factory 3 [10 20 30 40 50 60]) (uplo factory 2)) => (throws ExceptionInfo)))
+
+(defn test-packed-constructor [factory pck]
+  (facts "Create a packed matrix."
+         (with-release [a (pck factory 3 (range 6))]
+           (entry a 1 1) => 3.0
+           (pck factory 3 nil) => (zero a))))
+
+(defn test-packed [factory pck]
+  (facts "Packed Matpix methods."
+         (with-release [a-upper (tp factory 3 (range 15) {:uplo :upper})
+                        b-upper (tp factory 3 (range 15) {:uplo :upper :order :row})
+                        a-lower (tp factory 3 (range 15) {:uplo :lower})
+                        b-lower (tp factory 3 (range 15) {:uplo :lower :order :row})]
+           (= 3 (mrows a-upper) (ncols a-lower) (mrows b-upper) (ncols b-lower)) => true
+           (row b-upper 0) => (vctr factory [0 1 2])
+           (row b-upper 2) => (vctr factory [5])
+           (col a-upper 0) => (vctr factory [0])
+           (col a-upper 2) => (vctr factory [3 4 5])
+           (row b-lower 0) => (vctr factory [0])
+           (row b-lower 2) => (vctr factory [3 4 5])
+           (col a-lower 0) => (vctr factory [0 1 2])
+           (col a-lower 2) => (vctr factory [5])
+           (row a-upper 0) => (throws ExceptionInfo)
+           (col b-upper 0) => (throws ExceptionInfo)
+           (dia a-upper) => (throws ExceptionInfo))))
+
+(defn test-tp-dot [factory]
+  (facts "BLAS 1 TP dot"
+         (let [a (tp factory 3 (range -3 3))
+               b (tp factory 3 [1 2 3 4 5 6])
+               zero-point (tp factory 0 [])]
+           (sqrt (dot a a)) => (roughly (nrm2 a))
+           (dot a b) => 7.0
+           (dot zero-point zero-point) => 0.0)))
+
+(defn test-tp-mm [factory]
+  (facts "BLAS 3 TP mm!"
+         (mm! 2.0 (tp factory 3 [1 2 3 4 5 6]) (tp factory 3 [1 2 3 4 5 6])
+              3.0 (tp factory 3 [1 2 3 4 5 6]))=> (throws ExceptionInfo)
+
+         (mm! 2.0 (tp factory 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws ExceptionInfo)
+
+         (with-release [c (ge factory 2 2 [1 2 3 4])]
+           (identical? (mm! 2.0 (tp factory 2 [1 2 3 4]) c) c)) => true
+
+         (mm! 2.0 (ge factory 2 3 (range 6)) (tp factory 3 (range 6))) => (throws ExceptionInfo)
+
+         (mm (tp factory 3 (range 6)) (ge factory 3 2 (range 6)))
+         => (ge factory 3 2 [0 3 14 0 15 47])
+
+         (mm (ge factory 2 3 (range 6)) (tp factory 3 (range 6))) => (throws ExceptionInfo)
+
+         (mm 2.0 (tp factory 3 [1 2 3 4 5 6]) (tp factory 3 [1 2 3 4 5 6])
+             3.0 (tp factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
+
+(defn test-sp-dot [factory]
+  (facts "BLAS 1 SP dot"
+         (let [a (sp factory 3 (range -3 3))
+               b (sp factory 3 [1 2 3 4 5 6])
+               zero-point (sp factory 0 [])]
+           (sqrt (dot a a)) => (roughly (nrm2 a))
+           (dot a b) => 5.0
+           (dot zero-point zero-point) => 0.0)))
+
+(defn test-sp-mm [factory]
+  (facts "BLAS 3 SP mm!"
+         (mm! 2.0 (sp factory 3 [1 2 3 4 5 6]) (ge factory 3 3 (range 1 10))
+              3.0 (ge factory 3 3 (range 1 10))) => (ge factory 3 3 [31 56 71 76 131 164 121 206 257])
+
+         (mm! 2.0 (sp factory 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
+              3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (ge factory 3 2 [31 56 71 76 131 164])
+
+         (with-release [c (ge factory 2 2 [1 2 3 4])]
+           (identical? (mm! 2.0 (sp factory 2 [1 2 3 4]) c 0.0 c) c)) => true
+
+         (mm! 2.0 (ge factory 2 3 (range 6)) (sp factory 3 (range 6)) 0.0 (ge factory 2 3))
+         => (throws ExceptionInfo)
+
+         (mm (sp factory 3 (range 6)) (ge factory 3 2 (range 6)))
+         => (throws ExceptionInfo)
+
+         (mm (ge factory 2 3 (range 6)) (sp factory 3 (range 6)))
+         => (throws ExceptionInfo)
+
+         (mm 2.0 (sp factory 3 [1 2 3 4 5 6]) (sp factory 3 [1 2 3 4 5 6])
+             3.0 (sp factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
+
 ;; ==================== LAPACK tests =======================================
 
 (defn test-vctr-srt [factory]
@@ -1155,13 +1261,13 @@
      (sort+! a1) => a2
      (sort-! a1) => a3)))
 
-(defn test-tr-srt [factory]
+(defn test-uplo-srt [factory uplo]
   (facts
-   "LAPACK ge srt!"
-   (with-release [a0 (tr factory 0)
-                  a1 (tr factory 3 [0 -1 1 2 3 3])
-                  a2 (tr factory 3 [-1 0 1 2 3 3])
-                  a3 (tr factory 3 [1 0 -1 3 2 3])]
+   "LAPACK uplo srt!"
+   (with-release [a0 (uplo factory 0)
+                  a1 (uplo factory 3 [0 -1 1 2 3 3])
+                  a2 (uplo factory 3 [-1 0 1 2 3 3])
+                  a3 (uplo factory 3 [1 0 -1 3 2 3])]
      (sort+! a0) => a0
      (sort+! a1) => a2
      (sort-! a1) => a3)))
@@ -1636,13 +1742,13 @@
   (test-ge-mv factory)
   (test-rk factory)
   (test-ge-mm factory)
-  (test-tr factory)
   (test-tr-constructor factory)
-  (test-uplo-copy factory tr "TR")
-  (test-uplo-swap factory tr "TR")
-  (test-uplo-scal factory tr "TR")
-  (test-uplo-axpy factory tr "TR")
-  (test-tr-mv factory)
+  (test-tr factory)
+  (test-uplo-copy factory tr)
+  (test-uplo-swap factory tr)
+  (test-uplo-scal factory tr)
+  (test-uplo-axpy factory tr)
+  (test-tr-mv factory tr)
   (test-tr-mm factory))
 
 (defn test-blas-host [factory]
@@ -1664,20 +1770,20 @@
   (test-ge-sum factory)
   (test-ge-dot-strided factory)
   (test-ge-trans! factory)
-  (test-tr-entry factory)
-  (test-tr-entry! factory)
-  (test-tr-bulk-entry! factory)
-  (test-tr-alter! factory)
+  (test-tr-entry factory tr)
+  (test-tr-entry! factory tr)
+  (test-tr-bulk-entry! factory tr)
+  (test-tr-alter! factory tr)
   (test-tr-dot factory)
-  (test-tr-nrm2 factory)
-  (test-tr-asum factory)
-  (test-tr-sum factory)
-  (test-tr-amax factory))
+  (test-tr-nrm2 factory tr)
+  (test-tr-asum factory tr)
+  (test-tr-sum factory tr)
+  (test-tr-amax factory tr))
 
 (defn test-lapack [factory]
   (test-vctr-srt factory)
   (test-ge-srt factory)
-  (test-tr-srt factory)
+  (test-uplo-srt factory tr)
   (test-ge-trf factory)
   (test-ge-trs factory)
   (test-tr-trs factory)
@@ -1699,23 +1805,23 @@
 (defn test-blas-sy [factory]
   (test-sy-constructor factory)
   (test-sy factory)
-  (test-uplo-copy factory sy "SY")
-  (test-uplo-swap factory sy "SY")
-  (test-uplo-scal factory sy "SY")
-  (test-uplo-axpy factory sy "SY")
-  (test-sy-mv factory)
+  (test-uplo-copy factory sy)
+  (test-uplo-swap factory sy)
+  (test-uplo-scal factory sy)
+  (test-uplo-axpy factory sy)
+  (test-sy-mv factory tp)
   (test-sy-mm factory))
 
 (defn test-blas-sy-host [factory]
-  (test-sy-entry factory)
-  (test-sy-entry! factory)
-  (test-sy-bulk-entry! factory)
-  (test-sy-alter! factory)
+  (test-sy-entry factory sy)
+  (test-sy-entry! factory sy)
+  (test-sy-bulk-entry! factory sy)
+  (test-sy-alter! factory sy)
   (test-sy-dot factory)
-  (test-sy-nrm2 factory)
-  (test-sy-asum factory)
-  (test-sy-sum factory)
-  (test-sy-amax factory))
+  (test-sy-nrm2 factory sy)
+  (test-sy-asum factory sy)
+  (test-sy-sum factory sy)
+  (test-sy-amax factory sy))
 
 (defn test-blas-gb [factory]
   (test-gb-constructor factory)
@@ -1735,3 +1841,51 @@
   (test-gb-asum factory)
   (test-gb-sum factory)
   (test-gb-amax factory))
+
+(defn test-blas-tp [factory]
+  (test-packed-constructor factory tp)
+  (test-packed factory tp)
+  (test-packed-copy factory tp)
+  (test-uplo-swap factory tp)
+  (test-uplo-scal factory tp)
+  (test-uplo-axpy factory tp)
+  (test-tr-mv factory tp)
+  (test-tp-mm factory))
+
+(defn test-blas-tp-host [factory]
+  (test-tr-entry factory tp)
+  (test-tr-entry! factory tp)
+  (test-tr-bulk-entry! factory tp)
+  (test-tr-alter! factory tp)
+  (test-tp-dot factory)
+  (test-tr-nrm2 factory tp)
+  (test-tr-asum factory tp)
+  (test-tr-sum factory tp)
+  (test-tr-amax factory tp))
+
+(defn test-lapack-tp [factory]
+  (test-uplo-srt factory tp))
+
+(defn test-blas-sp [factory]
+  (test-packed-constructor factory sp)
+  (test-packed factory sp)
+  (test-packed-copy factory sp)
+  (test-uplo-swap factory sp)
+  (test-uplo-scal factory sp)
+  (test-uplo-axpy factory sp)
+  (test-sy-mv factory sp)
+  (test-sp-mm factory))
+
+(defn test-blas-sp-host [factory]
+  (test-sy-entry factory sp)
+  (test-sy-entry! factory sp)
+  (test-sy-bulk-entry! factory sp)
+  (test-sy-alter! factory sp)
+  (test-sp-dot factory)
+  (test-sy-nrm2 factory sp)
+  (test-sy-asum factory sp)
+  (test-sy-sum factory sp)
+  (test-sy-amax factory sp))
+
+(defn test-lapack-sp [factory]
+  (test-uplo-srt factory sp))

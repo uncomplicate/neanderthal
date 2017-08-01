@@ -11,10 +11,11 @@
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride upper? lower? column? row? unit-diag?]]
              [math :refer [pow sqrt]]]
-            [uncomplicate.neanderthal.internal.api
-             :refer [factory index-factory engine stripe-navigator band-navigator data-accessor
-                     create-vector create-ge create-sy fits-navigation? nrm1 nrmi trf tri trs con sv
-                     copy nrm2 flip-uplo amax navigator region]]
+            [uncomplicate.neanderthal.internal
+             [api :refer [factory index-factory engine stripe-navigator band-navigator data-accessor
+                          create-vector create-ge create-sy fits-navigation? nrm1 nrmi trf tri trs con sv
+                          copy nrm2 flip-uplo amax navigator region]]
+             [navigation :refer [dostripe-layout]]]
             [uncomplicate.neanderthal.internal.host.cblas :refer [packed-len]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
            [uncomplicate.neanderthal.internal.api GEMatrix BandNavigator Region LayoutNavigator])) ;;TODO clean up
@@ -186,21 +187,25 @@
 ;;------------------------ Packed Matrix -------------------------------------------
 
 (defmacro packed-laset [method alpha a]
-  `(do
-     (with-lapack-check
-       (~method CBLAS/ORDER_ROW_MAJOR (int \g) (packed-len ~a) 1 ~alpha ~alpha (.buffer ~a) (.offset ~a) 1))
+  `(let [reg# (region ~a)
+         buff# (.buffer ~a)
+         ofst# (.offset ~a)]
+     (if-not (.isDiagUnit reg#)
+       (with-lapack-check
+         (~method CBLAS/ORDER_ROW_MAJOR (int \g) (packed-len ~a) 1 ~alpha ~alpha buff# ofst# 1))
+       (dostripe-layout ~a len# idx#
+                        (with-lapack-check
+                          (~method CBLAS/ORDER_ROW_MAJOR (int \g) len# 1 ~alpha ~alpha buff# (+ ofst# idx#) 1))))
      ~a))
 
 (defmacro packed-lasrt [method a increasing]
   `(let [increasing# (int (if ~increasing \I \D))
          n# (.ncols ~a)
          buff# (.buffer ~a)
-         ofst# (.offset ~a)
-         nav# (navigator ~a)
-         region# (region ~a)]
-     (dotimes [j# n#]
-       (with-lapack-check
-         (~method increasing# (- (.start nav# region# j#) (.end nav# region# j#)) buff# (+ ofst# (* j# n#)))))
+         ofst# (.offset ~a)]
+     (dostripe-layout ~a len# idx#
+                      (with-lapack-check
+                        (~method increasing# len# buff# (+ ofst# idx#))))
      ~a))
 
 ;; =========== Drivers and Computational LAPACK Routines ===========================

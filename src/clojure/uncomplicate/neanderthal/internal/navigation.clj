@@ -235,12 +235,12 @@
 (deftype BandRegion [^long m ^long n ^long kl ^long ku]
   Object
   (hashCode [a]
-    (-> (hash-combine m) (hash-combine n) (hash-combine kl) (hash-combine ku)))
+    (-> (hash-combine :BandRegion) (hash-combine m) (hash-combine n) (hash-combine kl) (hash-combine ku)))
   (equals [a b]
     (or (identical? a b)
         (and (instance? BandRegion b)
              (= m (.m ^BandRegion b)) (= n (.n ^BandRegion b))
-             (= (.kl ^BandRegion b)) (= (.ku ^BandRegion b)))))
+             (= kl (.kl ^BandRegion b)) (= ku (.ku ^BandRegion b)))))
   (toString [a]
     (format "#BandRegion[mxn:%dx%d, kl:%d, ku:%d]" m n kl ku))
   Region
@@ -267,15 +267,19 @@
   ([^long n lower? diag-unit?]
    (let [diag-pad (if diag-unit? -1 0)]
      (if lower?
-       (BandRegion. n n (dec n) diag-pad)
-       (BandRegion. n n diag-pad (dec n)))))
+       (BandRegion. n n (max 0 (dec n)) diag-pad)
+       (BandRegion. n n diag-pad (max 0 (dec n))))))
   ([^long n lower?]
    (if lower?
-     (BandRegion. n n (dec n) 0)
-     (BandRegion. n n 0 (dec n)))))
+     (BandRegion. n n (max 0 (dec n)) 0)
+     (BandRegion. n n 0 (max 0 (dec n))))))
 
-(defn transpose [^BandRegion region]
-  (BandRegion. (.n region) (.m region) (.ku region) (.kl region)))
+(defn create-unit-region [^BandRegion reg]
+  (if (.isDiagUnit reg)
+    reg
+    (if (.isLower reg)
+      (BandRegion. (.m reg) (.n reg) (.kl reg) -1)
+      (BandRegion. (.m reg) (.n reg) -1 (.ku reg)))))
 
 ;; =================== Navigator ==========================================
 
@@ -287,6 +291,8 @@
     (.colEnd ^Region region j))
   (stripe [_ a j]
     (.col ^Matrix a j))
+  (index [_ stor i j]
+    (.index ^DenseStorage stor i j))
   (isColumnMajor [_]
     true)
   (isRowMajor [_]
@@ -307,6 +313,8 @@
     (.rowEnd ^Region region j))
   (stripe [_ a j]
     (.row ^Matrix a j))
+  (index [_ stor i j]
+    (.index ^DenseStorage stor j i))
   (isColumnMajor [_]
     false)
   (isRowMajor [_]
@@ -324,165 +332,130 @@
 
 ;; =================== Full Storage ========================================
 
-(deftype ColumnFullStorage [^long m ^long n ^long ld]
+(deftype StripeFullStorage [^long sd ^long fd ^long ld]
+  Object
+  (hashCode [a]
+    (-> (hash-combine :FullStorage) (hash-combine sd) (hash-combine fd) (hash-combine ld)))
+  (equals [a b]
+    (or (identical? a b)
+        (and (instance? StripeFullStorage b) (= sd (.sd ^StripeFullStorage b))
+             (= fd (.fd ^StripeFullStorage b)) (= ld (.ld ^StripeFullStorage b)))))
+  (toString [a]
+    (format "#FullStorage[sd:%d, fd:%d, ld:%d]" sd fd ld))
   FullStorage
   (sd [_]
-    m)
+    sd)
   (ld [_]
     ld)
   DenseStorage
-  (index [_ i j];;TODO offset in buffer block
+  (index [_ i j]
     (+ (* j ld) i))
   (fd [_]
-    n)
-  (isColumnMajor [_]
-    true)
-  (layout [_]
-    102))
-
-(deftype RowFullStorage [^long m ^long n ^long ld]
-  FullStorage
-  (sd [_]
-    n)
-  (ld [_]
-    ld)
-  DenseStorage
-  (index [_ i j];;TODO offset in buffer block
-    (+ (* i ld) j))
-  (fd [_]
-    m)
-  (isColumnMajor [_]
-    false)
-  (layout [_]
-    101))
+    fd))
 
 (defn full-storage
   ([^long layout ^long m ^long n ^long ld]
    (if (= COLUMN_MAJOR layout)
-     (ColumnFullStorage. m n ld)
-     (RowFullStorage. m n ld)))
+     (StripeFullStorage. m n (max m ld))
+     (StripeFullStorage. n m (max n ld))))
   ([^long layout ^long m ^long n]
    (if (= COLUMN_MAJOR layout)
-     (ColumnFullStorage. m n m)
-     (RowFullStorage. m n n))))
+     (StripeFullStorage. m n m)
+     (StripeFullStorage. m n n))))
 
 ;; =================== Full Band Storage =========================================
 
-(deftype ColumnBandStorage [^long m ^long n ^long ld ^long kl ^long ku]
+(deftype StripeBandStorage [^long h ^long w ^long ld ^long fd ^long sd ^long kl ^long ku]
+  Object
+  (hashCode [a]
+    (-> (hash-combine :BandStorage) (hash-combine ld) (hash-combine fd) (hash-combine sd)
+        (hash-combine kl) (hash-combine ku) (hash-combine ld)))
+  (equals [a b]
+    (or (identical? a b)
+        (and (instance? StripeBandStorage b) (= sd (.sd ^StripeBandStorage b))
+             (= fd (.fd ^StripeBandStorage b)) (= ld (.ld ^StripeBandStorage b))
+             (= kl (.kl ^StripeBandStorage b)) (= ku (.ku ^StripeBandStorage b)))))
+  (toString [a]
+    (format "#BandStorage[sd:%d, fd:%d, ld:%d, kl:%d, ku:%d]" sd fd ld kl ku))
   BandStorage
   (height [_]
-    (inc (+ kl ku)))
+    h)
   (width [_]
-    (min n (+ (min m n) ku)))
+    w)
   (kd [_]
     ku)
   FullStorage
   (sd [_]
-    (min m (+ (min m n) kl)))
-  (ld [_]
-    ld)
-  DenseStorage
-  (index [_ i j];;TODO offset in buffer block
-    (+ (* j ld) (- ku j) i))
-  (fd [_]
-    (min n (+ (min m n) ku)))
-  (isColumnMajor [_]
-    true)
-  (layout [_]
-    102))
-
-(deftype RowBandStorage [^long m ^long n ^long ld ^long kl ^long ku]
-  BandStorage
-  (height [_]
-    (min m (+ (min m n) kl)))
-  (width [_]
-    (inc (+ kl ku)))
-  (kd [_]
-    kl)
-  FullStorage
-  (sd [_]
-    (min n (+ (min m n) ku)))
+    sd)
   (ld [_]
     ld)
   DenseStorage
   (index [_ i j]
-    (+ (* i ld) (- kl i) j))
+    (+ (* j ld) (- ku j) i))
   (fd [_]
-    (min m (+ (min m n) kl)))
-  (isColumnMajor [_]
-    false)
-  (layout [_]
-    101))
+    fd))
 
 (defn band-storage
-  ([layout m n ld kl ku]
-   (if (= COLUMN_MAJOR layout)
-     (ColumnBandStorage. m n ld kl ku)
-     (RowBandStorage. m n ld kl ku)))
-  ([layout ^long n ^long uplo ^long diag]
-   (let [unit-pad (if (= DIAG_NON_UNIT diag) 0 -1)]
-     (if (= LOWER uplo)
-       (band-storage layout n n (dec n) unit-pad)
-       (band-storage layout n n unit-pad (dec n)))))
-  ([layout ^long n ^long uplo]
-   (if (= LOWER uplo)
-     (band-storage layout n n (dec n) 0)
-     (band-storage layout n n 0 (dec n)))))
+  ([column? m n ld kl ku]
+   (if column?
+     (let [m (long m)
+           n (long n)
+           ld (long ld)
+           kl (long kl)
+           ku (long ku)]
+       (StripeBandStorage. (inc (+ kl ku))
+                           (min n (+ (min m n) ku))
+                           (max ld (inc (+ kl ku)))
+                           (min n (+ (min m n) ku))
+                           (min m (+ (min m n) kl))
+                           kl ku))
+     (band-storage true n m ld ku kl)))
+  ([column? lower? diag-unit? ^long n]
+   (let [unit-pad (if diag-unit? -1 0)]
+     (if lower?
+       (band-storage column? n n (dec n) unit-pad)
+       (band-storage column? n n unit-pad (dec n))))))
 
 ;; =================== Packed Storage ======================================
 
-(deftype UpperColumnPackedStorage [^long n]
+(deftype TopPackedStorage [^long n]
+  Object
+  (hashCode [a]
+    (-> (hash-combine :TopPackedStorage) (hash-combine n)))
+  (equals [a b]
+    (or (identical? a b)
+        (and (instance? TopPackedStorage b) (= n (.n ^TopPackedStorage b)))))
+  (toString [a]
+    (format "#TopPackedstorage[n:%d]" n))
   DenseStorage
   (index [_ i j]
     (+ i (unchecked-divide-int (* j (inc j)) 2)))
   (fd [_]
-    n)
-  (isColumnMajor [_]
-    true)
-  (layout [_]
-    102))
+    n))
 
-(deftype UpperRowPackedStorage [^long n]
-  DenseStorage
-  (index [_ i j]
-    (+ j (unchecked-divide-int (* i (dec (- (* 2 n) i))) 2)))
-  (fd [_]
-    n)
-  (isColumnMajor [_]
-    false)
-  (layout [_]
-    101))
-
-(deftype LowerColumnPackedStorage [^long n]
+(deftype BottomPackedStorage [^long n]
+  Object
+  (hashCode [a]
+    (-> (hash-combine :BottomPackedStorage) (hash-combine n)))
+  (equals [a b]
+    (or (identical? a b)
+        (and (instance? BottomPackedStorage b) (= n (.n ^BottomPackedStorage b)))))
+  (toString [a]
+    (format "#BottomPackedstorage[n:%d]" n))
   DenseStorage
   (index [_ i j]
     (+ i (unchecked-divide-int (* j (dec (- (* 2 n) j))) 2)))
   (fd [_]
-    n)
-  (isColumnMajor [_]
-    true)
-  (layout [_]
-    102))
-
-(deftype LowerRowPackedStorage [^long n]
-  DenseStorage
-  (index [_ i j]
-    (+ j (unchecked-divide-int (* i (inc i)) 2)))
-  (fd [_]
-    n)
-  (isColumnMajor [_]
-    false)
-  (layout [_]
-    101))
+    n))
 
 (defn packed-storage [column? lower? ^long n]
   (if column?
     (if lower?
-      (LowerColumnPackedStorage. n)
-      (UpperColumnPackedStorage. n))
+      (BottomPackedStorage. n)
+      (TopPackedStorage. n))
     (if lower?
-      (LowerRowPackedStorage. n)
-      (UpperRowPackedStorage. n))))
+      (TopPackedStorage. n)
+      (BottomPackedStorage. n))))
 
 ;; ======================= Layout utillities ==============================
 
@@ -593,6 +566,37 @@
           region# (region ~a)]
       (and-layout nav# stor# region# ~i ~j ~expr))))
 
+(defmacro dostripe-layout
+  ([nav stor region len idx expr]
+   `(dotimes [j# (.fd ~stor)]
+      (let [start# (.start ~nav ~region j#)
+            ~len (- (.end ~nav ~region j#) start#)
+            ~idx (.index ~stor start# j#)]
+        ~expr)))
+  ([a len idx expr]
+   `(let [nav# (navigator ~a)
+          stor# (storage ~a)
+          region# (region ~a)]
+      (dostripe-layout nav# stor# region# ~len ~idx ~expr)
+      ~a)))
+
+(defmacro accu-layout
+  ([nav stor region len idx acc init expr]
+   `(let [n# (.fd ~stor)]
+      (loop [j# n# ~acc ~init]
+        (if (< j# n#)
+          (recur (inc j#)
+                 (let [start# (.start ~nav ~region j#)
+                       ~len (- (.end ~nav ~region j#) start#)
+                       ~idx (.index ~stor start# j#)]
+                   ~expr))
+          ~acc))))
+  ([a len idx acc init expr]
+   `(let [nav# (navigator ~a)
+          stor# (storage ~a)
+          region# (region ~a)]
+      (accu-layout nav# stor# region# ~len ~idx ~acc ~init ~expr))))
+
 ;; ========================= Default value ===============================
 
 (deftype SYDefault []
@@ -614,8 +618,8 @@
       tr-default (TRDefault.)
       tr-unit-default (UnitTRDefault.)]
 
-  (defn real-default [type unit]
+  (defn real-default [type diag-unit]
     (case type
       :sy sy-default
-      :tr (if unit tr-unit-default tr-default)
+      :tr (if diag-unit tr-unit-default tr-default)
       nil)))

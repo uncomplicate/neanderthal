@@ -31,3 +31,11 @@
 
 (real-test/test-blas-gb mkl-double)
 (real-test/test-blas-gb-host mkl-double)
+
+(real-test/test-blas-tp mkl-double)
+(real-test/test-blas-tp-host mkl-double)
+(real-test/test-lapack-tp mkl-double)
+
+(real-test/test-blas-sp mkl-double)
+(real-test/test-blas-sp-host mkl-double)
+(real-test/test-lapack-sp mkl-double)
