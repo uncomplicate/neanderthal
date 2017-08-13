@@ -9,68 +9,6 @@
 (ns uncomplicate.neanderthal.internal.api
   (:require [uncomplicate.commons.core :refer [Releaseable]]))
 
-(definterface UploNavigator ;;TODO obsolete see  Navigator
-  (^boolean accessible [^long i ^long j])
-  (^long colStart [^long n ^long i])
-  (^long colEnd [^long n ^long i])
-  (^long rowStart [^long n ^long i])
-  (^long rowEnd [^long n ^long i])
-  (^long defaultEntry [^long i ^long j])
-  (^long diaDim [^long n ^long k]);;TODO it should be removed, since it is used at exactly one place (.dia)?
-  (^long unitIndex [^long i]))
-
-(definterface StripeNavigator;;TODO obsolete: see layoutnavigator
-  (^long start [^long n ^long j])
-  (^long end [^long n ^long j])
-  (^long offsetPad [^long ld]))
-
-(definterface RealOrderNavigator
-  (^long sd [^long m ^long n]);TODO full storage
-  (^long fd [^long m ^long n]);;TODO full storage
-  (^long index [^long ofst ^long ld ^long k]);;TODO to storage
-  (^long index [^long ofst ^long ld ^long i ^long j]);;TODO to storage
-  (^double get [a ^long i ^long j]);;TODO real layout navigator
-  (set [a ^long i ^long j ^double val]);;TODO real layout navigator
-  (invokePrimitive [f ^long i ^long j ^double val]);;todo real layout navigator
-  (stripe [a ^long j]));;todo layoutnavigator
-
-(definterface BandNavigator;;TODO obsolete see navigators and storages
-  (^long height [^long m ^long n ^long kl ^long ku]);;TODO banded stoarage
-  (^long width [^long m ^long n ^long kl ^long ku]);;TODO band storage
-  (^long sd [^long m ^long n ^long kl ^long ku]);;TODO full storage
-  (^long fd [^long m ^long n ^long kl ^long ku]);;TODO full storage
-  (^long index [^long ofst ^long ld ^long kl ^long ku ^long i ^long j]);;todo storage
-  (^long index [^long ofst ^long ld ^long kl ^long ku ^long k]);;todo storage
-  (^long stripeIndex [^long offset ^long ld ^long kl ^long ku ^long i ^long j]);;TODO unused!!!!!!
-  (^long start [^long kl ^long ku ^long stripe]);;TODO layout navigator
-  (^long end [^long m ^long n ^long kl ^long ku ^long stripe]);;TODO layout navigator
-  (^long kd [^long kl ^long ku]));;TODO banded storage
-
-;; ================================ Navigation ===================================
-
-(definterface Region
-  (^boolean accessible [^long i ^long j])
-  (^long colStart [^long i])
-  (^long colEnd [^long i])
-  (^long rowStart [^long i])
-  (^long rowEnd [^long i])
-  (^boolean isUpper [])
-  (^boolean isLower [])
-  (^boolean isDiagUnit []))
-
-(definterface LayoutNavigator
-  (^long start [reg ^long j])
-  (^long end [reg ^long j])
-  (^long index [stor ^long i ^long j])
-  (stripe [a ^long j])
-  (^boolean isColumnMajor [])
-  (^boolean isRowMajor []))
-
-(definterface RealLayoutNavigator
-  (^double get [a ^long i ^long j])
-  (set [a ^long i ^long j ^double val])
-  (invokePrimitive [f ^long i ^long j ^double val]))
-
 ;; ================================ Default entry =================================
 
 (definterface RealDefault
@@ -78,32 +16,13 @@
 
 ;; ================================ Storage =======================================
 
-(definterface DenseStorage
-  (^long fd [])
-  (^long index [^long i ^long j]))
+(defprotocol Flippable
+  (flip [this]))
 
-;;TODO ld and stride... Block should be incorporated in this system
-
-(definterface FullStorage
-  (^long ld [])
-  (^long sd []))
-
-(definterface BandStorage
-  (^long height [])
-  (^long width [])
-  (^long kd []))
-
-(defprotocol StorageProvider;;TODO rename
+(defprotocol Navigable
   (region ^Region [this])
   (storage ^DenseStorage [this])
   (navigator ^LayoutNavigator [this]))
-
-
-(defprotocol Navigable ;;TODO probably remove after refactoring to navigators and storages
-  (order-navigator ^RealOrderNavigator [this])
-  (stripe-navigator ^StripeNavigator [this])
-  (uplo-navigator ^UploNavigator [this])
-  (band-navigator ^BandNavigator [this]))
 
 ;; ====================== Computation engines ========================================
 
@@ -174,17 +93,23 @@
 
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
-  (vector-reduce-map [f init g x] [f init g x y] [f init g x y z] [f init g x y z v]))
+  (vector-map-reduce [f init g x] [f init g x y] [f init g x y z] [f init g x y z v])
+  (matrix-reduce [f init a] [f init a b] [f init a b c] [f init a b c d])
+  (matrix-map-reduce [f init g a] [f init g a b] [f init g a b c] [f init g a b c d]))
 
 (defprotocol Factory
   (create-vector [this n init])
-  (create-ge [this m n ord init])
-  (create-tr [this n ord uplo diag init])
-  (create-sy [this n ord uplo init])
-  (create-gb [this m n kl ku ord init])
-  (create-tb [this n k ord uplo init])
-  (create-sb [this n k ord uplo init])
-  (create-packed [this n matrix-type column? lower? diag-unit? init])
+  (create-ge [this m n column? init])
+  (create-uplo [this n type column? lower? diag-unit? init])
+  (create-tr [this n column? lower? diag-unit? init])
+  (create-sy [this n column? lower? init])
+  (create-banded [this m n kl ku type column? init])
+  (create-gb [this m n kl ku column? init])
+  (create-tb [this n k column? lower? diag-unit? init])
+  (create-sb [this n k column? lower? init])
+  (create-packed [this n type column? lower? diag-unit? init])
+  (create-tp [this n column? lower? diag-unit? init])
+  (create-sp [this n column? lower? init])
   (vector-engine [this])
   (ge-engine [this])
   (tr-engine [this])
@@ -211,9 +136,10 @@
 
 (defprotocol MemoryContext
   (compatible? [this other])
+  (device-type [this]);;TODO :cpu or :gpu or :opencl
   (fits? [this other])
   (fits-navigation? [this other]);; TODO remove. obsolete....
-  (fully-packed? [this]));; TODO move to storage/navigation/whatever
+  )
 
 (defprotocol Container
   (raw [this] [this factory])
@@ -223,8 +149,8 @@
 
 (defprotocol DenseContainer
   (view-ge [this] [this stride-mult])
-  (view-tr [this uplo diag])
-  (view-sy [this uplo])
+  (view-tr [this lower? diag-unit?])
+  (view-sy [this lower?])
   (view-vctr [this] [this stride-mult])
   (view-gb [this kl ku] [this]))
 
@@ -257,6 +183,17 @@
 
 ;; ============================================================================
 
+(defn options-column? [options]
+  (not (= :row (:order options))))
+
+(defn options-lower? [options]
+  (not (= :upper (:uplo options))))
+
+(defn options-diag-unit? [options]
+  (= :unit (:diag options)))
+
+
+;;TODO (probably) remove all this
 (def ^:const ROW_MAJOR 101)
 (def ^:const COLUMN_MAJOR 102)
 (def ^:const DEFAULT_ORDER COLUMN_MAJOR)
@@ -319,28 +256,3 @@
     132 132
     131 131
     (throw (ex-info "Invalid diag" {:diag diag}))))
-
-(defn flip ^long [^long property]
-  (case property
-    101 102
-    102 101
-    111 112
-    112 111
-    113 111
-    121 122
-    122 121
-    131 132
-    132 131
-    (throw (ex-info "Invalid property" {:property property}))))
-
-(defn flip-layout ^long [^long layout] ;;TODO obsolete
-  (case layout
-    101 102
-    102 101
-    (throw (ex-info "Invalid layout" {:layout layout}))))
-
-(defn flip-uplo ^long [^long uplo];;TODO obsolete
-  (case uplo
-    121 122
-    122 121
-    (throw (ex-info "Invalid uplo" {:uplo uplo}))))

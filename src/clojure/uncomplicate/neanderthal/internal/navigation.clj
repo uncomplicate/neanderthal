@@ -7,232 +7,17 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.navigation
-  (:require [uncomplicate.neanderthal.internal.api
-             :refer [COLUMN_MAJOR ROW_MAJOR UPPER LOWER DIAG_NON_UNIT navigator region storage]])
+  (:require [uncomplicate.neanderthal.internal
+             [api :refer :all]
+             [common :refer [dragan-says-ex]]])
   (:import [clojure.lang IFn$LLDD]
-           [uncomplicate.neanderthal.internal.api RealOrderNavigator UploNavigator StripeNavigator
-            LayoutNavigator RealLayoutNavigator DenseStorage FullStorage BandStorage
-            Region RealDefault RealBufferAccessor
-            BandNavigator RealChangeable RealMatrix Matrix]))
+           [uncomplicate.neanderthal.internal.api LayoutNavigator RealLayoutNavigator DenseStorage
+            FullStorage Region RealDefault RealBufferAccessor RealChangeable
+            RealMatrix Matrix]))
 
-(deftype ColumnRealOrderNavigator []
-  RealOrderNavigator
-  (sd [_ m n]
-    m)
-  (fd [_ m n]
-    n)
-  (index [_ offset ld i j]
-    (+ offset (* ld j) i))
-  (index [_ offset ld k]
-    (if (< 0 k)
-      (+ offset (* ld k))
-      (- offset k)))
-  (get [_ a i j]
-    (.entry ^RealMatrix a i j))
-  (set [_ a i j val]
-    (.set ^RealChangeable a i j val))
-  (invokePrimitive [_ f i j val]
-    (.invokePrim ^IFn$LLDD f i j val))
-  (stripe [_ a j]
-    (.col ^RealMatrix a j)))
+;; ======================== Region  =================================================
 
-(deftype RowRealOrderNavigator []
-  RealOrderNavigator
-  (sd [_ m n]
-    n)
-  (fd [_ m n]
-    m)
-  (index [_ offset ld i j]
-    (+ offset (* ld i) j))
-  (index [_ offset ld k]
-    (if (< 0 k)
-      (+ offset k)
-      (- offset (* ld k))))
-  (get [_ a i j]
-    (.entry ^RealMatrix a j i))
-  (set [_ a i j val]
-    (.set ^RealChangeable a j i val))
-  (invokePrimitive [_ f i j val]
-    (.invokePrim ^IFn$LLDD f j i val))
-  (stripe [_ a i]
-    (.row ^RealMatrix a i)))
-
-(def col-navigator (ColumnRealOrderNavigator.))
-(def row-navigator (RowRealOrderNavigator.))
-
-(deftype NonUnitLowerNavigator []
-  UploNavigator
-  (colStart [_ _ i]
-    i)
-  (colEnd [_ n _]
-    n)
-  (rowStart [_ _ _]
-    0)
-  (rowEnd [_ n i]
-    (inc i))
-  (diaDim [_ n k]
-    (if (< k 1)
-      (+ n k)
-      0))
-  (unitIndex [_ i]
-    -1)
-  (defaultEntry [_ i j]
-    (* 2 (Long/signum (inc (Long/signum (- i j)))))))
-
-(deftype UnitLowerNavigator []
-  UploNavigator
-  (colStart [_ _ i]
-    (inc i))
-  (colEnd [_ n _]
-    n)
-  (rowStart [_ _ _]
-    0)
-  (rowEnd [_ _ i]
-    i)
-  (diaDim [_ n k]
-    (if (< k 0)
-      (+ n k)
-      0))
-  (unitIndex [_ i]
-    i)
-  (defaultEntry [_ i j]
-    (inc (Long/signum (- i j)))))
-
-(deftype NonUnitUpperNavigator []
-  UploNavigator
-  (colStart [_ _ _]
-    0)
-  (colEnd [_ _ i]
-    (inc i))
-  (rowStart [_ _ i]
-    i)
-  (rowEnd [_ n _]
-    n)
-  (diaDim [_ n k]
-    (if (< -1 k)
-      (- n k)
-      0))
-  (unitIndex [_ i]
-    -1)
-  (defaultEntry [_ i j]
-    (* 2 (Long/signum (inc (Long/signum (- j i)))))))
-
-(deftype UnitUpperNavigator []
-  UploNavigator
-  (colStart [_ _ _]
-    0)
-  (colEnd [_ _ i]
-    i)
-  (rowStart [_ _ i]
-    (inc i))
-  (rowEnd [_ n _]
-    n)
-  (diaDim [_ n k]
-    (if (< 0 k)
-      (- n k)
-      0))
-  (unitIndex [_ i]
-    i)
-  (defaultEntry [_ i j]
-    (inc (Long/signum (- j i)))))
-
-(def non-unit-upper-nav (NonUnitUpperNavigator.))
-(def unit-upper-nav (UnitUpperNavigator.))
-(def non-unit-lower-nav (NonUnitLowerNavigator.))
-(def unit-lower-nav (UnitLowerNavigator.))
-
-(deftype UnitTopNavigator []
-  StripeNavigator
-  (start [_ _ _]
-    0)
-  (end [_ _ i]
-    i)
-  (offsetPad [_ ld]
-    ld))
-
-(deftype NonUnitTopNavigator []
-  StripeNavigator
-  (start [_ _ i]
-    0)
-  (end [_ _ i]
-    (inc i))
-  (offsetPad [_ _]
-    0))
-
-(deftype UnitBottomNavigator []
-  StripeNavigator
-  (start [_ _ i]
-    (inc i))
-  (end [_ n _]
-    n)
-  (offsetPad [_ _]
-    1))
-
-(deftype NonUnitBottomNavigator []
-  StripeNavigator
-  (start [_ _ i]
-    i)
-  (end [_ n _]
-    n)
-  (offsetPad [_ _]
-    0))
-
-(def non-unit-top-navigator (NonUnitTopNavigator.))
-(def unit-top-navigator (UnitTopNavigator.))
-(def non-unit-bottom-navigator (NonUnitBottomNavigator.))
-(def unit-bottom-navigator (UnitBottomNavigator.))
-
-(deftype ColumnBandNavigator []
-  BandNavigator
-  (height [_ _ _ kl ku]
-    (inc (+ kl ku)))
-  (width [_ m n _ ku]
-    (min n (+ (min m n) ku)))
-  (sd [_ m n kl _]
-    (min m (+ (min m n) kl)))
-  (fd [_ m n _ ku]
-    (min n (+ (min m n) ku)))
-  (start [_ _ ku j]
-    (max 0 (- j ku)))
-  (end [_ m _ kl _ j]
-    (min m (inc (+ j kl))))
-  (kd [_ _ ku]
-    ku)
-  (index [_ offset ld kl ku i j]
-    (+ offset (* j ld) (- ku j) i))
-  (index [this offset ld kl ku k]
-    (.index this offset ld kl ku (max 0 (- k)) (max 0 k))))
-
-(deftype RowBandNavigator []
-  BandNavigator
-  (height [_ m n kl _];;all these should be simple no-arg queries / maybe storage should be a replacement for info
-    (min m (+ (min m n) kl)))
-  (width [_ _ _ kl ku]
-    (inc (+ kl ku)))
-  (sd [_ m n _ ku]
-    (min n (+ (min m n) ku)))
-  (fd [_ m n kl _]
-    (min m (+ (min m n) kl)))
-  (start [_ kl _ i]
-    (max 0 (- i kl)))
-  (end [_ _ n _ ku i]
-    (min n (inc (+ i ku))))
-  (kd [_ kl _]
-    kl)
-  (index [_ offset ld kl _ i j]
-    (+ offset (* i ld) (- kl i) j))
-  (index [this offset ld kl ku k] ;; TODO this should delegate to the index in an abstract way for all storages
-    (.index this offset ld kl ku (max 0 (- k)) (max 0 k))))
-
-(def col-band-navigator (ColumnBandNavigator.))
-(def row-band-navigator (RowBandNavigator.))
-
-;; TODO new navigatio starts from here! ============================================
-
-
-;; ==================== Band Region Selector =======================================
-
-(deftype BandRegion [^long m ^long n ^long kl ^long ku]
+(deftype BandRegion [^long m ^long n ^long kl ^long ku ^long uplo ^long diag]
   Object
   (hashCode [a]
     (-> (hash-combine :BandRegion) (hash-combine m) (hash-combine n) (hash-combine kl) (hash-combine ku)))
@@ -259,29 +44,84 @@
   (isUpper [_]
     (= n (inc ku)))
   (isDiagUnit [_]
-    (or (= -1 kl) (= -1 ku))))
+    (or (= -1 kl) (= -1 ku)))
+  (uplo [_]
+    uplo)
+  (diag [_]
+    diag)
+  (surface [_]
+    (- (* m n)
+       (unchecked-divide-int (* (- m kl) (dec (- m kl))) 2)
+       (unchecked-divide-int (* (- n ku) (dec (- n ku))) 2)))
+  (kl [_]
+    kl)
+  (ku [_]
+    ku)
+  Flippable
+  (flip [_]
+    (BandRegion. n m ku kl (case uplo 121 122 122 121 0) diag)))
 
 (defn band-region
   ([^long m ^long n ^long kl ^long ku]
-   (BandRegion. m n kl ku))
+   (BandRegion. m n kl ku (cond (< 0 kl) 122 (< 0 ku) 121 :default 0)
+                (if (or (= -1 kl) (= -1 ku)) 132 131)))
   ([^long n lower? diag-unit?]
-   (let [diag-pad (if diag-unit? -1 0)]
+   (let [diag-pad (if diag-unit? -1 0)
+         diag (if diag-unit? 132 131)]
      (if lower?
-       (BandRegion. n n (max 0 (dec n)) diag-pad)
-       (BandRegion. n n diag-pad (max 0 (dec n))))))
+       (band-region n n (max 0 (dec n)) diag-pad)
+       (band-region n n diag-pad (max 0 (dec n))))))
   ([^long n lower?]
-   (if lower?
-     (BandRegion. n n (max 0 (dec n)) 0)
-     (BandRegion. n n 0 (max 0 (dec n))))))
+   (band-region n lower? false)))
 
-(defn create-unit-region [^BandRegion reg]
-  (if (.isDiagUnit reg)
-    reg
-    (if (.isLower reg)
-      (BandRegion. (.m reg) (.n reg) (.kl reg) -1)
-      (BandRegion. (.m reg) (.n reg) -1 (.ku reg)))))
+(deftype GERegion [^long m ^long n]
+  Object
+  (hashCode [a]
+    (-> (hash-combine :GERegion) (hash-combine m) (hash-combine n)))
+  (equals [a b]
+    (or (identical? a b)
+        (and (instance? GERegion b)
+             (= m (.m ^GERegion b)) (= n (.n ^GERegion b)))))
+  (toString [a]
+    (format "#GERegion[mxn:%dx%d]" m n))
+  Region
+  (accessible [_ _ _]
+    true)
+  (colStart [_ _]
+    0)
+  (colEnd [_ _]
+    m)
+  (rowStart [_ _]
+    0)
+  (rowEnd [_ _]
+    n)
+  (isLower [_]
+    false)
+  (isUpper [_]
+    false)
+  (isDiagUnit [_]
+    false)
+  (uplo [_]
+    122)
+  (diag [_]
+    131)
+  (surface [_]
+    (* m n))
+  (kl [_]
+    (dec m))
+  (ku [_]
+    (dec n))
+  Flippable
+  (flip [_]
+    (GERegion. n m)))
+
+(defn ge-region [^long m ^long n]
+  (GERegion. m n))
 
 ;; =================== Navigator ==========================================
+
+(declare real-column-navigator)
+(declare real-row-navigator)
 
 (deftype RealColumnNavigator []
   LayoutNavigator
@@ -297,13 +137,18 @@
     true)
   (isRowMajor [_]
     false)
+  (layout [_]
+    102)
   RealLayoutNavigator
   (get [_ a i j]
     (.entry ^RealMatrix a i j))
   (set [_ a i j val]
     (.set ^RealChangeable a i j val))
   (invokePrimitive [_ f i j val]
-    (.invokePrim ^IFn$LLDD f i j val)))
+    (.invokePrim ^IFn$LLDD f i j val))
+  Flippable
+  (flip [_]
+    real-row-navigator))
 
 (deftype RealRowNavigator []
   LayoutNavigator
@@ -319,16 +164,27 @@
     false)
   (isRowMajor [_]
     true)
+  (layout [_]
+    101)
   RealLayoutNavigator
   (get [_ a i j]
     (.entry ^RealMatrix a j i))
   (set [_ a i j val]
     (.set ^RealChangeable a j i val))
   (invokePrimitive [_ f i j val]
-    (.invokePrim ^IFn$LLDD f j i val)))
+    (.invokePrim ^IFn$LLDD f j i val))
+  Flippable
+  (flip [_]
+    real-column-navigator))
 
 (def ^:const real-column-navigator (RealColumnNavigator.))
 (def ^:const real-row-navigator (RealRowNavigator.))
+
+(defn layout-navigator [column?]
+  (if column? real-column-navigator real-row-navigator))
+
+(defn real-navigator ^RealLayoutNavigator [a]
+  (navigator a))
 
 ;; =================== Full Storage ========================================
 
@@ -351,66 +207,67 @@
   (index [_ i j]
     (+ (* j ld) i))
   (fd [_]
-    fd))
+    fd)
+  (isGapless [_]
+    (= sd ld))
+  (capacity [_]
+    (* ld fd)))
 
 (defn full-storage
-  ([^long layout ^long m ^long n ^long ld]
-   (if (= COLUMN_MAJOR layout)
+  ([column? ^long m ^long n ^long ld]
+   (if column?
      (StripeFullStorage. m n (max m ld))
      (StripeFullStorage. n m (max n ld))))
-  ([^long layout ^long m ^long n]
-   (if (= COLUMN_MAJOR layout)
+  ([column? ^long m ^long n]
+   (if column?
      (StripeFullStorage. m n m)
-     (StripeFullStorage. m n n))))
+     (StripeFullStorage. n m n)))
+  (^FullStorage [a]
+   (storage a)))
 
 ;; =================== Full Band Storage =========================================
 
-(deftype StripeBandStorage [^long h ^long w ^long ld ^long fd ^long sd ^long kl ^long ku]
+(deftype BandStorage [^long h ^long w ^long ld ^long kl ^long ku ^long sym-k]
   Object
   (hashCode [a]
-    (-> (hash-combine :BandStorage) (hash-combine ld) (hash-combine fd) (hash-combine sd)
-        (hash-combine kl) (hash-combine ku) (hash-combine ld)))
+    (-> (hash-combine :BandStorage) (hash-combine ld) (hash-combine kl) (hash-combine ku)))
   (equals [a b]
     (or (identical? a b)
-        (and (instance? StripeBandStorage b) (= sd (.sd ^StripeBandStorage b))
-             (= fd (.fd ^StripeBandStorage b)) (= ld (.ld ^StripeBandStorage b))
-             (= kl (.kl ^StripeBandStorage b)) (= ku (.ku ^StripeBandStorage b)))))
+        (and (instance? BandStorage b) (= h (.h ^BandStorage b))
+             (= w (.w ^BandStorage b)) (= ld (.ld ^BandStorage b))
+             (= kl (.kl ^BandStorage b)) (= ku (.ku ^BandStorage b)))))
   (toString [a]
-    (format "#BandStorage[sd:%d, fd:%d, ld:%d, kl:%d, ku:%d]" sd fd ld kl ku))
-  BandStorage
-  (height [_]
-    h)
-  (width [_]
-    w)
-  (kd [_]
-    ku)
+    (format "#BandStorage[h:%d, w:%d, ld:%d, kl:%d, ku:%d]" h w ld kl ku))
   FullStorage
   (sd [_]
-    sd)
+    h)
   (ld [_]
     ld)
   DenseStorage
   (index [_ i j]
     (+ (* j ld) (- ku j) i))
   (fd [_]
-    fd))
+    w)
+  (isGapless [_]
+    (= 0 kl ku))
+  (capacity [_]
+    (* ld w)))
 
 (defn band-storage
   ([column? m n ld kl ku]
-   (if column?
-     (let [m (long m)
-           n (long n)
-           ld (long ld)
-           kl (long kl)
-           ku (long ku)]
-       (StripeBandStorage. (inc (+ kl ku))
-                           (min n (+ (min m n) ku))
-                           (max ld (inc (+ kl ku)))
-                           (min n (+ (min m n) ku))
-                           (min m (+ (min m n) kl))
-                           kl ku))
-     (band-storage true n m ld ku kl)))
-  ([column? lower? diag-unit? ^long n]
+   (let [m (long m)
+         n (long n)
+         kl (long kl)
+         ku (long ku)
+         h (inc (+ kl ku))
+         ld (max h (long ld))
+         sym-k (cond (= 0 kl) ku (= 0 ku) kl :default 0)]
+     (if column?
+       (BandStorage. h (min n (+ (min m n) ku)) ld kl ku sym-k)
+       (BandStorage. h (min m (+ (min m n) kl)) ld ku kl sym-k))))
+  ([column? m n kl ku]
+   (band-storage column? m n (if column? m n) kl ku))
+  ([column? ^long n lower? diag-unit?]
    (let [unit-pad (if diag-unit? -1 0)]
      (if lower?
        (band-storage column? n n (dec n) unit-pad)
@@ -431,7 +288,11 @@
   (index [_ i j]
     (+ i (unchecked-divide-int (* j (inc j)) 2)))
   (fd [_]
-    n))
+    n)
+  (isGapless [_]
+    true)
+  (capacity [_]
+    (unchecked-divide-int (* n (inc n)) 2)))
 
 (deftype BottomPackedStorage [^long n]
   Object
@@ -446,7 +307,11 @@
   (index [_ i j]
     (+ i (unchecked-divide-int (* j (dec (- (* 2 n) j))) 2)))
   (fd [_]
-    n))
+    n)
+  (isGapless [_]
+    true)
+  (capacity [_]
+    (unchecked-divide-int (* n (inc n)) 2)))
 
 (defn packed-storage [column? lower? ^long n]
   (if column?
@@ -457,9 +322,71 @@
       (TopPackedStorage. n)
       (BottomPackedStorage. n))))
 
+;; ========================= Default value ===============================
+
+(deftype SYDefault []
+  RealDefault
+  (entry [_ stor da buf ofst i j]
+    (.get ^RealBufferAccessor da buf (+ ofst (.index ^DenseStorage stor j i)))))
+
+(deftype SBDefault []
+  RealDefault
+  (entry [_ stor da buf ofst i j]
+    (let [k (.sym-k ^BandStorage stor)]
+      (if (<= (- j k) i (+ j k))
+        (.get ^RealBufferAccessor da buf (+ ofst (.index ^BandStorage stor j i)))
+        0.0))))
+
+(deftype ZeroDefault []
+  RealDefault
+  (entry [_ _ _ _ _ _ _]
+    0.0))
+
+(deftype UnitDefault []
+  RealDefault
+  (entry [_ _ _ _ _ i j]
+    (if (= i j) 1.0 0.0)))
+
+(def sy-default (SYDefault.))
+(def sb-default (SBDefault.))
+(def zero-default (ZeroDefault.))
+(def unit-default (UnitDefault.))
+
+(defn real-default
+  ([type diag-unit]
+   (case type
+     :sy sy-default
+     :tr (if diag-unit unit-default zero-default)
+     :sb sb-default
+     :tb (if diag-unit unit-default zero-default)
+     :sp sy-default
+     :tp (if diag-unit unit-default zero-default)
+     (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report." {:type type})))
+  ([type]
+   (case type
+     :sy sy-default
+     :tr zero-default
+     :sb sb-default
+     :tb zero-default
+     :sp sy-default
+     :tp zero-default
+     (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report." {:type type}))))
+
 ;; ======================= Layout utillities ==============================
 
 (defmacro doall-layout
+  ([nav stor region i j idx cnt expr]
+   `(let [fd# (.fd ~stor)]
+      (loop [~j 0 cnt# 0]
+        (when (< ~j fd#)
+          (let [end# (.end ~nav ~region ~j)]
+            (recur (inc ~j)
+                   (long (loop [~i (.start ~nav ~region ~j) ~cnt cnt#]
+                           (if (< ~i end#)
+                             (let [~idx (.index ~stor ~i ~j)]
+                               ~expr
+                               (recur (inc ~i) (inc ~cnt)))
+                             ~cnt)))))))))
   ([nav stor region i j idx expr]
    `(dotimes [~j (.fd ~stor)]
       (let [start# (.start ~nav ~region ~j)
@@ -497,10 +424,9 @@
                  (let [end# (.end ~nav ~region ~j)]
                    (loop [~i (.start ~nav ~region ~j) src# src#]
                      (if (and src# (< ~i end#))
-                       (do
-                         (let [~idx (.index ~stor ~i ~j)
-                               ~e (first src#)]
-                           ~expr)
+                       (let [~idx (.index ~stor ~i ~j)
+                             ~e (first src#)]
+                         ~expr
                          (recur (inc ~i) (next src#)))
                        src#))))
           ~source))))
@@ -512,9 +438,8 @@
                  (let [end# (.end ~nav ~region ~j)]
                    (loop [~i (.start ~nav ~region ~j) src# src#]
                      (if (and src# (< ~i end#))
-                       (do
-                         (let [~e (first src#)]
-                           ~expr)
+                       (let [~e (first src#)]
+                         ~expr
                          (recur (inc ~i) (next src#)))
                        src#))))
           ~source))))
@@ -583,7 +508,7 @@
 (defmacro accu-layout
   ([nav stor region len idx acc init expr]
    `(let [n# (.fd ~stor)]
-      (loop [j# n# ~acc ~init]
+      (loop [j# 0 ~acc ~init]
         (if (< j# n#)
           (recur (inc j#)
                  (let [start# (.start ~nav ~region j#)
@@ -596,30 +521,3 @@
           stor# (storage ~a)
           region# (region ~a)]
       (accu-layout nav# stor# region# ~len ~idx ~acc ~init ~expr))))
-
-;; ========================= Default value ===============================
-
-(deftype SYDefault []
-  RealDefault
-  (entry [_ stor da buf ofst i j]
-    (.get ^RealBufferAccessor da buf (+ ofst (.index ^DenseStorage stor j i)))))
-
-(deftype TRDefault []
-  RealDefault
-  (entry [_ _ _ _ _ _ _]
-    0.0))
-
-(deftype UnitTRDefault []
-  RealDefault
-  (entry [_ _ _ _ _ i j]
-    (if (= i j) 1.0 0.0)))
-
-(let [sy-default (SYDefault.)
-      tr-default (TRDefault.)
-      tr-unit-default (UnitTRDefault.)]
-
-  (defn real-default [type diag-unit]
-    (case type
-      :sy sy-default
-      :tr (if diag-unit tr-unit-default tr-default)
-      nil)))

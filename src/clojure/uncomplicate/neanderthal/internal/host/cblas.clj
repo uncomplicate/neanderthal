@@ -9,12 +9,12 @@
 (ns uncomplicate.neanderthal.internal.host.cblas
   (:require [uncomplicate.neanderthal.block :refer [buffer offset stride]]
             [uncomplicate.neanderthal.internal
-             [api :refer [engine mm iamax stripe-navigator swap copy scal axpy axpby
-                          fits-navigation? region navigator storage]]
+             [api :refer [engine mm iamax swap copy scal axpy axpby
+                          region navigator storage]]
              [common :refer [dragan-says-ex]]
-             [navigation :refer [dostripe-layout accu-layout create-unit-region]]])
+             [navigation :refer [accu-layout full-storage]]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api RealVector GEMatrix BandedMatrix Matrix Region]))
+           [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -72,337 +72,378 @@
 
 ;; =============== Common GE matrix macros and functions =======================
 
-(defmacro ge-sum [method a]
+(defmacro full-storage-reduce
+  ([a b len offset-a offset-b ld-b acc init expr-direct expr]
+   `(let [nav-a# (navigator ~a)
+          nav-b# (navigator ~b)
+          reg# (region ~a)
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          n# (.fd stor-a#)
+          offset-a# (.offset ~a)
+          offset-b# (.offset ~b)]
+      (if (= nav-a# nav-b#)
+        (if (and (.isGapless stor-a#) (.isGapless stor-b#))
+          ~expr-direct
+          (let [~ld-b 1]
+            (loop [j# 0 ~acc ~init]
+              (if (< j# n#)
+                (recur (inc j#)
+                       (let [start# (.start nav-a# reg# j#)
+                             ~len (- (.end nav-a# reg# j#) start#)
+                             ~offset-a (+ offset-a# (.index stor-a# start# j#))
+                             ~offset-b (+ offset-b# (.index stor-b# start# j#))]
+                         ~expr))
+                ~acc))))
+        (let [~ld-b (.ld stor-b#)]
+          (loop [j# 0 ~acc ~init]
+            (if (< j# n#)
+              (recur (inc j#)
+                     (let [start# (.start nav-a# reg# j#)
+                           ~len (- (.end nav-a# reg# j#) start#)
+                           ~offset-a (+ offset-a# (.index stor-a# start# j#))
+                           ~offset-b (+ offset-b# (.index stor-b# j# start#))]
+                       ~expr))
+              ~acc)))))))
+
+(defmacro full-storage-map
+  ([a b len offset-a offset-b ld-a expr-direct expr]
+   `(let [nav-a# (navigator ~a)
+          nav-b# (navigator ~b)
+          reg# (region ~b)
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          fd-b# (.fd stor-b#)
+          offset-a# (.offset ~a)
+          offset-b# (.offset ~b)]
+      (if (= nav-a# nav-b#)
+        (if (and (.isGapless stor-a#) (.isGapless stor-b#))
+          ~expr-direct
+          (let [~ld-a 1]
+            (dotimes [j# fd-b#]
+              (let [start# (.start nav-b# reg# j#)
+                    ~len (- (.end nav-b# reg# j#) start#)
+                    ~offset-a (+ offset-a# (.index stor-a# start# j#))
+                    ~offset-b (+ offset-b# (.index stor-b# start# j#))]
+                ~expr))))
+        (let [~ld-a (.ld stor-a#)]
+          (dotimes [j# fd-b#]
+            (let [start# (.start nav-b# reg# j#)
+                  ~len (- (.end nav-b# reg# j#) start#)
+                  ~offset-a (+ offset-a# (.index stor-a# j# start#))
+                  ~offset-b (+ offset-b# (.index stor-b# start# j#))]
+              ~expr)))))))
+
+(defmacro matrix-dot [method a b]
   `(if (< 0 (.dim ~a))
-     (let [ld# (.stride ~a)
-           sd# (.sd ~a)
-           fd# (.fd ~a)
-           offset# (.offset ~a)
-           buff# (.buffer ~a)]
-       (if (= sd# ld#)
+     (let [buff-a# (.buffer ~a)
+           buff-b# (.buffer ~b)]
+       (full-storage-reduce ~a ~b len# offset-a# offset-b# ld-b# acc# 0.0
+                            (~method (.dim ~a) buff-a# (.offset ~a) 1 buff-b# (.offset ~b) 1)
+                            (+ acc# (~method len# buff-a# offset-a# 1 buff-b# offset-b# ld-b#))))
+     0.0))
+
+(defmacro matrix-swap [method a b]
+  `(do
+     (when (< 0 (.dim ~a))
+       (let [buff-a# (.buffer ~a)
+             buff-b# (.buffer ~b)]
+         (full-storage-map ~a ~b len# offset-a# offset-b# ld-a#
+                           (~method (.dim ~a) buff-a# (.offset ~a) 1 buff-b# (.offset ~b) 1)
+                           (~method len# buff-a# offset-a# ld-a# buff-b# offset-b# 1))))
+     ~a))
+
+(defmacro matrix-axpy [method alpha a b]
+  `(do
+     (when (< 0 (.dim ~a))
+       (let [buff-a# (.buffer ~a)
+             buff-b# (.buffer ~b)]
+         (full-storage-map ~a ~b len# offset-a# offset-b# ld-a#
+                           (~method (.dim ~a) ~alpha buff-a# (.offset ~a) 1 buff-b# (.offset ~b) 1)
+                           (~method len# ~alpha buff-a# offset-a# ld-a# buff-b# offset-b# 1))))
+     ~b))
+
+(defmacro matrix-axpby [method alpha a beta b]
+  `(do
+     (when (< 0 (.dim ~a))
+       (let [buff-a# (.buffer ~a)
+             buff-b# (.buffer ~b)]
+         (full-storage-map ~a ~b len# offset-a# offset-b# ld-a#
+                           (~method (.dim ~a) ~alpha buff-a# (.offset ~a) 1 ~beta buff-b# (.offset ~b) 1)
+                           (~method len# ~alpha buff-a# offset-a# ld-a# ~beta buff-b# offset-b# 1))))
+     ~b))
+
+(defmacro matrix-sum [method a]
+  `(if (< 0 (.dim ~a))
+     (let [buff# (.buffer ~a)
+           offset# (.offset ~a)]
+       (if (.isGapless (storage ~a))
          (~method (.dim ~a) buff# offset# 1)
-         (loop [j# 0 acc# 0.0]
-           (if (< j# fd#)
-             (recur (inc j#) (+ acc# (~method sd# buff# (+ offset# (* ld# j#)) 1)))
-             acc#))))
+         (accu-layout ~a len# idx# acc# 0.0 (+ acc# (~method len# buff# (+ offset# idx#) 1)))))
      0.0))
-
-(defmacro ge-dot [method a b]
-  `(if (< 0 (.dim ~a))
-     (let [ld-a# (.stride ~a)
-           sd-a# (.sd ~a)
-           fd-a# (.fd ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           fd-b# (.fd ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (if (= sd-a# (.sd ~b) ld-a# ld-b#)
-           (~method (.dim ~a) buff-a# offset-a# 1 buff-b# offset-b# 1)
-           (loop [j# 0 acc# 0.0]
-             (if (< j# fd-a#)
-               (recur (inc j#) (+ acc# (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
-                                        buff-b# (+ offset-b# (* ld-b# j#)) 1)))
-               acc#)))
-         (loop [j# 0 acc# 0.0]
-           (if (< j# fd-a#)
-             (recur (inc j#) (+ acc# (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1
-                                      buff-b# (+ offset-b# j#) ld-b#)))
-             acc#))))
-     0.0))
-
-(defmacro ge-swap [method a b]
-  `(when (< 0 (.dim ~a))
-     (let [ld-a# (.stride ~a)
-           sd-a# (.sd ~a)
-           fd-a# (.fd ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           fd-b# (.fd ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (if (= sd-a# (.sd ~b) ld-a# ld-b#)
-           (~method (.dim ~a) buff-a# offset-a# 1 buff-b# offset-b# 1)
-           (dotimes [j# fd-a#]
-             (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# (* ld-b# j#)) 1)))
-         (dotimes [j# fd-a#]
-           (~method sd-a# buff-a# (+ offset-a# (* ld-a# j#)) 1 buff-b# (+ offset-b# j#) ld-b#))))))
 
 (defmacro ge-mv
   ([method alpha a x beta y]
-   `(~method (.order ~a) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a)
-     ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
-     (.buffer ~x) (.offset ~x) (.stride ~x) ~beta (.buffer ~y) (.offset ~y) (.stride ~y)))
+   `(do
+      (~method (.layout (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a)
+       ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x)
+       ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
+      ~y))
   ([a]
    `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (str ~a)}))))
 
 (defmacro ge-rk [method alpha x y a]
-  `(~method (.order ~a) (.mrows ~a) (.ncols ~a) ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
-    (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~a) (.offset ~a) (.stride ~a)))
+  `(do
+     (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
+      ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
+      (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~a) (.offset ~a) (.stride ~a))
+     ~a))
 
 (defmacro ge-mm
   ([alpha a b]
    `(mm (engine ~b) ~alpha ~b ~a false))
   ([method alpha a b beta c]
    `(if (instance? GEMatrix ~b)
-      (~method (.order ~c)
-       (if (= (.order ~a) (.order ~c)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
-       (if (= (.order ~b) (.order ~c)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
-       (.mrows ~a) (.ncols ~b) (.ncols ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
-       (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
+      (let [nav# (navigator ~c)]
+        (~method (.layout nav#)
+         (if (= nav# (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+         (if (= nav# (navigator ~b)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+         (.mrows ~a) (.ncols ~b) (.ncols ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+         (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
+        ~c)
       (mm (engine ~b) ~alpha ~b ~a ~beta ~c false))))
-
-;; =============== Common UPLO matrix macros and functions ==========================
-
-(defmacro uplo-swap [method a b]
-  `(when (< 0 (.dim ~a))
-     (let [stripe-nav# (stripe-navigator ~a)
-           n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (dotimes [j# n#]
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
-         (dotimes [j# n#]
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-              buff-b# (+ offset-b# j# (* ld-b# start#)) n#)))))))
-
-(defmacro uplo-axpy [method alpha a b]
-  `(when (< 0 (.dim ~a))
-     (let [stripe-nav# (stripe-navigator ~a)
-           n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (dotimes [j# n#]
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (~method n-j# ~alpha
-              buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
-         (dotimes [j# n#]
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (~method n-j# ~alpha
-              buff-a# (+ offset-a# j# (* ld-a# start#)) n#
-              buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
-
-(defmacro uplo-axpby [method alpha a beta b]
-  `(when (< 0 (.dim ~a))
-     (let [stripe-nav# (stripe-navigator ~a)
-           n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (dotimes [j# n#]
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (~method n-j#
-              ~alpha buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-              ~beta buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))
-         (dotimes [j# n#]
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (~method n-j#
-              ~alpha buff-a# (+ offset-a# j# (* ld-a# start#)) n#
-              ~beta buff-b# (+ offset-b# (* ld-b# j#) start#) 1)))))))
 
 ;; =============== Common TR matrix macros and functions ============================
 
-(defmacro tr-dot [method a b]
-  `(if (< 0 (.dim ~a))
-     (let [stripe-nav# (stripe-navigator ~a)
-           n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (if (= (.order ~a) (.order ~b))
-         (loop [j# 0 acc# 0.0]
-           (if (< j# n#)
-             (let [start# (.start stripe-nav# n# j#)
-                   n-j# (- (.end stripe-nav# n# j#) start#)]
-               (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-                                        buff-b# (+ offset-b# (* ld-b# j#) start#) 1))))
-             acc#))
-         (loop [j# 0 acc# 0.0]
-           (if (< j# n#)
-             (let [start# (.start stripe-nav# n# j#)
-                   n-j# (- (.end stripe-nav# n# j#) start#)]
-               (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-                                        buff-b# (+ offset-b# j# (* ld-b# start#)) n#))))
-             acc#))))
-     0.0))
-
 (defmacro tr-sum [method a]
-  `(if (< 0 (.dim ~a))
-     (let [stripe-nav# (stripe-navigator ~a)
-           n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)]
-       (loop [j# 0 acc# 0.0]
-         (if (< j# n#)
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1))))
-           acc#)))
-     0.0))
+  `(if-not (.isDiagUnit (region ~a))
+     (matrix-sum ~method ~a)
+     (+ (.ncols ~a) (double (matrix-sum ~method ~a)))))
+
+(defmacro tr-dot [method a b]
+  `(if-not (.isDiagUnit (region ~a))
+     (matrix-dot ~method ~a ~b)
+     (+ (.ncols ~a) (double (matrix-dot ~method ~a ~b)))))
 
 (defmacro tr-mv
   ([method a x]
-   `(~method (.order ~a) (.uplo ~a) CBLAS/TRANSPOSE_NO_TRANS (.diag ~a) (.ncols ~a)
-     (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x)))
+   `(let [reg# (region ~a)]
+      (~method (.layout (navigator ~a)) (.uplo reg#) CBLAS/TRANSPOSE_NO_TRANS (.diag reg#)
+       (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
+      ~x))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
 (defmacro tr-mm
   ([method alpha a b left]
-   `(~method (.order ~b) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT) (.uplo ~a)
-     (if (= (.order ~a) (.order ~b)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
-     (.diag ~a) (.mrows ~b) (.ncols ~b)
-     ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
+   `(let [nav# (navigator ~b)
+          reg# (region ~a)]
+      (~method (.layout nav#) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT) (.uplo reg#)
+       (if (= nav# (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+       (.diag reg#) (.mrows ~b) (.ncols ~b)
+       ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
+      ~b))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
-;; -------------------- SY
+;; =============== Common SY matrix macros and functions ============================
 
 (defmacro sy-dot [method a b]
   `(if (< 0 (.dim ~a))
-     (let [stripe-nav# (stripe-navigator ~a)
-           n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)
-           ld-b# (.stride ~b)
-           offset-b# (.offset ~b)
-           buff-b# (.buffer ~b)]
-       (- (* 2.0 (double
-                  (if (= (.order ~a) (.order ~b))
-                    (loop [j# 0 acc# 0.0]
-                      (if (< j# n#)
-                        (let [start# (.start stripe-nav# n# j#)
-                              n-j# (- (.end stripe-nav# n# j#) start#)]
-                          (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-                                                   buff-b# (+ offset-b# (* ld-b# j#) start#) 1))))
-                        acc#))
-                    (loop [j# 0 acc# 0.0]
-                      (if (< j# n#)
-                        (let [start# (.start stripe-nav# n# j#)
-                              n-j# (- (.end stripe-nav# n# j#) start#)]
-                          (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1
-                                                   buff-b# (+ offset-b# j# (* ld-b# start#)) n#))))
-                        acc#)))))
-          (~method n# buff-a# offset-a# (inc ld-a#) buff-b# offset-b# (inc ld-b#))))
+     (let [stor# (full-storage ~a)
+           n# (.fd stor#)]
+       (- (* 2.0 (double (matrix-dot ~method ~a ~b)))
+          (~method n# (.buffer ~a) (.offset ~a) (inc (.ld stor#))
+           (.buffer ~b) (.offset ~b) (inc (.ld (full-storage ~b))))))
      0.0))
 
 (defmacro sy-sum [method a]
   `(if (< 0 (.dim ~a))
-     (let [stripe-nav# (stripe-navigator ~a)
-           n# (.fd ~a)
-           ld-a# (.stride ~a)
-           offset-a# (.offset ~a)
-           buff-a# (.buffer ~a)]
-       (loop [j# 0 acc# 0.0]
-         (if (< j# n#)
-           (let [start# (.start stripe-nav# n# j#)
-                 n-j# (- (.end stripe-nav# n# j#) start#)]
-             (recur (inc j#) (+ acc# (~method n-j# buff-a# (+ offset-a# (* ld-a# j#) start#) 1))))
-           (- (* 2.0 acc#) (~method n# buff-a# offset-a# (inc ld-a#))))))
+     (let [stor# (full-storage ~a)
+           n# (.fd stor#)]
+       (- (* 2.0 (double (matrix-sum ~method ~a)))
+          (~method n# (.buffer ~a) (.offset ~a) (inc (.ld stor#)))))
      0.0))
 
 (defmacro sy-mv
   ([method alpha a x beta y]
-   `(~method (.order ~a) (.uplo ~a) (.ncols ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
-     (.buffer ~x) (.offset ~x) (.stride ~x) ~beta (.buffer ~y) (.offset ~y) (.stride ~y)))
+   `(let [reg# (region ~a)]
+      (~method (.layout (navigator ~a)) (.uplo reg#) (.ncols ~a)
+       ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x)
+       ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
+      ~y))
   ([a]
    `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (str ~a)}))))
 
 (defmacro sy-mm
   ([method alpha a b beta c left]
-   `(~method (.order ~c) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT) (.uplo ~a)
-     (.mrows ~c) (.ncols ~c) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
-     (.buffer ~b) (.offset ~b) (.stride ~b) ~beta (.buffer ~c) (.offset ~c) (.stride ~c)))
+   `(do
+      (~method (.layout (navigator ~c)) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
+       (.uplo (region ~a)) (.mrows ~c) (.ncols ~c)
+       ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)
+       ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
+      ~c))
   ([a]
    `(throw (ex-info "In-place mm! is not supported for SY matrices." {:a (str ~a)}))))
 
 ;; ====================== Banded Matrix ===========================================
 
-(defn gb-map [fun ^BandedMatrix a ^BandedMatrix b]
-  (let [eng (engine (.dia a))]
-    (loop [i (- (.kl a))]
-      (when (< i (inc (.ku a)))
-        (fun eng (.dia a i) (.dia b i))
-        (recur (inc i))))
-    b))
+(defmacro band-storage-reduce
+  ([a len offset acc init expr]
+   `(let [reg# (region ~a)
+          nav# (navigator ~a)
+          stor# (full-storage ~a)
+          m# (.mrows ~a)
+          n# (.ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)
+          offset# (.offset ~a)]
+      (let [acc# (loop [k# 0 ~acc ~init]
+                   (if (< k# (inc kl#))
+                     (recur (inc k#)
+                            (let [~len (min (- m# k#) n#)
+                                  ~offset (+ offset# (.index nav# stor# k# 0))]
+                              ~expr))
+                     ~acc))]
+        (loop [k# 1 ~acc (double acc#)]
+          (if (< k# (inc ku#))
+            (recur (inc k#)
+                   (let [~len (min m# (- n# k#))
+                         ~offset (+ offset# (.index nav# stor# 0 k#))]
+                     ~expr))
+            ~acc)))))
+  ([a b len offset-a offset-b acc init expr]
+   `(let [reg# (region ~a)
+          nav-a# (navigator ~a)
+          nav-b# (navigator ~b)
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          m# (.mrows ~a)
+          n# (.ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)
+          offset-a# (.offset ~a)
+          offset-b# (.offset ~b)]
+      (let [acc# (loop [k# 0 ~acc ~init]
+                   (if (< k# (inc kl#))
+                     (recur (inc k#)
+                            (let [~len (min (- m# k#) n#)
+                                  ~offset-a (+ offset-a# (.index nav-a# stor-a# k# 0))
+                                  ~offset-b (+ offset-b# (.index nav-b# stor-b# k# 0))]
+                              ~expr))
+                     ~acc))]
+        (loop [k# 1 ~acc (double acc#)]
+          (if (< k# (inc ku#))
+            (recur (inc k#)
+                   (let [~len (min m# (- n# k#))
+                         ~offset-a (+ offset-a# (.index nav-a# stor-a# 0 k#))
+                         ~offset-b (+ offset-b# (.index nav-b# stor-b# 0 k#))]
+                     ~expr))
+            ~acc))))))
 
-(defn gb-scalset [fun alpha ^BandedMatrix a]
-  (let [eng (engine (.dia a))]
-    (loop [i (- (.kl a))]
-      (when (< i (inc (.ku a)))
-        (fun eng alpha (.dia a i))
-        (recur (inc i)))))
-  a)
+(defmacro band-storage-map
+  ([a len offset expr]
+   `(let [reg# (region ~a)
+          nav# (navigator ~a)
+          stor# (full-storage ~a)
+          m# (.mrows ~a)
+          n# (.ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)
+          offset# (.offset ~a)]
+      (dotimes [k# (inc kl#)]
+        (let [~len (min (- m# k#) n#)
+              ~offset (+ offset# (.index nav# stor# k# 0))]
+          ~expr))
+      (dotimes [k# ku#]
+        (let [~len (min m# (- n# (inc k#)))
+              ~offset (+ offset# (.index nav# stor# 0 (inc k#)))]
+          ~expr))
+      ~a))
+  ([a b len offset-a offset-b expr]
+   `(let [reg# (region ~a)
+          nav-a# (navigator ~a)
+          nav-b# (navigator ~b)
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          m# (.mrows ~a)
+          n# (.ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)
+          offset-a# (.offset ~a)
+          offset-b# (.offset ~b)]
+      (dotimes [k# (inc kl#)]
+        (let [~len (min (- m# k#) n#)
+              ~offset-a (+ offset-a# (.index nav-a# stor-a# k# 0))
+              ~offset-b (+ offset-b# (.index nav-b# stor-b# k# 0))]
+          ~expr))
+      (dotimes [k# ku#]
+        (let [~len (min m# (- n# (inc k#)))
+              ~offset-a (+ offset-a# (.index nav-a# stor-a# 0 (inc k#)))
+              ~offset-b (+ offset-b# (.index nav-b# stor-b# 0 (inc k#)))]
+          ~expr))
+      ~b)))
 
-(defn gb-reduce
-  ([fun ^BandedMatrix a]
-   (let [eng (engine (.dia a))]
-     (loop [i (- (.kl a)) acc 0.0]
-       (if (< i (inc (.ku a)))
-         (recur (inc i) (+ acc (double (fun eng (.dia a i)))))
-         acc))))
-  ([fun ^BandedMatrix a ^BandedMatrix b]
-   (let [eng (engine (.dia a))]
-     (loop [i (- (.kl a)) acc 0.0]
-       (if (< i (inc (.ku a)))
-         (recur (inc i) (+ acc (double (fun eng (.dia a i) (.dia b i)))))
-         acc)))))
+(defmacro banded-dot [method a b]
+  `(if (< 0 (.dim ~a))
+     (let [buff-a# (.buffer ~a)
+           buff-b# (.buffer ~b)
+           ld-a# (.stride ~a)
+           ld-b# (.stride ~b)]
+       (band-storage-reduce ~a ~b len# offset-a# offset-b# acc# 0.0
+                            (+ acc# (~method len# buff-a# offset-a# ld-a# buff-b# offset-b# ld-b#))))
+     0.0))
 
-(defn gb-axpy [alpha ^BandedMatrix a ^BandedMatrix b]
-  (let [eng (engine (.dia a))]
-    (loop [i (- (.kl a))]
-      (when (< i (inc (.ku a)))
-        (axpy eng alpha (.dia a i) (.dia b i))
-        (recur (inc i))))
-    b))
+(defmacro banded-map [method a b]
+  `(if (< 0 (.dim ~a))
+     (let [buff-a# (.buffer ~a)
+           buff-b# (.buffer ~b)
+           ld-a# (.stride ~a)
+           ld-b# (.stride ~b)]
+       (band-storage-map ~a ~b len# offset-a# offset-b#
+                         (~method len# buff-a# offset-a# ld-a# buff-b# offset-b# ld-b#)))
+     ~b))
 
-(defn gb-axpby [alpha ^BandedMatrix a beta ^BandedMatrix b]
-  (let [eng (engine (.dia a))]
-    (loop [i (- (.kl a))]
-      (when (< i (inc (.ku a)))
-        (axpby eng alpha (.dia a i) beta (.dia b i))
-        (recur (inc i))))
-    b))
+(defmacro banded-scal [method alpha a]
+  `(if (< 0 (.dim ~a))
+     (let [buff# (.buffer ~a)
+           ld-a# (.stride ~a)]
+       (band-storage-map ~a len# offset# (~method len# ~alpha buff# offset# ld-a#)))
+     ~a))
+
+(defmacro banded-sum [method a]
+  `(if (< 0 (.dim ~a))
+     (let [buff# (.buffer ~a)
+           ld-a# (.stride ~a)]
+       (band-storage-reduce ~a len# offset# acc# 0.0 (+ acc# (~method len# buff# offset# ld-a#))))
+     0.0))
+
+(defmacro banded-axpy [method alpha a b]
+  `(if (< 0 (.dim ~a))
+     (let [buff-a# (.buffer ~a)
+           buff-b# (.buffer ~b)
+           ld-a# (.stride ~a)
+           ld-b# (.stride ~b)]
+       (band-storage-map ~a ~b len# offset-a# offset-b#
+                         (~method len# ~alpha buff-a# offset-a# ld-a# buff-b# offset-b# ld-b#)))
+     ~b))
+
+(defmacro banded-axpby [method alpha a beta b]
+  `(if (< 0 (.dim ~a))
+     (let [buff-a# (.buffer ~a)
+           buff-b# (.buffer ~b)
+           ld-a# (.stride ~a)
+           ld-b# (.stride ~b)]
+       (band-storage-map ~a ~b len# offset-a# offset-b#
+                         (~method len# ~alpha buff-a# offset-a# ld-a# ~beta buff-b# offset-b# ld-b#)))
+     ~b))
 
 (defmacro gb-mv
   ([method alpha a x beta y]
-   `(do
-      (~method (.order ~a) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a) (.kl ~a) (.ku ~a) ~alpha
-       (.buffer ~a) (.offset ~a) (.stride ~a) (buffer ~x) (offset ~x) (stride ~x)
-       ~beta (buffer ~y) (offset ~y) (stride ~y))
+   `(let [reg# (region ~a)]
+      (~method (.layout (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a)
+       (.kl reg#) (.ku reg#) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+       (buffer ~x) (offset ~x) (stride ~x) ~beta (buffer ~y) (offset ~y) (stride ~y))
       ~y))
   ([a]
    `(throw (ex-info "In-place mv! is not supported for GB matrices." {:a (str ~a)}))))
@@ -418,15 +459,8 @@
 
 ;; ===================== Packed Matrix ==============================
 
-(defn packed-len ^long [^Matrix a]
-  (let [n (.ncols a)]
-    (unchecked-divide-int (* n (inc n)) 2)))
-
-(defn blas-uplo ^long [^Region region]
-  (if (.isLower region) CBLAS/UPLO_LOWER CBLAS/UPLO_UPPER))
-
 (defmacro check-layout [a b & expr]
-  `(if (= (.order ~a) (.order ~b))
+  `(if (= (navigator ~a) (navigator ~b))
      (do ~@expr)
      (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matcking layout."
                      {:a (str ~a) :b (str ~b)})))
@@ -436,7 +470,7 @@
      (let [buff# (.buffer ~a)
            ofst# (.offset ~a)]
        (if-not (.isDiagUnit (region ~a))
-         (Math/abs (.get ~da buff# (+ ofst# (~method (packed-len ~a) buff# ofst# 1))))
+         (Math/abs (.get ~da buff# (+ ofst# (~method (.surface (region ~a)) buff# ofst# 1))))
          (accu-layout ~a len# idx# max# 1.0
                       (max max# (Math/abs (.get ~da buff# (+ ofst# idx# (~method len# buff# (+ ofst# idx#) 1))))))))
      0.0))
@@ -444,32 +478,29 @@
 (defmacro packed-map
   ([method a]
    `(do
-      (~method (packed-len ~a) (.buffer ~a) (.offset ~a) 1)
+      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1)
       ~a))
   ([method a b]
    `(check-layout ~a ~b
-                  (~method (packed-len ~a) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
+                  (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
                   ~b)))
 
 (defmacro packed-scal [method alpha a]
   `(do
-     (~method (packed-len ~a) ~alpha (.buffer ~a) (.offset ~a) 1)
+     (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1)
      ~a))
 
 (defmacro packed-axpy [method alpha a b]
   `(check-layout
     ~a ~b
-    (~method (packed-len ~a) ~alpha (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
+    (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
     ~b))
 
 (defmacro packed-axpby [method alpha a beta b]
   `(check-layout
     ~a ~b
-    (~method (packed-len ~a) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
+    (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
     ~b))
-
-(defn blas-diag ^long [^Region region]
-  (if (.isDiagUnit region) CBLAS/DIAG_UNIT CBLAS/DIAG_NON_UNIT))
 
 (defmacro tp-sum [method transform da a]
   `(if (< 0 (.dim ~a))
@@ -478,8 +509,8 @@
            buff# (.buffer ~a)
            ofst# (.offset ~a)]
        (if-not (.isDiagUnit (region ~a))
-         (~method (packed-len ~a) buff# ofst# 1)
-         (loop [i# 0 acc# (+ n# (~method (packed-len ~a) buff# ofst# 1))]
+         (~method (.surface (region ~a)) buff# ofst# 1)
+         (loop [i# 0 acc# (+ n# (~method (+ n# (.surface (region ~a))) buff# ofst# 1))]
            (if (< i# n#)
              (recur (inc i#) (- acc# (~transform (.get ~da buff# (+ ofst# (.index stor# i# i#))))))
              acc#))))
@@ -495,7 +526,7 @@
             buff-b# (.buffer ~b)
             ofst-b# (.offset ~b)
             stor# (storage ~a)
-            dot# (~method (packed-len ~a) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
+            dot# (~method (.surface (region ~a)) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
         (if-not (.isDiagUnit (region ~a))
           dot#
           (loop [i# 0 acc# (+ n# dot#)]
@@ -511,10 +542,10 @@
            buff# (.buffer ~a)
            ofst# (.offset ~a)
            stor# (storage ~a)
-           nrm# (~method (packed-len ~a) buff# ofst# 1)]
+           nrm# (~method (.surface (region ~a)) buff# ofst# 1)]
        (if-not (.isDiagUnit (region ~a))
          nrm#
-         (Math/sqrt (loop [i# 0 acc# (+ n# (Math/pow nrm# 2))]
+         (Math/sqrt (loop [i# 0 acc# (+ n# (* nrm# nrm#))]
                       (if (< i# n#)
                         (recur (inc i#) (- acc# (Math/pow (.get ~da buff# (+ ofst# (.index stor# i# i#))) 2)))
                         acc#)))))
@@ -523,7 +554,7 @@
 (defmacro tp-mv
   ([method a x]
    `(let [region# (region ~a)]
-      (~method (.order ~a) (blas-uplo region#) CBLAS/TRANSPOSE_NO_TRANS (blas-diag region#)
+      (~method (.layout (navigator ~a)) (.uplo region#) CBLAS/TRANSPOSE_NO_TRANS (.diag region#)
        (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
       ~x))
   ([a]
@@ -533,16 +564,16 @@
   ([method alpha a b left]
    `(if ~left
       (let [region# (region ~a)
-            layout# (.order ~a)
+            layout# (.layout (navigator ~a))
             n-a# (.ncols ~a)
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
             buff-b# (.buffer ~b)
             ofst-b# (.offset ~b)
             ld-b# (.stride ~b)
-            uplo# (blas-uplo region#)
-            diag# (blas-diag region#)]
-        (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~b))
+            uplo# (.uplo region#)
+            diag# (.diag region#)]
+        (if (.isColumnMajor (navigator ~b))
           (dotimes [j# (.ncols ~b)]
             (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
              buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1))
@@ -563,7 +594,7 @@
            buff# (.buffer ~a)
            ofst# (.offset ~a)
            stor# (storage ~a)]
-       (loop [i# 0 acc# (* 2.0 (~method (packed-len ~a) buff# ofst# 1))]
+       (loop [i# 0 acc# (* 2.0 (~method (.surface (region ~a)) buff# ofst# 1))]
          (if (< i# n#)
            (recur (inc i#) (- acc# (~transform (.get ~da buff# (+ ofst# (.index stor# i# i#))))))
            acc#)))
@@ -575,7 +606,7 @@
            buff# (.buffer ~a)
            ofst# (.offset ~a)
            stor# (storage ~a)]
-       (Math/sqrt (loop [i# 0 acc# (* 2.0 (Math/pow (~method (packed-len ~a) buff# ofst# 1) 2))]
+       (Math/sqrt (loop [i# 0 acc# (* 2.0 (Math/pow (~method (.surface (region ~a)) buff# ofst# 1) 2))]
                     (if (< i# n#)
                       (recur (inc i#) (- acc# (Math/pow (.get ~da buff# (+ ofst# (.index stor# i# i#))) 2)))
                       acc#))))
@@ -591,7 +622,7 @@
             buff-b# (.buffer ~b)
             ofst-b# (.offset ~b)
             stor# (storage ~a)
-            dot# (~method (packed-len ~a) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
+            dot# (~method (.surface (region ~a)) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
         (loop [i# 0 acc# (* 2.0 dot#)]
           (if (< i# n#)
             (recur (inc i#)
@@ -604,7 +635,7 @@
 (defmacro sp-mv
   ([method alpha a x beta y]
    `(let [region# (region ~a)]
-      (~method (.order ~a) (blas-uplo region#) (.ncols ~a)
+      (~method (.layout (navigator ~a)) (.uplo region#) (.ncols ~a)
        ~alpha (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x)
        ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
       ~y))
@@ -615,7 +646,7 @@
   ([method alpha a b beta c left]
    `(if ~left
       (let [region# (region ~a)
-            layout# (.order ~a)
+            layout# (.layout (navigator ~a))
             n-a# (.ncols ~a)
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
@@ -625,16 +656,16 @@
             buff-c# (.buffer ~c)
             ofst-c# (.offset ~c)
             ld-c# (.stride ~c)
-            uplo# (blas-uplo region#)]
-        (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~b))
-          (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~c))
+            uplo# (.uplo region#)]
+        (if (.isColumnMajor (navigator ~b))
+          (if (.isColumnMajor (navigator ~c))
             (dotimes [j# (.ncols ~b)]
               (~method layout# uplo# n-a# ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1
                ~beta buff-c# (+ ofst-c# (* j# ld-c#)) 1))
             (dotimes [j# (.ncols ~b)]
               (~method layout# uplo# n-a# ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1
                ~beta buff-c# (+ ofst-c# j#) ld-c#)))
-          (if (= CBLAS/ORDER_COLUMN_MAJOR (.order ~c))
+          (if (.isColumnMajor (navigator ~c))
             (dotimes [j# (.ncols ~b)]
               (~method layout# uplo# n-a# ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#
                ~beta buff-c# (+ ofst-c# (* j# ld-c#)) 1))

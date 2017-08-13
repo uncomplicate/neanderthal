@@ -8,10 +8,6 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface PackedMatrix extends BlockMatrix {
-
-    long kl ();
-
-    long ku ();
+public interface PackedMatrix extends MatrixImplementation {
 
 }

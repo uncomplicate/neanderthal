@@ -8,10 +8,6 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface BandedMatrix extends BlockMatrix {
-
-    long kl ();
-
-    long ku ();
+public interface BandedMatrix extends MatrixImplementation {
 
 }

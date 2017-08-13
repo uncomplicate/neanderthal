@@ -121,7 +121,7 @@
                                     (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
                                     (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
           host)
-        (throw (ex-info "You cannot get  incompatible or ill-fitting vector."
+        (throw (ex-info "You cannot get incompatible or ill-fitting vector."
                         {:cu (str cu) :host (str host)}))))
     host))
 

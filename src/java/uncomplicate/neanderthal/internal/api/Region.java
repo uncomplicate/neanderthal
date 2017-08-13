@@ -8,10 +8,32 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface DenseMatrix extends BlockMatrix {
+public interface Region {
 
-    long sd ();
+    boolean accessible (long i, long j);
 
-    long fd ();
+    long colStart (long i);
+
+    long colEnd (long i);
+
+    long rowStart (long i);
+
+    long rowEnd (long i);
+
+    boolean isUpper ();
+
+    boolean isLower ();
+
+    boolean isDiagUnit ();
+
+    int uplo ();
+
+    int diag ();
+
+    long surface ();
+
+    long kl ();
+
+    long ku ();
 
 }

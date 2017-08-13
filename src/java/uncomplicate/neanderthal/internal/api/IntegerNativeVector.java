@@ -8,12 +8,6 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface Block {
-
-    Object buffer ();
-
-    long offset ();
-
-    long stride ();
+public interface IntegerNativeVector extends NativeBlock, IntegerVector {
 
 }

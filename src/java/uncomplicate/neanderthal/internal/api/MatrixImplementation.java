@@ -8,7 +8,9 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface TRMatrix extends UPLOMatrix, DenseMatrix {
+public interface MatrixImplementation {
 
-    long diag ();
+    Object matrixType ();
+    boolean isTriangular ();
+
 }

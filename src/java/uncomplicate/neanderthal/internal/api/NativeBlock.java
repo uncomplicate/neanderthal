@@ -8,11 +8,6 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface SegmentVector extends Vector {
+public interface NativeBlock extends Block {
 
-    long unitIndex ();
-
-    long start ();
-
-    Vector segment ();
 }

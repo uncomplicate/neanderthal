@@ -80,8 +80,7 @@
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix GEMatrix TRMatrix SYMatrix
-            BandedMatrix Changeable]))
+  (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix Changeable MatrixImplementation GEMatrix]))
 
 (defn info ;;TODO when implemented, use is in messages instead of (str ~a)
   "TODO"
@@ -208,11 +207,9 @@
   "
   ([factory m n source options]
    (if (and (<= 0 (long m)) (<= 0 (long n)))
-     (let-release [res (api/create-ge factory m n (api/enc-order (get options :order :column))
+     (let-release [res (api/create-ge factory m n (api/options-column? options)
                                       (not (:raw options)))]
-       (if source
-         (transfer! source res)
-         res))
+       (if source (transfer! source res) res))
      (throw (ex-info "GE matrix cannot have a negative dimension." {:m m :n n}))))
   ([factory ^long m ^long n arg]
    (if (or (not arg) (map? arg))
@@ -238,11 +235,6 @@
      (api/view-ge a stride-mult)
      (throw (ex-info "Cannot use a negative stride multiplier." {:stirde-mult stride-mult})))))
 
-(defn ge?
-  "Tests if x is a dense matrix (GE)."
-  [x]
-  (instance? GEMatrix x))
-
 (defn tr
   "Creates a dense triangular matrix (TR) in the context of `factory`, with `n` rows and `n` columns.
 
@@ -261,12 +253,10 @@
   "
   ([factory ^long n source options]
    (if (<= 0 n)
-     (let-release [res (api/create-tr factory n (api/enc-order (get options :order :column))
-                                      (api/enc-uplo (get options :uplo :lower))
-                                      (api/enc-diag (get options :diag :non-unit)) true)]
-       (if source
-         (transfer! source res)
-         res))
+     (let-release [res (api/create-tr factory n (api/options-column? options)
+                                      (api/options-lower? options) (api/options-diag-unit? options)
+                                      (not (:raw options)))]
+       (if source (transfer! source res) res))
      (throw (ex-info "TR matrix cannot have a negative dimension." {:n n}))))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
@@ -288,26 +278,17 @@
       (view-ge (tr float-factory 3 (range 6)))
   "
   ([a]
-   (api/view-tr a api/DEFAULT_UPLO api/DEFAULT_DIAG))
+   (api/view-tr a true false))
   ([^Matrix a options]
-   (let [uplo (api/enc-uplo (get options :uplo :lower))
-         diag (api/enc-diag (get options :diag :non-unit))]
-     (api/view-tr a uplo diag))))
-
-(defn tr?
-  "Tests if `x` is a triangular matrix (TR)."
-  [x]
-  (instance? TRMatrix x))
+   (api/view-tr a (api/options-lower? options) (api/options-diag-unit? options))))
 
 (defn sy
   "TODO"
   ([factory ^long n source options]
    (if (<= 0 n)
-     (let-release [res (api/create-sy factory n (api/enc-order (get options :order :column))
-                                      (api/enc-uplo (get options :uplo :lower)) true)]
-       (if source
-         (transfer! source res)
-         res))
+     (let-release [res (api/create-sy factory n (api/options-column? options)
+                                      (api/options-lower? options) (not (:raw options)))]
+       (if source (transfer! source res) res))
      (throw (ex-info "SY matrix cannot have a negative dimension." {:n n}))))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
@@ -321,24 +302,17 @@
 (defn view-sy
   "TODO"
   ([a]
-   (api/view-sy a api/DEFAULT_UPLO))
+   (api/view-sy a true))
   ([^Matrix a options]
-   (api/view-sy a (api/enc-uplo (get options :uplo :lower)))))
-
-(defn sy?
-  "TODO"
-  [x]
-  (instance? SYMatrix x))
+   (api/view-sy a (api/options-lower? options))))
 
 (defn gb
   "TODO"
   ([factory m n kl ku source options]
    (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
-     (let-release [res (api/create-gb factory m n kl ku (api/enc-order (get options :order :column))
-                                      (not (:raw options)))]
-       (if source
-         (transfer! source res)
-         res))
+     (let-release [res (api/create-gb factory m n kl ku
+                                      (api/options-column? options) (not (:raw options)))]
+       (if source (transfer! source res) res))
      (throw (ex-info "GB matrix cannot have a negative dimension nor overflow diagonals."
                      {:m m :n n :kl kl :ku ku}))))
   ([factory m n kl ku arg]
@@ -346,52 +320,28 @@
      (gb factory m n kl ku nil arg)
      (gb factory m n kl ku arg nil)))
   ([factory m n kl ku]
-   (gb factory m n kl ku nil nil))
-  ([factory ^BandedMatrix a]
-   (gb factory (.mrows a) (.ncols a) (.kl a) (.ku a) a nil)))
-
-(defn gb?
-  "TODO"
-  [a]
-  (instance? BandedMatrix a))
-
-(defn tb?
-  "TODO"
-  [a]
-  (and (instance? BandedMatrix a) (= (.mrows ^Matrix a) (.ncols ^Matrix a))
-       (= 0 (min (.kl ^BandedMatrix a) (.ku ^BandedMatrix a)))))
+   (gb factory m n kl ku nil nil)))
 
 (defn tb
   "TODO"
   ([factory n k source options]
    (if  (< -1 (long k) (long n))
-     (let-release [res (api/create-tb factory n k (api/enc-order (get options :order :column))
-                                      (api/enc-uplo (get options :uplo :lower)) (not (:raw options)))]
-       (if source
-         (transfer! source res)
-         res))
+     (let-release [res (api/create-tb factory n k (api/options-column? options)
+                                      (api/options-lower? options) (api/options-diag-unit? options)
+                                      (not (:raw options)))]
+       (if source (transfer! source res) res))
      (throw (ex-info "TB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
   ([factory n k arg]
    (if (or (not arg) (map? arg))
      (tb factory n k nil arg)
-     (tb factory n k arg nil)))
-  ([factory ^BandedMatrix a]
-   (if (tb? a)
-     (tb factory (.ncols a) (max (.kl a) (.ku a)) a nil)
-     (throw (ex-info "Cannot create a TB matrix from non-triangular source." {:a (str a)})))))
-
-(defn sb?
-  "TODO"
-  [a]
-  (and (instance? BandedMatrix a) (= (.mrows ^Matrix a) (.ncols ^Matrix a))
-       (= 0 (min (.kl ^BandedMatrix a) (.ku ^BandedMatrix a)))))
+     (tb factory n k arg nil))))
 
 (defn sb
   "TODO"
   ([factory n k source options]
    (if  (< -1 (long k) (long n))
-     (let-release [res (api/create-sb factory n k (api/enc-order (get options :order :column))
-                                      (api/enc-uplo (get options :uplo :lower)) (not (:raw options)))]
+     (let-release [res (api/create-sb factory n k (api/options-column? options)
+                                      (api/options-lower? options) (not (:raw options)))]
        (if source
          (transfer! source res)
          res))
@@ -399,19 +349,15 @@
   ([factory n k arg]
    (if (or (not arg) (map? arg))
      (sb factory n k nil arg)
-     (sb factory n k arg nil)))
-  ([factory ^BandedMatrix a]
-   (if (or (sb? a) (tb? a));;TODO distinguish sb and tb in banded-matrix
-     (sb factory (.ncols a) (max (.kl a) (.ku a)) a nil)
-     (throw (ex-info "Cannot create a SB matrix from non-triangular source." {:a (str a)})))))
+     (sb factory n k arg nil))))
 
 (defn tp
   "TODO"
   ([factory n source options]
    (if  (< -1 (long n))
-     (let-release [res (api/create-packed factory n :tr (not (= :row (:order options)))
-                                          (not (= :upper (:uplo options))) (= :unit (:diag options))
-                                          (not (:raw options)))]
+     (let-release [res (api/create-tp factory n (api/options-column? options)
+                                      (api/options-lower? options) (api/options-diag-unit? options)
+                                      (not (:raw options)))]
        (if source (transfer! source res) res))
      (throw (ex-info "TP matrix cannot have a negative dimension." {:n n}))))
   ([factory n arg]
@@ -427,8 +373,8 @@
   "TODO"
   ([factory n source options]
    (if  (< -1 (long n))
-     (let-release [res (api/create-packed factory n :sy (not (= :row (:order options)))
-                                          (not (= :upper (:uplo options))) false (not (:raw options)))]
+     (let-release [res (api/create-sp factory n (api/options-column? options)
+                                      (api/options-lower? options) (not (:raw options)))]
        (if source (transfer! source res) res))
      (throw (ex-info "SP matrix cannot have a negative dimension." {:n n}))))
   ([factory n arg]
@@ -576,9 +522,7 @@
       (trans! (dge 2 3 [1 2, 3 4, 5 6])) => (dge 2 3 [1 3, 5 2, 4 ,6])
   "
   [^Matrix a]
-  (if (api/fully-packed? a)
-    (api/trans (api/engine a) a)
-    (throw (ex-info "In-place destructive transpose is not available." {:a a}))))
+  (api/trans (api/engine a) a))
 
 (defn trans
   "Transposes matrix `a`, i.e returns a matrix that has m's columns as rows.
@@ -933,7 +877,7 @@
       (axpy! x y)
       (axpy! 3 x y 4 z 0.4 v)
   "
-  ([alpha x y]
+  ([alpha ^VectorSpace x y]
    (if (and (api/compatible? x y) (api/fits? x y))
      (if (< 0 (.dim x))
        (api/axpy (api/engine x) alpha x y)
@@ -1013,7 +957,7 @@
       (axpy! x y)
       (axpy! 3 x 0.2 y 4 z 0.4 v)
   "
-  ([alpha x beta y]
+  ([alpha ^VectorSpace x beta y]
    (if (and (api/compatible? x y) (api/fits? x y))
      (if (< 0 (.dim x))
        (api/axpby (api/engine x) alpha x beta y)
@@ -1090,8 +1034,8 @@
   ([alpha ^Matrix a x]
    (let-release [res (vctr (api/factory a) (.mrows a))]
      (mv! alpha a x 0.0 res)))
-  ([a x]
-   (if-not (tr? a)
+  ([^MatrixImplementation a x]
+   (if-not (.isTriangular a)
      (mv 1.0 a x)
      (let-release [res (copy x)]
        (mv! a x)))))
@@ -1198,7 +1142,7 @@
             (let [a (as i)
                   n (ncols a)]
               (if (= k (mrows a))
-                (recur (inc i) (aset p (inc i) n) (and quad (= m n) (ge? a)))
+                (recur (inc i) (aset p (inc i) n) (and quad (= m n) (instance? GEMatrix a)))
                 (throw (ex-info "You cannot chain-multiply ill-fitting matrices." {:ill-fitting-idx i}))))
             quad))
       nil
@@ -1225,8 +1169,8 @@
 
 (defn ^:private mm*
   ([alpha ^Matrix a ^Matrix b]
-   (if-not (tr? b)
-     (if-not (tr? a)
+   (if-not (.isTriangular ^MatrixImplementation b)
+     (if-not (.isTriangular ^MatrixImplementation a)
        (let-release [res (ge (api/factory b) (.mrows a) (.ncols b))]
          (mm! alpha a b 1.0 res))
        (let-release [res (copy b)]

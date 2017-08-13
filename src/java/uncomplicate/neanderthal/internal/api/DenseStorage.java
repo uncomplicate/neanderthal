@@ -8,8 +8,14 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface UPLOMatrix extends BlockMatrix {
+public interface DenseStorage {
 
-    long uplo ();
+    long capacity ();
+
+    long fd ();
+
+    long index (long i, long j);
+
+    boolean isGapless ();
 
 }

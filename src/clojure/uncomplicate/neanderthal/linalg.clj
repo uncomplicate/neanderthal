@@ -38,7 +38,7 @@
             [uncomplicate.neanderthal.internal
              [api :as api]
              [common :as generic]])
-  (:import [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix TRMatrix Changeable]))
+  (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 
 ;; ============================= LAPACK =======================================================
 
@@ -127,7 +127,7 @@
                     {:a  (str a) :b (str b) :errors
                      (cond-into []
                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
-                                (not (api/fits-navigation? a b)) "a and b do not have the same order")}))))
+                                (not (api/fits-navigation? a b)) "a and b do not have compatible layout")}))));;TODO  (api/fits-navigation? a b)
 
 (defn trs
   "Solves a system of linear equations with a triangularized matrix `a`,

@@ -6,6 +6,16 @@
 
 * Symmetric matrices (SY)
 * Banded matrices (GB, TB, SB)
+* Packed matrices (TP, SP)
+
+### Enhancements
+
+* Printing
+* Fluokitten protocols supported by all matrix types.
+
+### Breaking changes
+
+* :order replaced by :layout in matrix options.
 
 ### Fixes
 

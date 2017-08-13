@@ -8,6 +8,14 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface DenseVector extends Block, Vector {
+public interface LayoutNavigator {
+
+    long start (Region reg, long j);
+    long end (Region reg, long j);
+    long index (DenseStorage stor, long i, long j);
+    Object stripe (Matrix a, long j);
+    boolean isColumnMajor ();
+    boolean isRowMajor ();
+    int layout ();
 
 }

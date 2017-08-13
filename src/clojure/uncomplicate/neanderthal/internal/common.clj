@@ -10,7 +10,7 @@
   (:require [uncomplicate.fluokitten.core :refer [fold]]
             [uncomplicate.commons.core :refer [Releaseable release let-release double-fn]]
             [uncomplicate.neanderthal.internal.api :refer :all])
-  (:import [uncomplicate.neanderthal.internal.api DenseMatrix BandedMatrix Matrix Vector]))
+  (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor]))
 
 (defn dragan-says-ex
   ([message data]
@@ -20,23 +20,27 @@
 
 ;; ================= Core Functions ===================================
 
-(defn dense-rows [^DenseMatrix a]
+(defn dense-rows [^Matrix a]
   (map #(.row a %) (range (.mrows a))))
 
-(defn dense-cols [^DenseMatrix a]
+(defn dense-cols [^Matrix a]
   (map #(.col a %) (range (.ncols a))))
 
-(defn dense-dias [^DenseMatrix a]
+(defn dense-dias [^Matrix a]
   (map #(.dia a %) (range (dec (.ncols a)) (- (.mrows a)) -1)))
 
-(defn banded-rows [^BandedMatrix a]
-  (map #(.row a %) (range (min (.mrows a) (+ (min (.mrows a) (.ncols a)) (.kl a))))))
+(defn region-rows [^Matrix a]
+  (map #(.row a %) (range (min (.mrows a) (+ (min (.mrows a) (.ncols a)) (.kl (region a)))))))
 
-(defn banded-cols [^BandedMatrix a]
-  (map #(.col a %) (range (min (.ncols a) (+ (min (.mrows a) (.ncols a)) (.ku a))))))
+(defn region-cols [^Matrix a]
+  (map #(.col a %) (range (min (.ncols a) (+ (min (.mrows a) (.ncols a)) (.ku (region a)))))))
 
-(defn banded-dias [^BandedMatrix a]
-  (map #(.dia a %) (range (.ku a) (- (inc (.kl a))) -1)))
+(defn region-dias [^Matrix a]
+  (let [reg (region a)]
+    (map #(.dia a %) (range (.ku reg) (- (inc (.kl reg))) -1))))
+
+(defn ^RealBufferAccessor real-accessor [a]
+  (data-accessor a))
 
 ;; ======================== LU factorization ==========================================
 
@@ -48,7 +52,6 @@
 
 (defn ^:private nrm-needed-for-con []
   (throw (ex-info "Cannot compute condition number without nrm." {})))
-
 
 (defrecord TRFactorization [^Matrix lu ^Vector ipiv ^Boolean master fresh]
   Releaseable

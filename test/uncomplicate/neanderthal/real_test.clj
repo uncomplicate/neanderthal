@@ -1225,8 +1225,8 @@
          (mm! 2.0 (ge factory 2 3 (range 6)) (sp factory 3 (range 6)) 0.0 (ge factory 2 3))
          => (throws ExceptionInfo)
 
-         (mm (sp factory 3 (range 6)) (ge factory 3 2 (range 6)))
-         => (throws ExceptionInfo)
+         (mm (sy factory 3 (range 6)) (ge factory 3 2 (range 6)))
+         => (ge factory 3 2 [5 11 14 14 35 47])
 
          (mm (ge factory 2 3 (range 6)) (sp factory 3 (range 6)))
          => (throws ExceptionInfo)

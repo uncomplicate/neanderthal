@@ -22,8 +22,8 @@
              [math :refer [ceil abs]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [dense-rows dense-cols dense-dias banded-rows banded-cols banded-dias
-                             dragan-says-ex]]
+             [common :refer [dense-rows dense-cols dense-dias region-dias region-cols region-rows
+                             dragan-says-ex real-accessor]]
              [printing :refer [print-vector print-ge print-uplo print-banded print-packed]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
@@ -32,10 +32,9 @@
             IFn$LDD IFn$LLDD IFn$LLL]
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
-            Vector Matrix RealVector IntegerVector RealMatrix GEMatrix TRMatrix SYMatrix
-            DataAccessor RealChangeable IntegerChangeable RealOrderNavigator UploNavigator StripeNavigator
-            DenseMatrix DenseVector Block BandedMatrix BandNavigator DenseStorage RealDefault LayoutNavigator
-            Region RealLayoutNavigator BlockMatrix]));;TODO clean up
+            VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
+            RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault LayoutNavigator
+            RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix]));;TODO clean up
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
@@ -55,8 +54,7 @@
 (declare integer-block-vector)
 (declare real-block-vector)
 (declare real-ge-matrix)
-(declare real-tr-matrix)
-(declare real-sy-matrix)
+(declare real-uplo-matrix)
 (declare real-banded-matrix)
 (declare real-packed-matrix)
 
@@ -232,6 +230,97 @@
 
 ;; ==================== Transfer macros and functions  =============================================
 
+(defn matrix-equals [^RealNativeMatrix a ^RealNativeMatrix b]
+  (or (identical? a b)
+      (and (instance? (class a) b) (= (.matrixType ^MatrixImplementation a) (.matrixType ^MatrixImplementation b))
+           (compatible? a b) (fits? a b)
+           (let [nav (real-navigator a)
+                 da (real-accessor a)
+                 buf (.buffer a)
+                 ofst (.offset a)]
+             (and-layout a i j idx (= (.get da buf (+ ofst idx)) (.get nav b i j)))))))
+
+(defmacro ^:private transfer-matrix-matrix
+  ([condition source destination]
+   `(do
+      (if (and (<= (.mrows ~destination) (.mrows ~source)) (<= (.ncols ~destination) (.ncols ~source)))
+        (if (and (compatible? ~source ~destination) (fits? ~source ~destination) ~condition)
+          (copy (engine ~source) ~source ~destination)
+          (let [nav# (real-navigator ~destination)
+                da# (real-accessor ~destination)
+                buf# (.buffer ~destination)
+                ofst# (.offset ~destination)]
+            (doall-layout ~destination i# j# idx# (.set da# buf# (+ ofst# idx#) (.get nav# ~source i# j#)))))
+        (dragan-says-ex "There is not enough entries in the source matrix. Take appropriate submatrix of the destination.."
+                        {:source (str ~source) :destination (str ~destination)}))
+      ~destination))
+  ([source destination]
+   `(transfer-matrix-matrix true ~source ~destination)))
+
+(defmacro ^:private transfer-seq-matrix [source destination]
+  `(let [da# (real-accessor ~destination)
+         buf# (.buffer ~destination)
+         ofst# (.offset ~destination)]
+     (doseq-layout ~destination i# j# idx# ~source e# (.set da# buf# (+ ofst# idx#) e#))
+     ~destination))
+
+(defmacro ^:private transfer-vector-matrix [source destination]
+  `(let [stor# (storage ~destination)]
+     (if (and (compatible? ~source ~destination) (.isGapless stor#))
+       (copy (engine ~source) ~source (view-vctr ~destination))
+       (let [da# (real-accessor ~destination)
+             nav# (navigator ~destination)
+             reg# (region ~destination)
+             buf# (.buffer ~destination)
+             ofst# (.offset ~destination)
+             dim# (.dim ~destination)]
+         (doall-layout nav# stor# reg# i# j# idx# cnt#
+                       (when (< cnt# dim#)
+                         (.set da# buf# (+ ofst# idx#) (.entry ~source cnt#))))
+         ~destination))))
+
+(defmacro ^:private transfer-matrix-vector [source destination]
+  `(let [stor# (storage ~source)]
+     (if (and (compatible? ~destination ~source) (.isGapless stor#))
+       (let [src# (view-vctr ~source)]
+         (copy (engine src#) src# ~destination))
+       (let [da# (real-accessor ~source)
+             nav# (navigator ~source)
+             reg# (region ~source)
+             buf# (.buffer ~source)
+             ofst# (.offset ~source)
+             dim# (.dim ~destination)]
+         (doall-layout nav# stor# reg# i# j# idx# cnt#
+                       (when (< cnt# dim#)
+                         (.set ~destination cnt# (.get da# buf# (+ ofst# idx#)))))
+         ~destination))))
+
+(defmacro ^:private transfer-array-matrix [source destination]
+  ` (let [da# (real-accessor ~destination)
+          nav# (navigator ~destination)
+          stor# (storage ~destination)
+          reg# (region ~destination)
+          buf# (.buffer ~destination)
+          ofst# (.offset ~destination)
+          len# (alength ~source)]
+      (doall-layout nav# stor# reg# i# j# idx# cnt#
+                    (when (< cnt# len#)
+                      (.set da# buf# (+ ofst# idx#) (aget ~source cnt#))))
+      ~destination))
+
+(defmacro ^:private transfer-matrix-array [source destination]
+  `(let [da# (real-accessor ~source)
+         nav# (navigator ~source)
+         stor# (storage ~source)
+         reg# (region ~source)
+         buf# (.buffer ~source)
+         ofst# (.offset ~source)
+         len# (alength ~destination)]
+     (doall-layout nav# stor# reg# i# j# idx# cnt#
+                   (when (< cnt# len#)
+                     (aset ~destination cnt# (.get da# buf# (+ ofst# idx#)))))
+     ~destination))
+
 (defmacro ^:private transfer-vector-vector [source destination]
   `(do
      (if (and (compatible? ~source ~destination) (fits? ~source ~destination))
@@ -259,113 +348,6 @@
          (.set ~destination i# (first src#))
          (recur (inc i#) (next src#))))
      ~destination))
-
-(defmacro ^:private transfer-vector-ge [source destination]
-  `(let [dim# (.dim ~source)
-         sd# (.sd ~destination)
-         n# (min (.fd ~destination) (ceil (/ dim# sd#)))
-         navigator# (order-navigator ~destination)]
-     (dotimes [j# n#]
-       (dotimes [i# sd#]
-         (let [idx# (+ (* sd# j#) i#)]
-           (when (< idx# dim#)
-             (.set navigator# ~destination i# j# (.entry ~source idx#))))))
-     ~destination))
-
-(defmacro ^:private transfer-ge-vector [source destination]
-  `(let [dim# (.dim ~destination)
-         sd# (.sd ~source)
-         n# (min (.fd ~source) (ceil (/ dim# sd#)))
-         navigator# (order-navigator ~source)]
-     (dotimes [j# n#]
-       (dotimes [i# sd#]
-         (let [idx# (+ (* sd# j#) i#)]
-           (when (< idx# dim#)
-             (.set ~destination idx# (.get navigator# ~source i# j#))))))
-     ~destination))
-
-(defmacro ^:private transfer-array-ge [source destination]
-  `(let [len# (alength ~source)
-         sd# (.sd ~destination)
-         n# (min (.fd ~destination) (ceil (/ len# sd#)))
-         navigator# (order-navigator ~destination)]
-     (dotimes [j# n#]
-       (dotimes [i# sd#]
-         (let [idx# (+ (* sd# j#) i#)]
-           (when (< idx# len#)
-             (.set navigator# ~destination i# j# (aget ~source idx#))))))
-     ~destination))
-
-(defmacro ^:private transfer-ge-array [source destination]
-  `(let [len# (alength ~destination)
-         sd# (.sd ~source)
-         n# (min (.fd ~source) (ceil (/ len# sd#)))
-         navigator# (order-navigator ~source)]
-     (dotimes [j# n#]
-       (dotimes [i# sd#]
-         (let [idx# (+ (* sd# j#) i#)]
-           (when (< idx# len#)
-             (aset ~destination idx# (.get navigator# ~source i# j#))))))
-     ~destination))
-
-(defn ^:private transfer-uplo-uplo [^Matrix source ^Matrix destination]
-  (if (and (compatible? source destination) (fits? source destination))
-    (copy! source destination)
-    (let [navigator (order-navigator source)
-          stripe-nav (stripe-navigator source)
-          n (min (.ncols source) (.ncols destination))]
-      (dotimes [j n]
-        (let [start (.start stripe-nav n j)]
-          (dotimes [i (- (.end stripe-nav n j) start)]
-            (.set navigator destination (+ start i) j (.get navigator source (+ start i) j)))))
-      destination)))
-
-(defn ^:private transfer-seq-uplo [source ^Matrix destination]
-  (let [n (.ncols destination)
-        navigator (order-navigator destination)
-        stripe-nav (stripe-navigator destination)]
-    (loop [j 0 src (seq source)]
-      (if (and src (< j n))
-        (recur (inc j)
-               (let [end (.end stripe-nav n j)]
-                 (loop [i (.start stripe-nav n j) src src]
-                   (if (and src (< i end))
-                     (do (.set navigator destination i j (first src))
-                         (recur (inc i) (next src)))
-                     src))))
-        destination))))
-
-(defmacro ^:private transfer-array-uplo [source destination]
-  `(let [len# (alength ~source)
-         n# (.ncols ~destination)
-         navigator# (order-navigator ~destination)
-         stripe-nav# (stripe-navigator ~destination)]
-     (loop [j# 0 cnt# 0]
-       (if (and (< cnt# len#) (< j# n#))
-         (recur (inc j#)
-                (long (let [end# (.end stripe-nav# n# j#)]
-                        (loop [i# (.start stripe-nav# n# j#) idx# cnt#]
-                          (if (and (< idx# len#) (< i# end#))
-                            (do (.set navigator# ~destination i# j# (aget ~source idx#))
-                                (recur (inc i#) (inc idx#)))
-                            idx#)))))
-         ~destination))))
-
-(defmacro ^:private transfer-uplo-array [source destination]
-  `(let [len# (alength ~destination)
-         n# (.ncols ~source)
-         navigator# (order-navigator ~source)
-         stripe-nav# (stripe-navigator ~source)]
-     (loop [j# 0 cnt# 0]
-       (if (and (< cnt# len#) (< j# n#))
-         (recur (inc j#)
-                (long (let [end# (.end stripe-nav# n# j#)]
-                        (loop [i# (.start stripe-nav# n# j#) idx# cnt#]
-                          (if (and (< idx# len#) (< i# end#))
-                            (do (aset ~destination idx# (.get navigator# ~source i# j#))
-                                (recur (inc i#) (inc idx#)))
-                            idx#)))))
-         ~destination))))
 
 ;; ============ Integer Vector =================================================
 
@@ -407,12 +389,10 @@
   (native [x]
     x)
   MemoryContext
-  (fully-packed? [_]
-    (= 1 strd))
   (compatible? [_ y]
     (compatible? da y))
   (fits? [_ y]
-    (= n (.dim ^DenseVector y)))
+    (= n (.dim ^VectorSpace y)))
   EngineProvider
   (engine [_]
     nil)
@@ -426,13 +406,6 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  DenseVector
-  (buffer [_]
-    buf)
-  (offset [_]
-    ofst)
-  (stride [_]
-    strd)
   IFn$LLL
   (invokePrim [x i v]
     (.set x i v))
@@ -469,7 +442,13 @@
     x)
   (alter [x i f]
     (.set x i (.invokePrim ^IFn$LL f (.entry x i))))
-  IntegerVector
+  IntegerNativeVector
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    strd)
   (dim [_]
     n)
   (entry [_ i]
@@ -570,7 +549,7 @@
   (view-vctr [_ stride-mult]
     (real-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
-    (real-ge-matrix fact false buf n 1 ofst n COLUMN_MAJOR))
+    (real-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
     (view-ge (view-ge x) stride-mult))
   (view-tr [x uplo diag]
@@ -578,12 +557,10 @@
   (view-sy [x uplo]
     (view-sy (view-ge x) uplo))
   MemoryContext
-  (fully-packed? [_]
-    (= 1 strd))
   (compatible? [_ y]
     (compatible? da y))
   (fits? [_ y]
-    (= n (.dim ^DenseVector y)))
+    (= n (.dim ^VectorSpace y)))
   EngineProvider
   (engine [_]
     eng)
@@ -597,13 +574,6 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  DenseVector
-  (buffer [_]
-    buf)
-  (offset [_]
-    ofst)
-  (stride [_]
-    strd)
   IFn$LDD
   (invokePrim [x i v]
     (.set x i v))
@@ -643,7 +613,13 @@
     x)
   (alter [x i f]
     (.set x i (.invokePrim ^IFn$DD f (.entry x i))))
-  RealVector
+  RealNativeVector
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    strd)
   (dim [_]
     n)
   (entry [_ i]
@@ -657,43 +633,43 @@
     (real-block-vector fact 0))
   PseudoFunctor
   (fmap! [x f]
-    (vector-fmap ^IFn$DD f x))
+    (vector-fmap* ^IFn$DD f x))
   (fmap! [x f y]
-    (vector-fmap ^IFn$DDD f x ^RealVector y))
-  (fmap! [x f y z]
-    (vector-fmap ^IFn$DDDD f x ^RealVector y ^RealVector z))
+    (vector-fmap* ^IFn$DDD f x ^RealVector y))
+  (fmap! [ x f y z]
+    (vector-fmap* ^IFn$DDDD f x ^RealVector y ^RealVector z))
   (fmap! [x f y z v]
-    (vector-fmap ^IFn$DDDDD f x ^RealVector y ^RealVector z ^RealVector v))
+    (vector-fmap* ^IFn$DDDDD f x ^RealVector y ^RealVector z ^RealVector v))
   (fmap! [x f y z v ws]
-    (vector-fmap f x y z v ws))
+    (vector-fmap* f x y z v ws))
   Foldable
   (fold [x]
-    (sum eng x))
+    (sum (engine x) x))
   (fold [x f init]
-    (vector-fold f init x))
+    (vector-reduce f init x))
   (fold [x f init y]
-    (vector-fold f init x ^RealVector y))
+    (vector-reduce f init x y))
   (fold [x f init y z]
-    (vector-fold f init x ^RealVector y ^RealVector z))
+    (vector-reduce f init x y z))
   (fold [x f init y z v]
-    (vector-fold f init x ^RealVector y ^RealVector z ^RealVector v))
+    (vector-reduce f init x y z v))
   (fold [x f init y z v ws]
-    (vector-fold f init x y z v ws))
+    (vector-reduce* nil i j nil nil nil nil nil nil nil))
   (foldmap [x g]
     (loop [i 0 acc 0.0]
       (if (< i n)
         (recur (inc i) (+ acc (.invokePrim ^IFn$DD g (.entry x i))))
         acc)))
-  (foldmap [x g f init]
-    (vector-foldmap f init ^IFn$DD g x))
-  (foldmap [x g f init y]
-    (vector-foldmap f init ^IFn$DDD g x ^RealVector y))
-  (foldmap [x g f init y z]
-    (vector-foldmap f int ^IFn$DDDD g x ^RealVector y ^RealVector z))
-  (foldmap [x g f init y z v]
-    (vector-foldmap f init ^IFn$DDDDD g x ^RealVector y ^RealVector z ^RealVector v))
-  (foldmap [x g f init y z v ws]
-    (vector-foldmap f init g x y z v ws)))()
+  (foldmap[x g f init]
+    (vector-map-reduce f init g x))
+  (foldmap[x g f init y]
+    (vector-map-reduce f init g x y))
+  (foldmap[x g f init y z]
+    (vector-map-reduce f init g x y z))
+  (foldmap[x g f init y z v]
+    (vector-map-reduce f init g x y z v))
+  (foldmap [_ _ _ _ _ _ _ _]
+    (vector-map-reduce* nil i j nil nil  nil nil nil nil nil nil)))
 
 (defn real-block-vector
   ([fact master ^ByteBuffer buf n ofst strd]
@@ -759,33 +735,25 @@
 
 ;; =================== Real Matrix =============================================
 
-(deftype RealGEMatrix [^RealOrderNavigator navigator fact ^RealBufferAccessor da eng ^Boolean master
-                       ^ByteBuffer buf ^long m ^long n ^long ofst ^long ld ^long sd ^long fd ^long ord]
+(deftype RealGEMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg
+                       fact ^RealBufferAccessor da eng ^Boolean master
+                       ^ByteBuffer buf ^long m ^long n ^long ofst]
   Object
   (hashCode [a]
-    (-> (hash :RealGEMatrix) (hash-combine m) (hash-combine n)
-        (hash-combine (nrm2 eng (.stripe navigator a 0)))))
+    (-> (hash :RealGEMatrix) (hash-combine m) (hash-combine n) (hash-combine (nrm2 eng (.dia a)))))
   (equals [a b]
-    (cond
-      (nil? b) false
-      (identical? a b) true
-      (and (instance? RealGEMatrix b) (compatible? da b) (fits? a b))
-      (loop [j 0]
-        (if (< j fd)
-          (and (loop [i 0]
-                 (if (< i sd)
-                   (and (= (.get da buf (+ ofst (* ld j) i)) (.get navigator b i j))
-                        (recur (inc i)))
-                   true))
-               (recur (inc j)))
-          true))
-      :default false))
+    (matrix-equals a b))
   (toString [a]
-    (format "#RealGEMatrix[%s, mxn:%dx%d, order%s, offset:%d, ld:%d]"
-            (.entryType da) m n (dec-property ord) ofst ld))
+    (format "#RealGEMatrix[%s, mxn:%dx%d, layout%s, offset:%d]"
+            (.entryType da) m n (dec-property (.layout nav)) ofst))
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
+  GEMatrix
+  (matrixType [_]
+    :ge)
+  (isTriangular [_]
+    false)
   EngineProvider
   (engine [_]
     eng)
@@ -799,65 +767,65 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  Seqable
-  (seq [a]
-    (map #(seq (.stripe navigator a %)) (range 0 fd)))
+  Navigable
+  (navigator [_]
+    nav)
+  (storage [_]
+    stor)
+  (region [_]
+    reg)
   Container
   (raw [_]
-    (real-ge-matrix fact m n ord))
+    (real-ge-matrix fact m n nav stor reg))
   (raw [_ fact]
-    (create-ge fact m n ord false))
-  (zero [_]
-    (real-ge-matrix fact m n ord))
+    (create-ge fact m n (.isColumnMajor nav) false))
+  (zero [a]
+    (raw a))
   (zero [_ fact]
-    (create-ge fact m n ord true))
+    (create-ge fact m n (.isColumnMajor nav) true))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
   (native [a]
     a)
   DenseContainer
-  (view-vctr [_]
-    (if (= ld sd)
-      (real-block-vector fact false buf (* m n) ofst 1)
-      (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:ld ld :sd sd}))))
+  (view-vctr [a]
+    (if (.isGapless stor)
+      (real-block-vector fact false buf (.dim a) ofst 1)
+      (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:a (str a)}))))
   (view-vctr [a stride-mult]
     (view-vctr (view-vctr a) stride-mult))
-  (view-ge [_]
-    (real-ge-matrix fact false buf m n ofst ld ord))
+  (view-ge [a]
+    a)
   (view-ge [_ stride-mult]
-    (let [shrinked (ceil (/ fd (long stride-mult)))]
-      (real-ge-matrix fact false buf (.sd navigator sd shrinked) (.fd navigator sd shrinked)
-                      ofst (* ld (long stride-mult)) ord)))
-  (view-tr [_ uplo diag]
-    (real-tr-matrix fact false buf (min m n) ofst ld ord uplo diag))
-  (view-sy [_ uplo]
-    (real-sy-matrix fact false buf (min m n) ofst ld ord uplo))
-  Navigable
-  (order-navigator [_]
-    navigator)
+    (let [shrinked (ceil (/ (.fd stor) (long stride-mult)))
+          column-major (.isColumnMajor nav)
+          [m n] (if column-major [m shrinked] [shrinked n])]
+      (real-ge-matrix fact false buf m n ofst nav
+                      (full-storage column-major m n (* (long stride-mult) (.ld ^FullStorage stor)))
+                      (ge-region m n))))
+  (view-tr [_ lower? diag-unit?]
+    (let [n (min m n)]
+      (real-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld ^FullStorage stor))
+                        (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?)
+                        (tr-engine fact))))
+  (view-sy [_ lower?]
+    (let [n (min m n)]
+      (real-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld ^FullStorage stor))
+                        (band-region n lower?) :sy sy-default (sy-engine fact))))
   MemoryContext
-  (fully-packed? [_]
-    (= sd ld))
   (compatible? [_ b]
     (compatible? da b))
   (fits? [_ b]
-    (and (= m (.mrows ^GEMatrix b)) (= n (.ncols ^GEMatrix b))))
+    (and (instance? GEMatrix b)) (= reg (region b)))
   (fits-navigation? [_ b]
-    (= ord (.order ^DenseMatrix b)))
-  GEMatrix
-  (buffer [_]
-    buf)
-  (offset [_]
-    ofst)
-  (stride [_]
-    ld)
-  (order [_]
-    ord)
-  (sd [_]
-    sd)
-  (fd [_]
-    fd)
+    (= nav (navigator b)))
+  Monoid
+  (id [a]
+    (real-ge-matrix fact 0 0 (.isColumnMajor nav)))
+  Seqable
+  (seq [a]
+    (map #(seq (.stripe nav a %)) (range 0 (.fd stor))))
   IFn$LLDD
   (invokePrim [a i j v]
     (entry! a i j v))
@@ -870,22 +838,20 @@
   (invoke [a i j]
     (entry a i j))
   (invoke [a]
-    n)
+    (.fd stor))
   IFn$L
   (invokePrim [a]
-    n)
+    (.fd stor))
   RealChangeable
-  (isAllowed [a i j]
+  (isAllowed [a i j];;TODO rename to isAccessible
     true)
   (set [a val]
     (if (not (Double/isNaN val))
       (set-all eng val a)
-      (dotimes [j fd]
-        (dotimes [i sd]
-          (.set da buf (+ ofst (* ld j) i) val))))
+      (doall-layout nav stor reg i j idx (.set da buf (+ ofst idx) val)))
     a)
   (set [a i j val]
-    (.set da buf (.index navigator ofst ld i j) val)
+    (.set da buf (+ ofst (.index nav stor i j)) val)
     a)
   (setBoxed [a val]
     (.set a val))
@@ -893,20 +859,23 @@
     (.set a i j val))
   (alter [a f]
     (if (instance? IFn$DD f)
-      (dotimes [j fd]
-        (dotimes [i sd]
-          (let [idx (+ ofst (* ld j) i)]
-            (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))))
-      (dotimes [j fd]
-        (dotimes [i sd]
-          (let [idx (+ ofst (* ld j) i)]
-            (.set da buf idx (.invokePrimitive navigator f i j (.get da buf idx)))))))
+      (doall-layout nav stor reg i j idx
+                    (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
+      (doall-layout nav stor reg i j idx
+                    (.set da buf (+ ofst idx) (.invokePrimitive ^RealLayoutNavigator nav f i j
+                                                                (.get da buf (+ ofst idx))))))
     a)
   (alter [a i j f]
-    (let [idx (.index navigator ofst ld i j)]
-      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))
-    a)
-  RealMatrix
+    (let [idx (+ ofst (.index nav stor i j))]
+      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))
+      a))
+  RealNativeMatrix
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    (.ld ^FullStorage stor))
   (dim [_]
     (* m n))
   (mrows [_]
@@ -914,31 +883,34 @@
   (ncols [_]
     n)
   (entry [a i j]
-    (.get da buf (.index navigator ofst ld i j)))
+    (.get da buf (+ ofst (.index nav stor i j))))
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
-    (real-block-vector fact false buf n (.index navigator ofst ld i 0) (if (= ROW_MAJOR ord) 1 ld)))
+    (real-block-vector fact false buf n (+ ofst (.index nav stor i 0))
+                       (if (.isRowMajor nav) 1 (.ld ^FullStorage stor))))
   (rows [a]
     (dense-rows a))
   (col [a j]
-    (real-block-vector fact false buf m (.index navigator ofst ld 0 j) (if (= COLUMN_MAJOR ord) 1 ld)))
+    (real-block-vector fact false buf m (+ ofst (.index nav stor 0 j))
+                       (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor))))
   (cols [a]
     (dense-cols a))
   (dia [a]
-    (real-block-vector fact false buf (min m n) ofst (inc ld)))
+    (real-block-vector fact false buf (min m n) ofst (inc (.ld ^FullStorage stor))))
   (dia [a k]
-    (let [dia-dim (if (< 0 k) (min m (- n k)) (min (+ m k) n))]
-      (real-block-vector fact false buf dia-dim (.index navigator ofst ld k) (inc ld))))
+    (if (< 0 k)
+      (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor (- k) 0))
+                         (inc (.ld ^FullStorage stor)))
+      (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor 0 k))
+                         (inc (.ld ^FullStorage stor)))))
   (dias [a]
     (dense-dias a))
   (submatrix [a i j k l]
-    (real-ge-matrix fact false buf k l (.index navigator ofst ld i j) ld ord))
+    (real-ge-matrix fact false buf k l (+ ofst (.index nav stor i j))
+                    nav (full-storage (.isColumnMajor nav) k l (.ld ^FullStorage stor)) (ge-region k l)))
   (transpose [a]
-    (real-ge-matrix fact false buf n m ofst ld (flip-layout ord)))
-  Monoid
-  (id [a]
-    (real-ge-matrix fact 0 0))
+    (real-ge-matrix fact false buf n m ofst (flip nav) stor (flip reg)))
   TRF
   (trtrs [_ _]
     (require-trf))
@@ -951,78 +923,29 @@
   (trcon [_ _]
     (require-trf))
   (trdet [_]
-    (require-trf))
-  PseudoFunctor
-  (fmap! [a f]
-    (ge-fmap navigator fd sd ^IFn$DD f a))
-  (fmap! [a f b]
-    (ge-fmap navigator fd sd ^IFn$DDD f a b))
-  (fmap! [a f b c]
-    (ge-fmap navigator fd sd ^IFn$DDDD f a b c))
-  (fmap! [a f b c d]
-    (ge-fmap navigator fd sd ^IFn$DDDDD f a b c d))
-  (fmap! [a f b c d es]
-    (ge-fmap navigator fd sd f a b c d es))
-  Foldable
-  (fold [_]
-    (loop [j 0 acc 0.0]
-      (if (< j fd)
-        (recur (inc j)
-               (double
-                (loop [i 0 acc acc]
-                  (if (< i sd)
-                    (recur (inc i) (+ acc (.get da buf (+ ofst (* ld j) i))))
-                    acc))))
-        acc)))
-  (fold [a f init]
-    (matrix-fold navigator fd f init a))
-  (fold [a f init b]
-    (matrix-fold navigator fd f init a b))
-  (fold [a f init b c]
-    (matrix-fold navigator fd f init a b c))
-  (fold [a f init b c d]
-    (matrix-fold navigator fd f init a b c d))
-  (fold [a f init b c d es]
-    (matrix-fold navigator fd f init a b c d es))
-  (foldmap [_ g]
-    (loop [j 0 acc 0.0]
-      (if (< j fd)
-        (recur (inc j)
-               (double
-                (loop [i 0 acc acc]
-                  (if (< i sd)
-                    (recur (inc i)
-                           (+ acc (.invokePrim ^IFn$DD g (.get da buf (+ ofst (* ld j) i)))))
-                    acc))))
-        acc)))
-  (foldmap [a g f init]
-    (matrix-foldmap navigator fd f init ^IFn$DD g a))
-  (foldmap [a g f init b]
-    (matrix-foldmap navigator fd f init ^IFn$DDD g a b))
-  (foldmap [a g f init b c]
-    (matrix-foldmap navigator fd f init ^IFn$DDDD g a b c))
-  (foldmap [a g f init b c d]
-    (matrix-foldmap navigator fd f init ^IFn$DDDDD g a b c d))
-  (foldmap [a g f init b c d es]
-    (matrix-foldmap navigator fd f init g a b c d es)))
+    (require-trf)))
 
 (defn real-ge-matrix
-  ([fact master buf m n ofst ld ord]
-   (let [^RealOrderNavigator navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)]
-     (->RealGEMatrix navigator fact (data-accessor fact) (ge-engine fact)
-                     master buf m n ofst (max (long ld) (.sd navigator m n))
-                     (.sd navigator m n) (.fd navigator m n) ord)))
-  ([fact ^long m ^long n ord]
-   (let-release [buf (.createDataSource (data-accessor fact) (* m n))]
-     (real-ge-matrix fact true buf m n 0 0 ord)))
+  ([fact master buf m n ofst nav stor reg]
+   (->RealGEMatrix nav stor reg fact (data-accessor fact) (ge-engine fact) master buf m n ofst))
+  ([fact m n nav ^DenseStorage stor reg]
+   (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
+     (real-ge-matrix fact true buf m n 0 nav stor reg)))
+  ([fact ^long m ^long n column?]
+   (real-ge-matrix fact m n (layout-navigator column?) (full-storage column? m n) (ge-region m n)))
   ([fact ^long m ^long n]
-   (real-ge-matrix fact m n DEFAULT_ORDER)))
+   (real-ge-matrix fact m n true)))
 
 (extend RealGEMatrix
   Functor
   {:fmap copy-fmap}
+  PseudoFunctor
+  {:fmap! matrix-fmap!}
   Applicative
   {:pure matrix-pure}
+  Foldable
+  {:fold matrix-fold
+   :foldmap matrix-foldmap}
   Magma
   {:op (constantly matrix-op)})
 
@@ -1030,167 +953,27 @@
   (.write w (str a))
   (print-ge w a))
 
-(defmethod transfer! [RealGEMatrix RealGEMatrix]
-  [^RealGEMatrix source ^RealGEMatrix destination]
-  (if (and (compatible? source destination) (fits? source destination))
-    (copy! source destination)
-    (let [navigator (order-navigator source)
-          sd (min (.sd source) (.sd navigator (.mrows destination) (.ncols destination)))
-          fd (min (.fd source) (.fd navigator (.mrows destination) (.ncols destination)))]
-      (dotimes [j fd]
-        (dotimes [i sd]
-          (.set navigator destination i j (.get navigator source i j))))
-      destination)))
+;; =================== Real Uplo Matrix ==================================
 
-(defmethod transfer! [clojure.lang.Sequential RealGEMatrix]
-  [source ^RealGEMatrix destination]
-  (let [sd (.sd destination)
-        fd (.fd destination)
-        navigator (order-navigator destination)]
-    (loop [j 0 src source]
-      (if (and src (< j fd))
-        (recur (inc j)
-               (loop [i 0 src src]
-                 (if (and src (< i sd))
-                   (do (.set navigator destination i j (first src))
-                       (recur (inc i) (next src)))
-                   src)))
-        destination))))
-
-(defmethod transfer! [RealBlockVector RealGEMatrix]
-  [^RealBlockVector source ^RealGEMatrix destination]
-  (let [m (.mrows destination)
-        n (.ncols destination)]
-    (if (and (compatible? (data-accessor source) destination) (<= (* m n) (.dim source)))
-      (copy! (real-ge-matrix (factory source) false (.buffer source)
-                             m n (.offset source) 0 (.order destination))
-             destination)
-      (transfer-vector-ge source destination))))
-
-(defmethod transfer! [RealGEMatrix RealBlockVector]
-  [^RealGEMatrix source ^RealBlockVector destination]
-  (let [m (.mrows source)
-        n (.ncols source)]
-    (if (and (compatible? (data-accessor destination) source) (<= (* m n) (.dim destination)))
-      (copy! source (real-ge-matrix (factory destination) false (.buffer destination)
-                                    m n (.offset destination) 0 (.order source)))
-      (transfer-ge-vector source destination))
-    destination))
-
-(defmethod transfer! [IntegerBlockVector RealGEMatrix]
-  [^IntegerBlockVector source ^RealGEMatrix destination]
-  (transfer-vector-ge source destination))
-
-(defmethod transfer! [RealGEMatrix IntegerBlockVector]
-  [^RealGEMatrix source ^IntegerBlockVector destination]
-  (transfer-ge-vector source destination))
-
-(defmethod transfer! [(Class/forName "[D") RealGEMatrix]
-  [^doubles source ^RealGEMatrix destination]
-  (transfer-array-ge source destination))
-
-(defmethod transfer! [(Class/forName "[F") RealGEMatrix]
-  [^floats source ^RealGEMatrix destination]
-  (transfer-array-ge source destination))
-
-(defmethod transfer! [(Class/forName "[J") RealGEMatrix]
-  [^longs source ^RealGEMatrix destination]
-  (transfer-array-ge source destination))
-
-(defmethod transfer! [(Class/forName "[I") RealGEMatrix]
-  [^ints source ^RealGEMatrix destination]
-  (transfer-array-ge source destination))
-
-(defmethod transfer! [RealGEMatrix (Class/forName "[D")]
-  [^RealGEMatrix source ^doubles destination]
-  (transfer-ge-array source destination))
-
-(defmethod transfer! [RealGEMatrix (Class/forName "[F")]
-  [^RealGEMatrix source ^floats destination]
-  (transfer-ge-array source destination))
-
-;; ====================== Generic triangular functions =============================
-
-(defn ^:private uplo-equals [^Block a b type]
-  (let [n (.ncols ^Matrix a)
-        navigator (order-navigator a)
-        stripe-nav (stripe-navigator a)
-        da (data-accessor a)
-        buf (.buffer a)
-        ofst (.offset a)
-        ld (.stride a)]
-    (cond
-      (nil? b) false
-      (identical? a b) true
-      (and (instance? type b) (compatible? da b) (fits? a b))
-      (loop [j 0]
-        (if (< j n)
-          (let [end (.end stripe-nav n j)]
-            (and (loop [i (.start stripe-nav n j)]
-                   (if (< i end)
-                     (and (= (.get ^RealBufferAccessor da buf (+ ofst (* ld j) i)) (.get navigator b i j))
-                          (recur (inc i)))
-                     true))
-                 (recur (inc j))))
-          true))
-      :default false)))
-
-(defn ^:private uplo-set [^Block a ^double val]
-  (let [n (.ncols ^Matrix a)
-        eng (engine a)
-        stripe-nav (stripe-navigator a)
-        da ^RealBufferAccessor (data-accessor a)
-        buf (.buffer a)
-        ofst (.offset a)
-        ld (.stride a)]
-    (if (not (Double/isNaN val))
-      (set-all eng val a)
-      (dotimes [j n]
-        (let [start (.start stripe-nav n j)
-              end (.end stripe-nav n j)]
-          (dotimes [i (- end start)]
-            (.set da buf (+ ofst (* ld j) (+ start i)) val)))))
-    a))
-
-(defn ^:private uplo-alter [^Block a f]
-  (let [n (.ncols ^Matrix a)
-        navigator (order-navigator a)
-        stripe-nav (stripe-navigator a)
-        da ^RealBufferAccessor (data-accessor a)
-        buf (.buffer a)
-        ofst (.offset a)
-        ld (.stride a)]
-    (if (instance? IFn$DD f)
-      (dotimes [j n]
-        (let [start (.start stripe-nav n j)
-              end (.end stripe-nav n j)]
-          (dotimes [i (- end start)]
-            (let [idx (+ ofst (* ld j) (+ start i))]
-              (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))))))
-      (dotimes [j n]
-        (let [start (.start stripe-nav n j)
-              end (.end stripe-nav n j)]
-          (dotimes [i (- end start)]
-            (let [idx (+ ofst (* ld j) (+ start i))]
-              (.set da buf idx (.invokePrimitive navigator f (+ start i) j (.get da buf idx))))))))
-    a))
-
-;; =================== Real Triangular Matrix ==================================
-
-(deftype RealTRMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
-                       fact ^RealBufferAccessor da eng ^Boolean master ^ByteBuffer buf
-                       ^long n ^long ofst ^long ld ^long ord ^long fuplo ^long fdiag]
+(deftype RealUploMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
+                         fact ^RealBufferAccessor da eng matrix-type
+                         ^Boolean master ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
-    (-> (hash :RealTRMatrix) (hash-combine n) (hash-combine (nrm2 eng (.stripe navigator a 0)))))
+    (-> (hash :RealUploMatrix) (hash-combine n) (hash-combine (nrm2 eng (.dia a)))))
   (equals [a b]
-    (uplo-equals a b TRMatrix))
+    (matrix-equals a b))
   (toString [a]
-    (format "#RealTRMatrix[%s, mxn:%dx%d, order%s, uplo%s, diag%s, offset:%d, ld:%d]"
-            (.entryType da) n n (dec-property ord) (dec-property fuplo) (dec-property fdiag) ofst ld ))
+    (format "#RealUploMatrix[%s, type%s, mxn:%dx%d, layout%s, offset:%d]"
+            (.entryType da) matrix-type n n (dec-property (.layout nav)) ofst))
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
+  UploMatrix
+  (matrixType [_]
+    matrix-type)
+  (isTriangular [_]
+    (= :tr matrix-type))
   EngineProvider
   (engine [_]
     eng)
@@ -1204,837 +987,7 @@
   DataAccessorProvider
   (data-accessor [_]
     da)
-  Container
-  (raw [_]
-    (real-tr-matrix fact n ord fuplo fdiag))
-  (raw [_ fact]
-    (create-tr fact n ord fuplo fdiag false))
-  (zero [a]
-    (raw a))
-  (zero [_ fact]
-    (create-tr fact n ord fuplo fdiag true))
-  (host [a]
-    (let-release [res (raw a)]
-      (copy eng a res)))
-  (native [a]
-    a)
-  DenseContainer
-  (view-vctr [a]
-    (view-vctr (view-ge a)))
-  (view-vctr [a stride-mult]
-    (view-vctr (view-ge a) stride-mult))
-  (view-ge [_]
-    (real-ge-matrix fact false buf n n ofst ld ord))
-  (view-ge [a stride-mult]
-    (view-ge (view-ge a) stride-mult))
-  (view-tr [_ uplo diag]
-    (real-tr-matrix fact false buf n ofst ld ord uplo diag))
-  (view-sy [_ uplo]
-    (real-sy-matrix fact false buf n ofst ld ord uplo))
   Navigable
-  (order-navigator [_]
-    navigator)
-  (stripe-navigator [_]
-    stripe-nav)
-  (uplo-navigator [_]
-    uplo-nav)
-  MemoryContext
-  (fully-packed? [_]
-    false)
-  (compatible? [_ b]
-    (compatible? da b))
-  (fits? [_ b]
-    (and (= n (.mrows ^TRMatrix b)) (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b))))
-  (fits-navigation? [_ b]
-    (and (= ord (.order ^DenseMatrix b))
-         (if (instance? TRMatrix b)
-           (and (= fuplo (.uplo ^TRMatrix b)) (= fdiag (.diag ^TRMatrix b)))
-           true)))
-  Monoid
-  (id [a]
-    (real-tr-matrix fact 0))
-  TRMatrix
-  (buffer [_]
-    buf)
-  (offset [_]
-    ofst)
-  (stride [_]
-    ld)
-  (uplo [_]
-    fuplo)
-  (diag [_]
-    fdiag)
-  (order [_]
-    ord)
-  (sd [_]
-    n)
-  (fd [_]
-    n)
-  Seqable
-  (seq [a]
-    (map #(seq (.stripe navigator a %)) (range 0 n)))
-  IFn$LLDD
-  (invokePrim [x i j v]
-    (entry! x i j v))
-  IFn$LLD
-  (invokePrim [a i j]
-    (entry a i j))
-  IFn
-  (invoke [x i j v]
-    (entry! x i j v))
-  (invoke [a i j]
-    (entry a i j))
-  (invoke [a]
-    n)
-  IFn$L
-  (invokePrim [a]
-    n)
-  RealChangeable
-  (isAllowed [a i j]
-    (= 2 (.defaultEntry uplo-nav i j)))
-  (set [a val]
-    (uplo-set a val))
-  (set [a i j val]
-    (.set da buf (.index navigator ofst ld i j) val)
-    a)
-  (setBoxed [a val]
-    (.set a val))
-  (setBoxed [a i j val]
-    (.set a i j val))
-  (alter [a f]
-    (uplo-alter a f))
-  (alter [a i j f]
-    (let [idx (.index navigator ofst ld i j)]
-      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))
-    a)
-  RealMatrix
-  (dim [_]
-    (* n n))
-  (mrows [_]
-    n)
-  (ncols [_]
-    n)
-  (entry [a i j]
-    (let [res (.defaultEntry uplo-nav i j)]
-      (if (= 2 res)
-        (.get da buf (.index navigator ofst ld i j))
-        res)))
-  (boxedEntry [a i j]
-    (.entry a i j))
-  (row [a i]
-    (let [start (.rowStart uplo-nav n i)]
-      (real-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
-                         (.index navigator ofst ld i start) (if (= ROW_MAJOR ord) 1 ld))))
-  (rows [a]
-    (dense-rows a))
-  (col [a j]
-    (let [start (.colStart uplo-nav n j)]
-      (real-block-vector fact false buf (- (.colEnd uplo-nav n j) start)
-                         (.index navigator ofst ld start j) (if (= COLUMN_MAJOR ord) 1 ld))))
-  (cols [a]
-    (dense-cols a))
-  (dia [a]
-    (real-block-vector fact false buf (.diaDim uplo-nav n 0) ofst (inc ld)))
-  (dia [a k]
-    (real-block-vector fact false buf (.diaDim uplo-nav n k) (.index navigator ofst ld k) (inc ld)))
-  (dias [a]
-    (dense-dias a))
-  (submatrix [a i j k l]
-    (if (and (= i j) (= k l))
-      (real-tr-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo fdiag)
-      (throw (ex-info "You cannot use regions outside the triangle in TR submatrix"
-                      {:a (str a) :i i :j j :k k :l l}))))
-  (transpose [a]
-    (real-tr-matrix fact false buf n ofst ld (flip-layout ord) (flip-uplo fuplo) fdiag))
-  TRF
-  (trtrs [a b]
-    (trs eng a b))
-  (trtri! [a]
-    (tri eng a))
-  (trtri [a]
-    (let-release [res (raw a)]
-      (tri eng (copy eng a res))))
-  (trcon [a _ nrm1?]
-    (con eng a nrm1?))
-  (trcon [a nrm1?]
-    (con eng a nrm1?))
-  (trdet [a]
-    (if (= DIAG_NON_UNIT fdiag)
-      (fold (.diag a) f* 1.0)
-      1.0))
-  PseudoFunctor
-  (fmap! [a f]
-    (uplo-fmap navigator stripe-nav n ^IFn$DD f a))
-  (fmap! [a f b]
-    (uplo-fmap navigator stripe-nav n ^IFn$DDD f a b))
-  (fmap! [a f b c]
-    (uplo-fmap navigator stripe-nav n ^IFn$DDDD f a b c))
-  (fmap! [a f b c d]
-    (uplo-fmap navigator stripe-nav n ^IFn$DDDDD f a b c d))
-  (fmap! [a f b c d es]
-    (uplo-fmap navigator stripe-nav n f a b c d nil))
-  Foldable
-  (fold [a]
-    (loop [j 0 acc 0.0]
-      (if (< j n)
-        (recur (inc j)
-               (double
-                (let [end (.end stripe-nav n j)]
-                  (loop [i (.start stripe-nav n j) acc acc]
-                    (if (< i end)
-                      (recur (inc i) (+ acc (.get da buf (+ ofst (* ld j) i))))
-                      acc)))))
-        acc)))
-  (fold [a f init]
-    (matrix-fold navigator n f init a))
-  (fold [a f init b]
-    (matrix-fold navigator n f init a b))
-  (fold [a f init b c]
-    (matrix-fold navigator n f init a b c))
-  (fold [a f init b c d]
-    (matrix-fold navigator n f init a b c d))
-  (fold [a f init b c d es]
-    (matrix-fold navigator n f init a b c d es))
-  (foldmap [a g]
-    (uplo-foldmap a g))
-  (foldmap [a g f init]
-    (matrix-foldmap navigator n f init ^IFn$DD g a))
-  (foldmap [a g f init b]
-    (matrix-foldmap navigator n f init ^IFn$DDD g a b))
-  (foldmap [a g f init b c]
-    (matrix-foldmap navigator n f init ^IFn$DDDD g a b c))
-  (foldmap [a g f init b c d]
-    (matrix-foldmap navigator n f init ^IFn$DDDDD g a b c d))
-  (foldmap [a g f init b c d es]
-    (matrix-foldmap navigator n f init g a b c d es)))
-
-(extend RealTRMatrix
-  Functor
-  {:fmap copy-fmap}
-  Applicative
-  {:pure matrix-pure}
-  Magma
-  {:op (constantly matrix-op)})
-
-(defn real-tr-matrix
-  ([fact master ^ByteBuffer buf n ofst ld ord uplo diag]
-   (let [unit (= DIAG_UNIT diag)
-         lower (= LOWER uplo)
-         column (= COLUMN_MAJOR ord)
-         bottom (if lower column (not column))
-         order-nav (if column col-navigator row-navigator)
-         uplo-nav (if lower
-                    (if unit unit-lower-nav non-unit-lower-nav)
-                    (if unit unit-upper-nav non-unit-upper-nav))
-         stripe-nav (if bottom
-                      (if unit unit-bottom-navigator non-unit-bottom-navigator)
-                      (if unit unit-top-navigator non-unit-top-navigator))]
-     (->RealTRMatrix order-nav uplo-nav stripe-nav fact (data-accessor fact) (tr-engine fact)
-                     master buf n ofst (max (long ld) (long n)) ord uplo diag)))
-  ([fact n ord uplo diag]
-   (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
-     (real-tr-matrix fact true buf n 0 n ord uplo diag)))
-  ([fact n]
-   (real-tr-matrix fact n DEFAULT_ORDER DEFAULT_UPLO DEFAULT_DIAG)))
-
-(defmethod print-method RealTRMatrix [a ^java.io.Writer w]
-  (.write w (str a))
-  (print-uplo w a))
-
-(defmethod transfer! [RealTRMatrix RealTRMatrix]
-  [source destination]
-  (transfer-uplo-uplo source destination))
-
-(defmethod transfer! [clojure.lang.Sequential RealTRMatrix]
-  [source destination]
-  (transfer-seq-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[D") RealTRMatrix]
-  [^doubles source ^RealTRMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[F") RealTRMatrix]
-  [^floats source ^RealTRMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[J") RealTRMatrix]
-  [^longs source ^RealTRMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[I") RealTRMatrix]
-  [^ints source ^RealTRMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [RealTRMatrix (Class/forName "[D")]
-  [^RealTRMatrix source ^doubles destination]
-  (transfer-uplo-array source destination))
-
-(defmethod transfer! [RealTRMatrix (Class/forName "[F")]
-  [^RealTRMatrix source ^floats destination]
-  (transfer-uplo-array source destination))
-
-;; =================== Real Symmetric Matrix ==================================
-
-(deftype RealSYMatrix [^RealOrderNavigator navigator ^UploNavigator uplo-nav ^StripeNavigator stripe-nav
-                       fact ^RealBufferAccessor da eng ^Boolean master ^ByteBuffer buf
-                       ^long n ^long ofst ^long ld ^long ord ^long fuplo]
-  Object
-  (hashCode [a]
-    (-> (hash :RealSYMatrix) (hash-combine n) (hash-combine (nrm2 eng (.stripe navigator a 0)))))
-  (equals [a b]
-    (uplo-equals a b SYMatrix))
-  (toString [a]
-    (format "#RealSYMatrix[%s, mxn:%dx%d, order%s, uplo%s, offset:%d, ld:%d]"
-            (.entryType da) n n (dec-property ord) (dec-property fuplo) ofst ld ))
-  Releaseable
-  (release [_]
-    (if master (clean-buffer buf) true))
-  EngineProvider
-  (engine [_]
-    eng)
-  FactoryProvider
-  (factory [_]
-    fact)
-  (native-factory [_]
-    (native-factory fact))
-  (index-factory [_]
-    (index-factory fact))
-  DataAccessorProvider
-  (data-accessor [_]
-    da)
-  Container
-  (raw [_]
-    (real-sy-matrix fact n ord fuplo))
-  (raw [_ fact]
-    (create-sy fact n ord fuplo false))
-  (zero [a]
-    (raw a))
-  (zero [_ fact]
-    (create-sy fact n ord fuplo true))
-  (host [a]
-    (let-release [res (raw a)]
-      (copy eng a res)))
-  (native [a]
-    a)
-  DenseContainer
-  (view-vctr [a]
-    (view-vctr (view-ge a)))
-  (view-vctr [a stride-mult]
-    (view-vctr (view-ge a) stride-mult))
-  (view-ge [_]
-    (real-ge-matrix fact false buf n n ofst ld ord))
-  (view-ge [a stride-mult]
-    (view-ge (view-ge a) stride-mult))
-  (view-tr [_ uplo diag]
-    (real-tr-matrix fact false buf n ofst ld ord uplo diag))
-  (view-sy [_ uplo]
-    (real-sy-matrix fact false buf n ofst ld ord uplo))
-  Navigable
-  (order-navigator [_]
-    navigator)
-  (stripe-navigator [_]
-    stripe-nav)
-  (uplo-navigator [_]
-    uplo-nav)
-  MemoryContext
-  (fully-packed? [_]
-    false)
-  (compatible? [_ b]
-    (compatible? da b))
-  (fits? [_ b]
-    (and (= n (.mrows ^SYMatrix b)) (= fuplo (.uplo ^SYMatrix b))))
-  (fits-navigation? [_ b]
-    (and (= ord (.order ^DenseMatrix b))
-         (if (instance? SYMatrix b)
-           (= fuplo (.uplo ^SYMatrix b))
-           true)))
-  Monoid
-  (id [a]
-    (real-sy-matrix fact 0))
-  SYMatrix
-  (buffer [_]
-    buf)
-  (offset [_]
-    ofst)
-  (stride [_]
-    ld)
-  (uplo [_]
-    fuplo)
-  (order [_]
-    ord)
-  (sd [_]
-    n)
-  (fd [_]
-    n)
-  Seqable
-  (seq [a]
-    (map #(seq (.stripe navigator a %)) (range 0 n)))
-  IFn$LLDD
-  (invokePrim [x i j v]
-    (entry! x i j v))
-  IFn$LLD
-  (invokePrim [a i j]
-    (entry a i j))
-  IFn
-  (invoke [x i j v]
-    (entry! x i j v))
-  (invoke [a i j]
-    (entry a i j))
-  (invoke [a]
-    n)
-  IFn$L
-  (invokePrim [a]
-    n)
-  RealChangeable
-  (isAllowed [a i j]
-    (= 2 (.defaultEntry uplo-nav i j)))
-  (set [a val]
-    (uplo-set a val))
-  (set [a i j val]
-    (.set da buf (.index navigator ofst ld i j) val)
-    a)
-  (setBoxed [a val]
-    (.set a val))
-  (setBoxed [a i j val]
-    (.set a i j val))
-  (alter [a f]
-    (uplo-alter a f))
-  (alter [a i j f]
-    (let [idx (if (= 2 (.defaultEntry uplo-nav i j))
-                (.index navigator ofst ld i j)
-                (.index navigator ofst ld j i))]
-      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))
-    a)
-  RealMatrix
-  (dim [_]
-    (* n n))
-  (mrows [_]
-    n)
-  (ncols [_]
-    n)
-  (entry [a i j]
-    (let [res (.defaultEntry uplo-nav i j)]
-      (if (= 2 res)
-        (.get da buf (.index navigator ofst ld i j))
-        (.get da buf (.index navigator ofst ld j i)))))
-  (boxedEntry [a i j]
-    (.entry a i j))
-  (row [a i]
-    (let [start (.rowStart uplo-nav n i)]
-      (real-block-vector fact false buf (- (.rowEnd uplo-nav n i) start)
-                         (.index navigator ofst ld i start) (if (= ROW_MAJOR ord) 1 ld))))
-  (rows [a]
-    (dense-rows a))
-  (col [a j]
-    (let [start (.colStart uplo-nav n j)]
-      (real-block-vector fact false buf (- (.colEnd uplo-nav n j) start)
-                         (.index navigator ofst ld start j) (if (= COLUMN_MAJOR ord) 1 ld))))
-  (cols [a]
-    (dense-cols a))
-  (dia [a]
-    (real-block-vector fact false buf n ofst (inc ld)))
-  (dia [a k]
-    (real-block-vector fact false buf (- n (long (abs k))) (.index navigator ofst ld k) (inc ld)))
-  (dias [a]
-    (dense-dias a))
-  (submatrix [a i j k l]
-    (if (and (= i j) (= k l))
-      (real-sy-matrix fact false buf k (.index navigator ofst ld i j) ld ord fuplo)
-      (throw (ex-info "You cannot use regions that are not diagonal-centered in SY submatrix."
-                      {:a (str a) :i i :j j :k k :l l}))))
-  (transpose [a]
-    (real-sy-matrix fact false buf n ofst ld (flip-layout ord) (flip-uplo fuplo)))
-  ;; TODO LU is different a bit. It's probably LDL/UDU
-  PseudoFunctor
-  (fmap! [a f]
-    (uplo-fmap navigator stripe-nav n ^IFn$DD f a))
-  (fmap! [a f b]
-    (uplo-fmap navigator stripe-nav n ^IFn$DDD f a b))
-  (fmap! [a f b c]
-    (uplo-fmap navigator stripe-nav n ^IFn$DDDD f a b c))
-  (fmap! [a f b c d]
-    (uplo-fmap navigator stripe-nav n ^IFn$DDDDD f a b c d))
-  (fmap! [a f b c d es]
-    (uplo-fmap navigator stripe-nav n f a b c d nil))
-  Foldable
-  (fold [a]
-    (uplo-fold a))
-  (fold [a f init]
-    (matrix-fold navigator n f init a))
-  (fold [a f init b]
-    (matrix-fold navigator n f init a b))
-  (fold [a f init b c]
-    (matrix-fold navigator n f init a b c))
-  (fold [a f init b c d]
-    (matrix-fold navigator n f init a b c d))
-  (fold [a f init b c d es]
-    (matrix-fold navigator n f init a b c d es))
-  (foldmap [a g]
-    (uplo-foldmap a g))
-  (foldmap [a g f init]
-    (matrix-foldmap navigator n f init ^IFn$DD g a))
-  (foldmap [a g f init b]
-    (matrix-foldmap navigator n f init ^IFn$DDD g a b))
-  (foldmap [a g f init b c]
-    (matrix-foldmap navigator n f init ^IFn$DDDD g a b c))
-  (foldmap [a g f init b c d]
-    (matrix-foldmap navigator n f init ^IFn$DDDDD g a b c d))
-  (foldmap [a g f init b c d es]
-    (matrix-foldmap navigator n f init g a b c d es)))
-
-(extend RealSYMatrix
-  Functor
-  {:fmap copy-fmap}
-  Applicative
-  {:pure matrix-pure}
-  Magma
-  {:op (constantly matrix-op)})
-
-(defn real-sy-matrix
-  ([fact master ^ByteBuffer buf n ofst ld ord uplo]
-   (let [lower (= LOWER uplo)
-         column (= COLUMN_MAJOR ord)
-         bottom (if lower column (not column))
-         order-nav (if column col-navigator row-navigator)
-         uplo-nav (if lower non-unit-lower-nav non-unit-upper-nav)
-         stripe-nav (if bottom non-unit-bottom-navigator non-unit-top-navigator)]
-     (->RealSYMatrix order-nav uplo-nav stripe-nav fact (data-accessor fact) (sy-engine fact)
-                     master buf n ofst (max (long ld) (long n)) ord uplo)))
-  ([fact n ord uplo]
-   (let-release [buf (.createDataSource (data-accessor fact) (* (long n) (long n)))]
-     (real-sy-matrix fact true buf n 0 n ord uplo)))
-  ([fact n]
-   (real-sy-matrix fact n DEFAULT_ORDER DEFAULT_UPLO)))
-
-(defmethod print-method RealSYMatrix [a ^java.io.Writer w]
-  (.write w (str a))
-  (print-uplo w a))
-
-(defmethod transfer! [RealSYMatrix RealSYMatrix]
-  [source destination]
-  (transfer-uplo-uplo source destination))
-
-(defmethod transfer! [clojure.lang.Sequential RealSYMatrix]
-  [source destination]
-  (transfer-seq-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[D") RealSYMatrix]
-  [^doubles source ^RealSYMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[F") RealSYMatrix]
-  [^floats source ^RealSYMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[J") RealSYMatrix]
-  [^longs source ^RealSYMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [(Class/forName "[I") RealSYMatrix]
-  [^ints source ^RealSYMatrix destination]
-  (transfer-array-uplo source destination))
-
-(defmethod transfer! [RealSYMatrix (Class/forName "[D")]
-  [^RealSYMatrix source ^doubles destination]
-  (transfer-uplo-array source destination))
-
-(defmethod transfer! [RealSYMatrix (Class/forName "[F")]
-  [^RealSYMatrix source ^floats destination]
-  (transfer-uplo-array source destination))
-
-;; ================= Banded Matrix ==============================================================
-
-(defmacro ^:private banded-doall
-  ([band-nav da m n kl ku ofst ld i j idx expr];;TODO da is not used!
-   `(let [kd# (.kd ~band-nav ~kl ~ku)]
-      (dotimes [~j (.fd ~band-nav ~m ~n ~kl ~ku)]
-        (let [start# (.start ~band-nav ~kl ~ku ~j)
-              end# (.end ~band-nav ~m ~n ~kl ~ku ~j)]
-          (dotimes [i# (- end# start#)]
-            (let [~i (+ start# i#)
-                  ~idx (+ ~ofst (* ~j ~ld) (- kd# ~j) ~i)]
-              ~expr))))))
-  ([navigator a i j expr]
-   `(let [band-nav# (band-navigator ~a)
-          kl# (.kl ~a)
-          ku# (.ku ~a)
-          m# (.mrows ~a)
-          n# (.ncols ~a)
-          kd# (.kd band-nav# kl# ku#)]
-      (dotimes [~j (.fd band-nav# m# n# kl# ku#)]
-        (let [start# (.start band-nav# kl# ku# ~j)
-              end# (.end band-nav# m# n# kl# ku# ~j)]
-          (dotimes [i# (- end# start#)]
-            (let [~i (+ start# i#)]
-              ~expr)))))))
-
-(deftype RealBandedMatrix [^RealOrderNavigator navigator ^BandNavigator band-nav fact ^RealBufferAccessor da
-                           eng ^Boolean master ^ByteBuffer buf ^long m ^long n ^long fkl ^long fku
-                           ^long ofst ^long ld ^long fd ^long ord]
-  Object
-  (hashCode [a]
-    (-> (hash :RealBandedMatrix) (hash-combine m) (hash-combine n) (hash-combine fkl) (hash-combine fku)
-        (hash-combine (nrm2 eng (.dia a)))))
-  (equals [a b]
-    (cond
-      (nil? b) false
-      (identical? a b) true
-      (and (instance? RealBandedMatrix b) (compatible? da b) (fits? a b))
-      (let [kd (.kd band-nav fkl fku)]
-        (loop [j 0]
-          (if (< j fd)
-            (let [end (.end band-nav m n fkl fku j)]
-              (and (loop [i (.start band-nav fkl fku j)]
-                     (if (< i end)
-                       (and (= (.get da buf (+ ofst (* j ld) (- kd j) i)) (.get navigator b i j))
-                            (recur (inc i)))
-                       true))
-                   (recur (inc j))))
-            true)))
-      :default false))
-  (toString [a]
-    (format "#RealBandedMatrix[%s, mxn:%dx%d (%dx%d), order%s, kl:%d, ku:%d, offset:%d, ld:%d]"
-            (.entryType da) m n (.height band-nav m n fkl fku) (.width band-nav m n fkl fku)
-            (dec-property ord) fkl fku ofst ld fd))
-  Releaseable
-  (release [_]
-    (if master (clean-buffer buf) true))
-  EngineProvider
-  (engine [_]
-    eng)
-  FactoryProvider
-  (factory [_]
-    fact)
-  (native-factory [_]
-    (native-factory fact))
-  (index-factory [_]
-    (index-factory fact))
-  DataAccessorProvider
-  (data-accessor [_]
-    da)
-  Container
-  (raw [_]
-    (real-banded-matrix fact m n fkl fku ord eng))
-  (raw [_ fact]
-    "TODO create-banded in factory")
-  (zero [_]
-    (real-banded-matrix fact m n fkl fku ord eng))
-  (zero [_ fact]
-    "TODO create-banded in factory")
-  (host [a]
-    (let-release [res (raw a)]
-      (copy eng a res)))
-  (native [a]
-    a)
-  DenseContainer
-  (view-ge [_]
-    (real-ge-matrix fact false buf (.height band-nav m n fkl fku) (.width band-nav m n fkl fku) ofst ld ord))
-  Navigable
-  (order-navigator [_]
-    navigator)
-  (band-navigator [_]
-    band-nav)
-  MemoryContext
-  (fully-packed? [_]
-    (= 0 fkl fku))
-  (compatible? [_ b]
-    (compatible? da b))
-  (fits? [_ b]
-    (and (= m (.mrows ^BandedMatrix b)) (= n (.ncols ^BandedMatrix b))
-         (= fkl (.kl ^BandedMatrix b)) (= fku (.ku ^BandedMatrix b))))
-  (fits-navigation? [_ b]
-    (and (= ord (.order ^BandedMatrix b))))
-  Monoid
-  (id [a]
-    (real-banded-matrix fact 0))
-  BandedMatrix
-  (buffer [_]
-    buf)
-  (offset [_]
-    ofst)
-  (stride [_]
-    ld)
-  (kl [_]
-    fkl)
-  (ku [_]
-    fku)
-  (order [_]
-    ord)
-  Seqable
-  (seq [a]
-    (map #(seq (.stripe navigator a %)) (range 0 fd)))
-  IFn$LLDD
-  (invokePrim [x i j v]
-    (entry! x i j v))
-  IFn$LLD
-  (invokePrim [a i j]
-    (entry a i j))
-  IFn
-  (invoke [x i j v]
-    (entry! x i j v))
-  (invoke [a i j]
-    (entry a i j))
-  (invoke [a]
-    n)
-  IFn$L
-  (invokePrim [a]
-    n)
-  RealChangeable
-  (isAllowed [a i j]
-    (<= (- j fku) i (+ j fkl)))
-  (set [a val]
-    (banded-doall band-nav da m n fkl fku ofst ld i j idx (.set da buf idx val))
-    a)
-  (set [a i j val]
-    (.set da buf (.index band-nav ofst ld fkl fku i j) val)
-    a)
-  (setBoxed [a val]
-    (.set a val))
-  (setBoxed [a i j val]
-    (.set a i j val))
-  (alter [a f]
-    (if (instance? IFn$DD f)
-      (banded-doall band-nav da m n fkl fku ofst ld i j idx
-                    (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))
-      (banded-doall band-nav da m n fkl fku ofst ld i j idx
-                    (.set da buf idx (.invokePrimitive navigator f i j (.get da buf idx)))))
-    a)
-  (alter [a i j f]
-    (let [idx (.index band-nav ofst ld fkl fku i j)]
-      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))
-      a))
-  RealMatrix
-  (dim [_]
-    (* m n))
-  (mrows [_]
-    m)
-  (ncols [_]
-    n)
-  (entry [a i j]
-    (if (<= (- j fku) i (+ j fkl))
-      (.get da buf (.index band-nav ofst ld fkl fku i j))
-      0.0))
-  (boxedEntry [a i j]
-    (.entry a i j))
-  (row [a i]
-    (real-block-vector fact false buf (min (- n (max 0 (- i fkl))) (+ fku 1 (min i fkl)))
-                       (.index band-nav ofst ld fkl fku i (max 0 (- i fkl)))
-                       (if (= ROW_MAJOR ord) 1 (dec ld))))
-  (rows [a]
-    (banded-rows a))
-  (col [a j]
-    (real-block-vector fact false buf (min (- m (max 0 (- j fku))) (+ fkl 1 (min j fku)))
-                       (.index band-nav ofst ld fkl fku (max 0 (- j fku)) j)
-                       (if (= COLUMN_MAJOR ord) 1 (dec ld))))
-  (cols [a]
-    (banded-cols a))
-  (dia [a]
-    (real-block-vector fact false buf (min m n) (.index band-nav ofst ld fkl fku 0) ld))
-  (dia [a k]
-    (if (<= (- fkl) k fku)
-      (let [dia-dim (if (< 0 k) (min m (- n k)) (min (+ m k) n))]
-        (real-block-vector fact false buf dia-dim (.index band-nav ofst ld fkl fku k) ld))
-      (real-block-vector fact false buf 0 ofst ld)))
-  (dias [a]
-    (banded-dias a))
-  (submatrix [a i j k l]
-    (if (= i j)
-      (let [kl (min fkl (dec k))
-            ku (min fku (dec l))]
-        (real-banded-matrix fact false buf k l kl ku
-                            (- (.index band-nav ofst ld fkl fku i j) (.kd band-nav kl ku))
-                            ld ord eng))
-      (throw (ex-info "You cannot use regions outside the band in banded submatrix."
-                      {:a (str a) :i i :j j :k k :l l}))))
-  (transpose [a]
-    (real-banded-matrix fact false buf n m fku fkl ofst ld (flip-layout ord) eng)))
-
-(defn real-banded-matrix
-  ([fact master buf m n kl ku ofst ld ord engine]
-   (let [navigator (if (= COLUMN_MAJOR ord) col-navigator row-navigator)
-         band-nav (if (= COLUMN_MAJOR ord) col-band-navigator row-band-navigator)]
-     (->RealBandedMatrix navigator band-nav fact (data-accessor fact) engine true buf m n kl ku ofst
-                         (max (long ld) (inc (+ (long kl) (long ku)))) (.fd ^BandNavigator band-nav m n kl ku) ord)))
-  ([fact m n kl ku ord engine]
-   (let [m (long m)
-         n (long n)
-         kl (long kl)
-         ku (long ku)
-         dia-dim (min m n)
-         fd (long (if (= COLUMN_MAJOR ord) (min n (+ dia-dim ku)) (min m (+ dia-dim kl))))]
-     (let-release [buf (.createDataSource (data-accessor fact) (* (inc (+ kl ku)) fd))]
-       (real-banded-matrix fact true buf m n kl ku 0 0 ord engine))))
-  ([fact m n kl ku engine]
-   (real-banded-matrix fact m n kl ku DEFAULT_ORDER engine)))
-
-(defmethod print-method RealBandedMatrix [a ^java.io.Writer w]
-  (.write w (str a "\n"))
-  (print-banded w a))
-
-(defmethod transfer! [RealBandedMatrix RealBandedMatrix]
-  [^RealBandedMatrix source destination]
-  (if (and (compatible? source destination) (fits? source destination))
-    (copy! source destination)
-    (let [navigator (order-navigator source)]
-      (banded-doall navigator source i j (.set navigator destination i j (.get navigator source i j)))
-      destination)))
-
-(defmethod transfer! [clojure.lang.Sequential RealBandedMatrix]
-  [source ^RealBandedMatrix destination]
-  (let [navigator (order-navigator destination)
-        band-nav (band-navigator destination)
-        m (.mrows destination)
-        n (.ncols destination)
-        kl (.kl destination)
-        ku (.ku destination)
-        fd (.fd band-nav m n kl ku)]
-    (let [kd (.kd band-nav kl ku)]
-      (loop [j 0 src (seq source)]
-        (if (and src (< j fd))
-          (recur (inc j)
-                 (let [end (.end band-nav m n kl ku j)]
-                   (loop [i (.start band-nav kl ku j) src src]
-                     (if (and src (< i end))
-                       (do (.set navigator destination i j (first src))
-                           (recur (inc i) (next src)))
-                       src))))
-          destination)))))
-
-;; =================== Real Packed Matrix ==================================
-
-(deftype RealPackedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
-                           fact ^RealBufferAccessor da eng matrix-type
-                           ^Boolean master ^ByteBuffer buf ^long n ^long ofst ^long layout]
-  Object
-  (hashCode [a]
-    (-> (hash :RealPackedMatrix) (hash-combine matrix-type) (hash-combine n)
-        (hash-combine (nrm2 eng a))))
-  (equals [a b]
-    (or (identical? a b)
-        (and (instance? RealPackedMatrix b) (= matrix-type (.matrix-type ^RealPackedMatrix b))
-             (compatible? da b) (= reg (region b))
-             (and-layout nav stor reg i j idx
-                         (= (.get da buf (+ ofst idx)) (.get ^RealLayoutNavigator nav b i j))))))
-  (toString [a]
-    (format "#RealPackedMatrix[%s, mxn:%dx%d, layout%s, offset:%d]"
-            (.entryType da) n n (str (if (.isColumnMajor nav) :column :row)) ofst))
-  Releaseable
-  (release [_]
-    (if master (clean-buffer buf) true))
-  EngineProvider
-  (engine [_]
-    eng)
-  FactoryProvider
-  (factory [_]
-    fact)
-  (native-factory [_]
-    (native-factory fact))
-  (index-factory [_]
-    (index-factory fact))
-  DataAccessorProvider
-  (data-accessor [_]
-    da)
-  StorageProvider
   (navigator [_]
     nav)
   (storage [_]
@@ -2043,33 +996,44 @@
     reg)
   Container
   (raw [_]
-    (real-packed-matrix fact n (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) matrix-type))
+    (real-uplo-matrix fact n nav stor reg matrix-type default eng))
   (raw [_ fact]
-    (create-packed fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
+    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
   (zero [a]
     (raw a))
   (zero [_ fact]
-    (create-packed fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) true))
+    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
   (native [a]
     a)
+  DenseContainer
+  (view-vctr [a]
+    (view-vctr (view-ge a)))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-ge a) stride-mult))
+  (view-ge [_]
+    (real-ge-matrix fact false buf n n ofst nav stor (ge-region n n) ))
+  (view-ge [a stride-mult]
+    (view-ge (view-ge a) stride-mult))
+  (view-tr [_ lower? diag-unit?]
+    (real-uplo-matrix fact false buf n ofst nav stor (band-region n lower? diag-unit?)
+                      :tr (real-default :tr diag-unit?) (tr-engine fact)))
+  (view-sy [_ lower?]
+    (real-uplo-matrix fact false buf n ofst nav stor (band-region n lower?)
+                      :sy sy-default (sy-engine fact)))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
   (fits? [_ b]
-    (= reg (region b)))
+    (and (instance? UploMatrix b) (= reg (region b))))
+  (fits-navigation? [_ b]
+    (and (= nav (navigator b))
+         (or (instance? GEMatrix b) (= reg (region b)))))
   Monoid
   (id [a]
-    (real-packed-matrix fact 0 (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) matrix-type))
-  TRMatrix
-  (buffer [_]
-    buf)
-  (offset [_]
-    ofst)
-  (order [_]
-    layout)
+    (real-uplo-matrix fact 0 (.isColumnMajor nav) matrix-type))
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 n)))
@@ -2114,11 +1078,450 @@
     a)
   (alter [a i j f]
     (let [idx (+ ofst (.index nav stor i j))]
-      (if (instance? IFn$DD f)
-        (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))
-        (.invokePrimitive ^RealLayoutNavigator nav f i j (.get da buf idx))))
+      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))
+      a))
+  RealNativeMatrix
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    (.ld ^FullStorage stor))
+  (dim [_]
+    (* n n))
+  (mrows [_]
+    n)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (if (.accessible reg i j)
+      (.get da buf (+ ofst (.index nav stor i j)))
+      (.entry default stor da buf ofst i j)))
+  (boxedEntry [a i j]
+    (.entry a i j))
+  (row [a i]
+    (let [start (.rowStart reg i)]
+      (real-block-vector fact false buf (- (.rowEnd reg i) start) (+ ofst (.index nav stor i start))
+                         (if (.isRowMajor nav) 1 (.ld ^FullStorage stor)))))
+  (rows [a]
+    (dense-rows a))
+  (col [a j]
+    (let [start (.colStart reg j)]
+      (real-block-vector fact false buf (- (.colEnd reg j) start) (+ ofst (.index nav stor start j))
+                         (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor)))))
+  (cols [a]
+    (dense-cols a))
+  (dia [a]
+    (real-block-vector fact false buf n ofst (inc (.ld ^FullStorage stor))))
+  (dia [a k]
+    (if (<= (- (.kl reg)) k (.ku reg))
+      (if (< 0 k)
+        (real-block-vector fact false buf (- n k) (+ ofst (.index nav stor (- k) 0))
+                           (inc (.ld ^FullStorage stor)))
+        (real-block-vector fact false buf (+ n k) (+ ofst (.index nav stor 0 k))
+                           (inc (.ld ^FullStorage stor))))
+      (real-block-vector fact false buf 0 ofst 1)))
+  (dias [a]
+    (region-dias a))
+  (submatrix [a i j k l]
+    (if (and (= i j) (= k l))
+      (real-uplo-matrix fact false buf k (+ ofst (.index nav stor i j)) nav
+                        (full-storage (.isColumnMajor nav) k k (.ld ^FullStorage stor))
+                        (band-region k (.isLower reg) (.isDiagUnit reg)) matrix-type default eng)
+      (dragan-says-ex "You cannot create a non-uplo submatrix of a uplo (TR or SY) matrix. Take a view-ge."
+                      {:a (str a) :i i :j j :k k :l l})))
+  (transpose [a]
+    (real-uplo-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
+  TRF
+  (trtrs [a b]
+    (trs eng a b))
+  (trtri! [a]
+    (tri eng a))
+  (trtri [a]
+    (let-release [res (raw a)]
+      (tri eng (copy eng a res))))
+  (trcon [a _ nrm1?]
+    (con eng a nrm1?))
+  (trcon [a nrm1?]
+    (con eng a nrm1?))
+  (trdet [a]
+    (if (.isDiagUnit reg) 1.0 (fold (.dia a) f* 1.0))))
+
+(extend RealUploMatrix
+  Functor
+  {:fmap copy-fmap}
+  PseudoFunctor
+  {:fmap! matrix-fmap!}
+  Applicative
+  {:pure matrix-pure}
+  Foldable
+  {:fold matrix-fold
+   :foldmap matrix-foldmap}
+  Magma
+  {:op (constantly matrix-op)})
+
+(defn real-uplo-matrix
+  ([fact master buf n ofst nav stor reg matrix-type default engine]
+   (->RealUploMatrix nav stor reg default fact (data-accessor fact) engine matrix-type
+                     master buf n ofst))
+  ([fact n nav ^DenseStorage stor reg matrix-type default engine]
+   (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
+     (real-uplo-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
+  ([fact n column? lower? diag-unit? matrix-type]
+   (real-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
+                     (band-region n lower? diag-unit?) matrix-type (real-default matrix-type diag-unit?)
+                     (case matrix-type
+                       :tr (tr-engine fact)
+                       :sy (sy-engine fact)
+                       (dragan-says-ex (format "%s is not a valid UPLO matrix type. Please send me a bug report."
+                                               matrix-type)
+                                       {:type matrix-type}))))
+  ([fact n column? lower? diag-unit?]
+   (real-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
+                     (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?) (tr-engine fact)))
+  ([fact n column? lower?]
+   (real-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
+                     (band-region n lower?) :sy (real-default :sy) (sy-engine fact))))
+
+(defmethod print-method RealUploMatrix [a ^java.io.Writer w]
+  (.write w (str a))
+  (print-uplo w a))
+
+;; ================= Banded Matrix ==============================================================
+
+(deftype RealBandedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
+                           fact ^RealBufferAccessor da eng matrix-type
+                           ^Boolean master ^ByteBuffer buf ^long m ^long n ^long ofst]
+  Object
+  (hashCode [a]
+    (-> (hash :RealBandedMatrix) (hash-combine matrix-type) (hash-combine m) (hash-combine n)
+        (hash-combine (nrm2 eng (.dia a)))))
+  (equals [a b]
+    (matrix-equals a b))
+  (toString [a]
+    (format "#RealBandedMatrix[%s, type%s, mxn:%dx%d, layout%s, offset:%d]"
+            (.entryType da) matrix-type m n (dec-property (.layout nav)) ofst))
+  Releaseable
+  (release [_]
+    (if master (clean-buffer buf) true))
+  BandedMatrix
+  (matrixType [_]
+    matrix-type)
+  (isTriangular [_]
+    (= :tb matrix-type))
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  (native-factory [_]
+    (native-factory fact))
+  (index-factory [_]
+    (index-factory fact))
+  DataAccessorProvider
+  (data-accessor [_]
+    da)
+  Navigable
+  (navigator [_]
+    nav)
+  (storage [_]
+    stor)
+  (region [_]
+    reg)
+  Container
+  (raw [_]
+    (real-banded-matrix fact m n nav stor reg matrix-type default eng))
+  (raw [_ fact]
+    (create-banded fact m n (.kl reg) (.ku reg) matrix-type (.isColumnMajor nav) false))
+  (zero [a]
+    (raw a))
+  (zero [_ fact]
+    (create-banded fact m n (.kl reg) (.ku reg) matrix-type (.isColumnMajor nav) true))
+  (host [a]
+    (let-release [res (raw a)]
+      (copy eng a res)))
+  (native [a]
     a)
-  RealMatrix
+  DenseContainer
+  (view-vctr [a]
+    (view-vctr (view-ge a)))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-ge a) stride-mult))
+  (view-ge [_]
+    (let [m (if (.isColumnMajor nav) (.sd ^FullStorage stor) (.fd stor))
+          n (if (.isColumnMajor nav) (.fd stor) (.sd ^FullStorage stor))]
+      (real-ge-matrix fact false buf m n ofst nav
+                      (full-storage (.isColumnMajor nav) m n (.ld ^FullStorage stor))
+                      (ge-region m n))))
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [_ b]
+    (and (instance? BandedMatrix b) (= reg (region b))))
+  Monoid
+  (id [a]
+    (real-banded-matrix fact 0 (.isColumnMajor nav) matrix-type))
+  Seqable
+  (seq [a]
+    (map seq (.dias a)))
+  IFn$LLDD
+  (invokePrim [x i j v]
+    (entry! x i j v))
+  IFn$LLD
+  (invokePrim [a i j]
+    (entry a i j))
+  IFn
+  (invoke [x i j v]
+    (entry! x i j v))
+  (invoke [a i j]
+    (entry a i j))
+  (invoke [a]
+    (.fd stor))
+  IFn$L
+  (invokePrim [a]
+    (.fd stor))
+  RealChangeable
+  (isAllowed [a i j]
+    (.accessible reg i j))
+  (set [a val]
+    (if (not (Double/isNaN val))
+      (set-all eng val a)
+      (doall-layout nav stor reg i j idx (.set da buf (+ ofst idx) val)))
+    a)
+  (set [a i j val]
+    (.set da buf (+ ofst (.index nav stor i j)) val)
+    a)
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a f]
+    (if (instance? IFn$DD f)
+      (doall-layout nav stor reg i j idx
+                    (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
+      (doall-layout nav stor reg i j idx
+                    (.set da buf (+ ofst idx) (.invokePrimitive ^RealLayoutNavigator nav f i j
+                                                                (.get da buf (+ ofst idx))))))
+    a)
+  (alter [a i j f]
+    (let [idx (+ ofst (.index nav stor i j))]
+      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))
+      a))
+  RealNativeMatrix
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    (.ld ^FullStorage stor))
+  (dim [_]
+    (* m n))
+  (mrows [_]
+    m)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (if (.accessible reg i j)
+      (.get da buf (+ ofst (.index nav stor i j)))
+      (.entry default stor da buf ofst i j)))
+  (boxedEntry [a i j]
+    (.entry a i j))
+  (row [a i]
+    (let [start (.rowStart reg i)]
+      (real-block-vector fact false buf (- (.rowEnd reg i) start) (+ ofst (.index nav stor i start))
+                         (if (.isRowMajor nav) 1 (dec (.ld ^FullStorage stor))))))
+  (rows [a]
+    (region-rows a))
+  (col [a j]
+    (let [start (.colStart reg j)]
+      (real-block-vector fact false buf (- (.colEnd reg j) start) (+ ofst (.index nav stor start j))
+                         (if (.isColumnMajor nav) 1 (dec (.ld ^FullStorage stor))))))
+  (cols [a]
+    (region-cols a))
+  (dia [a]
+    (real-block-vector fact false buf (min m n) (+ ofst (.index nav stor 0 0)) (.ld ^FullStorage stor)))
+  (dia [a k]
+    (if (<= (- (.kl reg)) k (.ku reg))
+      (if (< 0 k)
+        (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor 0 k)) (.ld ^FullStorage stor))
+        (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor (- k) 0)) (.ld ^FullStorage stor)))
+      (real-block-vector fact false buf 0 ofst 1)))
+  (dias [a]
+    (region-dias a))
+  (submatrix [a i j k l]
+    (if (= i j)
+      (let [kl (min (.kl reg) (dec k))
+            ku (min (.ku reg) (dec l))]
+        (real-banded-matrix fact false buf k l (- (+ ofst (.index nav stor i j)) (inc kl))
+                            nav (band-storage (.isColumnMajor nav) k l (.ld ^FullStorage stor) kl ku)
+                            (band-region k l kl ku) matrix-type default eng))
+      (dragan-says-ex "You cannot create a submatrix of a banded (GB, TB, or SB) matrix outside its region. No way around that."
+                      {:a (str a) :i i :j j :k k :l l})))
+  (transpose [a]
+    (real-banded-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng)))
+
+(extend RealBandedMatrix
+  Functor
+  {:fmap copy-fmap}
+  PseudoFunctor
+  {:fmap! matrix-fmap!}
+  Applicative
+  {:pure matrix-pure}
+  Foldable
+  {:fold matrix-fold
+   :foldmap matrix-foldmap}
+  Magma
+  {:op (constantly matrix-op)})
+
+(defn real-banded-matrix
+  ([fact master buf m n ofst nav stor reg matrix-type default engine]
+   (->RealBandedMatrix nav stor reg default fact (data-accessor fact) engine matrix-type
+                       master buf m n ofst))
+  ([fact m n nav ^DenseStorage stor reg matrix-type default engine]
+   (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
+     (real-banded-matrix fact true buf m n 0 nav stor reg matrix-type default engine)))
+  ([fact m n kl ku column? matrix-type]
+   (real-banded-matrix fact m n (layout-navigator column?) (band-storage column? m n kl ku)
+                       (band-region m n kl ku) matrix-type (real-default matrix-type)
+                       (case matrix-type
+                         :gb (gb-engine fact)
+                         :tb (tb-engine fact)
+                         :sb (sb-engine fact)
+                         (dragan-says-ex (format "%s is not a valid banded matrix type. Please send me a bug report."
+                                                 matrix-type)
+                                         {:type matrix-type}))))
+  ([fact m n kl ku column?]
+   (real-banded-matrix fact m n (layout-navigator column?) (band-storage column? m n kl ku)
+                       (band-region m n kl ku) :gb zero-default (gb-engine fact)))
+  ([fact n column? lower? diag-unit?]
+   (real-banded-matrix fact n n (layout-navigator column?) (band-storage column? n lower? diag-unit?)
+                       (band-region n lower? diag-unit?) :tb (real-default :tb diag-unit?) (tb-engine fact)))
+  ([fact n column? lower?]
+   (real-banded-matrix fact n n (layout-navigator column?) (band-storage column? n lower? false)
+                       (band-region n lower?) :sb sb-default (sb-engine fact))))
+
+(defmethod print-method RealBandedMatrix [a ^java.io.Writer w]
+  (.write w (str a "\n"))
+  (print-banded w a))
+
+;; =================== Real Packed Matrix ==================================
+
+(deftype RealPackedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
+                           fact ^RealBufferAccessor da eng matrix-type
+                           ^Boolean master ^ByteBuffer buf ^long n ^long ofst]
+  Object
+  (hashCode [a]
+    (-> (hash :RealPackedMatrix) (hash-combine matrix-type) (hash-combine n)
+        (hash-combine (nrm2 eng a))))
+  (equals [a b]
+    (matrix-equals a b))
+  (toString [a]
+    (format "#RealPackedMatrix[%s, type%s, mxn:%dx%d, layout%s, offset:%d]"
+            (.entryType da) matrix-type n n (dec-property (.layout nav)) ofst))
+  Releaseable
+  (release [_]
+    (if master (clean-buffer buf) true))
+  PackedMatrix
+  (matrixType [_]
+    matrix-type)
+  (isTriangular [_]
+    (= :tp matrix-type))
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  (native-factory [_]
+    (native-factory fact))
+  (index-factory [_]
+    (index-factory fact))
+  DataAccessorProvider
+  (data-accessor [_]
+    da)
+  Navigable
+  (navigator [_]
+    nav)
+  (storage [_]
+    stor)
+  (region [_]
+    reg)
+  Container
+  (raw [_]
+    (real-packed-matrix fact n nav stor reg matrix-type default eng))
+  (raw [_ fact]
+    (create-packed fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
+  (zero [a]
+    (raw a))
+  (zero [_ fact]
+    (create-packed fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) true))
+  (host [a]
+    (let-release [res (raw a)]
+      (copy eng a res)))
+  (native [a]
+    a)
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [_ b]
+    (and (instance? PackedMatrix b) (= reg (region b))))
+  Monoid
+  (id [a]
+    (real-packed-matrix fact 0 (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) matrix-type))
+  Seqable
+  (seq [a]
+    (map #(seq (.stripe nav a %)) (range 0 n)))
+  IFn$LLDD
+  (invokePrim [x i j v]
+    (entry! x i j v))
+  IFn$LLD
+  (invokePrim [a i j]
+    (entry a i j))
+  IFn
+  (invoke [x i j v]
+    (entry! x i j v))
+  (invoke [a i j]
+    (entry a i j))
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
+  RealChangeable
+  (isAllowed [a i j]
+    (.accessible reg i j))
+  (set [a val]
+    (if (not (Double/isNaN val))
+      (set-all eng val a)
+      (doall-layout nav stor reg i j idx (.set da buf (+ ofst idx) val)))
+    a)
+  (set [a i j val]
+    (.set da buf (+ ofst (.index nav stor i j)) val)
+    a)
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a f]
+    (if (instance? IFn$DD f)
+      (doall-layout nav stor reg i j idx
+                    (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
+      (doall-layout nav stor reg i j idx
+                    (.set da buf (+ ofst idx) (.invokePrimitive ^RealLayoutNavigator nav f i j
+                                                                (.get da buf (+ ofst idx))))))
+    a)
+  (alter [a i j f]
+    (let [idx (+ ofst (.index nav stor i j))]
+      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx))))
+    a)
+  RealNativeMatrix
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    (.ld ^FullStorage stor))
   (dim [_]
     (* n n))
   (mrows [_]
@@ -2158,43 +1561,89 @@
   (transpose [a]
     (real-packed-matrix fact false buf n ofst (.isRowMajor nav) (.isUpper reg) (.isDiagUnit reg) matrix-type))
   ;; TODO LU is different a bit. It's probably LDL/UDU
-  ;; TODO fluokitten should be easier, since the packing is full
+
+
   )
+
+(extend RealPackedMatrix
+  Functor
+  {:fmap copy-fmap}
+  PseudoFunctor
+  {:fmap! matrix-fmap!}
+  Applicative
+  {:pure matrix-pure}
+  Foldable
+  {:fold matrix-fold
+   :foldmap matrix-foldmap}
+  Magma
+  {:op (constantly matrix-op)})
 
 (defn real-packed-matrix
   ([fact master buf n ofst nav stor reg matrix-type default engine]
    (->RealPackedMatrix nav stor reg default fact (data-accessor fact) engine
-                       matrix-type true buf n ofst
-                       (if (.isColumnMajor ^LayoutNavigator nav) COLUMN_MAJOR ROW_MAJOR)))
-  ([fact master buf n ofst column? lower? diag-unit? matrix-type]
-   (let [nav (if column? real-column-navigator real-row-navigator)]
-     (real-packed-matrix fact master buf n ofst nav (packed-storage column? lower? n)
-                         (band-region n lower? diag-unit?) matrix-type (real-default matrix-type diag-unit?)
-                         (if (= :tr matrix-type) (tp-engine fact) (sp-engine fact)))))
-  ([fact n column? lower? diag-unit? matrix-type]
-   (let-release [buf (.createDataSource (data-accessor fact) (/ (* (long n) (inc (long n))) 2))]
-     (real-packed-matrix fact true buf n 0 column? lower? diag-unit? matrix-type))))
+                       matrix-type master buf n ofst))
+  ([fact n nav ^DenseStorage stor reg matrix-type default engine]
+   (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
+     (real-packed-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
+  ([fact n column? lower? diag-unit?]
+   (real-packed-matrix fact n (layout-navigator column?) (packed-storage column? lower? n)
+                       (band-region n lower? diag-unit?) :tp (real-default :tp diag-unit?) (tp-engine fact)))
+  ([fact n column? lower?]
+   (real-packed-matrix fact n (layout-navigator column?) (packed-storage column? lower? n)
+                       (band-region n lower?) :sp sy-default (sp-engine fact))))
 
 (defmethod print-method RealPackedMatrix [a ^java.io.Writer w]
   (.write w (str a "\n"))
   (print-packed w a))
 
-(defmethod transfer! [RealPackedMatrix RealPackedMatrix]
-  [^RealPackedMatrix source destination]
-  (if (and (compatible? source destination) (fits? source destination)
-           (fits-navigation? source destination))
-    (copy (engine source) source destination)
-    (let [nav ^RealLayoutNavigator (navigator source)
-          da ^RealBufferAccessor (data-accessor source)
-          buf (.buffer source)
-          ofst (.offset source)]
-      (doall-layout source i j idx (.set nav destination i j (.get da buf (+ ofst idx))))
-      destination)))
+(defmethod transfer! [RealNativeMatrix RealNativeMatrix]
+  [^RealNativeMatrix source ^RealNativeMatrix destination]
+  (transfer-matrix-matrix source destination))
 
-(defmethod transfer! [clojure.lang.Sequential RealPackedMatrix]
-  [source ^RealPackedMatrix destination]
-  (let [da ^RealBufferAccessor (data-accessor destination)
-        buf (.buffer destination)
-        ofst (.offset destination)]
-    (doseq-layout destination i j idx source e (.set da buf (+ ofst idx) e))
-    destination))
+(defmethod transfer! [RealPackedMatrix RealPackedMatrix]
+  [^RealPackedMatrix source ^RealPackedMatrix destination]
+  (transfer-matrix-matrix (= (navigator source) (navigator destination)) source destination))
+
+(defmethod transfer! [clojure.lang.Sequential RealNativeMatrix]
+  [source ^RealNativeMatrix destination]
+  (transfer-seq-matrix source destination))
+
+(defmethod transfer! [RealNativeVector RealNativeMatrix]
+  [^RealNativeVector source ^RealNativeMatrix destination]
+  (transfer-vector-matrix source destination))
+
+(defmethod transfer! [RealNativeMatrix RealNativeVector]
+  [^RealNativeMatrix source ^RealBlockVector destination]
+  (transfer-matrix-vector source destination))
+
+(defmethod transfer! [IntegerNativeVector RealNativeMatrix]
+  [^IntegerNativeVector source ^RealNativeMatrix destination]
+  (transfer-vector-matrix source destination))
+
+(defmethod transfer! [RealNativeMatrix IntegerNativeVector]
+  [^RealNativeMatrix source ^IntegerBlockVector destination]
+  (transfer-matrix-vector source destination))
+
+(defmethod transfer! [(Class/forName "[D") RealNativeMatrix]
+  [^doubles source ^RealNativeMatrix destination]
+  (transfer-array-matrix source destination))
+
+(defmethod transfer! [(Class/forName "[F") RealNativeMatrix]
+  [^floats source ^RealNativeMatrix destination]
+  (transfer-array-matrix source destination))
+
+(defmethod transfer! [(Class/forName "[J") RealNativeMatrix]
+  [^longs source ^RealNativeMatrix destination]
+  (transfer-array-matrix source destination))
+
+(defmethod transfer! [(Class/forName "[I") RealNativeMatrix]
+  [^ints source ^RealNativeMatrix destination]
+  (transfer-array-matrix source destination))
+
+(defmethod transfer! [RealNativeMatrix (Class/forName "[D")]
+  [^RealNativeMatrix source ^doubles destination]
+  (transfer-matrix-array source destination))
+
+(defmethod transfer! [RealNativeMatrix (Class/forName "[F")]
+  [^RealNativeMatrix source ^floats destination]
+  (transfer-matrix-array source destination))

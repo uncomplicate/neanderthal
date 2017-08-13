@@ -8,8 +8,6 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface BlockMatrix extends Block, Matrix {
-
-    long order ();
+public interface RealNativeMatrix extends NativeBlock, RealMatrix {
 
 }

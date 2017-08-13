@@ -8,12 +8,10 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface Block {
+public interface RealLayoutNavigator extends LayoutNavigator {
 
-    Object buffer ();
-
-    long offset ();
-
-    long stride ();
+    double get (Matrix a, long i, long j);
+    Matrix set (RealChangeable a, long i, long j, double val);
+    double invokePrimitive (Object f, long i, long j, double val);
 
 }

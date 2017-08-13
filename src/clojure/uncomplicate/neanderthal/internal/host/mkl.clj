@@ -9,7 +9,10 @@
 (ns uncomplicate.neanderthal.internal.host.mkl
   (:require [vertigo.bytes :refer [direct-buffer]]
             [uncomplicate.commons.core :refer [with-release let-release]]
-            [uncomplicate.neanderthal.internal.api :refer :all]
+            [uncomplicate.neanderthal.internal
+             [api :refer :all]
+             [navigation :refer [full-storage]]
+             [common :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.internal.host
              [buffer-block :refer :all]
              [cblas :refer :all]
@@ -17,10 +20,9 @@
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
-            Block RealVector StripeNavigator RealOrderNavigator BandNavigator Region LayoutNavigator
-            DenseStorage]
+            Block RealVector Region LayoutNavigator DenseStorage]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
-            RealTRMatrix RealGEMatrix RealSYMatrix RealBandedMatrix RealPackedMatrix]))
+            RealGEMatrix RealUploMatrix RealBandedMatrix RealPackedMatrix]))
 
 (defn ^:private not-available [kind]
   (throw (UnsupportedOperationException. "Operation not available for %s matrix")))
@@ -31,31 +33,44 @@
 ;; =========== MKL-spicific routines ====================================================
 
 (defmacro ge-copy [method a b]
-  `(when (< 0 (.dim ~a))
-     (let [no-trans# (= (.order ~a) (.order ~b))
-           rows# (if no-trans# (.sd ~b) (.fd ~b))
-           cols# (if no-trans# (.fd ~b) (.sd ~b))]
-       (~method (int \c)
-        (int (if no-trans# \n \t)) rows# cols#
-        1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
+  ` (if (< 0 (.dim ~a))
+      (let [stor-b# (full-storage ~b)
+            no-trans# (= (navigator ~a) (navigator ~b))
+            rows# (if no-trans# (.sd stor-b#) (.fd stor-b#))
+            cols# (if no-trans# (.fd stor-b#) (.sd stor-b#))]
+        (~method (int \C) (int (if no-trans# \N \T)) rows# cols#
+         1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.ld stor-b#))
+        ~b)
+      ~b))
 
 (defmacro ge-scal [method alpha a]
-  `(when (< 0 (.dim ~a))
-     (~method (int \c) (int \n) (.sd ~a) (.fd ~a) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.stride ~a))))
+  `(if (< 0 (.dim ~a))
+     (let [stor# (full-storage ~a)]
+       (~method (int \c) (int \n) (.sd stor#) (.fd stor#)
+        ~alpha (.buffer ~a) (.offset ~a) (.ld stor#) (.ld stor#))
+       ~a)
+     ~a))
 
 (defmacro ge-trans [method a]
-  `(when (< 0 (.dim ~a))
-     (~method (int \c) (int \t) (.sd ~a) (.fd ~a) 1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.fd ~a))))
+  `(if (< 0 (.dim ~a))
+     (let [stor# (full-storage ~a)]
+       (if (.isGapless stor#)
+         (~method (int \c) (int \t) (.sd stor#) (.fd stor#)
+          1.0 (.buffer ~a) (.offset ~a) (.ld stor#) (.fd stor#))
+         (dragan-says-ex "You can not hard-transpose the content of a matrix with a gap in memory. Sorry."
+                         {:a (str ~a)}))
+       ~a)
+     ~a))
 
 (defmacro ge-axpby [method alpha a beta b]
-  `(when (< 0 (.dim ~a))
-     (let [no-trans# (= (.order ~a) (.order ~b))
-           rows# (if no-trans# (.sd ~a) (.fd ~a))
-           cols# (if no-trans# (.fd ~a) (.sd ~a))]
-       (~method (int \c)
-        (int (if no-trans# \n \t)) (int \n) rows# cols#
+  `(if (< 0 (.dim ~a))
+     (let [nav-b# (navigator ~b)]
+       (~method (int (if (.isColumnMajor nav-b#) \C \R))
+        (int (if (= (navigator ~a) nav-b#) \n \t)) (int \n) (.mrows ~b) (.ncols ~b)
         ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) ~beta (.buffer ~b) (.offset ~b) (.stride ~b)
-        (.buffer ~b) (.offset ~b) (.stride ~b)))))
+        (.buffer ~b) (.offset ~b) (.stride ~b))
+       ~b)
+     ~b))
 
 ;; ============ Integer Vector Engines ============================================
 
@@ -296,23 +311,20 @@
     x))
 
 ;; ================= General Matrix Engines ====================================
-
-(def ^:private zero-matrix ^RealGEMatrix
-  (->RealGEMatrix nil nil nil nil true (ByteBuffer/allocateDirect 0) 0 0 0 1 0 0 CBLAS/ORDER_COLUMN_MAJOR))
+(let [zero-storage (full-storage true 0 0 1)]
+  (def ^:private zero-matrix ^RealGEMatrix
+    (->RealGEMatrix nil zero-storage nil nil nil nil true (ByteBuffer/allocateDirect 0) 0 0 0)))
 
 (deftype DoubleGEEngine []
   Blas
   (swap [_ a b]
-    (ge-swap CBLAS/dswap ^RealGEMatrix a ^RealGEMatrix b)
-    a)
+    (matrix-swap CBLAS/dswap ^RealGEMatrix a ^RealGEMatrix b))
   (copy [_ a b]
-    (ge-copy MKL/domatcopy ^RealGEMatrix a ^RealGEMatrix b)
-    b)
+    (ge-copy MKL/domatcopy ^RealGEMatrix a ^RealGEMatrix b))
   (scal [_ alpha a]
-    (ge-scal MKL/dimatcopy alpha ^RealGEMatrix a)
-    a)
+    (ge-scal MKL/dimatcopy alpha ^RealGEMatrix a))
   (dot [_ a b]
-    (ge-dot CBLAS/ddot ^RealGEMatrix a ^RealGEMatrix b))
+    (matrix-dot CBLAS/ddot ^RealGEMatrix a ^RealGEMatrix b))
   (nrm1 [_ a]
     (ge-lan LAPACK/dlange (long \O) ^RealGEMatrix a))
   (nrm2 [_ a]
@@ -320,52 +332,41 @@
   (nrmi [_ a]
     (ge-lan LAPACK/dlange (long \I) ^RealGEMatrix a))
   (asum [_ a]
-    (ge-sum CBLAS/dasum ^RealGEMatrix a))
+    (matrix-sum CBLAS/dasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
-    (ge-axpby MKL/domatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
-    b)
+    (ge-axpby MKL/domatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b))
   (mv [_ alpha a x beta y]
-   (ge-mv CBLAS/dgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
-   y)
+    (ge-mv CBLAS/dgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [this a x]
-   (ge-mv a))
+    (ge-mv a))
   (rk [_ alpha x y a]
-    (ge-rk CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
-    a)
+    (ge-rk CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a))
   (mm [_ alpha a b _]
-   (ge-mm alpha a b))
+    (ge-mm alpha a b))
   (mm [_ alpha a b beta c _]
-   (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
-   c)
+    (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c))
   BlasPlus
   (amax [_ a]
     (ge-lan LAPACK/dlange (long \M) ^RealGEMatrix a))
   (sum [_ a]
-    (ge-sum CBLAS/dsum ^RealGEMatrix a))
+    (matrix-sum CBLAS/dsum ^RealGEMatrix a))
   (set-all [_ alpha a]
-    (ge-laset LAPACK/dlaset alpha alpha ^RealGEMatrix a)
-    a)
+    (ge-laset LAPACK/dlaset alpha alpha ^RealGEMatrix a))
   (axpby [_ alpha a beta b]
-    (ge-axpby MKL/domatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
-    b)
+    (ge-axpby MKL/domatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b))
   (trans [_ a]
-    (ge-trans MKL/dimatcopy ^RealGEMatrix a)
-    a)
+    (ge-trans MKL/dimatcopy ^RealGEMatrix a))
   Lapack
   (srt [_ a increasing]
-    (ge-lasrt LAPACK/dlasrt ^RealGEMatrix a increasing)
-    a)
+    (matrix-lasrt LAPACK/dlasrt ^RealGEMatrix a increasing))
   (trf [_ a ipiv]
     (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (tri [_ a ipiv]
-    (ge-tri LAPACK/dgetri ^RealGEMatrix a ^IntegerBlockVector ipiv)
-    a)
+    (ge-tri LAPACK/dgetri ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trs [_ a b ipiv]
-    (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)
-    b)
+    (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b pure]
-    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b pure)
-    b)
+    (ge-sv LAPACK/dgesv ^RealGEMatrix a ^RealGEMatrix b pure))
   (con [_ lu nrm nrm1?]
     (let [da (data-accessor lu)]
       (ge-con ^RealBufferAccessor da LAPACK/dgecon ^RealGEMatrix lu nrm nrm1?)))
@@ -413,16 +414,13 @@
 (deftype FloatGEEngine []
   Blas
   (swap [_ a b]
-    (ge-swap CBLAS/sswap ^RealGEMatrix a ^RealGEMatrix b)
-    a)
+    (matrix-swap CBLAS/sswap ^RealGEMatrix a ^RealGEMatrix b))
   (copy [_ a b]
-    (ge-copy MKL/somatcopy ^RealGEMatrix a ^RealGEMatrix b)
-    b)
+    (ge-copy MKL/somatcopy ^RealGEMatrix a ^RealGEMatrix b))
   (scal [_ alpha a]
-    (ge-scal MKL/simatcopy alpha ^RealGEMatrix a)
-    a)
+    (ge-scal MKL/simatcopy alpha ^RealGEMatrix a))
   (dot [_ a b]
-    (ge-dot CBLAS/sdot ^RealGEMatrix a ^RealGEMatrix b))
+    (matrix-dot CBLAS/sdot ^RealGEMatrix a ^RealGEMatrix b))
   (nrm1 [_ a]
     (ge-lan LAPACK/slange (long \O) ^RealGEMatrix a))
   (nrm2 [_ a]
@@ -430,52 +428,41 @@
   (nrmi [_ a]
     (ge-lan LAPACK/slange (long \I) ^RealGEMatrix a))
   (asum [_ a]
-    (ge-sum CBLAS/sasum ^RealGEMatrix a))
+    (matrix-sum CBLAS/sasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
-    (ge-axpby MKL/somatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b)
-    b)
+    (ge-axpby MKL/somatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b))
   (mv [_ alpha a x beta y]
-   (ge-mv CBLAS/sgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y)
-   y)
+    (ge-mv CBLAS/sgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [this a x]
-   (ge-mv a))
+    (ge-mv a))
   (rk [_ alpha x y a]
-    (ge-rk CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a)
-    a)
+    (ge-rk CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a))
   (mm [_ alpha a b _]
-   (ge-mm alpha a b))
+    (ge-mm alpha a b))
   (mm [_ alpha a b beta c _]
-   (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c)
-   c)
+    (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c))
   BlasPlus
   (amax [_ a]
     (ge-lan LAPACK/slange (long \M) ^RealGEMatrix a))
   (sum [_ a]
-    (ge-sum CBLAS/ssum ^RealGEMatrix a))
+    (matrix-sum CBLAS/ssum ^RealGEMatrix a))
   (set-all [_ alpha a]
-    (ge-laset LAPACK/slaset alpha alpha ^RealGEMatrix a)
-    a)
+    (ge-laset LAPACK/slaset alpha alpha ^RealGEMatrix a))
   (axpby [_ alpha a beta b]
-    (ge-axpby MKL/somatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b)
-    b)
+    (ge-axpby MKL/somatadd alpha ^RealGEMatrix a beta ^RealGEMatrix b))
   (trans [_ a]
-    (ge-trans MKL/simatcopy ^RealGEMatrix a)
-    a)
+    (ge-trans MKL/simatcopy ^RealGEMatrix a))
   Lapack
   (srt [_ a increasing]
-    (ge-lasrt LAPACK/slasrt ^RealGEMatrix a increasing)
-    a)
+    (matrix-lasrt LAPACK/slasrt ^RealGEMatrix a increasing))
   (trf [_ a ipiv]
     (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (tri [_ a ipiv]
-    (ge-tri LAPACK/sgetri ^RealGEMatrix a ^IntegerBlockVector ipiv)
-    a)
+    (ge-tri LAPACK/sgetri ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trs [_ a b ipiv]
-    (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv)
-    b)
+    (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b pure]
-    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b pure)
-    b)
+    (ge-sv LAPACK/sgesv ^RealGEMatrix a ^RealGEMatrix b pure))
   (con [_ lu nrm nrm1?]
     (let [da (data-accessor lu)]
       (ge-con ^RealBufferAccessor da LAPACK/sgecon ^RealGEMatrix lu nrm nrm1?)))
@@ -525,280 +512,235 @@
 (deftype DoubleTREngine []
   Blas
   (swap [_ a b]
-    (uplo-swap CBLAS/dswap ^RealTRMatrix a ^RealTRMatrix b)
-    a)
+    (matrix-swap CBLAS/dswap ^RealUploMatrix a ^RealUploMatrix b))
   (copy [_ a b]
-    (tr-lacpy LAPACK/dlacpy CBLAS/dcopy ^RealTRMatrix a ^RealTRMatrix b)
-    b)
+    (tr-lacpy LAPACK/dlacpy CBLAS/dcopy ^RealUploMatrix a ^RealUploMatrix b))
   (scal [_ alpha a]
-    (tr-lascl LAPACK/dlascl alpha ^RealTRMatrix a)
-    a)
+    (tr-lascl LAPACK/dlascl alpha ^RealUploMatrix a))
   (dot [_ a b]
-    (tr-dot CBLAS/ddot ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-dot CBLAS/ddot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (tr-lan LAPACK/dlantr (long \O) ^RealTRMatrix a))
+    (tr-lan LAPACK/dlantr (long \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (tr-lan LAPACK/dlantr (long \F) ^RealTRMatrix a))
+    (tr-lan LAPACK/dlantr (long \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (tr-lan LAPACK/dlantr (long \I) ^RealTRMatrix a))
+    (tr-lan LAPACK/dlantr (long \I) ^RealUploMatrix a))
   (asum [_ a]
-    (tr-sum CBLAS/dasum ^RealTRMatrix a))
+    (tr-sum CBLAS/dasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
-    (uplo-axpy CBLAS/daxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
-    b)
+    (matrix-axpy CBLAS/daxpy alpha ^RealUploMatrix a ^RealUploMatrix b))
   (mv [this alpha a x beta y]
-   (tr-mv a))
+    (tr-mv a))
   (mv [_ a x]
-   (tr-mv CBLAS/dtrmv ^RealTRMatrix a ^RealBlockVector x)
-   x)
+    (tr-mv CBLAS/dtrmv ^RealUploMatrix a ^RealBlockVector x))
   (mm [this alpha a b beta c _]
-   (tr-mm a))
+    (tr-mm a))
   (mm [_ alpha a b left]
-   (tr-mm CBLAS/dtrmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
-   b)
+    (tr-mm CBLAS/dtrmm alpha ^RealUploMatrix a ^RealGEMatrix b left))
   BlasPlus
   (amax [this a]
-    (tr-lan LAPACK/dlantr (long \M) ^RealTRMatrix a))
+    (tr-lan LAPACK/dlantr (long \M) ^RealUploMatrix a))
   (sum [_ a]
-    (tr-sum CBLAS/dsum ^RealTRMatrix a))
+    (tr-sum CBLAS/dsum ^RealUploMatrix a))
   (set-all [_ alpha a]
-    (tr-laset LAPACK/dlaset alpha alpha ^RealTRMatrix a)
-    a)
+    (tr-laset LAPACK/dlaset alpha alpha ^RealUploMatrix a) a)
   (axpby [_ alpha a beta b]
-    (uplo-axpby MKL/daxpby alpha ^RealTRMatrix a beta ^RealTRMatrix b)
-    b)
+    (matrix-axpby MKL/daxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
+  (trans [_ a]
+    (dragan-says-ex "TODO: not available for TR matrces."))
   Lapack
   (srt [_ a increasing]
-    (uplo-lasrt LAPACK/dlasrt ^RealTRMatrix a increasing)
-    a)
+    (matrix-lasrt LAPACK/dlasrt ^RealUploMatrix a increasing))
   (tri [_ a]
-    (tr-tri LAPACK/dtrtri ^RealTRMatrix a)
-    a)
+    (tr-tri LAPACK/dtrtri ^RealUploMatrix a))
   (trs [_ a b]
-    (tr-trs LAPACK/dtrtrs ^RealTRMatrix a ^RealGEMatrix b)
-    b)
+    (tr-trs LAPACK/dtrtrs ^RealUploMatrix a ^RealGEMatrix b))
   (sv [this a b _]
-    (tr-sv CBLAS/dtrsm ^RealTRMatrix a ^RealGEMatrix b)
-    b)
+    (tr-sv CBLAS/dtrsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (let [da (data-accessor a)]
-      (tr-con ^RealBufferAccessor da LAPACK/dtrcon ^RealTRMatrix a nrm1?))))
+      (tr-con ^RealBufferAccessor da LAPACK/dtrcon ^RealUploMatrix a nrm1?))))
 
 (deftype FloatTREngine []
   Blas
   (swap [_ a b]
-    (uplo-swap CBLAS/sswap ^RealTRMatrix a ^RealTRMatrix b)
-    a)
+    (matrix-swap CBLAS/sswap ^RealUploMatrix a ^RealUploMatrix b))
   (copy [_ a b]
-    (tr-lacpy LAPACK/slacpy CBLAS/scopy ^RealTRMatrix a ^RealTRMatrix b)
-    b)
+    (tr-lacpy LAPACK/slacpy CBLAS/scopy ^RealUploMatrix a ^RealUploMatrix b))
   (scal [_ alpha a]
-    (tr-lascl LAPACK/slascl alpha ^RealTRMatrix a)
-    a)
+    (tr-lascl LAPACK/slascl alpha ^RealUploMatrix a))
   (dot [_ a b]
-    (tr-dot CBLAS/sdot ^RealTRMatrix a ^RealTRMatrix b))
+    (tr-dot CBLAS/sdot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (tr-lan LAPACK/slantr (long \O) ^RealTRMatrix a))
+    (tr-lan LAPACK/slantr (long \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (tr-lan LAPACK/slantr (long \F) ^RealTRMatrix a))
+    (tr-lan LAPACK/slantr (long \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (tr-lan LAPACK/slantr (long \I) ^RealTRMatrix a))
+    (tr-lan LAPACK/slantr (long \I) ^RealUploMatrix a))
   (asum [_ a]
-    (tr-sum CBLAS/sasum ^RealTRMatrix a))
+    (tr-sum CBLAS/sasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
-    (uplo-axpy CBLAS/saxpy alpha ^RealTRMatrix a ^RealTRMatrix b)
-    b)
+    (matrix-axpy CBLAS/saxpy alpha ^RealUploMatrix a ^RealUploMatrix b))
   (mv [this alpha a x beta y]
-   (tr-mv a))
+    (tr-mv a))
   (mv [_ a x]
-   (tr-mv CBLAS/strmv ^RealTRMatrix a ^RealBlockVector x)
-   x)
+    (tr-mv CBLAS/strmv ^RealUploMatrix a ^RealBlockVector x))
   (mm [this alpha a b beta c _]
-   (tr-mm a))
+    (tr-mm a))
   (mm [_ alpha a b left]
-   (tr-mm CBLAS/strmm alpha ^RealTRMatrix a ^RealGEMatrix b left)
-   b)
+    (tr-mm CBLAS/strmm alpha ^RealUploMatrix a ^RealGEMatrix b left)
+    b)
   BlasPlus
   (amax [this a]
-    (tr-lan LAPACK/slantr (long \M) ^RealTRMatrix a))
+    (tr-lan LAPACK/slantr (long \M) ^RealUploMatrix a))
   (sum [_ a]
-    (tr-sum  CBLAS/ssum ^RealTRMatrix a))
+    (tr-sum  CBLAS/ssum ^RealUploMatrix a))
   (set-all [_ alpha a]
-    (tr-laset LAPACK/slaset alpha alpha ^RealTRMatrix a)
-    a)
+    (tr-laset LAPACK/slaset alpha alpha ^RealUploMatrix a))
   (axpby [_ alpha a beta b]
-    (uplo-axpby MKL/saxpby alpha ^RealTRMatrix a beta ^RealTRMatrix b)
-    b)
+    (matrix-axpby MKL/saxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
   Lapack
   (srt [_ a increasing]
-    (uplo-lasrt LAPACK/slasrt ^RealTRMatrix a increasing)
-    a)
+    (matrix-lasrt LAPACK/slasrt ^RealUploMatrix a increasing))
   (tri [_ a]
-    (tr-tri LAPACK/strtri ^RealTRMatrix a)
-    a)
+    (tr-tri LAPACK/strtri ^RealUploMatrix a))
   (trs [_ a b]
-    (tr-trs LAPACK/strtrs ^RealTRMatrix a ^RealGEMatrix b)
-    b)
+    (tr-trs LAPACK/strtrs ^RealUploMatrix a ^RealGEMatrix b))
   (sv [this a b _]
-    (tr-sv CBLAS/strsm ^RealTRMatrix a ^RealGEMatrix b)
-    b)
+    (tr-sv CBLAS/strsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (let [da (data-accessor a)]
-      (tr-con ^RealBufferAccessor da LAPACK/strcon ^RealTRMatrix a nrm1?))))
+      (tr-con ^RealBufferAccessor da LAPACK/strcon ^RealUploMatrix a nrm1?))))
 
 ;; =============== Symmetric Matrix Engines ===================================
 
 (deftype DoubleSYEngine []
   Blas
   (swap [_ a b]
-    (uplo-swap CBLAS/dswap ^RealSYMatrix a ^RealSYMatrix b)
-    a)
+    (matrix-swap CBLAS/dswap ^RealUploMatrix a ^RealUploMatrix b))
   (copy [_ a b]
-    (sy-lacpy LAPACK/dlacpy CBLAS/dcopy ^RealSYMatrix a ^RealSYMatrix b)
-    b)
+    (sy-lacpy LAPACK/dlacpy CBLAS/dcopy ^RealUploMatrix a ^RealUploMatrix b))
   (scal [_ alpha a]
-    (sy-lascl LAPACK/dlascl alpha ^RealSYMatrix a)
-    a)
+    (sy-lascl LAPACK/dlascl alpha ^RealUploMatrix a))
   (dot [_ a b]
-    (sy-dot CBLAS/ddot ^RealSYMatrix a ^RealSYMatrix b))
+    (sy-dot CBLAS/ddot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (sy-lan LAPACK/dlansy (long \O) ^RealSYMatrix a))
+    (sy-lan LAPACK/dlansy (long \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (sy-lan LAPACK/dlansy (long \F) ^RealSYMatrix a))
+    (sy-lan LAPACK/dlansy (long \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (sy-lan LAPACK/dlansy (long \I) ^RealSYMatrix a))
+    (sy-lan LAPACK/dlansy (long \I) ^RealUploMatrix a))
   (asum [_ a]
-    (sy-sum CBLAS/dasum ^RealSYMatrix a))
+    (sy-sum CBLAS/dasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
-    (uplo-axpy CBLAS/daxpy alpha ^RealSYMatrix a ^RealSYMatrix b)
-    b)
+    (matrix-axpy CBLAS/daxpy alpha ^RealUploMatrix a ^RealUploMatrix b))
   (mv [_ alpha a x beta y]
-    (sy-mv CBLAS/dsymv alpha ^RealSYMatrix a ^RealBlockVector x beta ^RealBlockVector y)
-    y)
+    (sy-mv CBLAS/dsymv alpha ^RealUploMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sy-mv a))
   (mm [_ alpha a b beta c left]
-    (sy-mm CBLAS/dsymm alpha ^RealSYMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left)
-    c)
+    (sy-mm CBLAS/dsymm alpha ^RealUploMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ alpha a b _]
     (sy-mm a))
   BlasPlus
   (amax [_ a]
-    (sy-lan LAPACK/dlansy (long \M) ^RealSYMatrix a))
+    (sy-lan LAPACK/dlansy (long \M) ^RealUploMatrix a))
   (sum [_ a]
-    (sy-sum CBLAS/dsum ^RealSYMatrix a))
+    (sy-sum CBLAS/dsum ^RealUploMatrix a))
   (set-all [_ alpha a]
-    (sy-laset LAPACK/dlaset alpha alpha ^RealSYMatrix a)
-    a)
+    (sy-laset LAPACK/dlaset alpha alpha ^RealUploMatrix a))
   (axpby [_ alpha a beta b]
-    (uplo-axpby MKL/daxpby alpha ^RealSYMatrix a beta ^RealSYMatrix b)
-    b)
+    (matrix-axpby MKL/daxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
   Lapack
   (srt [_ a increasing]
-    (uplo-lasrt LAPACK/dlasrt ^RealSYMatrix a increasing)
-    a)
+    (matrix-lasrt LAPACK/dlasrt ^RealUploMatrix a increasing))
   (trf [_ a ipiv]
-    (sy-trf LAPACK/dsytrf ^RealSYMatrix a ^IntegerBlockVector ipiv))
+    (sy-trf LAPACK/dsytrf ^RealUploMatrix a ^IntegerBlockVector ipiv))
   (tri [_ a ipiv]
-    (sy-tri LAPACK/dsytri ^RealSYMatrix a ^IntegerBlockVector ipiv)
-    a)
+    (sy-tri LAPACK/dsytri ^RealUploMatrix a ^IntegerBlockVector ipiv))
   (trs [_ a b ipiv]
-    (sy-trs LAPACK/dsytrs ^RealSYMatrix a ^RealSYMatrix b ^IntegerBlockVector ipiv)
-    b)
+    (sy-trs LAPACK/dsytrs ^RealUploMatrix a ^RealUploMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b pure]
-    (sy-sv LAPACK/dsysv ^RealSYMatrix a ^RealSYMatrix b pure)
-    b)
+    (sy-sv LAPACK/dsysv ^RealUploMatrix a ^RealUploMatrix b pure))
   (con [_ ldl ipiv nrm _]
     (let [da (data-accessor ldl)]
-      (sy-con ^RealBufferAccessor da LAPACK/dsycon ^RealSYMatrix ldl ^IntegerBlockVector ipiv nrm))))
+      (sy-con ^RealBufferAccessor da LAPACK/dsycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))))
 
 (deftype FloatSYEngine []
   Blas
   (swap [_ a b]
-    (uplo-swap CBLAS/sswap ^RealSYMatrix a ^RealSYMatrix b)
-    a)
+    (matrix-swap CBLAS/sswap ^RealUploMatrix a ^RealUploMatrix b))
   (copy [_ a b]
-    (sy-lacpy LAPACK/slacpy CBLAS/scopy ^RealSYMatrix a ^RealSYMatrix b)
-    b)
+    (sy-lacpy LAPACK/slacpy CBLAS/scopy ^RealUploMatrix a ^RealUploMatrix b))
   (scal [_ alpha a]
-    (sy-lascl LAPACK/slascl alpha ^RealSYMatrix a)
-    a)
+    (sy-lascl LAPACK/slascl alpha ^RealUploMatrix a))
   (dot [_ a b]
-    (sy-dot CBLAS/sdot ^RealSYMatrix a ^RealSYMatrix b))
+    (sy-dot CBLAS/sdot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (sy-lan LAPACK/slansy (long \O) ^RealSYMatrix a))
+    (sy-lan LAPACK/slansy (long \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (sy-lan LAPACK/slansy (long \F) ^RealSYMatrix a))
+    (sy-lan LAPACK/slansy (long \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (sy-lan LAPACK/slansy (long \I) ^RealSYMatrix a))
+    (sy-lan LAPACK/slansy (long \I) ^RealUploMatrix a))
   (asum [_ a]
-    (sy-sum CBLAS/sasum ^RealSYMatrix a))
+    (sy-sum CBLAS/sasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
-    (uplo-axpy CBLAS/saxpy alpha ^RealSYMatrix a ^RealSYMatrix b)
-    b)
+    (matrix-axpy CBLAS/saxpy alpha ^RealUploMatrix a ^RealUploMatrix b))
   (mv [_ alpha a x beta y]
-    (sy-mv CBLAS/ssymv alpha ^RealSYMatrix a ^RealBlockVector x beta ^RealBlockVector y)
-    y)
+    (sy-mv CBLAS/ssymv alpha ^RealUploMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sy-mv a))
   (mm [_ alpha a b beta c left]
-    (sy-mm CBLAS/ssymm alpha ^RealSYMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left)
-    c)
+    (sy-mm CBLAS/ssymm alpha ^RealUploMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ alpha a b _]
     (sy-mm a))
   BlasPlus
   (amax [_ a]
-    (sy-lan LAPACK/slansy (long \M) ^RealSYMatrix a))
+    (sy-lan LAPACK/slansy (long \M) ^RealUploMatrix a))
   (sum [_ a]
-    (sy-sum CBLAS/ssum ^RealSYMatrix a))
+    (sy-sum CBLAS/ssum ^RealUploMatrix a))
   (set-all [_ alpha a]
-    (sy-laset LAPACK/slaset alpha alpha ^RealSYMatrix a)
-    a)
+    (sy-laset LAPACK/slaset alpha alpha ^RealUploMatrix a))
   (axpby [_ alpha a beta b]
-    (uplo-axpby MKL/saxpby alpha ^RealSYMatrix a beta ^RealSYMatrix b)
-    b)
+    (matrix-axpby MKL/saxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
   Lapack
   (srt [_ a increasing]
-    (uplo-lasrt LAPACK/slasrt ^RealSYMatrix a increasing)
-    a)
+    (matrix-lasrt LAPACK/slasrt ^RealUploMatrix a increasing))
   (trf [_ a ipiv]
-    (sy-trf LAPACK/ssytrf ^RealSYMatrix a ^IntegerBlockVector ipiv))
+    (sy-trf LAPACK/ssytrf ^RealUploMatrix a ^IntegerBlockVector ipiv))
   (tri [_ a ipiv]
-    (sy-tri LAPACK/ssytri ^RealSYMatrix a ^IntegerBlockVector ipiv)
-    a)
+    (sy-tri LAPACK/ssytri ^RealUploMatrix a ^IntegerBlockVector ipiv))
   (trs [_ a b ipiv]
-    (sy-trs LAPACK/ssytrs ^RealSYMatrix a ^RealSYMatrix b ^IntegerBlockVector ipiv)
-    b)
+    (sy-trs LAPACK/ssytrs ^RealUploMatrix a ^RealUploMatrix b ^IntegerBlockVector ipiv))
   (sv [_ a b pure]
-    (sy-sv LAPACK/ssysv ^RealSYMatrix a ^RealSYMatrix b pure)
-    b)
+    (sy-sv LAPACK/ssysv ^RealUploMatrix a ^RealUploMatrix b pure))
   (con [_ ldl ipiv nrm _]
     (let [da (data-accessor ldl)]
-      (sy-con ^RealBufferAccessor da LAPACK/ssycon ^RealSYMatrix ldl ^IntegerBlockVector ipiv nrm))))
+      (sy-con ^RealBufferAccessor da LAPACK/ssycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))))
 
 ;; =============== Banded Matrix Engines ===================================
 
 (deftype DoubleGBEngine []
   Blas
   (swap [_ a b]
-    (gb-map swap a b)
+    (banded-map CBLAS/dswap ^RealBandedMatrix a ^RealBandedMatrix b)
     a)
   (copy [_ a b]
-    (gb-map copy a b))
+    (banded-map CBLAS/dcopy ^RealBandedMatrix a ^RealBandedMatrix b))
   (scal [_ alpha a]
-    (gb-scalset scal alpha a))
+    (banded-scal CBLAS/dscal alpha ^RealBandedMatrix a))
   (dot [_ a b]
-    (gb-reduce dot a b))
+    (banded-dot CBLAS/ddot ^RealBandedMatrix a ^RealBandedMatrix b))
   (nrm1 [_ a]
-    (gb-lan LAPACK/dlangb (long \O) ^RealBandedMatrix a))
+    (banded-lan LAPACK/dlangb CBLAS/idamax (long \O) ^RealBandedMatrix a))
   (nrm2 [_ a]
-    (gb-lan LAPACK/dlangb (long \F) ^RealBandedMatrix a))
+    (banded-lan LAPACK/dlangb CBLAS/dnrm2 (long \F) ^RealBandedMatrix a))
   (nrmi [_ a]
-    (gb-lan LAPACK/dlangb (long \I) ^RealBandedMatrix a))
+    (banded-lan LAPACK/dlangb CBLAS/idamax (long \I) ^RealBandedMatrix a))
   (asum [_ a]
-    (gb-reduce asum a))
+    (banded-sum CBLAS/dasum ^RealBandedMatrix a))
   (axpy [_ alpha a b]
-    (gb-axpy alpha a b))
+    (banded-axpy CBLAS/daxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
   (mv [this alpha a x beta y]
     (gb-mv CBLAS/dgbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
@@ -809,13 +751,13 @@
     (gb-mm a))
   BlasPlus
   (sum [_ a]
-    (gb-reduce sum a))
+    (banded-sum CBLAS/dsum ^RealBandedMatrix a))
   (amax [_ a]
-    (gb-lan LAPACK/dlangb (long \M) ^RealBandedMatrix a))
+    (banded-lan LAPACK/dlangb CBLAS/idamax (long \M) ^RealBandedMatrix a))
   (set-all [_ alpha a]
-    (gb-scalset set-all alpha a))
+    (banded-laset LAPACK/dlaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
-    (gb-axpby alpha a beta b)))
+    (banded-axpby MKL/daxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b)))
 
 ;; =============== Packed Matrix Engines ===================================
 
@@ -863,8 +805,7 @@
     (packed-axpby MKL/saxpby alpha ^RealPackedMatrix a beta ^RealPackedMatrix b))
   Lapack
   (srt [_ a increasing]
-    (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing)
-    a))
+    (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing)))
 
 (deftype DoubleSPEngine []
   Blas
@@ -910,8 +851,7 @@
     (packed-axpby MKL/saxpby alpha ^RealPackedMatrix a beta ^RealPackedMatrix b))
   Lapack
   (srt [_ a increasing]
-    (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing)
-    a))
+    (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing)))
 
 ;; =============== Factories ==================================================
 
@@ -933,22 +873,31 @@
   Factory
   (create-vector [this n _]
     (real-block-vector this n))
-  (create-ge [this m n ord _]
-    (real-ge-matrix this m n ord))
-  (create-tr [this n ord uplo diag _]
-    (real-tr-matrix this n ord uplo diag))
-  (create-sy [this n ord uplo _]
-    (real-sy-matrix this n ord uplo))
-  (create-gb [this m n kl ku ord _]
-    (real-banded-matrix this m n kl ku ord gb-eng))
-  (create-tb [this n k ord uplo _]
-    (let [[kl ku] (if (= UPPER uplo) [0 k] [k 0])]
-      (real-banded-matrix this n n kl ku ord tb-eng)))
-  (create-sb [this n k ord uplo _]
-    (let [[kl ku] (if (= UPPER uplo) [0 k] [k 0])]
-      (real-banded-matrix this n n kl ku ord sb-eng)))
-  (create-packed [this n matrix-type column? lower? diag-unit? _]
-    (real-packed-matrix this n column? lower? diag-unit? matrix-type))
+  (create-ge [this m n column? _]
+    (real-ge-matrix this m n column?))
+  (create-uplo [this n mat-type column? lower? diag-unit? _]
+    (real-uplo-matrix this n column? lower? diag-unit? mat-type))
+  (create-tr [this n column? lower? diag-unit? _]
+    (real-uplo-matrix this n column? lower? diag-unit?))
+  (create-sy [this n column? lower? _]
+    (real-uplo-matrix this n column? lower?))
+  (create-banded [this m n kl ku mat-type column? _]
+    (real-banded-matrix this m n kl ku column? mat-type))
+  (create-gb [this m n kl ku lower? _]
+    (real-banded-matrix this m n kl ku lower?))
+  (create-tb [this n k column? lower? diag-unit? _]
+    (real-banded-matrix this n lower? diag-unit?))
+  (create-sb [this n k column? lower? _]
+    (real-banded-matrix this n lower?))
+  (create-packed [this n mat-type column? lower? diag-unit? _]
+    (case mat-type
+      :tp (real-packed-matrix this n column? lower? diag-unit?)
+      :sy (real-packed-matrix this n column? lower?)
+      (throw (ex-info "TODO" {}))))
+  (create-tp [this n column? lower? diag-unit? _]
+    (real-packed-matrix this n column? lower? diag-unit?))
+  (create-sp [this n column? lower? _]
+    (real-packed-matrix this n column? lower?))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]

@@ -11,13 +11,14 @@
             [uncomplicate.fluokitten.core :refer [op join]]
             [uncomplicate.neanderthal
              [math :refer [ceil]]
-             [block :refer [ecount lower? column?]]
-             [core :refer [rows dias submatrix subvector mrows ncols dim entry]]]
+             [core :refer [rows dia submatrix subvector mrows ncols dim entry]]]
             [uncomplicate.neanderthal.internal.api :refer :all])
-  (:import [uncomplicate.neanderthal.internal.api UploNavigator BandNavigator BandedMatrix Matrix
-            LayoutNavigator]));;TODO clean up
+  (:import [uncomplicate.neanderthal.internal.api Matrix LayoutNavigator Region DenseStorage FullStorage
+            Changeable Matrix Vector]));;TODO clean up
 
 ;; ====================================================================
+
+
 
 (defn ^:private unsupported []
   (throw (UnsupportedOperationException. (format "This operation is not supported in wrappers."))))
@@ -32,12 +33,34 @@
 (def format-band-dia (compile-format "~&~3a~4@T~{~7a~}~a~%"))
 (def format-band (compile-format "~&~4a~{~8a~}~%"))
 
+(defn string-table [^long m ^long n]
+  (let [st ^objects (make-array String (+ m 2) (+ n 2))
+        header ^objects (aget st 0)
+        footer ^objects (aget st (inc m))]
+    (dotimes [j (+ n 2)]
+      (aset header j ""))
+    (aset header 0 (cl-format nil format-a "\u250f"))
+    (aset header (inc n) (cl-format nil format-a "\u2513"))
+    (dotimes [i m]
+      (let [r ^objects (aget st (inc i))]
+        (aset r 0 "")
+        (dotimes [j (+ n 2)]
+          (aset r j (cl-format nil format-a "*")))
+        (aset r 0 "")
+        (aset r (inc n) "")))
+    (dotimes [j (+ n 2)]
+      (aset footer j ""))
+    (aset footer 0 (cl-format nil format-a "\u2517"))
+    (aset footer (inc n) (cl-format nil format-a "\u2518"))
+    st))
+
+(defn aset-table [^objects st ^long i ^long j val]
+  (aset st i j (cl-format nil format-a val)))
+
 (defn format-row [^java.io.Writer w s-left s-right]
   (when (seq s-left) (cl-format w format-seq s-left))
   (when (and (seq s-left) (seq s-right)) (cl-format w format-a "\u22ef"))
   (when (seq s-right)) (cl-format w format-seq s-right))
-
-;; ===================== Banded Matrix Printing ====================================================
 
 (let [default-settings {:matrix-width 5
                         :matrix-height 5}
@@ -93,17 +116,18 @@
      (when (< 0 (dim a))
        (let [max-value (double (amax (engine a) a))
              formatter (partial cl-format nil  (if (< max-value 10000.0) format-f format-g))]
-         (.write w (format "\n%s\n" (if (column? a) "\u25a5" "\u25a4")) )
+         (.write w (format "\n\u25a5\n") )
          (print-ge w formatter a)))))
 
   (defn print-uplo
     ([^java.io.Writer w formatter a]
      (when (< 0 (dim a))
-       (let [print-height (min (mrows a) (long (:matrix-height @settings)))
+       (let [reg (region a)
+             print-height (min (mrows a) (long (:matrix-height @settings)))
              print-width (min (ncols a) (long (:matrix-width @settings)))
              sub-a (submatrix a 0 0 print-height print-width)
-             op-fn (if (lower? a) op flip-op)]
-         (.write w (if (column? a) "\n\u25a5" "\n\u25a4"))
+             op-fn (if (.isLower reg) op flip-op)]
+         (.write w "\n\u25a5")
          (cl-format w format-seq (repeat print-width  ""))
          (.write w (if (= print-width (ncols a)) "\u2513\n" "\u22ef\u2513\n"))
          (doseq [r (rows sub-a)]
@@ -118,45 +142,25 @@
          (print-uplo w formatter a)))))
 
   (defn print-banded
-    ([^java.io.Writer w formatter ^BandedMatrix a]
-     (let [band-nav (band-navigator a)
-           m (.mrows a)
-           n (.ncols a)
-           kl (.kl a)
-           ku (.ku a)
-           width (.width band-nav m n kl ku)
-           height (.height band-nav m n kl ku)
+    ([^java.io.Writer w formatter a]
+     (let [stor (storage a)
+           reg (region a)
+           ku (.ku reg)
+           width (.fd stor)
+           height (.sd ^FullStorage stor)
            print-width (min width (long (:matrix-width @settings)))
            print-height (min height (long (:matrix-height @settings)))
-           kd (.kd band-nav kl ku)
-           full-width (= print-width width)
-           full-height (= print-height height)
-           vectors (if (column? a) dias rows)]
-       (if (column? a)
-         (let [first-dia (max 0 (- kd (long (/ print-height 2))))]
-           (cl-format w format-band-col "\u25a5" (repeat print-width "\u2193")
-                      (if full-width "\u2513" "\u22ef\u2513"))
-           (when (< 0 first-dia) (.write w " \u22ee\n"))
-           (loop [i kd ds (take print-height (drop first-dia (vectors a)))]
-             (when ds
-               (let [pad (- (max i 0) first-dia)
-                     entries (take (- print-width (max 0 pad)) (first ds))]
-                 (cl-format w format-band "\u2198"
-                            (op (repeat pad pad-str) (map formatter entries)
-                                (repeat (- print-width (+ (max 0 pad) (count entries))) pad-str))))
-               (recur (dec i) (next ds)))))
-         (let [first-col (max 0 (- kd (long (/ print-width 2))))]
-           (cl-format w format-band-dia (if (= 0 first-col) "\u25a4" "\u25a4 \u22ef")
-                      (repeat print-width  "\u2198") (if full-width "\u2513" "\u22ef\u2513"))
-           (loop [i kd rs (take print-height (vectors a))]
-             (when rs
-               (let [pad (- (max i 0) first-col)
-                     entries (take (- print-width (max 0 pad)) (drop (- pad) (first rs)))]
-                 (cl-format w format-band "\u2192"
-                            (op (repeat pad pad-str) (map formatter entries)
-                                (repeat (- print-width (+ (max 0 pad) (count entries))) pad-str))))
-               (recur (dec i) (next rs))))))
-       (.write w (if full-height "\u2517" " \u22ee\n\u2517"))))
+           print-table (string-table print-height print-width)
+           k-max (min ku (long (/ print-height 2)))]
+       (dotimes [i print-height]
+         (let [k (- k-max i)
+               d (dia a k)
+               j0 (max 0 k)]
+           (dotimes [j (min (dim d) print-width (- print-width k))]
+             (aset print-table (inc i) (inc (+ j0 j)) (formatter (entry d j))))))
+       (doseq [print-row print-table]
+         (cl-format w format-seq print-row)
+         (.write w "\n"))))
     ([^java.io.Writer w a]
      (when (< 0 (dim a))
        (let [max-value (double (amax (engine a) a))
@@ -165,8 +169,9 @@
 
   (defn print-packed
     ([^java.io.Writer w formatter ^Matrix a]
-     (let [nav (navigator a)]
-       (dotimes [j (.ncols a)]
+     (let [nav (navigator a)
+           stor (storage a)]
+       (dotimes [j (.fd stor)]
          (print-vector w formatter (.stripe nav a j))
          (.write w "\n"))))
     ([^java.io.Writer w a]

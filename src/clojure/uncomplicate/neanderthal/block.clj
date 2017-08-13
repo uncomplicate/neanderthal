@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.block
   (:require [uncomplicate.neanderthal.internal.api
              :refer [dec-property COLUMN_MAJOR ROW_MAJOR UPPER LOWER DIAG_UNIT DIAG_NON_UNIT]])
-  (:import [uncomplicate.neanderthal.internal.api Block BlockMatrix DenseMatrix UPLOMatrix TRMatrix]))
+  (:import [uncomplicate.neanderthal.internal.api Block]))
 
 (defn buffer [^Block x]
   (.buffer x))
@@ -19,43 +19,3 @@
 
 (defn stride ^long [^Block x]
   (.stride x))
-
-(defn order [^DenseMatrix x]
-  (dec-property (.order x)))
-
-(defn sd ^long [^DenseMatrix b]
-  (.sd b))
-
-(defn fd ^long [^DenseMatrix b]
-  (.fd b))
-
-(defn block? [x]
-  (instance? Block x))
-
-(defn ecount;;TODO moved to vectorspace's dim
-  "Returns the total number of elements in all dimensions of a block x
-  of (possibly strided) memory.
-
-  (ecount (dv 1 2 3)) => 3
-  (ecount (dge 2 3)) => 6
-  "
-  ^long [^Block x]
-  (.count x))
-
-(defn column? [^BlockMatrix a]
-  (= COLUMN_MAJOR (.order a)))
-
-(defn row? [^BlockMatrix a]
-  (= ROW_MAJOR (.order a)))
-
-(defn upper? [^UPLOMatrix a]
-  (= UPPER (.uplo a)))
-
-(defn lower? [^UPLOMatrix a]
-  (= LOWER (.uplo a)))
-
-(defn unit-diag? [^TRMatrix a]
-  (= DIAG_UNIT (.diag a)))
-
-(defn non-unit-diag? [^TRMatrix a]
-  (= DIAG_NON_UNIT (.diag a)))

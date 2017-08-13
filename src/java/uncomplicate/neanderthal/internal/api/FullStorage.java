@@ -8,6 +8,10 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-public interface SYMatrix extends UPLOMatrix, DenseMatrix {
+public interface FullStorage extends DenseStorage {
+
+    long sd ();
+
+    long ld ();
 
 }
