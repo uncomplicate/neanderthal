@@ -8,7 +8,6 @@
 
 (ns uncomplicate.neanderthal.internal.printing
   (:require [clojure.pprint :refer [cl-format]]
-            [uncomplicate.fluokitten.core :refer [op join]]
             [uncomplicate.neanderthal
              [math :refer [ceil]]
              [core :refer [subvector mrows ncols dim entry]]]
@@ -32,7 +31,6 @@
                         :matrix-height 5}
       settings (atom default-settings)
       pad-str (cl-format nil format-a "*")
-      flip-op (fn [x y] (op y x))
       diag-arrow (cl-format nil format-a \u2198)
       row-arrow (cl-format nil format-a7 \u2192)
       col-arrow (cl-format nil format-a8 \u2193)
