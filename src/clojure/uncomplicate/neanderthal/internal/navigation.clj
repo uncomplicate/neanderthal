@@ -12,8 +12,7 @@
              [common :refer [dragan-says-ex]]])
   (:import [clojure.lang IFn$LLDD]
            [uncomplicate.neanderthal.internal.api LayoutNavigator RealLayoutNavigator DenseStorage
-            FullStorage Region RealDefault RealBufferAccessor RealChangeable
-            RealMatrix Matrix]))
+            FullStorage Region RealDefault RealBufferAccessor RealChangeable RealMatrix Matrix]))
 
 ;; ======================== Region  =================================================
 
@@ -28,6 +27,16 @@
              (= kl (.kl ^BandRegion b)) (= ku (.ku ^BandRegion b)))))
   (toString [a]
     (format "#BandRegion[mxn:%dx%d, kl:%d, ku:%d]" m n kl ku))
+  Info
+  (info [r]
+    {:region-type :band
+     :m m
+     :n n
+     :kl kl
+     :ku ku
+     :surface (.surface r)
+     :uplo (if (.isLower r) :lower :upper)
+     :diag (if (.isDiagUnit r) :unit :non-unit)})
   Region
   (accessible [_ i j]
     (<= (- j ku) i (+ j kl)))
@@ -84,6 +93,16 @@
              (= m (.m ^GERegion b)) (= n (.n ^GERegion b)))))
   (toString [a]
     (format "#GERegion[mxn:%dx%d]" m n))
+  Info
+  (info [r]
+    {:region-type :full
+     :m m
+     :n n
+     :kl (.kl r)
+     :ku (.ku r)
+     :surface (.surface r)
+     :uplo (if (.isLower r) :lower :upper)
+     :diag (if (.isDiagUnit r) :unit :non-unit)})
   Region
   (accessible [_ _ _]
     true)
@@ -124,6 +143,9 @@
 (declare real-row-navigator)
 
 (deftype RealColumnNavigator []
+  Info
+  (info [n]
+    {:layout :column})
   LayoutNavigator
   (start [_ region j]
     (.colStart ^Region region j))
@@ -151,6 +173,9 @@
     real-row-navigator))
 
 (deftype RealRowNavigator []
+  Info
+  (info [n]
+    {:layout :row})
   LayoutNavigator
   (start [_ region j]
     (.rowStart ^Region region j))
@@ -189,6 +214,14 @@
 ;; =================== Full Storage ========================================
 
 (deftype StripeFullStorage [^long sd ^long fd ^long ld]
+  Info
+  (info [s]
+    {:storage-type :full
+     :sd sd
+     :ld ld
+     :fd fd
+     :gapless (.isGapless s)
+     :capacity (.capacity s)})
   Object
   (hashCode [a]
     (-> (hash-combine :FullStorage) (hash-combine sd) (hash-combine fd) (hash-combine ld)))
@@ -228,6 +261,18 @@
 ;; =================== Full Band Storage =========================================
 
 (deftype BandStorage [^long h ^long w ^long ld ^long kl ^long ku ^long sym-k]
+  Info
+  (info [s]
+    {:storage-type :band
+     :height h
+     :width w
+     :kl kl
+     :ku ku
+     :sd h
+     :ld ld
+     :fd w
+     :gapless (.isGapless s)
+     :capacity (.capacity s)})
   Object
   (hashCode [a]
     (-> (hash-combine :BandStorage) (hash-combine ld) (hash-combine kl) (hash-combine ku)))
@@ -276,6 +321,14 @@
 ;; =================== Packed Storage ======================================
 
 (deftype TopPackedStorage [^long n]
+  Info
+  (info [s]
+    {:storage-type :packed
+     :triangle :top
+     :n n
+     :fd n
+     :gapless true
+     :capacity (.capacity s)})
   Object
   (hashCode [a]
     (-> (hash-combine :TopPackedStorage) (hash-combine n)))
@@ -295,6 +348,14 @@
     (unchecked-divide-int (* n (inc n)) 2)))
 
 (deftype BottomPackedStorage [^long n]
+  Info
+  (info [s]
+    {:storage-type :packed
+     :triangle :bottom
+     :n n
+     :fd n
+     :gapless true
+     :capacity (.capacity s)})
   Object
   (hashCode [a]
     (-> (hash-combine :BottomPackedStorage) (hash-combine n)))

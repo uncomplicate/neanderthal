@@ -136,10 +136,9 @@
 
 (defprotocol MemoryContext
   (compatible? [this other])
-  (device-type [this]);;TODO :cpu or :gpu or :opencl
+  (device [this])
   (fits? [this other])
-  (fits-navigation? [this other]);; TODO remove. obsolete....
-  )
+  (fits-navigation? [this other]))
 
 (defprotocol Container
   (raw [this] [this factory])

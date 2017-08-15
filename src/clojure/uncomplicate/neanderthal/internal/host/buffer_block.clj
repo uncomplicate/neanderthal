@@ -129,6 +129,8 @@
   (compatible? [this o]
     (let [da (data-accessor o)]
       (or (identical? this da) (instance? DoubleBufferAccessor da))))
+  (device [_]
+    :cpu)
   BufferAccessor
   (toSeq [this buf offset stride]
     (if (< offset (.count this buf))
@@ -171,6 +173,8 @@
   (compatible? [this o]
     (let [da (data-accessor o)]
       (or (identical? this da) (instance? IntBufferAccessor da))))
+  (device [_]
+    :cpu)
   BufferAccessor
   (toSeq [this buf offset stride]
     (if (< offset (.count this buf))
@@ -213,6 +217,8 @@
   (compatible? [this o]
     (let [da (data-accessor o)]
       (or (identical? this da) (instance? IntBufferAccessor da))))
+  (device [_]
+    :cpu)
   BufferAccessor
   (toSeq [this buf offset stride]
     (if (< offset (.count this buf))
@@ -252,7 +258,7 @@
                 ofst# (.offset ~destination)]
             (doall-layout ~destination i# j# idx# (.set da# buf# (+ ofst# idx#) (.get nav# ~source i# j#)))))
         (dragan-says-ex "There is not enough entries in the source matrix. Take appropriate submatrix of the destination.."
-                        {:source (str ~source) :destination (str ~destination)}))
+                        {:source (info ~source) :destination (info ~destination)}))
       ~destination))
   ([source destination]
    `(transfer-matrix-matrix true ~source ~destination)))
@@ -368,6 +374,15 @@
       :default false))
   (toString [_]
     (format "#IntegerBlockVector[%s, n:%d, offset: %d, stride:%d]" (.entryType da) n ofst strd))
+  Info
+  (info [x]
+    {:entry-type (.entryType da)
+     :class (class x)
+     :device :cpu
+     :dim n
+     :offset ofst
+     :stride strd
+     :master master})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -393,6 +408,8 @@
     (compatible? da y))
   (fits? [_ y]
     (= n (.dim ^VectorSpace y)))
+  (device [_]
+    :cpu)
   EngineProvider
   (engine [_]
     nil)
@@ -523,6 +540,15 @@
       :default false))
   (toString [_]
     (format "#RealBlockVector[%s, n:%d, offset: %d, stride:%d]" (.entryType da) n ofst strd))
+  Info
+  (info [x]
+    {:entry-type (.entryType da)
+     :class (class x)
+     :device :cpu
+     :dim n
+     :offset ofst
+     :stride strd
+     :master master})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -561,6 +587,8 @@
     (compatible? da y))
   (fits? [_ y]
     (= n (.dim ^VectorSpace y)))
+  (device [_]
+    :cpu)
   EngineProvider
   (engine [_]
     eng)
@@ -746,6 +774,21 @@
   (toString [a]
     (format "#RealGEMatrix[%s, mxn:%dx%d, layout%s, offset:%d]"
             (.entryType da) m n (dec-property (.layout nav)) ofst))
+  Info
+  (info [a]
+    {:entry-type (.entryType da)
+     :class (class a)
+     :device :cpu
+     :matrix-type :ge
+     :dim (.dim ^Matrix a)
+     :m m
+     :n n
+     :offset ofst
+     :stride (.ld ^FullStorage stor)
+     :master master
+     :layout (:layout (info nav))
+     :stor (info stor)
+     :reg (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -792,7 +835,7 @@
   (view-vctr [a]
     (if (.isGapless stor)
       (real-block-vector fact false buf (.dim a) ofst 1)
-      (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:a (str a)}))))
+      (throw (ex-info "Strided GE matrix cannot be viewed as a dense vector." {:a (info a)}))))
   (view-vctr [a stride-mult]
     (view-vctr (view-vctr a) stride-mult))
   (view-ge [a]
@@ -820,6 +863,8 @@
     (and (instance? GEMatrix b)) (= reg (region b)))
   (fits-navigation? [_ b]
     (= nav (navigator b)))
+  (device [_]
+    :cpu)
   Monoid
   (id [a]
     (real-ge-matrix fact 0 0 (.isColumnMajor nav)))
@@ -966,6 +1011,21 @@
   (toString [a]
     (format "#RealUploMatrix[%s, type%s, mxn:%dx%d, layout%s, offset:%d]"
             (.entryType da) matrix-type n n (dec-property (.layout nav)) ofst))
+  Info
+  (info [a]
+    {:entry-type (.entryType da)
+     :class (class a)
+     :device :cpu
+     :matrix-type matrix-type
+     :dim (.dim ^Matrix a)
+     :m n
+     :n n
+     :offset ofst
+     :stride (.ld ^FullStorage stor)
+     :master master
+     :layout (:layout (info nav))
+     :stor (info stor)
+     :reg (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1031,6 +1091,8 @@
   (fits-navigation? [_ b]
     (and (= nav (navigator b))
          (or (instance? GEMatrix b) (= reg (region b)))))
+  (device [_]
+    :cpu)
   Monoid
   (id [a]
     (real-uplo-matrix fact 0 (.isColumnMajor nav) matrix-type))
@@ -1129,7 +1191,7 @@
                         (full-storage (.isColumnMajor nav) k k (.ld ^FullStorage stor))
                         (band-region k (.isLower reg) (.isDiagUnit reg)) matrix-type default eng)
       (dragan-says-ex "You cannot create a non-uplo submatrix of a uplo (TR or SY) matrix. Take a view-ge."
-                      {:a (str a) :i i :j j :k k :l l})))
+                      {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
     (real-uplo-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
   TRF
@@ -1201,6 +1263,21 @@
   (toString [a]
     (format "#RealBandedMatrix[%s, type%s, mxn:%dx%d, layout%s, offset:%d]"
             (.entryType da) matrix-type m n (dec-property (.layout nav)) ofst))
+  Info
+  (info [a]
+    {:entry-type (.entryType da)
+     :class (class a)
+     :device :cpu
+     :matrix-type matrix-type
+     :dim (.dim ^Matrix a)
+     :m m
+     :n n
+     :offset ofst
+     :stride (.ld ^FullStorage stor)
+     :master master
+     :layout (:layout (info nav))
+     :stor (info stor)
+     :reg (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1259,6 +1336,10 @@
     (compatible? da b))
   (fits? [_ b]
     (and (instance? BandedMatrix b) (= reg (region b))))
+  (fits-navigation? [_ b]
+    (= nav (navigator b)))
+  (device [_]
+    :cpu)
   Monoid
   (id [a]
     (real-banded-matrix fact 0 (.isColumnMajor nav) matrix-type))
@@ -1357,7 +1438,7 @@
                             nav (band-storage (.isColumnMajor nav) k l (.ld ^FullStorage stor) kl ku)
                             (band-region k l kl ku) matrix-type default eng))
       (dragan-says-ex "You cannot create a submatrix of a banded (GB, TB, or SB) matrix outside its region. No way around that."
-                      {:a (str a) :i i :j j :k k :l l})))
+                      {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
     (real-banded-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng)))
 
@@ -1419,6 +1500,20 @@
   (toString [a]
     (format "#RealPackedMatrix[%s, type%s, mxn:%dx%d, layout%s, offset:%d]"
             (.entryType da) matrix-type n n (dec-property (.layout nav)) ofst))
+  Info
+  (info [a]
+    {:entry-type (.entryType da)
+     :class (class a)
+     :device :cpu
+     :matrix-type matrix-type
+     :dim (.dim ^Matrix a)
+     :m n
+     :n n
+     :offset ofst
+     :master master
+     :layout (:layout (info nav))
+     :stor (info stor)
+     :reg (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1466,6 +1561,8 @@
     (compatible? da b))
   (fits? [_ b]
     (and (instance? PackedMatrix b) (= reg (region b))))
+  (device [_]
+    :cpu)
   Monoid
   (id [a]
     (real-packed-matrix fact 0 (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) matrix-type))

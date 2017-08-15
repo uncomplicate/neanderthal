@@ -10,17 +10,17 @@
   (:require [uncomplicate.commons.core :refer [with-release let-release]]
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride]]
-             [math :refer [pow sqrt]]]
+             [math :refer [pow sqrt abs]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [factory index-factory engine data-accessor
-                          create-vector create-ge create-sy fits-navigation? nrm1 nrmi trf tri trs con sv
-                          copy nrm2 amax navigator region storage]]
+             [api :refer [factory index-factory engine data-accessor info
+                          create-vector create-ge create-sy fits-navigation? nrm1 nrmi copy nrm2 amax
+                          trf tri trs con sv navigator region storage]]
              [common :refer [real-accessor]]
              [navigation :refer [dostripe-layout full-storage]]]
             [uncomplicate.neanderthal.internal.host.cblas
              :refer [band-storage-reduce band-storage-map full-storage-map]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api Region LayoutNavigator])) ;;TODO clean up
+           [uncomplicate.neanderthal.internal.api Region LayoutNavigator]))
 
 (defmacro with-lapack-check [expr]
   ` (let [err# ~expr]
@@ -172,12 +172,12 @@
        (cond
          (= sd# fd#) (with-release [work# (.createDataSource (data-accessor ~a) (min sd# fd#))]
                        (~langb ~norm fd# kl# ku# buff# (.offset ~a) ld# work#))
-         (= ~norm (long \F)) (Math/sqrt (band-storage-reduce ~a len# offset# acc# 0.0
+         (= ~norm (long \F)) (sqrt (band-storage-reduce ~a len# offset# acc# 0.0
                                                              (+ acc# (pow (~nrm len# buff# offset# ld#) 2))))
          (= ~norm (long \M)) (let [da# (real-accessor ~a)]
                                (band-storage-reduce ~a len# offset# amax# 0.0
                                                     (let [iamax# (~nrm len# buff# offset# ld#)]
-                                                      (max amax# (Math/abs (.get da# buff# (+ offset# (* ld# iamax#))))))))
+                                                      (max amax# (abs (.get da# buff# (+ offset# (* ld# iamax#))))))))
          :default (throw (ex-info "Dragan says: This operation has not been implemented for non-square banded matrix." {}))))
      0.0))
 
@@ -298,7 +298,7 @@
               (~method (.layout nav-b#) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
                (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b)))
             ~b)
-          (throw (ex-info "Orientation of a and b do not fit." {:a (str ~a) :b (str ~b)})))))))
+          (throw (ex-info "Orientation of a and b do not fit." {:a (info ~a) :b (info ~b)})))))))
 
 (defmacro tr-sv [method a b]
   `(let [nav-a# (navigator ~a)
@@ -327,7 +327,7 @@
              (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
              (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b)))
           ~b)
-        (throw (ex-info "Orientation of a and b do not fit." {:a (str ~a) :b (str ~b)}))))))
+        (throw (ex-info "Orientation of a and b do not fit." {:a (info ~a) :b (info ~b)}))))))
 
 ;; ------------------ Condition Number ----------------------------------------------
 

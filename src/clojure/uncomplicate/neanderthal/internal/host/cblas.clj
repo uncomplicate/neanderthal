@@ -9,8 +9,7 @@
 (ns uncomplicate.neanderthal.internal.host.cblas
   (:require [uncomplicate.neanderthal.block :refer [buffer offset stride]]
             [uncomplicate.neanderthal.internal
-             [api :refer [engine mm iamax swap copy scal axpy axpby
-                          region navigator storage]]
+             [api :refer [engine mm iamax swap copy scal axpy axpby region navigator storage info]]
              [common :refer [dragan-says-ex]]
              [navigation :refer [accu-layout full-storage]]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
@@ -25,12 +24,12 @@
   `(if (= 1 (.stride ~param))
      (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
       (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
-     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
+     (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
 (defmacro vector-rotmg [method d1d2xy param]
   `(if (= 1 (.stride ~param))
      (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param))
-     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
+     (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
 (defmacro vector-amax [x]
   `(if (< 0 (.dim ~x))
@@ -190,7 +189,7 @@
        ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
       ~y))
   ([a]
-   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (str ~a)}))))
+   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (info ~a)}))))
 
 (defmacro ge-rk [method alpha x y a]
   `(do
@@ -232,7 +231,7 @@
        (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
       ~x))
   ([a]
-   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
 
 (defmacro tr-mm
   ([method alpha a b left]
@@ -244,7 +243,7 @@
        ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
       ~b))
   ([a]
-   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
 
 ;; =============== Common SY matrix macros and functions ============================
 
@@ -273,7 +272,7 @@
        ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
       ~y))
   ([a]
-   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (str ~a)}))))
+   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
 
 (defmacro sy-mm
   ([method alpha a b beta c left]
@@ -284,7 +283,7 @@
        ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
       ~c))
   ([a]
-   `(throw (ex-info "In-place mm! is not supported for SY matrices." {:a (str ~a)}))))
+   `(throw (ex-info "In-place mm! is not supported for SY matrices." {:a (info ~a)}))))
 
 ;; ====================== Banded Matrix ===========================================
 
@@ -446,7 +445,7 @@
        (buffer ~x) (offset ~x) (stride ~x) ~beta (buffer ~y) (offset ~y) (stride ~y))
       ~y))
   ([a]
-   `(throw (ex-info "In-place mv! is not supported for GB matrices." {:a (str ~a)}))))
+   `(throw (ex-info "In-place mv! is not supported for GB matrices." {:a (info ~a)}))))
 
 (defmacro gb-mm
   ([method alpha a b beta c _]
@@ -455,7 +454,7 @@
         (gb-mv ~method ~alpha ~a (.col ~b j#) ~beta (.col ~c j#)))
       ~c))
   ([a]
-   `(throw (ex-info "In-place mm! is not supported for GB matrices." {:a (str ~a)}))))
+   `(throw (ex-info "In-place mm! is not supported for GB matrices." {:a (info ~a)}))))
 
 ;; ===================== Packed Matrix ==============================
 
@@ -463,7 +462,7 @@
   `(if (= (navigator ~a) (navigator ~b))
      (do ~@expr)
      (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matcking layout."
-                     {:a (str ~a) :b (str ~b)})))
+                     {:a (info ~a) :b (info ~b)})))
 
 (defmacro packed-amax [method da a]
   `(if (< 0 (.dim ~a))
@@ -558,7 +557,7 @@
        (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
       ~x))
   ([a]
-   `(dragan-says-ex "Out-of-place mv! is not supported by TP matrices." {:a (str ~a)})))
+   `(dragan-says-ex "Out-of-place mv! is not supported by TP matrices." {:a (info ~a)})))
 
 (defmacro tp-mm
   ([method alpha a b left]
@@ -582,9 +581,9 @@
              buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#)))
         ~b)
       (dragan-says-ex "Transforming a TP matrix by another matrix type is not supported. Copy TP to TR."
-                      {:a (str ~a) :b (str ~b)})))
+                      {:a (info ~a) :b (info ~b)})))
   ([a]
-   `(dragan-says-ex "Out-of-place mm! is not supported by TP matrices. Copy to GE." {:a (str ~a)})))
+   `(dragan-says-ex "Out-of-place mm! is not supported by TP matrices. Copy to GE." {:a (info ~a)})))
 
 ;; ============================ Symmetric Packed Matrix ================================
 
@@ -640,7 +639,7 @@
        ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
       ~y))
   ([a]
-   `(dragan-says-ex "In-place mv! is not supported by SY matrices. Now way around that." {:a (str ~a)})))
+   `(dragan-says-ex "In-place mv! is not supported by SY matrices. Now way around that." {:a (info ~a)})))
 
 (defmacro sp-mm
   ([method alpha a b beta c left]
@@ -674,6 +673,6 @@
                ~beta buff-c# (+ ofst-c# j#) ld-c#))))
         ~c)
       (dragan-says-ex "Transforming a SP matrix by another matrix type is not supported. Copy SP to SY."
-                      {:a (str ~a) :b (str ~b)})))
+                      {:a (info ~a) :b (info ~b)})))
   ([a]
-   `(dragan-says-ex "In-place mm! is not supported by SP matrices. No way around that." {:a (str ~a)})))
+   `(dragan-says-ex "In-place mm! is not supported by SP matrices. No way around that." {:a (info ~a)})))

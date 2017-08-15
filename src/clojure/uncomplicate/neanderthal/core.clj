@@ -80,9 +80,10 @@
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix Changeable MatrixImplementation GEMatrix]))
+  (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix Changeable GEMatrix
+            MatrixImplementation]))
 
-(defn info ;;TODO when implemented, use is in messages instead of (str ~a)
+(defn info
   "TODO"
   [x]
   (api/info x))
@@ -1004,7 +1005,7 @@
             (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
      (api/mv (api/engine a) alpha a x beta y)
      (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
-                     {:a (str a) :x (str x) :y (str y) :errors
+                     {:a (api/info a) :x (api/info x) :y (api/info y) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (api/compatible? a y)) "incompatible a and y"
@@ -1018,7 +1019,7 @@
    (if (and (api/compatible? a x) (= (.ncols a) (.dim x)))
      (api/mv (api/engine a) a x)
      (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
-                     {:a (str a) :x (str x) :errors
+                     {:a (api/info a) :x (api/info x) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")})))))
@@ -1057,7 +1058,7 @@
    (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
      (api/rk (api/engine a) alpha x y a)
      (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
-                     {:a (str a) :x (str x) :y (str y) :errors
+                     {:a (api/info a) :x (api/info x) :y (api/info y) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (api/compatible? a y)) "incompatible a and y"
@@ -1109,7 +1110,7 @@
             (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
      (api/mm (api/engine a) alpha a b beta c true)
      (throw (ex-info "You cannot multiply incompatible or ill-fitting matrices."
-                     {:a (str a) :b (str b) :c (str c) :errors
+                     {:a (api/info a) :b (api/info b) :c (api/info c) :errors
                       (cond-into []
                                  (not (api/compatible? a b)) "incompatible a and b"
                                  (not (api/compatible? a c)) "incompatible a and c"
@@ -1122,7 +1123,7 @@
    (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
      (api/mm (api/engine a) alpha a b true)
      (throw (ex-info "You cannot multiply incompatible or ill-fitting matrices."
-                     {:a (str a) :b (str b) :errors
+                     {:a (api/info a) :b (api/info b) :errors
                       (cond-into []
                                  (not (api/compatible? a b)) "incompatible a and b"
                                  (not (= (.ncols a) (.mrows b))) "(ncols a) is not equals to (mrows b)")}))))

@@ -58,7 +58,7 @@
          (~method (int \c) (int \t) (.sd stor#) (.fd stor#)
           1.0 (.buffer ~a) (.offset ~a) (.ld stor#) (.fd stor#))
          (dragan-says-ex "You can not hard-transpose the content of a matrix with a gap in memory. Sorry."
-                         {:a (str ~a)}))
+                         {:a (info ~a)}))
        ~a)
      ~a))
 

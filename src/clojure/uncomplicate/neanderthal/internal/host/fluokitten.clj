@@ -11,18 +11,18 @@
   (:require [uncomplicate.commons.core :refer [let-release double-fn]]
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal
-             [core :refer [vctr ge copy dim ncols transfer!]]
+             [core :refer [vctr copy dim ncols transfer!]]
              [block :refer [buffer offset]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [factory compatible? engine raw subcopy dec-property ReductionFunction
+             [api :refer [factory compatible? engine raw subcopy ReductionFunction
                           vector-reduce vector-map-reduce matrix-reduce matrix-map-reduce
-                          data-accessor create-ge navigator storage region sum ]] ;;TODO clean up
+                          data-accessor create-ge navigator storage region]]
              [common :refer [real-accessor]]]
             [uncomplicate.neanderthal.internal.navigation :refer [doall-layout real-navigator]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
             IFn$DLDD IFn$ODO IFn$OLDO]
-           [uncomplicate.neanderthal.internal.api Block RealBufferAccessor RealVector RealMatrix
-            Vector Matrix RealChangeable LayoutNavigator RealLayoutNavigator DenseStorage Region])) ;;TODO clean up
+           [uncomplicate.neanderthal.internal.api RealBufferAccessor RealVector RealMatrix
+            Vector Matrix RealChangeable LayoutNavigator RealLayoutNavigator DenseStorage Region]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
   "Matrices should have fitting dimensions.")
