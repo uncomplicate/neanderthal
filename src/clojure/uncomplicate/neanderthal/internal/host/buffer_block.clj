@@ -1185,7 +1185,7 @@
 
 (defmethod print-method RealUploMatrix [a ^java.io.Writer w]
   (.write w (str a))
-  (print-uplo w a))
+  (print-uplo w a "*"))
 
 ;; ================= Banded Matrix ==============================================================
 
@@ -1402,7 +1402,7 @@
                        (band-region n lower?) :sb sb-default (sb-engine fact))))
 
 (defmethod print-method RealBandedMatrix [a ^java.io.Writer w]
-  (.write w (str a "\n"))
+  (.write w (str a))
   (print-banded w a))
 
 ;; =================== Real Packed Matrix ==================================
@@ -1561,8 +1561,6 @@
   (transpose [a]
     (real-packed-matrix fact false buf n ofst (.isRowMajor nav) (.isUpper reg) (.isDiagUnit reg) matrix-type))
   ;; TODO LU is different a bit. It's probably LDL/UDU
-
-
   )
 
 (extend RealPackedMatrix
@@ -1593,8 +1591,8 @@
                        (band-region n lower?) :sp sy-default (sp-engine fact))))
 
 (defmethod print-method RealPackedMatrix [a ^java.io.Writer w]
-  (.write w (str a "\n"))
-  (print-packed w a))
+  (.write w (str a))
+  (print-uplo w a "."))
 
 (defmethod transfer! [RealNativeMatrix RealNativeMatrix]
   [^RealNativeMatrix source ^RealNativeMatrix destination]
