@@ -322,7 +322,7 @@
          (submatrix (ge factory 3 4 (range 12)) 3 4) => (ge factory 3 4 (range 12))
          (submatrix (ge factory 3 4 (range 12)) 1 1 3 3) => (throws ExceptionInfo)
 
-         (trans (ge factory 2 3 (range 6))) => (ge factory 3 2 (range 6) {:order :row})))
+         (trans (ge factory 2 3 (range 6))) => (ge factory 3 2 (range 6) {:layout :row})))
 
 (defn test-ge-entry [factory]
   (facts "GE matrix entry."
@@ -341,10 +341,10 @@
 
 (defn test-ge-alter! [factory]
   (facts "GE alter!."
-         (entry (alter! (ge factory 2 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 6.0
+         (entry (alter! (ge factory 2 3 [1 2 3 4 5 6] {:layout :row}) 1 1 val+) 1 1) => 6.0
          (alter! (ge factory 2 3 [1 2 3 4 5 6]) val-ind+) => (ge factory 2 3 [0 0 3 5 10 14])
-         (alter! (ge factory 2 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
-         => (ge factory 2 3 [0 2 6 0 6 14] {:order :row})))
+         (alter! (ge factory 2 3 [1 2 3 4 5 6] {:layout :row}) val-ind+)
+         => (ge factory 2 3 [0 2 6 0 6 14] {:layout :row})))
 
 (defn test-ge-dot [factory]
   (facts "BLAS 1 GE dot"
@@ -360,7 +360,7 @@
          (let [a (ge factory 2 3 (range -3 3))
                b (ge factory 2 3 [1 2 3 4 5 6])
                c (ge factory 3 4 (repeat 1))
-               d (ge factory 2 3 {:order :row})
+               d (ge factory 2 3 {:layout :row})
                zero-point (ge factory 0 0 [])]
            (dot a (copy! b (submatrix c 1 1 2 3))) => (dot a b)
            (dot a (copy! b d)) => (dot a b))))
@@ -394,7 +394,7 @@
   (facts "BLAS 1 copy! GE matrix"
          (with-release [a (ge factory 2 3 (range 6))
                         b (ge factory 2 3 (range 7 13))
-                        b-row (ge factory 2 3 {:order :row})]
+                        b-row (ge factory 2 3 {:layout :row})]
            (identical? (copy! a b) b) => true
            (copy! a b) => (ge factory 2 3 (range 6))
            (copy (ge factory 2 3 (range 6))) => a
@@ -412,7 +412,7 @@
    "BLAS 1 swap! GE matrix"
    (with-release [a (ge factory 2 3 [1 2 3 4 5 6])
                   b (ge factory 2 3 (range 7 13))
-                  b-row (ge factory 2 3 [7 9 11 8 10 12] {:order :row})]
+                  b-row (ge factory 2 3 [7 9 11 8 10 12] {:layout :row})]
      (swp! a (ge factory 2 3)) => a
      (swp! a (ge factory 2 3 [10 20 30 40 50 60])) => (ge factory 2 3 [10 20 30 40 50 60])
      (swp! a b-row) => b
@@ -431,7 +431,7 @@
 (defn test-ge-axpy [factory]
   (facts "BLAS 1 axpy! GE matrix"
          (with-release [a (ge factory 3 2 (range 6))
-                        b (ge factory 3 2 [0 3 1 4 2 5] {:order :row})]
+                        b (ge factory 3 2 [0 3 1 4 2 5] {:layout :row})]
            (axpy! -1 a b) => (ge factory 3 2)
            (axpy! 2.0 (ge factory 3 2 (range 0 60 10)) a) => (ge factory 3 2 (range 0 121 21))
            (identical? (axpy! 3.0 (ge factory 3 2 (range 6)) a) a) => true
@@ -499,16 +499,16 @@
               (row (ge factory 2 3 (range 6)) 1) 3.0 (col (ge factory 2 3 (range 6)) 1))
          => (vctr factory 272 293)
 
-         (mv! (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 0 0))
-         => (mv! (ge factory 2 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3) (vctr factory 0 0))
+         (mv! (ge factory 2 3 [1 3 5 2 4 6] {:layout :row}) (vctr factory 1 2 3) (vctr factory 0 0))
+         => (mv! (ge factory 2 3 [1 2 3 4 5 6] {:layout :column}) (vctr factory 1 2 3) (vctr factory 0 0))
 
-         (mv 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 0 0))
+         (mv 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:layout :row}) (vctr factory 1 2 3) (vctr factory 0 0))
          => (vctr factory 22 28)))
 
 (defn test-rk [factory]
   (facts "BLAS 2 rk!"
          (with-release [a (ge factory 2 3)
-                        b (ge factory 2 3 {:order :row})]
+                        b (ge factory 2 3 {:layout :row})]
            (identical? (rk! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) a) a)
            (identical? (rk! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) b) b))
          => true
@@ -540,10 +540,10 @@
          (mm! 2.0 (ge factory 3 5 (take 15 (repeat 1))) (ge factory 5 3 (take 15 (repeat 1)))
               3.0 (ge factory 3 3 (take 9 (repeat 0)))) => (ge factory 3 3 (take 9 (repeat 10)))
 
-         (mm! 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order :row})
+         (mm! 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:layout :row}) (ge factory 3 2 [1 4 2 5 3 6] {:layout :row})
               3.0  (ge factory 2 2 [1 2 3 4])) => (ge factory 2 2 [47 62 107 140])
 
-         (mm 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:order :row}) (ge factory 3 2 [1 4 2 5 3 6] {:order :row})
+         (mm 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:layout :row}) (ge factory 3 2 [1 4 2 5 3 6] {:layout :row})
              3.0  (ge factory 2 2 [1 2 3 4])) => (throws ClassCastException)
 
          (mm (ge factory 2 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6]))
@@ -624,16 +624,16 @@
 
 (defn test-tr-alter! [factory tr]
   (facts "Triangular alter!."
-         (entry (alter! (tr factory 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 4.0
+         (entry (alter! (tr factory 3 [1 2 3 4 5 6] {:layout :row}) 1 1 val+) 1 1) => 4.0
          (alter! (tr factory 3 [1 2 3 4 5 6]) val-ind+) => (tr factory 3 [0 0 0 5 7 16])
-         (alter! (tr factory 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
-         => (tr factory 3 [0 0 4 0 7 16] {:order :row})))
+         (alter! (tr factory 3 [1 2 3 4 5 6] {:layout :row}) val-ind+)
+         => (tr factory 3 [0 0 4 0 7 16] {:layout :row})))
 
 (defn test-tr-dot [factory]
   (facts "BLAS 1 Triangular dot"
          (let [a (tr factory 3 (range -3 3))
                b (tr factory 3 [1 2 3 4 5 6])
-               d (tr factory 3 {:order :row})
+               d (tr factory 3 {:layout :row})
                zero-point (tr factory 0 [])]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => 7.0
@@ -663,8 +663,8 @@
 (defn test-uplo-copy [factory uplo]
   (facts "BLAS 1 copy! uplo matrix"
          (with-release [a (uplo factory 3)
-                        b (uplo factory 3 (range 6) {:order :column})
-                        b-row (uplo factory 3 (range 6) {:order :row})]
+                        b (uplo factory 3 (range 6) {:layout :column})
+                        b-row (uplo factory 3 (range 6) {:layout :row})]
 
            (identical? (copy a) a) => false
            (identical? (copy! (uplo factory 3 [1 2 3 4 5 6]) a) a) => true
@@ -739,7 +739,7 @@
          (with-release [y (vctr factory [1 2 3])]
            (identical? (mv! (tr factory 3 [1 2 3 4 5 6]) y) y)) => true
 
-         (mv! (tr factory 3 [1 10 2 20 3 30] {:order :row}) (vctr factory 7 0 4))
+         (mv! (tr factory 3 [1 10 2 20 3 30] {:layout :row}) (vctr factory 7 0 4))
          => (vctr factory 7 70 260)
 
          (mv! (tr factory 3 [1 2 3 4 5 6] {:diag :unit :uplo :upper})
@@ -748,8 +748,8 @@
          (mv! (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3))
          => (mv (tr factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3))
 
-         (mv! (tr factory 3 [1 2 4 3 5 6] {:order :row}) (vctr factory 1 2 3))
-         => (mv! (tr factory 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3))))
+         (mv! (tr factory 3 [1 2 4 3 5 6] {:layout :row}) (vctr factory 1 2 3))
+         => (mv! (tr factory 3 [1 2 3 4 5 6] {:layout :column}) (vctr factory 1 2 3))))
 
 (defn test-tr-mm [factory]
   (facts "BLAS 3 TR mm!"
@@ -807,14 +807,14 @@
          (with-release [y (vctr factory [1 2 3])]
            (identical? (mv! 2 (sy factory 3 [1 2 3 4 5 6]) (vctr factory 1 2 3) 3 y) y)) => true
 
-         (mv! 3 (sy factory 3 [1 10 2 20 3 30] {:order :row}) (vctr factory 7 0 4) 3 (vctr factory 3))
+         (mv! 3 (sy factory 3 [1 10 2 20 3 30] {:layout :row}) (vctr factory 7 0 4) 3 (vctr factory 3))
          => (vctr factory 261 246 780)
 
          (mv! 2 (sy factory 3 [1 2 3 4 5 6] {:uplo :upper}) (vctr factory 1 2 3) 3 (vctr factory 3))
          => (vctr factory 34 46 64)
 
-         (mv! (sy factory 3 [1 2 4 3 5 6] {:order :row}) (vctr factory 1 2 3) (vctr factory 3))
-         => (mv! (sy factory 3 [1 2 3 4 5 6] {:order :column}) (vctr factory 1 2 3) (vctr factory 3))))
+         (mv! (sy factory 3 [1 2 4 3 5 6] {:layout :row}) (vctr factory 1 2 3) (vctr factory 3))
+         => (mv! (sy factory 3 [1 2 3 4 5 6] {:layout :column}) (vctr factory 1 2 3) (vctr factory 3))))
 
 (defn test-sy-mm [factory]
   (facts "BLAS 3 SY mm!"
@@ -867,16 +867,16 @@
 
 (defn test-sy-alter! [factory sy]
   (facts "Symetric alter!."
-         (entry (alter! (sy factory 3 [1 2 3 4 5 6] {:order :row}) 1 1 val+) 1 1) => 4.0
+         (entry (alter! (sy factory 3 [1 2 3 4 5 6] {:layout :row}) 1 1 val+) 1 1) => 4.0
          (alter! (sy factory 3 [1 2 3 4 5 6]) val-ind+) => (sy factory 3 [0 0 0 5 7 16])
-         (alter! (sy factory 3 [1 2 3 4 5 6] {:order :row}) val-ind+)
-         => (sy factory 3 [0 0 4 0 7 16] {:order :row})))
+         (alter! (sy factory 3 [1 2 3 4 5 6] {:layout :row}) val-ind+)
+         => (sy factory 3 [0 0 4 0 7 16] {:layout :row})))
 
 (defn test-sy-dot [factory]
   (facts "BLAS 1 SY dot"
          (let [a (sy factory 3 (range -3 3))
                b (sy factory 3 [1 2 3 4 5 6])
-               d (sy factory 3 {:order :row})
+               d (sy factory 3 {:layout :row})
                zero-point (sy factory 0 [])]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => 5.0
@@ -912,7 +912,7 @@
                                               1.00    5.00    9.00   13.00   16.00    0.00
                                               2.00    6.00   10.00   14.00    0.00    0.00
                                               3.00    7.00   11.00    0.00    0.00    0.00]
-                                 {:order :row})
+                                 {:layout :row})
                         b (gb factory 5 8 4 7 (range 1 100))
                         b-ge (ge factory 12 8 [0.00    0.00    0.00    0.00    0.00    0.00    0.00   36.00
                                                0.00    0.00    0.00    0.00    0.00    0.00   31.00   37.00
@@ -926,7 +926,7 @@
                                                3.00    9.00   15.00    0.00    0.00    0.00    0.00    0.00
                                                4.00   10.00    0.00    0.00    0.00    0.00    0.00    0.00
                                                5.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00]
-                                 {:order :row})
+                                 {:layout :row})
                         c (gb factory 5 8 4 1 (range 1 100))
                         c-ge (ge factory 6 6 [0.00    6.00   11.00   15.00   18.00   20.00
                                               1.00    7.00   12.00   16.00   19.00    0.00
@@ -934,42 +934,42 @@
                                               3.00    9.00   14.00    0.00    0.00    0.00
                                               4.00   10.00    0.00    0.00    0.00    0.00
                                               5.00    0.00    0.00    0.00    0.00    0.00]
-                                 {:order :row})
+                                 {:layout :row})
                         d (gb factory 5 2 3 1 (range 1 100))
                         d-ge (ge factory 5 2 [0.00    5.00
                                               1.00    6.00
                                               2.00    7.00
                                               3.00    8.00
                                               4.00    9.00 ]
-                                 {:order :row})
-                        a1 (gb factory 5 8 2 1 (range 1 100) {:order :row})
+                                 {:layout :row})
+                        a1 (gb factory 5 8 2 1 (range 1 100) {:layout :row})
                         a1-ge (ge factory 5 4 [0.00    0.00    1.00    2.00
                                                0.00    3.00    4.00    5.00
                                                6.00    7.00    8.00    9.00
                                                10.00   11.00   12.00   13.00
                                                14.00   15.00   16.00   17.00]
-                                  {:order :row})
-                        b1 (gb factory 5 8 4 7 (range 1 100) {:order :row})
+                                  {:layout :row})
+                        b1 (gb factory 5 8 4 7 (range 1 100) {:layout :row})
                         b1-ge (ge factory 5 12 [0.00 0.00 0.00 0.00 1.00 2.00 3.00 4.00 5.00 6.00 7.00 8.00
                                                 0.00 0.00 0.00 9.00 10.00 11.00 12.00 13.00 14.00 15.00 16.00 0.00
                                                 0.00 0.00 17.00 18.00 19.00 20.00 21.00 22.00 23.00 24.00 0.00 0.00
                                                 0.00 25.00 26.00 27.00 28.00 29.00 30.00 31.00 32.00 0.00 0.00 0.00
                                                 33.00 34.00 35.00 36.00 37.00 38.00 39.00 40.00 0.00 0.00 0.00 0.00]
-                                  {:order :row})
-                        c1 (gb factory 5 8 1 4 (range 1 100) {:order :row})
+                                  {:layout :row})
+                        c1 (gb factory 5 8 1 4 (range 1 100) {:layout :row})
                         c1-ge (ge factory 5 6 [0.00    1.00    2.00    3.00    4.00    5.00
                                                6.00    7.00    8.00    9.00   10.00   11.00
                                                12.00   13.00   14.00   15.00   16.00   17.00
                                                18.00   19.00   20.00   21.00   22.00   23.00
                                                24.00   25.00   26.00   27.00   28.00    0.00]
-                                  {:order :row})
-                        d1 (gb factory 5 2 3 1 (range 1 100) {:order :row})
+                                  {:layout :row})
+                        d1 (gb factory 5 2 3 1 (range 1 100) {:layout :row})
                         d1-ge (ge factory 5 5 [0.00    0.00    0.00    1.00    2.00
                                                0.00    0.00    3.00    4.00    0.00
                                                0.00    5.00    6.00    0.00    0.00
                                                7.00    8.00    0.00    0.00    0.00
                                                9.00    0.00    0.00    0.00    0.00]
-                                  {:order :row})]
+                                  {:layout :row})]
            ;; TODO (view-gb a-ge) => a
            (view-ge a) => a-ge
            (view-ge b) => b-ge
@@ -985,7 +985,7 @@
 
 (defn test-gb [factory];;TODO
   (facts "GB Matrix methods."
-         (with-release [a-row (gb factory 4 3 2 1 (range 1 100) {:order :row})
+         (with-release [a-row (gb factory 4 3 2 1 (range 1 100) {:layout :row})
                         a-col (gb factory 4 3 2 1 (range 1 100))]
            (row a-row 0) => (vctr factory 1 2)
            (row a-row 2) => (vctr factory 6 7 8)
@@ -1002,7 +1002,7 @@
   (facts "BLAS 1 copy! GB matrix"
          (with-release [a (gb factory 5 4 2 3 (range 1 20))
                         b (gb factory 5 4 2 3 (range 100 200))
-                        b-row (gb factory 5 4 2 3 {:order :row})]
+                        b-row (gb factory 5 4 2 3 {:layout :row})]
            (identical? (copy! a b) b) => true
            (copy! a b) => (gb factory 5 4 2 3 (range 1 20))
            (copy (gb factory 5 4 2 3 (range 1 20))) => a
@@ -1022,7 +1022,7 @@
                                              102 105 109 114
                                              106 110 115
                                              111 116]
-                            {:order :row})]
+                            {:layout :row})]
      (swp! a (gb factory 5 4 2 3)) => a
      (swp! a (gb factory 5 4 2 3 (range 10 200 10))) => (gb factory 5 4 2 3 (range 10 200 10))
      (swp! a b-row) => b
@@ -1044,7 +1044,7 @@
          (with-release [a (gb factory 5 6 3 2 (range 1 100))
                         b (gb factory 5 6 3 2
                               [1 5 10 2 6 11 15 3 7 12 16 19 4 8 13 17 20 22 9 14 18 21 23]
-                              {:order :row})]
+                              {:layout :row})]
            (axpy! -1 a b) => (gb factory 5 6 3 2)
            (identical? (axpy! 3.0 (gb factory 5 6 3 2 (range 60)) a) a) => true
            (axpy! 2.0 (gb factory 5 6 2 3 (range 1 70)) a) => (throws ExceptionInfo))))
@@ -1070,7 +1070,7 @@
                              460.00 1159.00
                              757.00 1780.00
                              792.00 1827.00]
-                {:order :row})
+                {:layout :row})
 
          (with-release [c (ge factory 5 2)]
            (identical? (mm! 2.0 (gb factory 5 6 2 3 [1 2 3 4 5 6]) (ge factory 6 2 (range 100)) 3.0 c) c))
@@ -1083,7 +1083,7 @@
                                            0.00    3.00    7.00   11.00
                                            1.00    4.00    8.00   12.00
                                            2.00    5.00    9.00   13.00 ]
-                              {:order :row})]
+                              {:layout :row})]
            (view-ge (entry! (view-sy c) -1)) => c
            (entry c 1 2) => 7.0
            (entry (entry! a 2 1 88.0) 2 1) => 88.0
@@ -1092,16 +1092,16 @@
 
 (defn test-gb-alter! [factory]
   (facts "GB alter!."
-         (entry (alter! (gb factory 5 3 1 2 (range 100) {:order :row}) 1 1 val+) 1 1) => 5.0
+         (entry (alter! (gb factory 5 3 1 2 (range 100) {:layout :row}) 1 1 val+) 1 1) => 5.0
          (alter! (gb factory 4 4 0 3 (range 100)) val-ind+) => (gb factory 4 4 0 3 [0 1 3 6 10 14 18 24 30 36])
-         (alter! (gb factory 100 2 2 1 (range 1 300) {:order :row}) val-ind+)
-         => (gb factory 100 2 2 1 [0 2 0 5 0 8 10] {:order :row})))
+         (alter! (gb factory 100 2 2 1 (range 1 300) {:layout :row}) val-ind+)
+         => (gb factory 100 2 2 1 [0 2 0 5 0 8 10] {:layout :row})))
 
 (defn test-gb-dot [factory]
   (facts "BLAS 1 GB dot"
          (let [a (gb factory 5 2 1 1 (range -10 100))
                b (gb factory 5 2 1 1 (range 1 100))
-               d (gb factory 5 2 1 1 {:order :row})
+               d (gb factory 5 2 1 1 {:layout :row})
                zero-point (gb factory 5 2 1 1)]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => -110.0
@@ -1133,8 +1133,8 @@
 (defn test-packed-copy [factory uplo]
   (facts "BLAS 1 copy! packed matrix"
          (with-release [a (uplo factory 3)
-                        b (uplo factory 3 (range 6) {:order :column})
-                        b-row (uplo factory 3 (range 6) {:order :row})]
+                        b (uplo factory 3 (range 6) {:layout :column})
+                        b-row (uplo factory 3 (range 6) {:layout :row})]
 
            (identical? (copy a) a) => false
            (identical? (copy! (uplo factory 3 [1 2 3 4 5 6]) a) a) => true
@@ -1156,9 +1156,9 @@
 (defn test-packed [factory pck]
   (facts "Packed Matpix methods."
          (with-release [a-upper (tp factory 3 (range 15) {:uplo :upper})
-                        b-upper (tp factory 3 (range 15) {:uplo :upper :order :row})
+                        b-upper (tp factory 3 (range 15) {:uplo :upper :layout :row})
                         a-lower (tp factory 3 (range 15) {:uplo :lower})
-                        b-lower (tp factory 3 (range 15) {:uplo :lower :order :row})]
+                        b-lower (tp factory 3 (range 15) {:uplo :lower :layout :row})]
            (= 3 (mrows a-upper) (ncols a-lower) (mrows b-upper) (ncols b-lower)) => true
            (row b-upper 0) => (vctr factory [0 1 2])
            (row b-upper 2) => (vctr factory [5])
@@ -1287,7 +1287,7 @@
                                       0.69  -0.67 -14.18   7.24  -5.19
                                       0.73   0.75   0.02 -13.82  14.19
                                       -0.26   0.44  -0.59  -0.34  -3.43]
-                         {:order :row})
+                         {:layout :row})
                   lu-a (trf! a)]
 
      (:ipiv lu-a) => (vctr (index-factory factory) [5 5 3 4 5])
@@ -1311,13 +1311,13 @@
                                             0.59   0.84   1.90
                                             1.32  -0.10   5.36
                                             0.57   0.11   4.04]
-                               {:order :row})
+                               {:layout :row})
                   lu (ge factory 5 5 [8.23   1.08   9.04   2.14  -6.87
                                       0.83  -6.94  -7.92   6.55  -3.99
                                       0.69  -0.67 -14.18   7.24  -5.19
                                       0.73   0.75   0.02 -13.82  14.19
                                       -0.26   0.44  -0.59  -0.34  -3.43]
-                         {:order :row})
+                         {:layout :row})
                   lu-a (trf! a)]
 
      (:ipiv lu-a) => (vctr (index-factory factory) [5 5 3 4 5])
@@ -1363,7 +1363,7 @@
                                      0.732510,   0.108942,   0.476969, 0 0
                                      0.162608,   0.227770,   0.533074,   0.807075, 0
                                      0.517006,   0.315992,   0.914848,   0.460825,   0.731980]
-                        {:order :row})
+                        {:layout :row})
                   inv-a (tri! (copy (view-tr a)))]
      (nrm2 (mm inv-a a)) => (roughly (sqrt 5.0)))))
 
@@ -1385,13 +1385,13 @@
                                             0.59   0.84   1.90
                                             1.32  -0.10   5.36
                                             0.57   0.11   4.04]
-                               {:order :row})
+                               {:layout :row})
                   lu (ge factory 5 5 [8.23   1.08   9.04   2.14  -6.87
                                       0.83  -6.94  -7.92   6.55  -3.99
                                       0.69  -0.67 -14.18   7.24  -5.19
                                       0.73   0.75   0.02 -13.82  14.19
                                       -0.26   0.44  -0.59  -0.34  -3.43]
-                         {:order :row})]
+                         {:layout :row})]
 
      (nrm2 (axpy! -1 (sv! a b) solution)) => (roughly 0.01201)
      (nrm2 (axpy! -1 a lu)) => (roughly 0.01359))))
@@ -1410,7 +1410,7 @@
                                      9.81, -4.09, -4.57, -8.61,  8.99])
                   t1 (copy t)
                   b1 (copy b)
-                  t2 (copy! t (tr factory 5 {:order :row}))
+                  t2 (copy! t (tr factory 5 {:layout :row}))
                   b2 (copy b)
                   t3 (copy t2)
                   b3 (copy b)]
@@ -1434,7 +1434,7 @@
                                       0.69  -0.67 -14.18   7.24  -5.19
                                       0.73   0.75   0.02 -13.82  14.19
                                       -0.26   0.44  -0.59  -0.34  -3.43]
-                         {:order :row})]
+                         {:layout :row})]
 
      (det (trf! a)) => (roughly -38406.4848))))
 
@@ -1446,7 +1446,7 @@
                                       5.25 -2.95 -0.95 -3.80
                                       1.58 -2.69 -2.90 -1.04
                                       -1.11 -0.66 -0.59 0.80]
-                        {:order :row})
+                        {:layout :row})
                   lu-a (trf a)
                   nrm (nrm1 a)
                   copy-a (copy a)
@@ -1463,7 +1463,7 @@
                                       5.25 -2.95 0 0
                                       1.58 -2.69 -2.90 0
                                       -1.11 -0.66 -0.59 0.80]
-                        {:order :row})
+                        {:layout :row})
                   b (copy (view-tr a))
                   lu (trf a)
                   nrm (nrm1 a)]
@@ -1488,21 +1488,21 @@
                                       0.44  -0.66  -0.20  -7.78
                                       0.37  -0.26  -0.17  -0.15
                                       -0.29   0.46   0.41   0.24]
-                         {:order :row})
+                         {:layout :row})
                   q (ge factory 6 4 [-0.08  -0.66  -0.12  -0.15
                                       0.57   0.20   0.64  -0.27
                                       0.43   0.43  -0.65   0.21
                                       -0.48   0.47  -0.11  -0.70
                                       -0.40   0.05   0.08   0.30
                                       0.31  -0.34  -0.37  -0.52]
-                        {:order :row})
+                        {:layout :row})
                   qr*c (ge factory 6 2 [-7.65   2.25
                                         13.53   4.63
                                         0.24   2.79
                                         2.15  -6.31
                                         -1.86  -2.29
                                         1.42   5.73]
-                           {:order :row})]
+                           {:layout :row})]
      (nrm2 (axpy! -1 (gqr! a0 (qrf! a0 tau)) q)) => (roughly 0.014)
      (nrm2 (axpy! -1 (doto a1 (qrf! tau)) qr)) => (roughly 0.0129)
      (nrm2 (axpy! -1 (mqr! a1 tau c) qr*c)) => (roughly 0.0115))))
@@ -1515,7 +1515,7 @@
                                       -7.84, -0.28,  3.24,  8.09,  2.52, -5.70,
                                       -4.39, -3.24,  6.27,  5.28,  0.74, -1.19,
                                       4.53,  3.83, -6.64,  2.06, -2.47,  4.70]
-                         {:order :row})
+                         {:layout :row})
                   a1 (copy a0)
                   tau (vctr factory 4)
                   c (ge factory 6 4 [8.58,  8.26,  8.48, -5.28, 2.3 2.2
@@ -1526,19 +1526,19 @@
                                       -0.18   0.36  -0.44  -7.78   8.13   7.04
                                       0.26   0.16  -0.36  -0.80   7.38   6.67
                                       0.30   0.25  -0.43   0.13  -0.16 -10.57]
-                         {:order :row})
+                         {:layout :row})
                   q (ge factory 4 6 [0.31  -0.73  -0.41   0.20   0.38  -0.17
                                      0.40  -0.41   0.45  -0.28  -0.23   0.58
                                      -0.21  -0.11   0.28   0.89  -0.11   0.24
                                      -0.43  -0.36   0.63  -0.19   0.23  -0.44]
-                        {:order :row})
+                        {:layout :row})
                   rq*c (ge factory 6 4 [27778.10474205729 34849.97134137374 27778.10474205729 34849.97134137374
                                         37576.96048773454 47101.054569347405 37576.96048773454 47101.054569347405
                                         3883.645144131808 4867.867395762253 3883.645144131808 4867.867395762253
                                         -650.254385760667 -804.37260305241 -650.254385760667 -804.37260305241
                                         -35.23575939807661 -43.69759691590371 -35.23575939807661 -43.69759691590371
                                         -4824.495361548854 -6051.555558128556 -4824.495361548854 -6051.555558128556]
-                           {:order :row})]
+                           {:layout :row})]
      (nrm2 (axpy! -1 (grq! a0 (rqf! a0 tau)) q)) => (roughly 0.01304)
      (nrm2 (axpy! -1 (doto a1 (rqf! tau)) rq)) => (roughly 0.0127)
      (nrm2 (axpy! -1 (mrq! a1 tau c) rq*c)) => (roughly 0.0 0.04))))
@@ -1551,7 +1551,7 @@
                                       -6 -5 0 2
                                       2 -5 6 -6
                                       4 6 2 -3]
-                         {:order :row})
+                         {:layout :row})
                   a1 (copy a0)
                   a2 (copy a0)
                   tau (vctr factory 4)
@@ -1563,17 +1563,17 @@
                                       7.22  -3.60  -0.42   0.36
                                       4.54   8.84  -1.49  -0.80
                                       -6.41   3.81  -2.30   2.00]
-                         {:order :row})
+                         {:layout :row})
                   q (ge factory 4 4 [ -0.534522 -0.801784 0.267261 -0
                                      0.595961 -0.218519 0.536365 -0.55623
                                      0.564904 -0.386513 -0.0297318 0.728428
                                      -0.2 0.4 0.8 0.4]
-                        {:order :row})
+                        {:layout :row})
                   lq*c (ge factory 4 4 [3861.9576278420636 4161.270425791217 1103.4822844002706 3861.9576278420636
                                         27719.90284478883 29911.457438130125 7937.11129835215 27719.90284478883
                                         16655.246287501766 17979.057772570286 4748.23322679897 16655.246287501766
                                         -25024.58322860647 -27015.7721311638 -7195.2447564577 -25024.58322860647]
-                           {:order :row})]
+                           {:layout :row})]
 
      (nrm2 (axpy! -1 (glq! a0 (lqf! a0 tau)) q)) => (roughly 0.0 0.0001)
      (nrm2 (axpy! -1 (doto a1 (lqf! tau)) lq)) => (roughly 0.0126)
@@ -1587,7 +1587,7 @@
                                       -6 -5 0 2
                                       2 -5 6 -6
                                       4 6 2 -3]
-                         {:order :row})
+                         {:layout :row})
                   a1 (copy a0)
                   a2 (copy a0)
                   tau (vctr factory 4)
@@ -1599,17 +1599,17 @@
                                       -0.41  -4.53   0.47  -0.20
                                       5.75   8.62  -2.24   0.60
                                       -5.14   0.29  -6.00   7.00 ]
-                         {:order :row})
+                         {:layout :row})
                   q (ge factory 4 4 [0.87   0.19   0.45   0.00
                                      0.47  -0.34  -0.77   0.29
                                      0.13   0.32  -0.38  -0.86
                                      0.06  -0.86   0.26  -0.43]
-                        {:order :row})
+                        {:layout :row})
                   ql*c (ge factory 4 4 [73364.78125 54602.0859375 6721.794921875 73364.78125
                                         -23043.171875 -17142.7265625 -2109.498779296875 -23043.171875
                                         6087.68798828125 4543.7509765625 562.00439453125 6087.68798828125
                                         134.61383056640625 98.04141998291016 12.774694442749023 134.61383056640625]
-                           {:order :row})]
+                           {:layout :row})]
 
      (nrm2 (axpy! -1 (gql! a0 (qlf! a0 tau)) q)) => (roughly 0.013)
      (nrm2 (axpy! -1 (doto a1 (qlf! tau)) ql)) => (roughly 0.01123)
@@ -1629,14 +1629,14 @@
                                             -0.85  -0.90
                                             0.71   0.63
                                             0.13   0.14]
-                               {:order :row})
+                               {:layout :row})
                   qr (ge factory 6 4 [-17.54  -4.76  -1.96   0.42
                                       -0.52  12.40   7.88  -5.84
                                       -0.40  -0.14  -5.75   4.11
                                       0.44  -0.66  -0.20  -7.78
                                       0.37  -0.26  -0.17  -0.15
                                       -0.29   0.46   0.41   0.24]
-                         {:order :row})
+                         {:layout :row})
                   residual (vctr factory [195.36 107.06])]
      (ls! a b)
      (nrm2 (axpy! -1 residual (ls-residual a b))) => (roughly 0.003 0.0001)
@@ -1658,19 +1658,19 @@
                                                -0.69   4.70
                                                -0.69  -4.70
                                                -10.46   0.00]
-                                  {:order :row})
+                                  {:layout :row})
                   vl-res (ge factory 5 5 [-0.04  -0.29  -0.13  -0.33   0.04
                                           -0.62   0.00   0.69   0.00   0.56
                                           0.04   0.58  -0.39  -0.07  -0.13
                                           -0.28  -0.01  -0.02  -0.19  -0.80
                                           0.04  -0.34  -0.40   0.22   0.18]
-                             {:order :row})
+                             {:layout :row})
                   vr-res (ge factory 5 5 [-0.11  -0.17  -0.73   0.00   0.46
                                           -0.41   0.26   0.03   0.02   0.34
                                           -0.10   0.51  -0.19   0.29   0.31
                                           -0.40   0.09   0.08   0.08  -0.74
                                           -0.54   0.00   0.29   0.49   0.16]
-                             {:order :row})
+                             {:layout :row})
                   vl (ge factory 5 5)
                   vr (ge factory 5 5)]
 
@@ -1700,13 +1700,13 @@
                                          -0.43   0.24  -0.69   0.33   0.16
                                          -0.47  -0.35   0.39   0.16  -0.52
                                          0.29   0.58  -0.02   0.38  -0.65]
-                             {:order :row})
+                             {:layout :row})
                   vt-res (ge factory 5 5 [-0.25  -0.40  -0.69  -0.37  -0.41
                                           0.81   0.36  -0.25  -0.37  -0.10
                                           -0.26   0.70  -0.22   0.39  -0.49
                                           0.40  -0.45   0.25   0.43  -0.62
                                           -0.22   0.14   0.59  -0.63  -0.44]
-                             {:order :row})]
+                             {:layout :row})]
 
      (nrm2 (axpy! -1 s-res (svd! a0 s superb))) => (roughly 0.007526)
      (nrm2 (axpy! -1 s-res (svd! a1 s u vt superb))) => (roughly 0.007526)

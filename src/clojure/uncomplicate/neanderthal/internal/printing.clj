@@ -10,7 +10,7 @@
   (:require [clojure.pprint :refer [cl-format]]
             [uncomplicate.neanderthal
              [math :refer [ceil]]
-             [core :refer [subvector mrows ncols dim entry]]]
+             [core :refer [subvector mrows ncols dim entry dia]]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [uncomplicate.neanderthal.internal.api LayoutNavigator Region DenseStorage FullStorage]))
 

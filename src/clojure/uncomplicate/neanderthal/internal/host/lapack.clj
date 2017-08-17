@@ -74,10 +74,10 @@
 (defmacro tr-lan [method norm a]
   `(if (< 0 (.dim ~a))
      (let [reg# (region ~a)
-           row-order# (.isRowMajor (navigator ~a))
+           row-layout# (.isRowMajor (navigator ~a))
            lower# (.isLower reg#)
-           uplo# (if row-order# (if lower# \L \U) (if lower# \U \L))
-           norm# (if row-order# ~norm (cond (= ~norm (int \I)) (int \O)
+           uplo# (if row-layout# (if lower# \L \U) (if lower# \U \L))
+           norm# (if row-layout# ~norm (cond (= ~norm (int \I)) (int \O)
                                             (= ~norm (int \O)) (int \I)
                                             :default ~norm))]
        (~method CBLAS/ORDER_ROW_MAJOR norm#

@@ -24,7 +24,7 @@
              [api :refer :all]
              [common :refer [dense-rows dense-cols dense-dias region-dias region-cols region-rows
                              dragan-says-ex real-accessor]]
-             [printing :refer [print-vector print-ge print-uplo print-banded print-packed]]
+             [printing :refer [print-vector print-ge print-uplo print-banded]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
   (:import [java.nio ByteBuffer DirectByteBuffer]

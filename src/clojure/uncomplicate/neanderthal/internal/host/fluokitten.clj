@@ -14,7 +14,7 @@
              [core :refer [vctr copy dim ncols transfer!]]
              [block :refer [buffer offset]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [factory compatible? engine raw subcopy ReductionFunction
+             [api :refer [factory compatible? engine raw subcopy sum ReductionFunction
                           vector-reduce vector-map-reduce matrix-reduce matrix-map-reduce
                           data-accessor create-ge navigator storage region]]
              [common :refer [real-accessor]]]

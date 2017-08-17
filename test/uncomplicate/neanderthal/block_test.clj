@@ -314,10 +314,10 @@
 (defn test-ge-seq [factory]
   (facts "GE matrix as a sequence"
 
-         (seq (ge factory 2 3 (range 6) {:order :column}))
+         (seq (ge factory 2 3 (range 6) {:layout :column}))
          => (list (list 0.0 1.0) (list 2.0 3.0) (list 4.0 5.0))
 
-         (seq (ge factory 2 3 (range 6) {:order :row}))
+         (seq (ge factory 2 3 (range 6) {:layout :row}))
          => (list (list 0.0 1.0 2.0) (list 3.0 4.0 5.0))))
 
 ;; ================= TR matrix ========================================
@@ -378,25 +378,25 @@
 (defn test-tr-seq [factory]
   (facts "TR matrix as a sequence"
 
-         (seq (tr factory 3 (range 1 7) {:order :column}))
+         (seq (tr factory 3 (range 1 7) {:layout :column}))
          => (list (list 1.0 2.0 3.0) (list 4.0 5.0) (list 6.0))
 
-         (seq (tr factory 3 (range 1 7) {:order :column :uplo :upper}))
+         (seq (tr factory 3 (range 1 7) {:layout :column :uplo :upper}))
          => (list (list 1.0) (list 2.0 3.0) (list 4.0 5.0 6.0))
 
-         (seq (tr factory 3 (range 1 7) {:order :column :uplo :upper :diag :unit}))
+         (seq (tr factory 3 (range 1 7) {:layout :column :uplo :upper :diag :unit}))
          => (list (list) (list 1.0) (list 2.0 3.0))
 
-         (seq (tr factory 3 (range 1 7) {:order :row}))
+         (seq (tr factory 3 (range 1 7) {:layout :row}))
          => (list (list 1.0) (list 2.0 3.0) (list 4.0 5.0 6.0))
 
-         (seq (tr factory 3 (range 1 7) {:order :row :uplo :upper}))
+         (seq (tr factory 3 (range 1 7) {:layout :row :uplo :upper}))
          => (list (list 1.0 2.0 3.0) (list 4.0 5.0) (list 6.0))
 
-         (seq (tr factory 3 (range 1 7) {:order :row :uplo :upper :diag :unit}))
+         (seq (tr factory 3 (range 1 7) {:layout :row :uplo :upper :diag :unit}))
          => (list (list 1.0 2.0) (list 3.0) (list))
 
-         (seq (tr factory 3 (range 1 7) {:order :row :uplo :lower :diag :unit}))
+         (seq (tr factory 3 (range 1 7) {:layout :row :uplo :lower :diag :unit}))
          => (list (list) (list 1.0) (list 2.0 3.0))))
 
 (defn test-all [factory]

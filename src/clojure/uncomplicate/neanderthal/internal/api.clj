@@ -183,7 +183,7 @@
 ;; ============================================================================
 
 (defn options-column? [options]
-  (not (= :row (:order options))))
+  (not (= :row (:layout options))))
 
 (defn options-lower? [options]
   (not (= :upper (:uplo options))))
@@ -232,13 +232,13 @@
     :unit 132
     (throw (ex-info "Invalid option." {:option option}))))
 
-(defn enc-order ^long [order]
-  (case order
+(defn enc-layout ^long [layout]
+  (case layout
     :row 101
     :column 102
     101 101
     102 102
-    (throw (ex-info "Invalid order" {:order order}))))
+    (throw (ex-info "Invalid layout" {:layout layout}))))
 
 (defn enc-uplo ^long [uplo]
   (case uplo

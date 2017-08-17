@@ -198,7 +198,7 @@
   a matrix, or another structure that can be transferred to the context of `factory`.
   If `source` is a matrix, dimensions `m` and `n` are not required.
 
-  The internal structure can be specified with a map of options: `:order` (`:column` or `:row`).
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`).
 
   If the provided indices or source do not make sense, throws ExceptionInfo.
 
@@ -243,7 +243,7 @@
   a matrix, or another structure that can be transferred to the context of `factory`.
   If `source` is a matrix, dimension `n` is not required.
 
-  The internal structure can be specified with a map of options: `:order` (`:column` or `:row`),
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   `:uplo` (`upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
   If the provided indices or source do not make sense, throws ExceptionInfo.
