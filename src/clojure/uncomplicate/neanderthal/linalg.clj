@@ -541,9 +541,10 @@
   "Computes the singular value decomposition of a matrix `a`.
 
   On exit, `a` is destroyed, or, if `u` or `vt` are `nil`, overwritten with U or transposed V
-  singular vectors of `a`. `s` is populated with sorted singular values. If the factorization
-  does not converge, `superb` is populated  with the unconverged superdiagonal elements
-  (see LAPACK documentation). If called without `u` and `vt`, U and transposed V are not computed.
+  singular vectors of `a`. `s` is a diagonal banded matrix populated with sorted singular values.
+  If the factorization does not converge, a diagonal banded matrix `superb` is populated with
+  the unconverged superdiagonal elements (see LAPACK documentation). If called without `u` and `vt`,
+  U and transposed V are not computed.
 
   If the reduction to bidiagonal form failed to converge, throws ExceptionInfo, with the information
   on the number of converged superdiagonals.
