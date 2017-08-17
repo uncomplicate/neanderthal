@@ -128,8 +128,12 @@
    (gb mkl-float m n kl ku source options))
   ([m n kl ku arg]
    (gb mkl-float m n kl ku arg))
+  ([m n arg]
+   (gb mkl-float m n arg))
   ([m n kl ku]
    (gb mkl-float m n kl ku))
+  ([m n]
+   (gb mkl-float m n))
   ([arg]
    (gb mkl-float arg)))
 
@@ -140,8 +144,12 @@
    (gb mkl-double m n kl ku source options))
   ([m n kl ku arg]
    (gb mkl-double m n kl ku arg))
+  ([m n arg]
+   (gb mkl-double m n arg))
   ([m n kl ku]
    (gb mkl-double m n kl ku))
+  ([m n]
+   (gb mkl-double m n))
   ([arg]
    (gb mkl-double arg)))
 

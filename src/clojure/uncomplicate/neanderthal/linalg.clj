@@ -124,7 +124,7 @@
   (if (and (= (.ncols a) (.mrows b)) (api/compatible? a b) (api/fits-navigation? a b))
     (api/trtrs a b)
     (throw (ex-info "Dimensions and orientation of a and b do not fit"
-                    {:a  (str a) :b (str b) :errors
+                    {:a  (api/info a) :b (api/info b) :errors
                      (cond-into []
                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
                                 (not (api/fits-navigation? a b)) "a and b do not have compatible layout")}))));;TODO  (api/fits-navigation? a b)
@@ -242,7 +242,7 @@
               (api/compatible? ~a ~tau))
        ~expr
        (throw (ex-info "Dimensions of a, tau, and c do not fit matrix multiplication."
-                       {:a (str ~a) :c (str ~c) :tau (str ~tau) :errors
+                       {:a (api/info ~a) :c (api/info ~c) :tau (api/info ~tau) :errors
                         (cond-into []
                                    (not (<= (.dim ~tau) r#))
                                    (format "(not (<= (dim tau) %s))" (if ~left "(mrows c)" "(ncols c)"))
@@ -256,7 +256,7 @@
               (api/compatible? ~a ~tau))
        ~expr
        (throw (ex-info "Dimensions of a, tau, and c do not fit matrix multiplication."
-                       {:a (str ~a) :c (str ~c) :tau (str ~tau) :errors
+                       {:a (api/info ~a) :c (api/info ~c) :tau (api/info ~tau) :errors
                         (cond-into []
                                    (not (<= (.dim ~tau) r#))
                                    (format "(not (<= (dim tau) %s))" (if ~left "(mrows c)" "(ncols c)"))
@@ -486,7 +486,7 @@
   (if (and (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)) (api/fits-navigation? a b))
     (api/ls (api/engine a) a b)
     (throw (ex-info "You cannot solve linear system described by incompatible or ill-fitting matrices."
-                    {:a (str a) :b (str b) :errors
+                    {:a (api/info a) :b (api/info b) :errors
                      (cond-into []
                                 (not (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)))
                                 "dimensions of a and b do not fit"
@@ -516,7 +516,7 @@
                                (api/compatible? a vr)(api/fits-navigation? a vr))))
      (api/ev (api/engine a) a w vl vr)
      (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
-                     {:a (str a) :w (str w) :vl (str vl) :vr (str vr) :errors
+                     {:a (api/info a) :w (api/info w) :vl (api/info vl) :vr (api/info vr) :errors
                       (cond-into []
                                  (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
                                  (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
@@ -551,7 +551,7 @@
 
   See related info about [lapacke_?gesvd](https://software.intel.com/en-us/node/521150).
   "
-  ([^Matrix a ^Vector s ^Matrix u ^Matrix vt ^Vector superb]
+  ([^Matrix a ^Matrix sigma ^Matrix u ^Matrix vt ^Matrix superb]
    (let [m (.mrows a)
          n (.ncols a)
          min-mn (min m n)]
@@ -561,28 +561,32 @@
               (or (nil? vt) (and (or (= n (.mrows vt) (.ncols vt))
                                      (and (= min-mn (.mrows vt)) (= n (.ncols vt))))
                                  (api/compatible? a vt) (api/fits-navigation? a vt)))
-              (= min-mn (.dim s) (.dim superb)))
-       (api/svd (api/engine a) a s u vt superb)
+              (= m (.mrows sigma) (.mrows superb)) (= n (.ncols sigma) (.ncols superb)))
+       (api/svd (api/engine a) a sigma u vt superb)
        (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
-                     {:a (str a) :s (str s) :u (str u) :vt (str vt) :superb (str superb) :errors
-                      (cond-into []
-                                 (not (= min-mn (.dim s))) "dimension of s is no (min m n)"
-                                 (not (= min-mn (.dim superb))) "dimension of superb is no (min m n)"
-
-                                 (not (or (nil? u) (= m (.mrows u) (.ncols u)))) "u is not a mxm matrix"
-                                 (not (or (nil? u) (= min-mn (.ncols u)))) "ncols of u is not equals (min m n)"
-                                 (not (or (nil? u) (= n (.mrows u)))) "mrows of vt is not equals n"
-                                 (not (or (nil? u) (api/fits-navigation? a u))) "a and u do not have the same orientation"
-                                 (not (or (nil? vt) (api/fits-navigation? a vt))) "a and vt do not have the same orientation"
-                                 (not (or (nil? vt) (= n (.mrows vt) (.ncols vt)))) "vt is not a nxn matrix"
-                                 (not (or (nil? vt) (= min-mn (.mrows vt)))) "mrows of vt is not equals (min m n)"
-                                 (not (or (nil? vt) (= n (.ncols vt)))) "ncols of vt is not equals n")})))))
-  ([^Matrix a ^Vector s ^Vector superb]
-   (if (and (= (min (.mrows a) (.ncols a)) (.dim s) (.dim superb))
-            (api/compatible? a s) (api/compatible? a superb))
-     (api/svd (api/engine a) a s superb)
+                       {:a (api/info a) :s (api/info sigma) :u (api/info u) :vt (api/info vt) :superb (api/info superb)
+                        :errors
+                        (cond-into []
+                                   (not (= m (.mrows sigma))) "mrows of sigma is not m"
+                                   (not (= n (.ncols sigma))) "ncols of sigma is not n"
+                                   (not (= m (.mrows superb))) "mrows of superb is not m"
+                                   (not (= n (.ncols superb))) "ncols of superb is not n"
+                                   (not (or (nil? u) (= m (.mrows u) (.ncols u)))) "u is not a mxm matrix"
+                                   (not (or (nil? u) (= min-mn (.ncols u)))) "ncols of u is not equals (min m n)"
+                                   (not (or (nil? u) (= n (.mrows u)))) "mrows of vt is not equals n"
+                                   (not (or (nil? u) (api/fits-navigation? a u))) "a and u do not have the same orientation"
+                                   (not (or (nil? vt) (api/fits-navigation? a vt))) "a and vt do not have the same orientation"
+                                   (not (or (nil? vt) (= n (.mrows vt) (.ncols vt)))) "vt is not a nxn matrix"
+                                   (not (or (nil? vt) (= min-mn (.mrows vt)))) "mrows of vt is not equals (min m n)"
+                                   (not (or (nil? vt) (= n (.ncols vt)))) "ncols of vt is not equals n")})))))
+  ([^Matrix a ^Matrix sigma ^Matrix superb]
+   (if (and (= (.mrows a) (.mrows sigma) (.mrows superb)) (= (.ncols a) (.ncols sigma) (.ncols superb))
+            (api/compatible? a sigma) (api/compatible? a superb))
+     (api/svd (api/engine a) a sigma superb)
      (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
-                     {:a (str a) :s (str s) :superb (str superb) :errors
+                     {:a (api/info a) :s (api/info sigma) :superb (api/info superb) :errors
                       (cond-into []
-                                 (not (= min-mn (.dim s))) "dimension of s is no (min m n)"
-                                 (not (= min-mn (.dim superb))) "dimension of superb is no (min m n)")})))))
+                                 (not (= (.mrows a) (.mrows sigma))) "mrows of sigma is not m"
+                                 (not (= (.ncols a) (.ncols sigma))) "ncols of sigma is not n"
+                                 (not (= (.mrows a) (.mrows superb))) "mrows of superb is not m"
+                                 (not (= (.ncols a) (.ncols superb))) "ncols of superb is not n")})))))

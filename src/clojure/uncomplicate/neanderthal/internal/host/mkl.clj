@@ -402,14 +402,14 @@
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
       (ge-ev LAPACK/dgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
-  (svd [_ a s u vt superb]
+  (svd [_ a sigma u vt superb]
     (let [u (or u zero-matrix)
           vt (or vt zero-matrix)]
-      (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBlockVector s ^RealGEMatrix u ^RealGEMatrix vt
-              ^RealBlockVector superb)))
-  (svd [_ a s superb]
-    (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBlockVector s
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBlockVector superb)))
+      (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBandedMatrix sigma ^RealGEMatrix u ^RealGEMatrix vt
+              ^RealBandedMatrix superb)))
+  (svd [_ a sigma superb]
+    (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBandedMatrix sigma
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBandedMatrix superb)))
 
 (deftype FloatGEEngine []
   Blas
@@ -498,14 +498,14 @@
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
       (ge-ev LAPACK/sgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
-  (svd [_ a s u vt superb]
+  (svd [_ a sigma u vt superb]
     (let [u (or u zero-matrix)
           vt (or vt zero-matrix)]
-      (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBlockVector s ^RealGEMatrix u ^RealGEMatrix vt
-              ^RealBlockVector superb)))
-  (svd [_ a s superb]
-    (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBlockVector s
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBlockVector superb)))
+      (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBandedMatrix sigma ^RealGEMatrix u ^RealGEMatrix vt
+              ^RealBandedMatrix superb)))
+  (svd [_ a sigma superb]
+    (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBandedMatrix sigma
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBandedMatrix superb)))
 
 ;; ================= Triangular Matrix Engines =================================
 
@@ -547,7 +547,7 @@
   (axpby [_ alpha a beta b]
     (matrix-axpby MKL/daxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
   (trans [_ a]
-    (dragan-says-ex "TODO: not available for TR matrces."))
+    (dragan-says-ex "In-place transpose is not available for TR matrces."))
   Lapack
   (srt [_ a increasing]
     (matrix-lasrt LAPACK/dlasrt ^RealUploMatrix a increasing))
@@ -588,8 +588,7 @@
   (mm [this alpha a b beta c _]
     (tr-mm a))
   (mm [_ alpha a b left]
-    (tr-mm CBLAS/strmm alpha ^RealUploMatrix a ^RealGEMatrix b left)
-    b)
+    (tr-mm CBLAS/strmm alpha ^RealUploMatrix a ^RealGEMatrix b left))
   BlasPlus
   (amax [this a]
     (tr-lan LAPACK/slantr (long \M) ^RealUploMatrix a))
@@ -599,6 +598,8 @@
     (tr-laset LAPACK/slaset alpha alpha ^RealUploMatrix a))
   (axpby [_ alpha a beta b]
     (matrix-axpby MKL/saxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
+  (trans [_ a]
+    (dragan-says-ex "In-place transpose is not available for TR matrces."))
   Lapack
   (srt [_ a increasing]
     (matrix-lasrt LAPACK/slasrt ^RealUploMatrix a increasing))
@@ -651,6 +652,8 @@
     (sy-laset LAPACK/dlaset alpha alpha ^RealUploMatrix a))
   (axpby [_ alpha a beta b]
     (matrix-axpby MKL/daxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
+  (trans [_ a]
+    (dragan-says-ex "In-place transpose is not available for SY matrces."))
   Lapack
   (srt [_ a increasing]
     (matrix-lasrt LAPACK/dlasrt ^RealUploMatrix a increasing))
@@ -703,6 +706,8 @@
     (sy-laset LAPACK/slaset alpha alpha ^RealUploMatrix a))
   (axpby [_ alpha a beta b]
     (matrix-axpby MKL/saxpby alpha ^RealUploMatrix a beta ^RealUploMatrix b))
+  (trans [_ a]
+    (dragan-says-ex "In-place transpose is not available for SY matrces."))
   Lapack
   (srt [_ a increasing]
     (matrix-lasrt LAPACK/slasrt ^RealUploMatrix a increasing))
@@ -758,6 +763,45 @@
     (banded-laset LAPACK/dlaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
     (banded-axpby MKL/daxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b)))
+
+(deftype FloatGBEngine []
+  Blas
+  (swap [_ a b]
+    (banded-map CBLAS/sswap ^RealBandedMatrix a ^RealBandedMatrix b)
+    a)
+  (copy [_ a b]
+    (banded-map CBLAS/scopy ^RealBandedMatrix a ^RealBandedMatrix b))
+  (scal [_ alpha a]
+    (banded-scal CBLAS/sscal alpha ^RealBandedMatrix a))
+  (dot [_ a b]
+    (banded-dot CBLAS/sdot ^RealBandedMatrix a ^RealBandedMatrix b))
+  (nrm1 [_ a]
+    (banded-lan LAPACK/slangb CBLAS/idamax (long \O) ^RealBandedMatrix a))
+  (nrm2 [_ a]
+    (banded-lan LAPACK/slangb CBLAS/snrm2 (long \F) ^RealBandedMatrix a))
+  (nrmi [_ a]
+    (banded-lan LAPACK/slangb CBLAS/idamax (long \I) ^RealBandedMatrix a))
+  (asum [_ a]
+    (banded-sum CBLAS/sasum ^RealBandedMatrix a))
+  (axpy [_ alpha a b]
+    (banded-axpy CBLAS/saxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
+  (mv [this alpha a x beta y]
+    (gb-mv CBLAS/sgbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
+  (mv [_ a x]
+    (gb-mv a))
+  (mm [this alpha a b beta c _]
+    (gb-mm CBLAS/sgbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c true))
+  (mm [_ alpha a b left]
+    (gb-mm a))
+  BlasPlus
+  (sum [_ a]
+    (banded-sum CBLAS/ssum ^RealBandedMatrix a))
+  (amax [_ a]
+    (banded-lan LAPACK/slangb CBLAS/idamax (long \M) ^RealBandedMatrix a))
+  (set-all [_ alpha a]
+    (banded-laset LAPACK/slaset alpha ^RealBandedMatrix a))
+  (axpby [_ alpha a beta b]
+    (banded-axpby MKL/saxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b)))
 
 ;; =============== Packed Matrix Engines ===================================
 
@@ -948,7 +992,7 @@
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
-                      nil nil nil nil nil))
+                      (->FloatGBEngine) nil nil nil nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor

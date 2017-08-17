@@ -787,8 +787,8 @@
      :stride (.ld ^FullStorage stor)
      :master master
      :layout (:layout (info nav))
-     :stor (info stor)
-     :reg (info reg)})
+     :storage (info stor)
+     :region (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1024,8 +1024,8 @@
      :stride (.ld ^FullStorage stor)
      :master master
      :layout (:layout (info nav))
-     :stor (info stor)
-     :reg (info reg)})
+     :storage (info stor)
+     :region (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1276,8 +1276,8 @@
      :stride (.ld ^FullStorage stor)
      :master master
      :layout (:layout (info nav))
-     :stor (info stor)
-     :reg (info reg)})
+     :storage (info stor)
+     :region (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1512,8 +1512,8 @@
      :offset ofst
      :master master
      :layout (:layout (info nav))
-     :stor (info stor)
-     :reg (info reg)})
+     :storage (info stor)
+     :region (info reg)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))

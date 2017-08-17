@@ -320,8 +320,12 @@
    (if (or (not arg) (map? arg))
      (gb factory m n kl ku nil arg)
      (gb factory m n kl ku arg nil)))
+  ([factory m n arg]
+   (gb factory m n 0 0 arg))
   ([factory m n kl ku]
-   (gb factory m n kl ku nil nil)))
+   (gb factory m n kl ku nil nil))
+  ([factory m n]
+   (gb factory m n 0 0 nil nil)))
 
 (defn tb
   "TODO"

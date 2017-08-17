@@ -15,7 +15,7 @@
              [api :refer [factory index-factory engine data-accessor info
                           create-vector create-ge create-sy fits-navigation? nrm1 nrmi copy nrm2 amax
                           trf tri trs con sv navigator region storage]]
-             [common :refer [real-accessor]]
+             [common :refer [real-accessor dragan-says-ex]]
              [navigation :refer [dostripe-layout full-storage]]]
             [uncomplicate.neanderthal.internal.host.cblas
              :refer [band-storage-reduce band-storage-map full-storage-map]])
@@ -436,26 +436,32 @@
                              {:non-converged-superdiagonals info#})))))
 
 (defmacro ge-svd
-  ([method a s u vt superb]
-   `(let [m# (.mrows ~a)
-          n# (.ncols ~a)]
-      (with-svd-check ~s
-        (~method (.layout (navigator  ~a))
-         (int (cond (= m# (.mrows ~u) (.ncols ~u)) \A
-                    (and (= m# (.mrows ~u)) (= (min m# n#) (.ncols ~u))) \S
-                    (nil? ~u) \O
-                    :else \N))
-         (int (cond (= n# (.mrows ~vt) (.ncols ~vt)) \A
-                    (and (= (min m# n#) (.mrows ~vt)) (= n# (.ncols ~vt))) \S
-                    (and ~u (nil? ~vt)) \O
-                    :else \N))
-         m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
-         (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)
-         (.buffer ~superb) (.offset ~superb)))))
-  ([method a s zero-uvt superb]
-   `(with-svd-check ~s
-      (~method (.layout (navigator  ~a)) (int \N) (int \N) (.mrows ~a) (.ncols ~a)
-       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~s) (.offset ~s)
-       (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
-       (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
-       (.buffer ~superb) (.offset ~superb)))))
+  ([method a sigma u vt superb]
+   `(if (and (.isGapless (storage ~sigma)) (.isGapless (storage ~superb)))
+      (let [m# (.mrows ~a)
+            n# (.ncols ~a)]
+        (with-svd-check ~sigma
+          (~method (.layout (navigator  ~a))
+           (int (cond (= m# (.mrows ~u) (.ncols ~u)) \A
+                      (and (= m# (.mrows ~u)) (= (min m# n#) (.ncols ~u))) \S
+                      (nil? ~u) \O
+                      :else \N))
+           (int (cond (= n# (.mrows ~vt) (.ncols ~vt)) \A
+                      (and (= (min m# n#) (.mrows ~vt)) (= n# (.ncols ~vt))) \S
+                      (and ~u (nil? ~vt)) \O
+                      :else \N))
+           m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~sigma) (.offset ~sigma)
+           (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)
+           (.buffer ~superb) (.offset ~superb))))
+      (dragan-says-ex "\u01a9 and superb have to be diagonal banded matrices."
+                      {:s (info ~sigma) :superb (info ~superb)})))
+  ([method a sigma zero-uvt superb]
+   `(if (and (.isGapless (storage ~sigma)) (.isGapless (storage ~superb)))
+      (with-svd-check ~sigma
+        (~method (.layout (navigator  ~a)) (int \N) (int \N) (.mrows ~a) (.ncols ~a)
+         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~sigma) (.offset ~sigma)
+         (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
+         (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
+         (.buffer ~superb) (.offset ~superb)))
+      (dragan-says-ex "\u01a9 and superb have to be diagonal banded matrices."
+                      {:s (info ~sigma) :superb (info ~superb)}))))

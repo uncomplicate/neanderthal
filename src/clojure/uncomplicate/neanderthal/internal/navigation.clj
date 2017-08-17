@@ -311,7 +311,7 @@
        (BandStorage. h (min n (+ (min m n) ku)) ld kl ku sym-k)
        (BandStorage. h (min m (+ (min m n) kl)) ld ku kl sym-k))))
   ([column? m n kl ku]
-   (band-storage column? m n (if column? m n) kl ku))
+   (band-storage column? m n (inc (+ (long kl) (long ku))) kl ku))
   ([column? ^long n lower? diag-unit?]
    (let [unit-pad (if diag-unit? -1 0)]
      (if lower?

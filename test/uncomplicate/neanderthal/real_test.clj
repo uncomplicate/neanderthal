@@ -1689,11 +1689,11 @@
                                       5.45, -0.27,  4.85,  0.74, 10.00, -6.02,
                                       3.16,  7.98,  3.01,  5.80,  4.27, -5.31])
                   a1 (copy a0)
-                  s (vctr factory 5)
+                  s (gb factory 6 5)
                   u (ge factory 6 5)
                   vt (ge factory 5 5)
-                  superb (vctr factory 5)
-                  s-res (vctr factory [27.47 22.64 8.56 5.99 2.01])
+                  superb (gb factory 6 5)
+                  s-res (gb factory 6 5 [27.47 22.64 8.56 5.99 2.01])
                   u-res (ge factory 6 5 [-0.59   0.26   0.36   0.31   0.23
                                          -0.40   0.24  -0.22  -0.75  -0.36
                                          -0.03  -0.60  -0.45   0.23  -0.31
