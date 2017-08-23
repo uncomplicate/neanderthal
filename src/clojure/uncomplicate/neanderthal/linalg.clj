@@ -24,8 +24,8 @@
   ### Also see:
 
   - [LAPACK routines](https://software.intel.com/en-us/node/520866)
-  - [Linear Equation Computational Routines](https://software.intel.com/en-us/node/520875)
-  - [Linear Equations](https://software.intel.com/en-us/node/520972)
+  - [Linear Equation Computational Routines](https://software.intel.com/en-us/mkl-developer-reference-c-lapack-linear-equation-computational-routines)
+  - [Linear Equations](https://software.intel.com/en-us/mkl-developer-reference-c-lapack-linear-equation-routines)
   - [Orthogonal Factorizations (Q, R, L)](https://software.intel.com/en-us/node/521003)
   - [Singular Value Decomposition](https://software.intel.com/en-us/node/521036)
   - [Symmetric Eigenvalue Problems](https://software.intel.com/en-us/node/521119)
@@ -38,14 +38,14 @@
             [uncomplicate.neanderthal.internal
              [api :as api]
              [common :as generic]])
-  (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
+  (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable MatrixImplementation]))
 
 ;; ============================= LAPACK =======================================================
 
 ;; =============  Triangular Linear Systems LAPACK ============================================
 
 (defn trf!
-  "Triangularizes a non-TR matrix `a`. Destructively computes the LU (or LDLt, or UDUt)
+  "Triangularizes a non-triangular matrix `a`. Destructively computes the LU (or LDLt, or UDUt)
   factorization of a `mxn` matrix `a`,
   and places it in a record that contains `:lu` and `:ipiv`.
 
@@ -55,30 +55,50 @@
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
-  See related info about [lapacke_?getrf](https://software.intel.com/en-us/node/520877).
+  See related info about [lapacke_?getrf](https://software.intel.com/en-us/mkl-developer-reference-c-getrf).
   "
   [^Matrix a]
-  (let-release [ipiv (vctr (api/index-factory a) (.ncols a))]
-    (api/trf (api/engine a) a ipiv)
-    (generic/create-trf a ipiv)))
+  (api/create-trf (api/engine a) a false))
+
+(defn ptrf!
+  "Triangularizes a positive definite symmetric matrix `a`. Destructively computes
+  the Cholesky factorization of a `nxn` matrix `a`, and places it in a record with the key `gg`.
+
+  Overwrites `a` with G in the lower triangle, or G transposed in the upper triangle,
+  depending on whether `a` is `:lower` or `:upper`. Cholesky does not need pivoting.
+
+  If `a` is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+
+  See related info about [lapacke_?potrf](https://software.intel.com/en-us/mkl-developer-reference-c-potrf).
+  "
+  [^Matrix a]
+  (api/create-cholesky (api/engine a) a false))
 
 (defn trf
   "Triangularizes a non-TR matrix `a`. Computes the LU (or LDLt, or UDUt)
-  factorization of a `mxn` matrix `a`,
-  and places it in a record that contains `:lu`, `:a` and `:ipiv`.
+  factorization of a `mxn` matrix `a`, and places it in a record that contains `:lu`, `:a` and `:ipiv`.
+  If `a` is positive definite symmetric, compute the Cholesky factorization, that contains
+  only `:gg` and no ipiv is needed.
 
-  Pivot is  placed into the `:ipiv`, a vector of **integers or longs**.
+  Pivot is placed into the `:ipiv`, a vector of **integers or longs** (if applicable).
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
-  See related info about [lapacke_?getrf](https://software.intel.com/en-us/node/520877).
+  See related info about [[trf!]] and [[ptrf!]].
   "
-  [^Matrix a]
-  (let-release [ipiv (vctr (api/index-factory a) (.ncols a))
-                a-copy (copy a)]
-    (api/trf (api/engine a-copy) a-copy ipiv)
-    (generic/create-trf a-copy a ipiv)))
+  [^MatrixImplementation a]
+  (let [eng (api/engine a)]
+    (let-release [a-copy (copy a)]
+      (if-not (.isSymmetric a)
+        (api/create-trf eng a-copy true)
+        (try
+          (api/create-cholesky eng a-copy true)
+          (catch Exception e
+            (if (:info (ex-data e))
+              (api/create-trf eng (api/copy eng a a-copy) true)
+              (throw e))))))))
 
 (defn tri!
   "Destructively computes the inverse of a triangularized matrix `a`.
@@ -103,7 +123,7 @@
   throws ExceptionInfo.
   If the matrix is not square, throws ExceptionInfo.
 
-  See related info about [lapacke_?getri](https://software.intel.com/en-us/mkl-developer-reference-c-getri).
+  See related info about [[tri!]].
   "
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
@@ -118,16 +138,15 @@
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
-  See related info about [lapacke_?getrs](https://software.intel.com/en-us/node/520892).
+  See related info about [https://software.intel.com/en-us/mkl-developer-reference-c-getrs).
   "
   [^Matrix a ^Matrix b]
-  (if (and (= (.ncols a) (.mrows b)) (api/compatible? a b) (api/fits-navigation? a b))
+  (if (and (= (.ncols a) (.mrows b)) (api/compatible? a b))
     (api/trtrs a b)
     (throw (ex-info "Dimensions and orientation of a and b do not fit"
                     {:a  (api/info a) :b (api/info b) :errors
                      (cond-into []
-                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit"
-                                (not (api/fits-navigation? a b)) "a and b do not have compatible layout")}))));;TODO  (api/fits-navigation? a b)
+                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")}))))
 
 (defn trs
   "Solves a system of linear equations with a triangularized matrix `a`,
@@ -136,7 +155,7 @@
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
-  See related info about [lapacke_?getrs](https://software.intel.com/en-us/node/520892).
+  See related info about [[trs!]].
   "
   [a b]
   (let-release [res (copy b)]
@@ -153,7 +172,7 @@
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
-  See related info about [lapacke_?gesv](https://software.intel.com/en-us/node/520973).
+  See related info about [lapacke_?gesv](https://software.intel.com/en-us/mkl-developer-reference-c-gesv).
   "
   [^Matrix a ^Matrix b]
   (if (and (and (= (.ncols a) (.mrows b))) (api/compatible? a b))
@@ -172,7 +191,7 @@
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
-  See related info about [lapacke_?gesv](https://software.intel.com/en-us/node/520973).
+  See related info about [[sv!]].
   "
   [a b]
   (let-release [res (copy b)]
@@ -180,13 +199,14 @@
     res))
 
 (defn con
-  "Computes the reciprocal of the condition number of a triangularized matrix `a`.
+  "Computes the reciprocal of the condition number of a triangularized matrix `lu`.
 
   If `nrm1?` is true, computes the reciprocal based on 1 norm, if not, on infinity norm.
-  If `lu` factorization is supplied, it has to have the reference to the original matrix `:a`,
-  or `nrm` and matching `nrm1?` have to be supplied.
+  `nrm` and matching `nrm1?` have to be supplied.
 
   If the LU has been stale, or norm is not possible to compute, throws ExceptionInfo.
+
+  See related info about [lapacke_?gecon] (https://software.intel.com/en-us/mkl-developer-reference-c-gecon).
   "
   (^double [^Matrix lu nrm nrm1?]
    (api/trcon lu nrm nrm1?))

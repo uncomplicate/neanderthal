@@ -16,7 +16,7 @@
   ([message data]
    (throw (ex-info (format "Dragan says: %s" message) data)))
   ([message]
-   (dragan-says-ex message nil)))
+   (dragan-says-ex message {})))
 
 ;; ================= Core Functions ===================================
 
@@ -53,12 +53,17 @@
 (defn ^:private nrm-needed-for-con []
   (throw (ex-info "Cannot compute condition number without nrm." {})))
 
-(defrecord TRFactorization [^Matrix lu ^Vector ipiv ^Boolean master fresh]
+(defrecord LUFactorization [^Matrix lu ^Vector ipiv ^Boolean master fresh]
   Releaseable
   (release [_]
     (when master (release lu))
     (release ipiv))
+  Info
+  (info [this]
+    this)
   TRF
+  (create-trf [this _ _]
+    this)
   (trtrs [_ b]
     (if @fresh
       (trs (engine lu) lu b ipiv)
@@ -76,7 +81,7 @@
       (stale-factorization)))
   (trcon [_ nrm nrm1?]
     (if @fresh
-      (con (engine lu) lu nrm nrm1?)
+      (con (engine lu) lu ipiv nrm nrm1?)
       (stale-factorization)))
   (trcon [_ nrm1?]
     (nrm-needed-for-con))
@@ -100,8 +105,57 @@
   (fits-navigation? [_ b]
     (fits-navigation? lu b)))
 
-(defn create-trf
-  ([lu a ipiv]
-   (->TRFactorization lu ipiv true (atom true)))
-  ([lu ipiv]
-   (->TRFactorization lu ipiv false (atom true))))
+(defrecord CholeskyFactorization [^Matrix gg ^Boolean master fresh]
+  Releaseable
+  (release [_]
+    (if master (release gg) true))
+  Info
+  (info [this]
+    this)
+  POTRF
+  (create-cholesky [this _ _]
+    this)
+  TRF
+  (create-trf [this _ _]
+    this)
+  (trtrs [_ b]
+    (if @fresh
+      (trs (engine gg) gg b)
+      (stale-factorization)))
+  (trtri! [_]
+    (if (compare-and-set! fresh true false)
+      (tri (engine gg) gg)
+      (stale-factorization)))
+  (trtri [_]
+    (if @fresh
+      (let-release [res (raw gg)]
+        (let [eng (engine gg)]
+          (tri eng (copy eng gg res)))
+        res)
+      (stale-factorization)))
+  (trcon [_ nrm nrm1?]
+    (if @fresh
+      (con (engine gg) gg nrm nrm1?)
+      (stale-factorization)))
+  (trcon [_ nrm1?]
+    (nrm-needed-for-con))
+  (trdet [_]
+    (if @fresh
+      (let [dia-gg (.dia gg)
+            res (double (fold f* 1.0 dia-gg))]
+        (if (even? (.dim dia-gg))
+          res
+          (- res)))
+      (stale-factorization)))
+  Matrix
+  (mrows [_]
+    (.mrows gg))
+  (ncols [_]
+    (.ncols gg))
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? gg b))
+  (fits? [_ b]
+    (fits? gg b))
+  (fits-navigation? [_ b]
+    (fits-navigation? gg b)))

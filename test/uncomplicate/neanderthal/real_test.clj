@@ -1103,7 +1103,7 @@
                b (gb factory 5 2 1 1 (range 1 100))
                d (gb factory 5 2 1 1 {:layout :row})
                zero-point (gb factory 5 2 1 1)]
-           (sqrt (dot a a)) => (roughly (nrm2 a))
+           (sqrt (dot a a)) => (roughly (nrm2 a) 0.000001)
            (dot a b) => -110.0
            (dot a (copy! b d)) => (dot a b)
            (dot zero-point zero-point) => 0.0)))
@@ -1261,6 +1261,14 @@
      (sort+! a1) => a2
      (sort-! a1) => a3)))
 
+(defn test-ge-laswp [factory]
+  (facts
+   "LAPACK ge laswp!"
+   (with-release [a (ge factory 2 3 [0 -1 1 2 3 4])
+                  b (ge factory 2 3 [-1 0 2 1 4 3])
+                  ipiv (vctr (index-factory factory) 2 1)]
+     (laswp! a ipiv 1 1) => b)))
+
 (defn test-uplo-srt [factory uplo]
   (facts
    "LAPACK uplo srt!"
@@ -1291,7 +1299,130 @@
                   lu-a (trf! a)]
 
      (:ipiv lu-a) => (vctr (index-factory factory) [5 5 3 4 5])
-     (nrm2 (axpy! -1 a lu)) => (roughly 0.01359))))
+     (nrm2 (axpy! -1 a lu)) => (roughly 0 0.02))))
+
+(defn test-sy-trx [factory]
+  (facts
+   "LAPACK SY linear system solver."
+
+   (with-release [a (sy factory 8 [3
+                                   5 3
+                                   -2 2 0
+                                   2 -2 0 8
+                                   3 5 -2 -6 12
+                                   -5 -3 2 -10 6 16
+                                   -2 2 0 -8 8 8 6
+                                   -3 -5 6 -14 6 20 18 34]
+                        {:layout :row})
+                  b (ge factory 8 3 [1  -38  47
+                                     7  -10  73
+                                     6   52   2
+                                     -30 -228 -42
+                                     32  183 105
+                                     34  297   9
+                                     32  244  44
+                                     62  497  61]
+                        {:layout :row})
+                  b-solution (ge factory 8 3 [1 1 8
+                                              1 2 7
+                                              1 3 6
+                                              1 4 5
+                                              1 5 4
+                                              1 6 3
+                                              1 7 2
+                                              1 8 1]
+                                 {:layout :row})
+                  ipiv (vctr (index-factory factory) -2 -2 3 4 -6 -6 7 8)
+                  ldl-a (sy factory 8 [3
+                                       5 3
+                                       1 -1 4
+                                       -1 1 -1 8
+                                       1 0 0 -1 1
+                                       0 -1 1 -1 3 1
+                                       1 -1 1 -1 -1 1 2
+                                       -1 0 1 -1 1 0 1 16]
+                            {:layout :row})
+                  a-ge (transfer! a (ge factory 8 8))
+                  ldl (trf a)]
+     (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0 0.0001)
+     (:ipiv ldl) => ipiv
+     (con ldl (nrm1 a)) => (roughly 0 0.01)
+     (asum (mm (tri ldl) a-ge)) => (roughly 8)
+     (nrm2 (axpy! -1 (:lu ldl) ldl-a)) => (roughly 0 0.00001)
+     (nrm2 (axpy! -1 b-solution (trs ldl b))) => (roughly 0 0.0001))))
+
+(defn test-sy-potrx [factory]
+  (facts
+   "LAPACK SY positive definite linear system solver."
+
+   (with-release [a (sy factory 9 [1
+                                   1 2
+                                   1 2 3
+                                   1 2 3 4
+                                   1 2 3 4 5
+                                   1 2 3 4 5 6
+                                   1 2 3 4 5 6 7
+                                   1 2 3 4 5 6 7 8
+                                   1 2 3 4 5 6 7 8 9]
+                        {:layout :row})
+                  b (ge factory 9 2 [9 17 24 30 35 39 42 44 45
+                                     45 89 131 170 205 235 259 276 285])
+                  b-solution (ge factory 9 2 [1 1
+                                              1 2
+                                              1 3
+                                              1 4
+                                              1 5
+                                              1 6
+                                              1 7
+                                              1 8
+                                              1 9]
+                                 {:layout :row})
+                  inv (let [s (sy factory 9)]
+                        (entry! (dia s) 2)
+                        (entry! s 8 8 1)
+                        (entry! (dia s -1) -1)
+                        s)
+                  gg (trf a)]
+     (con gg (nrm1 a)) => (roughly 0 0.01)
+     (nrm2 (axpy! -1 b-solution (trs gg b))) => (roughly 0 0.0001)
+     (nrm2 (axpy! -1 (tri gg) inv)) => (roughly 0)
+     (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0 0.0001))))
+
+(defn test-gb-trx [factory]
+  (facts
+   "LAPACK GB linear system solver."
+
+   (with-release [lu-a (let [res (gb factory 9 9 2 5)]
+                         (entry! (dia res) 1)
+                         (entry! (dia res -1) 2)
+                         (entry! (dia res -2) 3)
+                         (entry! (dia res 1) 2)
+                         (entry! (dia res 2) 3)
+                         (entry! (dia res 3) 4)
+                         res)
+                  a (subband lu-a 2 3)
+                  b (ge factory 9 3 [1 1 1 1 1 1 1 1 1
+                                     1 -1 1 -1 1 -1 1 -1 1
+                                     1 2 3 4 5 6 7 8 9])
+                  b-solution (ge factory 9 3 [0.629 -0.025 0.523 -0.286 -0.104 -0.118 0.220 -0.079 0.496
+                                              1.149 1.870 0.615 -1.434 -0.524 -0.591 -0.896 1.604 0.480
+                                              4.713 -0.726 2.946 -2.774 -1.067 -0.970 2.027 -0.340 3.599])
+                  ipiv (vctr (index-factory factory) 3 4 5 6 5 6 9 8 9)
+                  lu-solution (gb factory 9 9 2 5 [3 0.666 0.333
+                                                   2 3 0.444 -0.111
+                                                   1 2 3 0.518 0.692
+                                                   2 1 2 3 0.567 0.246
+                                                   3 2 1 2 -3.617 -0.334 -0.829
+                                                   4 3 2 1 -4.419 -5.095 0.326 -0.588
+                                                   4 3 2 -4.691 -3.174 3 0.043 -0.617
+                                                   4 3 -4.074 -4.177 2 -1.546 -0.790
+                                                   4 -2.271 -1.747 1 0.927 3.037])
+                  lu (trf! a)]
+
+     (:ipiv lu) => ipiv
+     (nrm2 (axpy! -1 lu-a lu-solution)) => (roughly 0 0.1)
+     (con lu (nrm1 a)) => (roughly 0 0.041)
+     (nrm2 (axpy! -1 b-solution (trs! lu b))) => (roughly 0 0.004))))
 
 (defn test-ge-trs [factory]
   (facts
@@ -1419,6 +1550,21 @@
      (nrm2 (axpy! -1 (sv! t2 b2) b)) => (roughly 0 0.0001)
      (nrm2 (axpy! -1 (sv! t3 b3) b2)) => (roughly 0 0.0001))))
 
+(defn test-sy-sv [factory]
+  (facts
+   "LAPACK SY sv!"
+
+   (with-release [a (sy factory 5 [6.80,
+                                   -6.05, -3.30,
+                                   -0.45,  2.58, -2.70,
+                                   8.32,  2.71,  4.35, -7.17,
+                                   -9.67, -5.14, -7.26,  6.08, -6.87])
+                  b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
+                                     -1.56,  4.00, -8.67,  1.75,  2.86,
+                                     9.81, -4.09, -4.57, -8.61,  8.99])]
+
+     (nrm2 (axpy! -1 (mm a (sv a b)) b)) => (roughly 0 0.0001))))
+
 (defn test-ge-det [factory]
   (facts
    "LAPACK GE det"
@@ -1428,7 +1574,6 @@
                                      -0.45,  2.58, -2.70,  0.27,  9.04,
                                      8.32,  2.71,  4.35, -7.17,  2.14,
                                      -9.67, -5.14, -7.26,  6.08, -6.87])
-                  ipiv (vctr (index-factory factory) 5)
                   lu (ge factory 5 5 [8.23   1.08   9.04   2.14  -6.87
                                       0.83  -6.94  -7.92   6.55  -3.99
                                       0.69  -0.67 -14.18   7.24  -5.19
@@ -1783,17 +1928,22 @@
 (defn test-lapack [factory]
   (test-vctr-srt factory)
   (test-ge-srt factory)
+  (test-ge-laswp factory)
   (test-uplo-srt factory tr)
   (test-ge-trf factory)
   (test-ge-trs factory)
   (test-tr-trs factory)
-  (test-ge-det factory)
-  (test-ge-sv factory)
-  (test-tr-sv factory)
   (test-ge-tri factory)
   (test-tr-tri factory)
   (test-ge-con factory)
   (test-tr-con factory)
+  (test-ge-det factory)
+  (test-ge-sv factory)
+  (test-tr-sv factory)
+  (test-sy-sv factory)
+  (test-sy-trx factory)
+  (test-sy-potrx factory)
+  (test-gb-trx factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)

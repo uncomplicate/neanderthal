@@ -45,8 +45,9 @@
       nw-corner (cl-format nil format-a "\u250f")
       ne-corner (cl-format nil format-a "\u2513")
       sw-corner (cl-format nil format-a "\u2517")
-      se-corner (cl-format nil format-a "\u2518")
-      five-dots (cl-format nil format-a "\u2059")]
+      se-corner (cl-format nil format-a "\u251b")
+      five-dots (cl-format nil format-a "\u2059")
+      one (cl-format nil format-a "\u00b71\u00b7")]
 
   (defn printer-settings!
     ([new]
@@ -83,7 +84,7 @@
 
   (defn format-row [^java.io.Writer w s-left s-right]
     (when (seq s-left) (cl-format w format-seq s-left))
-    (when (and (seq s-left) (seq s-right)) hdots)
+    (when (and (seq s-left) (seq s-right)) (cl-format w hdots))
     (when (seq s-right)) (cl-format w format-seq s-right))
 
   (defn print-vector
@@ -153,6 +154,9 @@
              (when (< j (min print-width (.rowEnd reg i)))
                (aset print-table (inc i) (inc j) (formatter (entry a i j)))
                (recur (inc j)))))
+         (when (.isDiagUnit reg)
+           (dotimes [j (min print-width print-height)]
+             (aset print-table (inc j) (inc j) one)))
          (.write w "\n")
          (aset print-table 0 0 (if (.isColumnMajor nav) col-major row-major))
          (when (< print-height (mrows a))

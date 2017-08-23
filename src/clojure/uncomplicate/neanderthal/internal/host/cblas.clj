@@ -15,6 +15,12 @@
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
            [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))
 
+(defn flip-uplo ^long [^long uplo]
+  (case uplo
+    121 122
+    122 121
+    (throw (ex-info "Invalid CBLAS uplo"))))
+
 ;; =============== Common vector engine  macros and functions ==================
 
 (defmacro vector-rot [method x y c s]
@@ -276,11 +282,15 @@
 
 (defmacro sy-mm
   ([method alpha a b beta c left]
-   `(do
-      (~method (.layout (navigator ~c)) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
-       (.uplo (region ~a)) (.mrows ~c) (.ncols ~c)
-       ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)
-       ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
+   `(let [nav-c# (navigator ~c)
+          uplo# (if (= nav-c# (navigator ~a)) (.uplo (region ~a)) (flip-uplo (.uplo (region ~a))))]
+      (if (= nav-c# (navigator ~b))
+        (~method (.layout (navigator ~c)) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
+         uplo# (.mrows ~c) (.ncols ~c)
+         ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)
+         ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
+        (dragan-says-ex "Both GE matrices in symmetric multiplication must have the same orientation."
+                        {:b (info ~b) :c (info ~c)}))
       ~c))
   ([a]
    `(throw (ex-info "In-place mm! is not supported for SY matrices." {:a (info ~a)}))))

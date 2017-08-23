@@ -387,25 +387,25 @@
 
 (deftype SYDefault []
   RealDefault
-  (entry [_ stor da buf ofst i j]
-    (.get ^RealBufferAccessor da buf (+ ofst (.index ^DenseStorage stor j i)))))
+  (entry [_ nav stor da buf ofst i j]
+    (.get ^RealBufferAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^DenseStorage stor j i)))))
 
 (deftype SBDefault []
   RealDefault
-  (entry [_ stor da buf ofst i j]
+  (entry [_ nav stor da buf ofst i j]
     (let [k (.sym-k ^BandStorage stor)]
       (if (<= (- j k) i (+ j k))
-        (.get ^RealBufferAccessor da buf (+ ofst (.index ^BandStorage stor j i)))
+        (.get ^RealBufferAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^BandStorage stor j i)))
         0.0))))
 
 (deftype ZeroDefault []
   RealDefault
-  (entry [_ _ _ _ _ _ _]
+  (entry [_ _ _ _ _ _ _ _]
     0.0))
 
 (deftype UnitDefault []
   RealDefault
-  (entry [_ _ _ _ _ i j]
+  (entry [_ _ _ _ _ _ i j]
     (if (= i j) 1.0 0.0)))
 
 (def sy-default (SYDefault.))

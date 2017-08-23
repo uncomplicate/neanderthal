@@ -17,7 +17,10 @@
 
   - Sorting:  [[sort!]], [[sort+!]], [[sort-!]].
   "
-  (:require [uncomplicate.neanderthal.internal.api :as api]))
+  (:require [uncomplicate.neanderthal.internal
+             [api :as api]
+             [common :refer [dragan-says-ex]]])
+  (:import uncomplicate.neanderthal.internal.api.IntegerVector))
 
 (defn sort!
   "Sorts input vector or all matrix slices (columns or rows, according to layout).
@@ -39,3 +42,15 @@
   If `x` is a vector with stride different than 1, throws ExceptionInfo."
   [x]
   (sort! x false))
+
+(defn laswp!
+  "Performs a series of row interchanges on a general rectangular matrix.
+
+  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  ([a ^IntegerVector x ^long k1 ^long k2]
+   (if (and (<= 1 k1 k2 (.dim x)) (<= (- k2 k1) (.dim x)))
+     (api/laswp (api/engine a) a x k1 k2)
+     (dragan-says-ex "There is not enough indices in ipiv. Check the ipiv and k1 and k2."
+                     {:a (api/info a) :x (api/info x)})))
+  ([a ^IntegerVector x]
+   (laswp! a x 1 (.dim x))))

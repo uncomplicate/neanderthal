@@ -12,7 +12,7 @@
 ;; ================================ Default entry =================================
 
 (definterface RealDefault
-  (entry [stor da buf ^long ofst ^long i ^long j]))
+  (entry [nav stor da buf ^long ofst ^long i ^long j]))
 
 ;; ================================ Storage =======================================
 
@@ -58,12 +58,14 @@
 
 (defprotocol Lapack
   (srt [this x increasing])
-  (trf [this a ipiv])
+  (laswp [this a x k1 k2])
+  (trf [this a ipiv] [this a])
   (tri [this a ipiv] [this a])
-  (det [this a ipiv] [this a])
   (trs [this a b ipiv] [this a b])
-  (con [this lu ipiv nrm nrm1?][this lu nrm nrm1?] [this a nrm1?])
+  (con [this lu ipiv nrm nrm1?] [this lu nrm nrm1?] [this a nrm1?])
+  (det [this a ipiv] [this a])
   (sv [this a b pure])
+  (psv [this a b pure])
   (qrf [this a tau])
   (qrfp [this a tau])
   (gqr [this a tau])
@@ -82,11 +84,15 @@
   (svd [this a s superb] [this a s u vt superb]))
 
 (defprotocol TRF
+  (create-trf [this a master])
   (trtrs [a b])
   (trtri! [a])
   (trtri [a])
   (trcon [a nrm nrm1?] [a nrm1?])
   (trdet [a]))
+
+(defprotocol POTRF
+  (create-cholesky [this a master]))
 
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))
@@ -152,6 +158,9 @@
   (view-sy [this lower?])
   (view-vctr [this] [this stride-mult])
   (view-gb [this kl ku] [this]))
+
+(defprotocol Subband
+  (subband [this kl ku]))
 
 ;; ============ Realeaseable ===================================================
 

@@ -502,7 +502,7 @@
   that has `k` kolumns and `l` rows.
 
   The resulting submatrix has a live connection to `a`'s data. Any change to the subvector data
-  will affect the vector data. If you wish to disconnect the submatrix from the parent matrix,
+  will affect the original data. If you wish to disconnect the submatrix from the parent matrix,
   make a copy prior to any destructive operation.
 
   If the requested region is not within the dimensions of `a`, throws ExceptionInfo.
@@ -518,6 +518,18 @@
                       :i+k (+ (long i) (long k)) :j+l (+ (long j) (long l))}))))
   ([^Matrix a k l]
    (submatrix a 0 0 k l)))
+
+(defn subband
+  "Returns a part of the banded matrix `a` starting from row `0`, column `0`,
+  that has `kl` subdiagonals and `ku` superdiagonals.
+
+  The resulting submatrix has a live connection to `a`'s data. Any change to the subband data
+  will affect the original data.
+
+  If the requested region is not within the dimensions of `a`, throws ExceptionInfo.
+  "
+  ([a kl ku]
+   (api/subband a kl ku)))
 
 (defn trans!
   "Transposes matrix `a`'s data **in-place**. For the 'real' transpose, use the `trans` function.

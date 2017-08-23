@@ -34,7 +34,8 @@
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
             VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
             RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault LayoutNavigator
-            RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix]));;TODO clean up
+            RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix]
+           uncomplicate.neanderthal.internal.navigation.BandStorage));;TODO clean up
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
@@ -797,6 +798,8 @@
     :ge)
   (isTriangular [_]
     false)
+  (isSymmetric [_]
+    false)
   EngineProvider
   (engine [_]
     eng)
@@ -945,9 +948,9 @@
     (real-block-vector fact false buf (min m n) ofst (inc (.ld ^FullStorage stor))))
   (dia [a k]
     (if (< 0 k)
-      (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor (- k) 0))
+      (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor 0 k))
                          (inc (.ld ^FullStorage stor)))
-      (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor 0 k))
+      (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor (- k) 0))
                          (inc (.ld ^FullStorage stor)))))
   (dias [a]
     (dense-dias a))
@@ -1034,6 +1037,8 @@
     matrix-type)
   (isTriangular [_]
     (= :tr matrix-type))
+  (isSymmetric [_]
+    (= :sy matrix-type))
   EngineProvider
   (engine [_]
     eng)
@@ -1158,7 +1163,7 @@
   (entry [a i j]
     (if (.accessible reg i j)
       (.get da buf (+ ofst (.index nav stor i j)))
-      (.entry default stor da buf ofst i j)))
+      (.entry default nav stor da buf ofst i j)))
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
@@ -1178,9 +1183,9 @@
   (dia [a k]
     (if (<= (- (.kl reg)) k (.ku reg))
       (if (< 0 k)
-        (real-block-vector fact false buf (- n k) (+ ofst (.index nav stor (- k) 0))
+        (real-block-vector fact false buf (- n k) (+ ofst (.index nav stor 0 k))
                            (inc (.ld ^FullStorage stor)))
-        (real-block-vector fact false buf (+ n k) (+ ofst (.index nav stor 0 k))
+        (real-block-vector fact false buf (+ n k) (+ ofst (.index nav stor (- k) 0))
                            (inc (.ld ^FullStorage stor))))
       (real-block-vector fact false buf 0 ofst 1)))
   (dias [a]
@@ -1196,18 +1201,30 @@
     (real-uplo-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
   TRF
   (trtrs [a b]
-    (trs eng a b))
+    (if (= :tr matrix-type)
+      (trs eng a b)
+      (require-trf)))
   (trtri! [a]
-    (tri eng a))
+    (if (= :tr matrix-type)
+      (tri eng a)
+      (require-trf)))
   (trtri [a]
-    (let-release [res (raw a)]
-      (tri eng (copy eng a res))))
+    (if (= :tr matrix-type)
+      (let-release [res (raw a)]
+        (tri eng (copy eng a res)))
+      (require-trf)))
   (trcon [a _ nrm1?]
-    (con eng a nrm1?))
+    (if (= :tr matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
   (trcon [a nrm1?]
-    (con eng a nrm1?))
+    (if (= :tr matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
   (trdet [a]
-    (if (.isDiagUnit reg) 1.0 (fold (.dia a) f* 1.0))))
+    (if (= :tr matrix-type)
+      (if (.isDiagUnit reg) 1.0 (fold (.dia a) f* 1.0))
+      (require-trf))))
 
 (extend RealUploMatrix
   Functor
@@ -1286,6 +1303,8 @@
     matrix-type)
   (isTriangular [_]
     (= :tb matrix-type))
+  (isSymmetric [_]
+    (= :sb matrix-type))
   EngineProvider
   (engine [_]
     eng)
@@ -1405,7 +1424,7 @@
   (entry [a i j]
     (if (.accessible reg i j)
       (.get da buf (+ ofst (.index nav stor i j)))
-      (.entry default stor da buf ofst i j)))
+      (.entry default nav stor da buf ofst i j)))
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
@@ -1440,7 +1459,42 @@
       (dragan-says-ex "You cannot create a submatrix of a banded (GB, TB, or SB) matrix outside its region. No way around that."
                       {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
-    (real-banded-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng)))
+    (real-banded-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
+  Subband
+  (subband [a kl ku]
+    (if (and (<= 0 (long kl) (.kl reg)) (<= 0 (long ku) (.ku reg)))
+      (let [sub-stor (band-storage (.isColumnMajor nav) m n (.ld ^FullStorage stor) kl ku)]
+        (real-banded-matrix fact false buf m n
+                            (+ ofst (- (.index stor 0 0) (.index ^DenseStorage sub-stor 0 0)))
+                            nav sub-stor (band-region m n kl ku) matrix-type default eng))
+      (dragan-says-ex "You cannot create a subband outside available region. No way around that."
+                      {:a (info a) :kl kl :ku ku})))
+  TRF
+  (trtrs [a b]
+    (if (= :tb matrix-type)
+      (trs eng a b)
+      (require-trf)))
+  (trtri! [a]
+    (if (= :tb matrix-type)
+      (tri eng a)
+      (require-trf)))
+  (trtri [a]
+    (if (= :tb matrix-type)
+      (let-release [res (raw a)]
+        (tri eng (copy eng a res)))
+      (require-trf)))
+  (trcon [a _ nrm1?]
+    (if (= :tb matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trcon [a nrm1?]
+    (if (= :tb matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trdet [a]
+    (if (= :tb matrix-type)
+      (if (.isDiagUnit reg) 1.0 (fold (.dia a) f* 1.0))
+      (require-trf))))
 
 (extend RealBandedMatrix
   Functor
@@ -1522,6 +1576,8 @@
     matrix-type)
   (isTriangular [_]
     (= :tp matrix-type))
+  (isSymmetric [_]
+    (= :sp matrix-type))
   EngineProvider
   (engine [_]
     eng)
@@ -1628,7 +1684,7 @@
   (entry [a i j]
     (if (.accessible reg i j)
       (.get da buf (+ ofst (.index nav stor i j)))
-      (.entry default stor da buf ofst i j)))
+      (.entry default nav stor da buf ofst i j)))
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
@@ -1657,8 +1713,32 @@
     (dragan-says-ex "You have to unpack a packed matrix to access its submatrices." {:a a}))
   (transpose [a]
     (real-packed-matrix fact false buf n ofst (.isRowMajor nav) (.isUpper reg) (.isDiagUnit reg) matrix-type))
-  ;; TODO LU is different a bit. It's probably LDL/UDU
-  )
+  TRF
+  (trtrs [a b]
+    (if (= :tp matrix-type)
+      (trs eng a b)
+      (require-trf)))
+  (trtri! [a]
+    (if (= :tp matrix-type)
+      (tri eng a)
+      (require-trf)))
+  (trtri [a]
+    (if (= :tp matrix-type)
+      (let-release [res (raw a)]
+        (tri eng (copy eng a res)))
+      (require-trf)))
+  (trcon [a _ nrm1?]
+    (if (= :tp matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trcon [a nrm1?]
+    (if (= :tp matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trdet [a]
+    (if (= :tp matrix-type)
+      (if (.isDiagUnit reg) 1.0 (fold (.dia a) f* 1.0))
+      (require-trf))))
 
 (extend RealPackedMatrix
   Functor

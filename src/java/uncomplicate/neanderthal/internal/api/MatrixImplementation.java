@@ -12,5 +12,6 @@ public interface MatrixImplementation {
 
     Object matrixType ();
     boolean isTriangular ();
+    boolean isSymmetric ();
 
 }

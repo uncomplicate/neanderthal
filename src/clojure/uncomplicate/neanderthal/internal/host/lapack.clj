@@ -13,14 +13,15 @@
              [math :refer [pow sqrt abs]]]
             [uncomplicate.neanderthal.internal
              [api :refer [factory index-factory engine data-accessor info
-                          create-vector create-ge create-sy fits-navigation? nrm1 nrmi copy nrm2 amax
-                          trf tri trs con sv navigator region storage]]
-             [common :refer [real-accessor dragan-says-ex]]
+                          create-vector create-ge create-gb create-sy fits-navigation?
+                          nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage]]
+             [common :refer [real-accessor dragan-says-ex ->LUFactorization ->CholeskyFactorization]]
              [navigation :refer [dostripe-layout full-storage]]]
             [uncomplicate.neanderthal.internal.host.cblas
              :refer [band-storage-reduce band-storage-map full-storage-map]])
-  (:import [uncomplicate.neanderthal.internal.host CBLAS]
-           [uncomplicate.neanderthal.internal.api Region LayoutNavigator]))
+  (:import uncomplicate.neanderthal.internal.host.CBLAS
+           [uncomplicate.neanderthal.internal.api Region LayoutNavigator]
+           uncomplicate.neanderthal.internal.navigation.BandStorage))
 
 (defmacro with-lapack-check [expr]
   ` (let [err# ~expr]
@@ -44,7 +45,7 @@
        (with-lapack-check
          (~method (int (if ~increasing \I \D)) (.dim ~x) (.buffer ~x) (.offset ~x)))
        ~x)
-     (throw (ex-info "You cannot sort a vector with stride different than 1." {:stride (.stride ~x)}))))
+     (dragan-says-ex "You cannot sort a vector with stride different than 1." {:stride (.stride ~x)})))
 
 ;; ----------------- Common GE matrix macros and functions -----------------------
 
@@ -170,15 +171,15 @@
            ku# (.ku reg#)
            buff# (.buffer ~a)]
        (cond
-         (= sd# fd#) (with-release [work# (.createDataSource (data-accessor ~a) (min sd# fd#))]
-                       (~langb ~norm fd# kl# ku# buff# (.offset ~a) ld# work#))
+         (= (.mrows ~a) (.ncols ~a)) (with-release [work# (.createDataSource (data-accessor ~a) (min sd# fd#))]
+                                       (~langb ~norm fd# kl# ku# buff# (.offset ~a) ld# work#))
          (= ~norm (long \F)) (sqrt (band-storage-reduce ~a len# offset# acc# 0.0
                                                              (+ acc# (pow (~nrm len# buff# offset# ld#) 2))))
          (= ~norm (long \M)) (let [da# (real-accessor ~a)]
                                (band-storage-reduce ~a len# offset# amax# 0.0
                                                     (let [iamax# (~nrm len# buff# offset# ld#)]
                                                       (max amax# (abs (.get da# buff# (+ offset# (* ld# iamax#))))))))
-         :default (throw (ex-info "Dragan says: This operation has not been implemented for non-square banded matrix." {}))))
+         :default (dragan-says-ex "This operation has not been implemented for non-square banded matrix.")))
      0.0))
 
 (defmacro banded-laset [method alpha a]
@@ -217,33 +218,79 @@
 
 ;; ------------- Singular Value Decomposition LAPACK -------------------------------
 
-(defmacro with-sv-check [ipiv expr]
-  `(if (= 1 (stride ~ipiv))
-     (let [info# ~expr]
-       (cond
-         (= 0 info#) ~ipiv
-         (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
-                                     {:arg-index (- info#)}))
-         :else (throw (ex-info "The factor U is singular, the solution could not be computed."
-                               {:info info#}))))
-     (throw (ex-info "You cannot use ipiv with stride different than 1." {:stride (stride ~ipiv)}))))
+(defn check-pivot [ipiv]
+  (if (= 1 (stride ipiv))
+    ipiv
+    (dragan-says-ex "You cannot use ipiv with stride different than 1." {:stride (stride ipiv)})))
+
+(defmacro with-sv-check [res expr]
+  `(let [info# ~expr]
+     (cond
+       (= 0 info#) ~res
+       (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                   {:arg-index (- info#)}))
+       :else (dragan-says-ex "The factorization is singular. The solution could not be computed using this method."
+                             {:info info#}))))
+
+;; ============= Solving Systems of Linear Equations ===============================
+
+(defmacro ge-laswp [method a ipiv k1 k2]
+  `(do
+     (check-pivot ~ipiv)
+     (with-sv-check ~a
+       (~method (.layout (navigator ~a)) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
+        ~k1 ~k2 (.buffer ~ipiv) (.offset ~ipiv) (.stride ~ipiv)))))
+
+(defmacro matrix-luf [eng a master]
+  `(let-release [ipiv# (create-vector (index-factory ~a) (min (.mrows ~a) (.ncols ~a)) false)]
+     (trf ~eng ~a ipiv#)
+     (->LUFactorization ~a ipiv# ~master (atom true))))
 
 (defmacro ge-trf [method a ipiv]
-  `(with-sv-check ~ipiv
+  `(with-sv-check (check-pivot ~ipiv)
      (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
 
-(defmacro sy-trf [method a ipiv]
-  `(with-sv-check ~ipiv
-     (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.sd (full-storage ~a))
-      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+(defmacro sy-trx
+  ([method a ipiv]
+   `(let [stor# (full-storage ~a)]
+      (check-pivot ~ipiv)
+      (with-sv-check ~a
+        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.sd stor#)
+         (.buffer ~a) (.offset ~a) (.ld stor#) (buffer ~ipiv) (offset ~ipiv)))))
+  ([method a]
+   `(let [stor# (full-storage ~a)]
+      (with-sv-check ~a
+        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.sd stor#)
+         (.buffer ~a) (.offset ~a) (.ld stor#))))))
+
+(defmacro cholesky [method a master]
+  `(do
+     (sy-trx ~method ~a)
+     (->CholeskyFactorization ~a ~master (atom true))))
+
+(defn check-gb-submatrix [a]
+  (let [reg (region a)
+        stor (storage a)]
+    (if (.isColumnMajor (navigator a))
+      (if (<= (inc (+ (* 2 (.kl reg)) (.ku reg))) (.ld ^BandStorage stor))
+        a
+        (dragan-says-ex "Banded factorizations require additional kl superdiagonals. Supply a subband."))
+      (dragan-says-ex "Banded factorizations are available only for column-major matrices due to a bug in MKL."))))
+
+(defmacro gb-trf [method a ipiv]
+  `(let [reg# (region ~a)]
+     (check-gb-submatrix ~a)
+     (with-sv-check (check-pivot ~ipiv)
+       (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a) (.kl reg#) (.ku reg#)
+        (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv)))))
 
 (defmacro ge-tri [method a ipiv]
   `(let [stor# (full-storage ~a)]
-     (with-sv-check ~ipiv
+     (check-pivot ~ipiv)
+     (with-sv-check ~a
        (~method (.layout (navigator ~a)) (.sd stor#)
-        (.buffer ~a) (.offset ~a) (.ld stor#) (.buffer ~ipiv) (.offset ~ipiv)))
-     ~a))
+        (.buffer ~a) (.offset ~a) (.ld stor#) (.buffer ~ipiv) (.offset ~ipiv)))))
 
 (defmacro tr-tri [method a]
   `(let [stor# (full-storage ~a)
@@ -253,20 +300,24 @@
       (.sd stor#) (.buffer ~a) (.offset ~a) (.ld stor#))
      ~a))
 
-(defmacro sy-tri [method a ipiv]
-  `(let [stor# (full-storage ~a)]
-     (with-sv-check ~ipiv
-       (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.sd stor#)
-        (.buffer ~a) (.offset ~a) (.ld stor#) (.buffer ~ipiv) (.offset ~ipiv)))
-     ~a))
-
 (defmacro ge-trs [method a b ipiv]
   `(let [nav-b# (navigator ~b)]
-     (with-sv-check ~ipiv
+     (check-pivot ~ipiv)
+     (with-sv-check ~b
        (~method (.layout nav-b#) (int (if (= nav-b# (navigator ~a)) \N \T))
         (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-        (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b)))
-     ~b))
+        (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b)))))
+
+(defmacro gb-trs [method a b ipiv]
+  `(let [nav-b# (navigator ~b)
+         reg# (region ~a)]
+     (check-gb-submatrix ~a)
+     (check-pivot ~ipiv)
+     (with-sv-check ~b
+       (~method (.layout nav-b#) (int (if (= nav-b# (navigator ~a)) \N \T))
+        (.mrows ~b) (.kl reg#) (.ku reg#) (.ncols ~b)
+        (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a)
+        (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
 (defmacro tr-trs [method a b]
   `(let [reg-a# (region ~a)
@@ -277,13 +328,70 @@
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
      ~b))
 
-(defmacro sy-trs [method a b ipiv]
-  `(do
-     (with-sv-check ~ipiv
-       (~method (.layout (navigator ~b)) (int (if (.isLower (region ~a)) \L \U))
-        (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-        (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b)))
-     ~b))
+(defmacro sy-trs
+  ([method a b ipiv]
+   `(let [nav-b# (navigator ~b)
+          uplo# (if (= nav-b# (navigator ~a))
+                  (int (if (.isLower (region ~a)) \L \U))
+                  (int (if (.isLower (region ~a)) \U \L)))]
+      (check-pivot ~ipiv)
+      (with-sv-check ~b
+        (~method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b)
+         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv)
+         (.buffer ~b) (.offset ~b) (.stride ~b)))))
+  ([method a b]
+   `(let [nav-b# (navigator ~b)
+          uplo# (if (= nav-b# (navigator ~a))
+                  (int (if (.isLower (region ~a)) \L \U))
+                  (int (if (.isLower (region ~a)) \U \L)))]
+      (with-sv-check ~b
+        (~method (.layout (navigator ~b)) uplo#
+         (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+         (.buffer ~b) (.offset ~b) (.stride ~b))))))
+
+(defmacro ge-con [method lu nrm nrm1?]
+  `(with-release [da# (real-accessor ~lu)
+                  res# (.createDataSource da# 1)]
+     (with-sv-check (.get da# res# 0)
+       (~method (.layout (navigator ~lu)) (int (if ~nrm1? \O \I))
+        (min (.mrows ~lu) (.ncols ~lu))
+        (.buffer ~lu) (.offset ~lu) (.stride ~lu) ~nrm res#))))
+
+(defmacro gb-con [method lu ipiv nrm nrm1?]
+  `(with-release [da# (real-accessor ~lu)
+                  reg# (region ~lu)
+                  res# (.createDataSource da# 1)]
+     (check-gb-submatrix ~lu)
+     (check-pivot ~ipiv)
+     (with-sv-check (.get da# res# 0)
+       (~method (.layout (navigator ~lu)) (int (if ~nrm1? \O \I))
+        (min (.mrows ~lu) (.ncols ~lu)) (.kl reg#) (.ku reg#)
+        (.buffer ~lu) (- (.offset ~lu) (.kl reg#)) (.stride ~lu)
+        (.buffer ~ipiv) (.offset ~ipiv) ~nrm res#))))
+
+(defmacro tr-con [method a nrm1?]
+  `(with-release [da# (real-accessor ~a)
+                  res# (.createDataSource da# 1)
+                  reg# (region ~a)]
+     (with-sv-check (.get da# res# 0)
+       (~method (.layout (navigator ~a)) (int (if ~nrm1? \O \I))
+        (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
+        (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) res#))))
+
+(defmacro sy-con
+  ([method ldl ipiv nrm]
+   `(with-release [da# (real-accessor ~ldl)
+                   res# (.createDataSource da# 1)]
+      (with-sv-check (.get da# res# 0)
+        (~method (.layout (navigator ~ldl)) (int (if (.isLower (region ~ldl)) \L \U)) (.ncols ~ldl)
+         (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv)
+         ~nrm res#))))
+  ([method gg nrm]
+   `(with-release [da# (real-accessor ~gg)
+                   res# (.createDataSource da# 1)]
+      (with-sv-check (.get da# res# 0)
+        (~method (.layout (navigator ~gg)) (int (if (.isLower (region ~gg)) \L \U)) (.ncols ~gg)
+         (.buffer ~gg) (.offset ~gg) (.stride ~gg) ~nrm res#)))))
 
 (defmacro ge-sv
   ([method a b pure]
@@ -294,11 +402,30 @@
       (let [nav-b# (navigator ~b)]
         (if (= (navigator ~a) nav-b#)
           (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
-            (with-sv-check ipiv#
+            (check-pivot ipiv#)
+            (with-sv-check ~b
               (~method (.layout nav-b#) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-               (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b)))
-            ~b)
-          (throw (ex-info "Orientation of a and b do not fit." {:a (info ~a) :b (info ~b)})))))))
+               (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
+          (dragan-says-ex "Orientations of a and b do not fit." {:a (info ~a) :b (info ~b)}))))))
+
+(defmacro gb-sv
+  ([method a b pure]
+   `(let [reg# (region ~a)]
+      (if ~pure
+        (with-release [a# (create-gb (factory ~a) (.mrows ~a) (.ncols ~a) (.kl reg#) (.ku reg#)
+                                     (.isColumnMajor (navigator ~b)) false)]
+          (copy (engine ~a) ~a a#)
+          (sv (engine ~a) a# ~b false))
+        (let [nav-b# (navigator ~b)]
+          (if (= (navigator ~a) nav-b#)
+            (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
+              (check-gb-submatrix ~a)
+              (check-pivot ipiv#)
+              (with-sv-check ~b
+                (~method (.layout nav-b#) (.mrows ~b) (.ncols ~b) (.kl reg#) (.ku reg#)
+                 (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) (buffer ipiv#) (offset ipiv#)
+                 (.buffer ~b) (.offset ~b) (.stride ~b))))
+            (dragan-says-ex "Orientations of a and b do not fit." {:a (info ~a) :b (info ~b)})))))))
 
 (defmacro tr-sv [method a b]
   `(let [nav-a# (navigator ~a)
@@ -322,45 +449,12 @@
         (sv (engine ~a) a# ~b false))
       (if (fits-navigation? ~a ~b)
         (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
-          (with-sv-check ipiv#
+          (check-pivot ipiv#)
+          (with-sv-check ~b
             (~method (.layout (navigator ~b)) (int (if (.isLower (region ~a)) \L \U))
              (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-             (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b)))
-          ~b)
-        (throw (ex-info "Orientation of a and b do not fit." {:a (info ~a) :b (info ~b)}))))))
-
-;; ------------------ Condition Number ----------------------------------------------
-
-(defmacro ge-con [da method lu nrm nrm1?]
-  `(with-release [res# (.createDataSource ~da 1)]
-     (let [info# (~method (.layout (navigator ~lu)) (int (if ~nrm1? \O \I))
-                  (min (.mrows ~lu) (.ncols ~lu))
-                  (.buffer ~lu) (.offset ~lu) (.stride ~lu) ~nrm res#)]
-       (if (= 0 info#)
-         (.get ~da res# 0)
-         (throw (ex-info "There has been an illegal argument in the native function call."
-                         {:arg-index (- info#)}))))))
-
-(defmacro tr-con [da method a nrm1?]
-  `(with-release [res# (.createDataSource ~da 1)
-                  reg# (region ~a)
-                  info# (~method (.layout (navigator ~a)) (int (if ~nrm1? \O \I))
-                         (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
-                         (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) res#)]
-     (if (= 0 info#)
-       (.get ~da res# 0)
-       (throw (ex-info "There has been an illegal argument in the native function call."
-                       {:arg-index (- info#)})))))
-
-(defmacro sy-con [da method ldl ipiv nrm]
-  `(with-release [res# (.createDataSource ~da 1)]
-     (let [info# (~method (.layout (navigator ~ldl)) (int (if (.isLower (region ~ldl)) \L \U)) (.ncols ~ldl)
-                  (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv)
-                  ~nrm res#)]
-       (if (= 0 info#)
-         (.get ~da res# 0)
-         (throw (ex-info "There has been an illegal argument in the native function call."
-                         {:arg-index (- info#)}))))))
+             (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
+        (dragan-says-ex "Orientations of a and b do not fit." {:a (info ~a) :b (info ~b)})))))
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 
