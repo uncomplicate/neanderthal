@@ -38,14 +38,14 @@
             [uncomplicate.neanderthal.internal
              [api :as api]
              [common :as generic]])
-  (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable MatrixImplementation]))
+  (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 
 ;; ============================= LAPACK =======================================================
 
 ;; =============  Triangular Linear Systems LAPACK ============================================
 
 (defn trf!
-  "Triangularizes a non-triangular matrix `a`. Destructively computes the LU (or LDLt, or UDUt)
+  "Triangularizes a non-triangular matrix `a`. Destructively computes the LU (or LDLt, or UDUt, or GGt)
   factorization of a `mxn` matrix `a`,
   and places it in a record that contains `:lu` and `:ipiv`.
 
@@ -73,7 +73,7 @@
   See related info about [lapacke_?potrf](https://software.intel.com/en-us/mkl-developer-reference-c-potrf).
   "
   [^Matrix a]
-  (api/create-cholesky (api/engine a) a false))
+  (api/create-ptrf (api/engine a) a))
 
 (defn trf
   "Triangularizes a non-TR matrix `a`. Computes the LU (or LDLt, or UDUt)
@@ -88,17 +88,8 @@
 
   See related info about [[trf!]] and [[ptrf!]].
   "
-  [^MatrixImplementation a]
-  (let [eng (api/engine a)]
-    (let-release [a-copy (copy a)]
-      (if-not (.isSymmetric a)
-        (api/create-trf eng a-copy true)
-        (try
-          (api/create-cholesky eng a-copy true)
-          (catch Exception e
-            (if (:info (ex-data e))
-              (api/create-trf eng (api/copy eng a a-copy) true)
-              (throw e))))))))
+  [^Matrix a]
+  (api/create-trf (api/engine a) a true))
 
 (defn tri!
   "Destructively computes the inverse of a triangularized matrix `a`.

@@ -112,11 +112,10 @@
   Info
   (info [this]
     this)
-  POTRF
-  (create-cholesky [this _ _]
-    this)
   TRF
   (create-trf [this _ _]
+    this)
+  (create-ptrf [this _]
     this)
   (trtrs [_ b]
     (if @fresh

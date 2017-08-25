@@ -326,11 +326,11 @@
   (dot [_ a b]
     (matrix-dot CBLAS/ddot ^RealGEMatrix a ^RealGEMatrix b))
   (nrm1 [_ a]
-    (ge-lan LAPACK/dlange (long \O) ^RealGEMatrix a))
+    (ge-lan LAPACK/dlange (int \O) ^RealGEMatrix a))
   (nrm2 [_ a]
-    (ge-lan LAPACK/dlange (long \F) ^RealGEMatrix a))
+    (ge-lan LAPACK/dlange (int \F) ^RealGEMatrix a))
   (nrmi [_ a]
-    (ge-lan LAPACK/dlange (long \I) ^RealGEMatrix a))
+    (ge-lan LAPACK/dlange (int \I) ^RealGEMatrix a))
   (asum [_ a]
     (matrix-sum CBLAS/dasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
@@ -347,7 +347,7 @@
     (ge-mm CBLAS/dgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c))
   BlasPlus
   (amax [_ a]
-    (ge-lan LAPACK/dlange (long \M) ^RealGEMatrix a))
+    (ge-lan LAPACK/dlange (int \M) ^RealGEMatrix a))
   (sum [_ a]
     (matrix-sum CBLAS/dsum ^RealGEMatrix a))
   (set-all [_ alpha a]
@@ -365,12 +365,12 @@
     (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trf [_ _]
     (dragan-says-ex "Pivotless factorization is not available for general matrices."))
-  (tri [_ a ipiv]
-    (ge-tri LAPACK/dgetri ^RealGEMatrix a ^IntegerBlockVector ipiv))
+  (tri [_ lu ipiv]
+    (ge-tri LAPACK/dgetri ^RealGEMatrix lu ^IntegerBlockVector ipiv))
   (tri [_ _]
     (dragan-says-ex "Pivotless factorization is not available for general matrices."))
-  (trs [_ a b ipiv]
-    (ge-trs LAPACK/dgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ lu b ipiv]
+    (ge-trs LAPACK/dgetrs ^RealGEMatrix lu ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (trs [_ _ _]
     (dragan-says-ex "Pivotless factorization is not available for general matrices."))
   (sv [_ a b pure]
@@ -418,8 +418,8 @@
     (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBandedMatrix sigma
             ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBandedMatrix superb))
   TRF
-  (create-trf [this a master]
-    (matrix-luf this ^RealGEMatrix a master)))
+  (create-trf [this a pure]
+    (ge-luf this a pure)))
 
 (deftype FloatGEEngine []
   Blas
@@ -432,11 +432,11 @@
   (dot [_ a b]
     (matrix-dot CBLAS/sdot ^RealGEMatrix a ^RealGEMatrix b))
   (nrm1 [_ a]
-    (ge-lan LAPACK/slange (long \O) ^RealGEMatrix a))
+    (ge-lan LAPACK/slange (int \O) ^RealGEMatrix a))
   (nrm2 [_ a]
-    (ge-lan LAPACK/slange (long \F) ^RealGEMatrix a))
+    (ge-lan LAPACK/slange (int \F) ^RealGEMatrix a))
   (nrmi [_ a]
-    (ge-lan LAPACK/slange (long \I) ^RealGEMatrix a))
+    (ge-lan LAPACK/slange (int \I) ^RealGEMatrix a))
   (asum [_ a]
     (matrix-sum CBLAS/sasum ^RealGEMatrix a))
   (axpy [_ alpha a b]
@@ -453,7 +453,7 @@
     (ge-mm CBLAS/sgemm alpha ^RealGEMatrix a ^RealGEMatrix b beta ^RealGEMatrix c))
   BlasPlus
   (amax [_ a]
-    (ge-lan LAPACK/slange (long \M) ^RealGEMatrix a))
+    (ge-lan LAPACK/slange (int \M) ^RealGEMatrix a))
   (sum [_ a]
     (matrix-sum CBLAS/ssum ^RealGEMatrix a))
   (set-all [_ alpha a]
@@ -471,12 +471,12 @@
     (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trf [_ _]
     (dragan-says-ex "Pivotless factorization is not available for general matrices."))
-  (tri [_ a ipiv]
-    (ge-tri LAPACK/sgetri ^RealGEMatrix a ^IntegerBlockVector ipiv))
+  (tri [_ lu ipiv]
+    (ge-tri LAPACK/sgetri ^RealGEMatrix lu ^IntegerBlockVector ipiv))
   (tri [_ _]
     (dragan-says-ex "Pivotless factorization is not available for general matrices."))
-  (trs [_ a b ipiv]
-    (ge-trs LAPACK/sgetrs ^RealGEMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ lu b ipiv]
+    (ge-trs LAPACK/sgetrs ^RealGEMatrix lu ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (trs [_ _ _]
     (dragan-says-ex "Pivotless factorization is not available for general matrices."))
   (sv [_ a b pure]
@@ -525,7 +525,7 @@
             ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBandedMatrix superb))
   TRF
   (create-trf [this a master]
-    (matrix-luf this ^RealGEMatrix a master)))
+    (ge-luf this a master)))
 
 ;; ================= Triangular Matrix Engines =================================
 
@@ -540,11 +540,11 @@
   (dot [_ a b]
     (tr-dot CBLAS/ddot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (tr-lan LAPACK/dlantr (long \O) ^RealUploMatrix a))
+    (tr-lan LAPACK/dlantr (int \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (tr-lan LAPACK/dlantr (long \F) ^RealUploMatrix a))
+    (tr-lan LAPACK/dlantr (int \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (tr-lan LAPACK/dlantr (long \I) ^RealUploMatrix a))
+    (tr-lan LAPACK/dlantr (int \I) ^RealUploMatrix a))
   (asum [_ a]
     (tr-sum CBLAS/dasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
@@ -559,7 +559,7 @@
     (tr-mm CBLAS/dtrmm alpha ^RealUploMatrix a ^RealGEMatrix b left))
   BlasPlus
   (amax [this a]
-    (tr-lan LAPACK/dlantr (long \M) ^RealUploMatrix a))
+    (tr-lan LAPACK/dlantr (int \M) ^RealUploMatrix a))
   (sum [_ a]
     (tr-sum CBLAS/dsum ^RealUploMatrix a))
   (set-all [_ alpha a]
@@ -596,11 +596,11 @@
   (dot [_ a b]
     (tr-dot CBLAS/sdot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (tr-lan LAPACK/slantr (long \O) ^RealUploMatrix a))
+    (tr-lan LAPACK/slantr (int \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (tr-lan LAPACK/slantr (long \F) ^RealUploMatrix a))
+    (tr-lan LAPACK/slantr (int \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (tr-lan LAPACK/slantr (long \I) ^RealUploMatrix a))
+    (tr-lan LAPACK/slantr (int \I) ^RealUploMatrix a))
   (asum [_ a]
     (tr-sum CBLAS/sasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
@@ -615,7 +615,7 @@
     (tr-mm CBLAS/strmm alpha ^RealUploMatrix a ^RealGEMatrix b left))
   BlasPlus
   (amax [this a]
-    (tr-lan LAPACK/slantr (long \M) ^RealUploMatrix a))
+    (tr-lan LAPACK/slantr (int \M) ^RealUploMatrix a))
   (sum [_ a]
     (tr-sum  CBLAS/ssum ^RealUploMatrix a))
   (set-all [_ alpha a]
@@ -654,11 +654,11 @@
   (dot [_ a b]
     (sy-dot CBLAS/ddot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (sy-lan LAPACK/dlansy (long \O) ^RealUploMatrix a))
+    (sy-lan LAPACK/dlansy (int \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (sy-lan LAPACK/dlansy (long \F) ^RealUploMatrix a))
+    (sy-lan LAPACK/dlansy (int \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (sy-lan LAPACK/dlansy (long \I) ^RealUploMatrix a))
+    (sy-lan LAPACK/dlansy (int \I) ^RealUploMatrix a))
   (asum [_ a]
     (sy-sum CBLAS/dasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
@@ -673,7 +673,7 @@
     (sy-mm a))
   BlasPlus
   (amax [_ a]
-    (sy-lan LAPACK/dlansy (long \M) ^RealUploMatrix a))
+    (sy-lan LAPACK/dlansy (int \M) ^RealUploMatrix a))
   (sum [_ a]
     (sy-sum CBLAS/dsum ^RealUploMatrix a))
   (set-all [_ alpha a]
@@ -687,16 +687,14 @@
     (matrix-lasrt LAPACK/dlasrt ^RealUploMatrix a increasing))
   (trf [_ a ipiv]
     (sy-trx LAPACK/dsytrf ^RealUploMatrix a ^IntegerBlockVector ipiv))
-  (trf [_ a]
-    (sy-trx LAPACK/dpotrf ^RealUploMatrix a))
-  (tri [_ a ipiv]
-    (sy-trx LAPACK/dsytri ^RealUploMatrix a ^IntegerBlockVector ipiv))
-  (tri [_ a]
-    (sy-trx LAPACK/dpotri ^RealUploMatrix a))
-  (trs [_ a b ipiv]
-    (sy-trs LAPACK/dsytrs ^RealUploMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
-  (trs [_ a b]
-    (sy-trs LAPACK/dpotrs ^RealUploMatrix a ^RealGEMatrix b))
+  (tri [_ ldl ipiv]
+    (sy-trx LAPACK/dsytri ^RealUploMatrix ldl ^IntegerBlockVector ipiv))
+  (tri [_ gg]
+    (sy-trx LAPACK/dpotri ^RealUploMatrix gg))
+  (trs [_ ldl b ipiv]
+    (sy-trs LAPACK/dsytrs ^RealUploMatrix ldl ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ gg b]
+    (sy-trs LAPACK/dpotrs ^RealUploMatrix gg ^RealGEMatrix b))
   (sv [_ a b pure]
     (sy-sv LAPACK/dsysv ^RealUploMatrix a ^RealGEMatrix b pure))
   (con [_ ldl ipiv nrm _]
@@ -704,11 +702,10 @@
   (con [_ gg nrm _]
     (sy-con LAPACK/dpocon ^RealUploMatrix gg nrm))
   TRF
-  (create-trf [this a master]
-    (matrix-luf this ^RealUploMatrix a master))
-  POTRF
-  (create-cholesky [this a master]
-    (cholesky LAPACK/dpotrf ^RealUploMatrix a master)))
+  (create-trf [this a pure]
+    (sy-cholesky this LAPACK/dpotrf ^RealUploMatrix a pure))
+  (create-ptrf [this a]
+    (sy-cholesky LAPACK/dpotrf ^RealUploMatrix a)))
 
 (deftype FloatSYEngine []
   Blas
@@ -721,11 +718,11 @@
   (dot [_ a b]
     (sy-dot CBLAS/sdot ^RealUploMatrix a ^RealUploMatrix b))
   (nrm1 [_ a]
-    (sy-lan LAPACK/slansy (long \O) ^RealUploMatrix a))
+    (sy-lan LAPACK/slansy (int \O) ^RealUploMatrix a))
   (nrm2 [_ a]
-    (sy-lan LAPACK/slansy (long \F) ^RealUploMatrix a))
+    (sy-lan LAPACK/slansy (int \F) ^RealUploMatrix a))
   (nrmi [_ a]
-    (sy-lan LAPACK/slansy (long \I) ^RealUploMatrix a))
+    (sy-lan LAPACK/slansy (int \I) ^RealUploMatrix a))
   (asum [_ a]
     (sy-sum CBLAS/sasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
@@ -740,7 +737,7 @@
     (sy-mm a))
   BlasPlus
   (amax [_ a]
-    (sy-lan LAPACK/slansy (long \M) ^RealUploMatrix a))
+    (sy-lan LAPACK/slansy (int \M) ^RealUploMatrix a))
   (sum [_ a]
     (sy-sum CBLAS/ssum ^RealUploMatrix a))
   (set-all [_ alpha a]
@@ -754,16 +751,14 @@
     (matrix-lasrt LAPACK/slasrt ^RealUploMatrix a increasing))
   (trf [_ a ipiv]
     (sy-trx LAPACK/ssytrf ^RealUploMatrix a ^IntegerBlockVector ipiv))
-  (trf [_ a]
-    (sy-trx LAPACK/spotrf ^RealUploMatrix a))
-  (tri [_ a ipiv]
-    (sy-trx LAPACK/ssytri ^RealUploMatrix a ^IntegerBlockVector ipiv))
-  (tri [_ a]
-    (sy-trx LAPACK/spotri ^RealUploMatrix a))
-  (trs [_ a b ipiv]
-    (sy-trs LAPACK/ssytrs ^RealUploMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
-  (trs [_ a b]
-    (sy-trs LAPACK/spotrs ^RealUploMatrix a ^RealGEMatrix b))
+  (tri [_ ldl ipiv]
+    (sy-trx LAPACK/ssytri ^RealUploMatrix ldl ^IntegerBlockVector ipiv))
+  (tri [_ gg]
+    (sy-trx LAPACK/spotri ^RealUploMatrix gg))
+  (trs [_ ldl b ipiv]
+    (sy-trs LAPACK/ssytrs ^RealUploMatrix ldl ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ gg b]
+    (sy-trs LAPACK/spotrs ^RealUploMatrix gg ^RealGEMatrix b))
   (sv [_ a b pure]
     (sy-sv LAPACK/ssysv ^RealUploMatrix a ^RealGEMatrix b pure))
   (con [_ ldl ipiv nrm _]
@@ -771,52 +766,51 @@
   (con [_ gg nrm _]
     (sy-con LAPACK/spocon ^RealUploMatrix gg nrm))
   TRF
-  (create-trf [this a master]
-    (matrix-luf this ^RealUploMatrix a master))
-  POTRF
-  (create-cholesky [this a master]
-    (cholesky LAPACK/spotrf ^RealUploMatrix a master)))
+  (create-trf [this a pure]
+    (sy-cholesky this LAPACK/spotrf ^RealUploMatrix a pure))
+  (create-ptrf [this a]
+    (sy-cholesky LAPACK/spotrf ^RealUploMatrix a)))
 
 ;; =============== Banded Matrix Engines ===================================
 
 (deftype DoubleGBEngine []
   Blas
   (swap [_ a b]
-    (banded-map CBLAS/dswap ^RealBandedMatrix a ^RealBandedMatrix b)
+    (gb-map CBLAS/dswap ^RealBandedMatrix a ^RealBandedMatrix b)
     a)
   (copy [_ a b]
-    (banded-map CBLAS/dcopy ^RealBandedMatrix a ^RealBandedMatrix b))
+    (gb-map CBLAS/dcopy ^RealBandedMatrix a ^RealBandedMatrix b))
   (scal [_ alpha a]
-    (banded-scal CBLAS/dscal alpha ^RealBandedMatrix a))
+    (gb-scal CBLAS/dscal alpha ^RealBandedMatrix a))
   (dot [_ a b]
-    (banded-dot CBLAS/ddot ^RealBandedMatrix a ^RealBandedMatrix b))
+    (gb-dot CBLAS/ddot ^RealBandedMatrix a ^RealBandedMatrix b))
   (nrm1 [_ a]
-    (banded-lan LAPACK/dlangb CBLAS/idamax (long \O) ^RealBandedMatrix a))
+    (gb-lan LAPACK/dlangb CBLAS/idamax (int \O) ^RealBandedMatrix a))
   (nrm2 [_ a]
-    (banded-lan LAPACK/dlangb CBLAS/dnrm2 (long \F) ^RealBandedMatrix a))
+    (gb-lan LAPACK/dlangb CBLAS/dnrm2 (int \F) ^RealBandedMatrix a))
   (nrmi [_ a]
-    (banded-lan LAPACK/dlangb CBLAS/idamax (long \I) ^RealBandedMatrix a))
+    (gb-lan LAPACK/dlangb CBLAS/idamax (int \I) ^RealBandedMatrix a))
   (asum [_ a]
-    (banded-sum CBLAS/dasum ^RealBandedMatrix a))
+    (gb-sum CBLAS/dasum ^RealBandedMatrix a))
   (axpy [_ alpha a b]
-    (banded-axpy CBLAS/daxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
+    (gb-axpy CBLAS/daxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
   (mv [this alpha a x beta y]
-    (gb-mv CBLAS/dgbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
+    (gb-mv CBLAS/dgbmv CBLAS/dsbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
-    (gb-mv a))
+    (gb-mv CBLAS/dtbmv ^RealBandedMatrix a x))
   (mm [this alpha a b beta c _]
-    (gb-mm CBLAS/dgbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c true))
-  (mm [_ alpha a b left]
-    (gb-mm a))
+    (gb-mm this alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c))
+  (mm [this alpha a b _]
+    (gb-mm this alpha ^RealBandedMatrix a ^RealGEMatrix b))
   BlasPlus
   (amax [_ a]
-    (banded-lan LAPACK/dlangb CBLAS/idamax (long \M) ^RealBandedMatrix a))
+    (gb-lan LAPACK/dlangb CBLAS/idamax (int \M) ^RealBandedMatrix a))
   (sum [_ a]
-    (banded-sum CBLAS/dsum ^RealBandedMatrix a))
+    (gb-sum CBLAS/dsum ^RealBandedMatrix a))
   (set-all [_ alpha a]
-    (banded-laset LAPACK/dlaset alpha ^RealBandedMatrix a))
+    (gb-laset LAPACK/dlaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
-    (banded-axpby MKL/daxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b))
+    (gb-axpby MKL/daxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b))
   (trans [_ a]
     (dragan-says-ex "In-place transpose is not available for banded matrices."))
   Lapack
@@ -824,64 +818,66 @@
     (matrix-lasrt LAPACK/dlasrt ^RealBandedMatrix a increasing))
   (trf [_ a ipiv]
     (gb-trf LAPACK/dgbtrf ^RealBandedMatrix a ^IntegerBlockVector ipiv))
-  (trf [_ a]
-    (dragan-says-ex "Pivotless factorization factorization is not available for banded matrices."))
-  (tri [_ a ipiv]
+  (tri [_ _ _]
     (dragan-says-ex "Inverse is not available for banded matrices."))
-  (tri [_ a]
+  (tri [_ _]
     (dragan-says-ex "Inverse is not available for banded matrices."))
-  (trs [_ a b ipiv]
-    (gb-trs LAPACK/dgbtrs ^RealBandedMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ lu b ipiv]
+    (gb-trs LAPACK/dgbtrs ^RealBandedMatrix lu ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (trs [_ a b]
-    (dragan-says-ex "Pivotless factorization is not available for banded matrices."))
+    (uplo-banded-trs LAPACK/dpbtrs LAPACK/dtbtrs ^RealBandedMatrix a ^RealGEMatrix b))
   (sv [_ a b pure]
     (gb-sv LAPACK/dgbsv ^RealBandedMatrix a ^RealGEMatrix b pure))
   (con [_ ldl ipiv nrm nrm1?]
     (gb-con LAPACK/dgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?))
   (con [_ gg nrm _]
-    (dragan-says-ex "Pivotless factorization is not available for banded matrices."))
+    (pb-con LAPACK/dpbcon ^RealBandedMatrix gg nrm))
+  (con [_ a nrm1?]
+    (tb-con LAPACK/dtbcon ^RealBandedMatrix a nrm1?))
   TRF
-  (create-trf [this a master]
-    (matrix-luf this ^RealBandedMatrix a master)))
+  (create-trf [this a pure]
+    (gb-cholesky-or-lu this LAPACK/dpbtrf ^RealBandedMatrix a pure))
+  (create-ptrf [this a]
+    (gb-cholesky LAPACK/dpbtrf ^RealBandedMatrix a)))
 
 (deftype FloatGBEngine []
   Blas
   (swap [_ a b]
-    (banded-map CBLAS/sswap ^RealBandedMatrix a ^RealBandedMatrix b)
+    (gb-map CBLAS/sswap ^RealBandedMatrix a ^RealBandedMatrix b)
     a)
   (copy [_ a b]
-    (banded-map CBLAS/scopy ^RealBandedMatrix a ^RealBandedMatrix b))
+    (gb-map CBLAS/scopy ^RealBandedMatrix a ^RealBandedMatrix b))
   (scal [_ alpha a]
-    (banded-scal CBLAS/sscal alpha ^RealBandedMatrix a))
+    (gb-scal CBLAS/sscal alpha ^RealBandedMatrix a))
   (dot [_ a b]
-    (banded-dot CBLAS/sdot ^RealBandedMatrix a ^RealBandedMatrix b))
+    (gb-dot CBLAS/sdot ^RealBandedMatrix a ^RealBandedMatrix b))
   (nrm1 [_ a]
-    (banded-lan LAPACK/slangb CBLAS/idamax (long \O) ^RealBandedMatrix a))
+    (gb-lan LAPACK/slangb CBLAS/idamax (int \O) ^RealBandedMatrix a))
   (nrm2 [_ a]
-    (banded-lan LAPACK/slangb CBLAS/snrm2 (long \F) ^RealBandedMatrix a))
+    (gb-lan LAPACK/slangb CBLAS/snrm2 (int \F) ^RealBandedMatrix a))
   (nrmi [_ a]
-    (banded-lan LAPACK/slangb CBLAS/idamax (long \I) ^RealBandedMatrix a))
+    (gb-lan LAPACK/slangb CBLAS/idamax (int \I) ^RealBandedMatrix a))
   (asum [_ a]
-    (banded-sum CBLAS/sasum ^RealBandedMatrix a))
+    (gb-sum CBLAS/sasum ^RealBandedMatrix a))
   (axpy [_ alpha a b]
-    (banded-axpy CBLAS/saxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
+    (gb-axpy CBLAS/saxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
   (mv [this alpha a x beta y]
-    (gb-mv CBLAS/sgbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
+    (gb-mv CBLAS/sgbmv CBLAS/ssbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
-    (gb-mv a))
+    (gb-mv CBLAS/stbmv ^RealBandedMatrix a x))
   (mm [this alpha a b beta c _]
-    (gb-mm CBLAS/sgbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c true))
-  (mm [_ alpha a b left]
-    (gb-mm a))
+    (gb-mm this alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c))
+  (mm [this alpha a b _]
+    (gb-mm this alpha ^RealBandedMatrix a ^RealGEMatrix b))
   BlasPlus
   (sum [_ a]
-    (banded-sum CBLAS/ssum ^RealBandedMatrix a))
+    (gb-sum CBLAS/ssum ^RealBandedMatrix a))
   (amax [_ a]
-    (banded-lan LAPACK/slangb CBLAS/idamax (long \M) ^RealBandedMatrix a))
+    (gb-lan LAPACK/slangb CBLAS/idamax (int \M) ^RealBandedMatrix a))
   (set-all [_ alpha a]
-    (banded-laset LAPACK/slaset alpha ^RealBandedMatrix a))
+    (gb-laset LAPACK/slaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
-    (banded-axpby MKL/saxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b))
+    (gb-axpby MKL/saxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b))
   (trans [_ a]
     (dragan-says-ex "In-place transpose is not available for banded matrices."))
   Lapack
@@ -889,25 +885,27 @@
     (matrix-lasrt LAPACK/slasrt ^RealBandedMatrix a increasing))
   (trf [_ a ipiv]
     (gb-trf LAPACK/sgbtrf ^RealBandedMatrix a ^IntegerBlockVector ipiv))
-  (trf [_ a]
-    (dragan-says-ex "Pivotless factorization factorization is not available for banded matrices."))
-  (tri [_ a ipiv]
+  (tri [_ _ _]
     (dragan-says-ex "Inverse is not available for banded matrices."))
-  (tri [_ a]
+  (tri [_ _]
     (dragan-says-ex "Inverse is not available for banded matrices."))
-  (trs [_ a b ipiv]
-    (gb-trs LAPACK/sgbtrs ^RealBandedMatrix a ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ lu b ipiv]
+    (gb-trs LAPACK/sgbtrs ^RealBandedMatrix lu ^RealGEMatrix b ^IntegerBlockVector ipiv))
   (trs [_ a b]
-    (dragan-says-ex "Pivotless factorization is not available for banded matrices."))
+    (uplo-banded-trs LAPACK/spbtrs LAPACK/stbtrs ^RealBandedMatrix a ^RealGEMatrix b))
   (sv [_ a b pure]
     (gb-sv LAPACK/sgbsv ^RealBandedMatrix a ^RealGEMatrix b pure))
   (con [_ ldl ipiv nrm nrm1?]
     (gb-con LAPACK/sgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?))
   (con [_ gg nrm _]
-    (dragan-says-ex "Pivotless factorization is not available for banded matrices."))
+    (pb-con LAPACK/spbcon ^RealBandedMatrix gg nrm))
+  (con [_ a nrm1?]
+    (tb-con LAPACK/stbcon ^RealBandedMatrix a nrm1?))
   TRF
-  (create-trf [this a master]
-    (matrix-luf this ^RealBandedMatrix a master)))
+  (create-trf [this a pure]
+    (gb-cholesky-or-lu this LAPACK/spbtrf ^RealBandedMatrix a pure))
+  (create-ptrf [this a]
+    (gb-cholesky LAPACK/spbtrf ^RealBandedMatrix a)))
 
 ;; =============== Packed Matrix Engines ===================================
 
@@ -1011,8 +1009,8 @@
 
 ;; =============== Factories ==================================================
 
-(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng ge-eng tr-eng sy-eng gb-eng tb-eng sb-eng
-                         tp-eng sp-eng]
+(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng
+                         ge-eng tr-eng sy-eng gb-eng tp-eng sp-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1064,10 +1062,6 @@
     sy-eng)
   (gb-engine [_]
     gb-eng)
-  (tb-engine [_]
-    tb-eng)
-  (sb-engine [_]
-    tb-eng)
   (tp-engine [_]
     tp-eng)
   (sp-engine [_]
@@ -1104,11 +1098,11 @@
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
-                      (->FloatGBEngine) nil nil nil nil))
+                      (->FloatGBEngine) nil nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
                       (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
-                      (->DoubleGBEngine) nil nil (->DoubleTPEngine) (->DoubleSPEngine)))
+                      (->DoubleGBEngine) (->DoubleTPEngine) (->DoubleSPEngine)))
 
   (vreset! index-fact mkl-int))

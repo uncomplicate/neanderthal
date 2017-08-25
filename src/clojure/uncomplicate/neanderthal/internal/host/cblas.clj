@@ -7,9 +7,11 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.cblas
-  (:require [uncomplicate.neanderthal.block :refer [buffer offset stride]]
+  (:require [uncomplicate.neanderthal
+             [block :refer [buffer offset stride]]
+             [math :refer [f=]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [engine mm iamax swap copy scal axpy axpby region navigator storage info]]
+             [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage info]]
              [common :refer [dragan-says-ex]]
              [navigation :refer [accu-layout full-storage]]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
@@ -393,7 +395,7 @@
           ~expr))
       ~b)))
 
-(defmacro banded-dot [method a b]
+(defmacro gb-dot [method a b]
   `(if (< 0 (.dim ~a))
      (let [buff-a# (.buffer ~a)
            buff-b# (.buffer ~b)
@@ -403,7 +405,7 @@
                             (+ acc# (~method len# buff-a# offset-a# ld-a# buff-b# offset-b# ld-b#))))
      0.0))
 
-(defmacro banded-map [method a b]
+(defmacro gb-map [method a b]
   `(if (< 0 (.dim ~a))
      (let [buff-a# (.buffer ~a)
            buff-b# (.buffer ~b)
@@ -413,21 +415,21 @@
                          (~method len# buff-a# offset-a# ld-a# buff-b# offset-b# ld-b#)))
      ~b))
 
-(defmacro banded-scal [method alpha a]
+(defmacro gb-scal [method alpha a]
   `(if (< 0 (.dim ~a))
      (let [buff# (.buffer ~a)
            ld-a# (.stride ~a)]
        (band-storage-map ~a len# offset# (~method len# ~alpha buff# offset# ld-a#)))
      ~a))
 
-(defmacro banded-sum [method a]
+(defmacro gb-sum [method a]
   `(if (< 0 (.dim ~a))
      (let [buff# (.buffer ~a)
            ld-a# (.stride ~a)]
        (band-storage-reduce ~a len# offset# acc# 0.0 (+ acc# (~method len# buff# offset# ld-a#))))
      0.0))
 
-(defmacro banded-axpy [method alpha a b]
+(defmacro gb-axpy [method alpha a b]
   `(if (< 0 (.dim ~a))
      (let [buff-a# (.buffer ~a)
            buff-b# (.buffer ~b)
@@ -437,7 +439,7 @@
                          (~method len# ~alpha buff-a# offset-a# ld-a# buff-b# offset-b# ld-b#)))
      ~b))
 
-(defmacro banded-axpby [method alpha a beta b]
+(defmacro gb-axpby [method alpha a beta b]
   `(if (< 0 (.dim ~a))
      (let [buff-a# (.buffer ~a)
            buff-b# (.buffer ~b)
@@ -448,23 +450,41 @@
      ~b))
 
 (defmacro gb-mv
-  ([method alpha a x beta y]
+  ([gb-method sb-method alpha a x beta y]
    `(let [reg# (region ~a)]
-      (~method (.layout (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a)
-       (.kl reg#) (.ku reg#) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
-       (buffer ~x) (offset ~x) (stride ~x) ~beta (buffer ~y) (offset ~y) (stride ~y))
+      (cond
+        (.isSymmetric ~a)
+        (~sb-method (.layout (navigator ~a)) (.uplo reg#) (.ncols ~a)
+         (.ku reg#) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+         (buffer ~x) (offset ~x) (stride ~x) ~beta (buffer ~y) (offset ~y) (stride ~y))
+        (.isTriangular ~a)
+        (dragan-says-ex "Out-of-place mv! is not supported for triangular GB matrices." {:a (info ~a)})
+        :default
+        (~gb-method (.layout (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS (.mrows ~a) (.ncols ~a)
+         (.kl reg#) (.ku reg#) ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+         (buffer ~x) (offset ~x) (stride ~x) ~beta (buffer ~y) (offset ~y) (stride ~y)))
       ~y))
-  ([a]
-   `(throw (ex-info "In-place mv! is not supported for GB matrices." {:a (info ~a)}))))
+  ([tb-method a x]
+   `(if (.isTriangular ~a)
+      (let [reg# (region ~a)]
+        (~tb-method (.layout (navigator ~a)) (.uplo reg#) CBLAS/TRANSPOSE_NO_TRANS (.diag reg#) (.ncols ~a)
+         (.ku reg#) (.buffer ~a) (.offset ~a) (.stride ~a) (buffer ~x) (offset ~x) (stride ~x))
+        ~x)
+      (dragan-says-ex "In-place mv! is not supported for non-triangular GB matrices." {:a (info ~a)}))))
 
 (defmacro gb-mm
-  ([method alpha a b beta c _]
+  ([eng alpha a b beta c]
    `(do
       (dotimes [j# (.ncols ~b)]
-        (gb-mv ~method ~alpha ~a (.col ~b j#) ~beta (.col ~c j#)))
+        (mv ~eng ~alpha ~a (.col ~b j#) ~beta (.col ~c j#)))
       ~c))
-  ([a]
-   `(throw (ex-info "In-place mm! is not supported for GB matrices." {:a (info ~a)}))))
+  ([eng alpha a b]
+   `(do
+      (dotimes [j# (.ncols ~b)]
+        (mv ~eng ~a (.col ~b j#)))
+      (when-not (f= 1.0 ~alpha)
+        (scal (engine ~b) ~alpha ~b))
+      ~b)))
 
 ;; ===================== Packed Matrix ==============================
 

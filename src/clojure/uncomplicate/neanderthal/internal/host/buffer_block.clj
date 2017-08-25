@@ -34,8 +34,7 @@
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
             VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
             RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault LayoutNavigator
-            RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix]
-           uncomplicate.neanderthal.internal.navigation.BandStorage));;TODO clean up
+            RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix]));;TODO clean up
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
@@ -1327,7 +1326,7 @@
     reg)
   Container
   (raw [_]
-    (real-banded-matrix fact m n nav stor reg matrix-type default eng))
+    (real-banded-matrix fact m n nav stor reg matrix-type default))
   (raw [_ fact]
     (create-banded fact m n (.kl reg) (.ku reg) matrix-type (.isColumnMajor nav) false))
   (zero [a]
@@ -1455,18 +1454,18 @@
             ku (min (.ku reg) (dec l))]
         (real-banded-matrix fact false buf k l (- (+ ofst (.index nav stor i j)) (inc kl))
                             nav (band-storage (.isColumnMajor nav) k l (.ld ^FullStorage stor) kl ku)
-                            (band-region k l kl ku) matrix-type default eng))
+                            (band-region k l kl ku) matrix-type default))
       (dragan-says-ex "You cannot create a submatrix of a banded (GB, TB, or SB) matrix outside its region. No way around that."
                       {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
-    (real-banded-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
+    (real-banded-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default))
   Subband
   (subband [a kl ku]
     (if (and (<= 0 (long kl) (.kl reg)) (<= 0 (long ku) (.ku reg)))
       (let [sub-stor (band-storage (.isColumnMajor nav) m n (.ld ^FullStorage stor) kl ku)]
         (real-banded-matrix fact false buf m n
                             (+ ofst (- (.index stor 0 0) (.index ^DenseStorage sub-stor 0 0)))
-                            nav sub-stor (band-region m n kl ku) matrix-type default eng))
+                            nav sub-stor (band-region m n kl ku) matrix-type default))
       (dragan-says-ex "You cannot create a subband outside available region. No way around that."
                       {:a (info a) :kl kl :ku ku})))
   TRF
@@ -1510,31 +1509,24 @@
   {:op (constantly matrix-op)})
 
 (defn real-banded-matrix
-  ([fact master buf m n ofst nav stor reg matrix-type default engine]
-   (->RealBandedMatrix nav stor reg default fact (data-accessor fact) engine matrix-type
+  ([fact master buf m n ofst nav stor reg matrix-type default]
+   (->RealBandedMatrix nav stor reg default fact (data-accessor fact) (gb-engine fact) matrix-type
                        master buf m n ofst))
-  ([fact m n nav ^DenseStorage stor reg matrix-type default engine]
+  ([fact m n nav ^DenseStorage stor reg matrix-type default]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
-     (real-banded-matrix fact true buf m n 0 nav stor reg matrix-type default engine)))
+     (real-banded-matrix fact true buf m n 0 nav stor reg matrix-type default)))
   ([fact m n kl ku column? matrix-type]
    (real-banded-matrix fact m n (layout-navigator column?) (band-storage column? m n kl ku)
-                       (band-region m n kl ku) matrix-type (real-default matrix-type)
-                       (case matrix-type
-                         :gb (gb-engine fact)
-                         :tb (tb-engine fact)
-                         :sb (sb-engine fact)
-                         (dragan-says-ex (format "%s is not a valid banded matrix type. Please send me a bug report."
-                                                 matrix-type)
-                                         {:type matrix-type}))))
+                       (band-region m n kl ku) matrix-type (real-default matrix-type)))
   ([fact m n kl ku column?]
    (real-banded-matrix fact m n (layout-navigator column?) (band-storage column? m n kl ku)
-                       (band-region m n kl ku) :gb zero-default (gb-engine fact)))
+                       (band-region m n kl ku) :gb zero-default))
   ([fact n column? lower? diag-unit?]
    (real-banded-matrix fact n n (layout-navigator column?) (band-storage column? n lower? diag-unit?)
-                       (band-region n lower? diag-unit?) :tb (real-default :tb diag-unit?) (tb-engine fact)))
+                       (band-region n lower? diag-unit?) :tb (real-default :tb diag-unit?)))
   ([fact n column? lower?]
    (real-banded-matrix fact n n (layout-navigator column?) (band-storage column? n lower? false)
-                       (band-region n lower?) :sb sb-default (sb-engine fact))))
+                       (band-region n lower?) :sb sb-default)))
 
 (defmethod print-method RealBandedMatrix [a ^java.io.Writer w]
   (.write w (str a))

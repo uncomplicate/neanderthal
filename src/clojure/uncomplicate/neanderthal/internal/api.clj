@@ -60,10 +60,10 @@
   (srt [this x increasing])
   (laswp [this a x k1 k2])
   (trf [this a ipiv] [this a])
-  (tri [this a ipiv] [this a])
-  (trs [this a b ipiv] [this a b])
-  (con [this lu ipiv nrm nrm1?] [this lu nrm nrm1?] [this a nrm1?])
-  (det [this a ipiv] [this a])
+  (tri [this lu ipiv] [this a])
+  (trs [this lu b ipiv] [this a b])
+  (con [this lu ipiv nrm nrm1?] [this gg nrm nrm1?] [this a nrm1?])
+  (det [this lu ipiv] [this a])
   (sv [this a b pure])
   (psv [this a b pure])
   (qrf [this a tau])
@@ -84,15 +84,13 @@
   (svd [this a s superb] [this a s u vt superb]))
 
 (defprotocol TRF
-  (create-trf [this a master])
+  (create-trf [this a pure])
+  (create-ptrf [this a])
   (trtrs [a b])
   (trtri! [a])
   (trtri [a])
   (trcon [a nrm nrm1?] [a nrm1?])
   (trdet [a]))
-
-(defprotocol POTRF
-  (create-cholesky [this a master]))
 
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))
@@ -121,8 +119,6 @@
   (tr-engine [this])
   (sy-engine [this])
   (gb-engine [this])
-  (tb-engine [this])
-  (sb-engine [this])
   (tp-engine [this])
   (sp-engine [this]))
 
