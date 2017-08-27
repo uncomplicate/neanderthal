@@ -10,7 +10,8 @@
   (:require [uncomplicate.fluokitten.core :refer [fold]]
             [uncomplicate.commons.core :refer [Releaseable release let-release double-fn]]
             [uncomplicate.neanderthal.internal.api :refer :all])
-  (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor]))
+  (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor
+            MatrixImplementation LayoutNavigator]))
 
 (defn dragan-says-ex
   ([message data]
@@ -66,6 +67,12 @@
     this)
   (trtrs [_ b]
     (if @fresh
+      (let-release [res (raw b)]
+        (copy (engine b) b res)
+        (trs (engine lu) lu res ipiv))
+      (stale-factorization)))
+  (trtrs! [_ b]
+    (if @fresh
       (trs (engine lu) lu b ipiv)
       (stale-factorization)))
   (trtri! [_]
@@ -76,7 +83,8 @@
     (if @fresh
       (let-release [res (raw lu)]
         (let [eng (engine lu)]
-          (tri eng (copy eng lu res) ipiv))
+          (copy eng lu res)
+          (tri eng res ipiv))
         res)
       (stale-factorization)))
   (trcon [_ nrm nrm1?]
@@ -118,6 +126,16 @@
   (create-ptrf [this _]
     this)
   (trtrs [_ b]
+    (if @fresh
+      (let-release [res (create-ge (factory b) (.mrows ^Matrix b) (.ncols ^Matrix b)
+                                   (if (= :sb (.matrixType ^MatrixImplementation gg))
+                                     true
+                                     (.isColumnMajor (navigator b)))
+                                   false)]
+        (copy (engine b) b res)
+        (trs (engine gg) gg res))
+      (stale-factorization)))
+  (trtrs! [_ b]
     (if @fresh
       (trs (engine gg) gg b)
       (stale-factorization)))

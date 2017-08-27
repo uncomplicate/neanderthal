@@ -160,6 +160,8 @@
    (tb mkl-float n k source options))
   ([^long n ^long k arg]
    (tb mkl-float n k arg))
+  ([^long n ^long k]
+   (tb mkl-float n k))
   ([arg]
    (tb mkl-float arg)))
 
@@ -170,6 +172,8 @@
    (tb mkl-double n k source options))
   ([^long n ^long k arg]
    (tb mkl-double n k arg))
+  ([^long n ^long k]
+   (tb mkl-double n k))
   ([arg]
    (tb mkl-double arg)))
 
@@ -180,6 +184,8 @@
    (sb mkl-float n k source options))
   ([^long n ^long k arg]
    (sb mkl-float n k arg))
+  ([^long n ^long k]
+   (sb mkl-float n k))
   ([arg]
    (sb mkl-float arg)))
 
@@ -190,6 +196,8 @@
    (sb mkl-double n k source options))
   ([^long n ^long k arg]
    (sb mkl-double n k arg))
+  ([^long n ^long k]
+   (sb mkl-double n k))
   ([arg]
    (sb mkl-double arg)))
 

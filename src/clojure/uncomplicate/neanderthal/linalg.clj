@@ -37,7 +37,7 @@
             [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy]]
             [uncomplicate.neanderthal.internal
              [api :as api]
-             [common :as generic]])
+             [common :refer [dragan-says-ex]]])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 
 ;; ============================= LAPACK =======================================================
@@ -132,11 +132,12 @@
   See related info about [https://software.intel.com/en-us/mkl-developer-reference-c-getrs).
   "
   [^Matrix a ^Matrix b]
-  (if (and (= (.ncols a) (.mrows b)) (api/compatible? a b))
-    (api/trtrs a b)
-    (throw (ex-info "Dimensions and orientation of a and b do not fit"
+  (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
+    (api/trtrs! a b)
+    (throw (ex-info "Dimensions and orientation of a and b do not fit."
                     {:a  (api/info a) :b (api/info b) :errors
                      (cond-into []
+                                (not (api/compatible? a b)) "incompatible a and b"
                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")}))))
 
 (defn trs
@@ -148,9 +149,14 @@
 
   See related info about [[trs!]].
   "
-  [a b]
-  (let-release [res (copy b)]
-    (trs! a res)))
+  [^Matrix a ^Matrix b]
+  (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
+    (api/trtrs a b)
+    (throw (ex-info "Dimensions and orientation of a and b do not fit."
+                    {:a  (api/info a) :b (api/info b) :errors
+                     (cond-into []
+                                (not (api/compatible? a b)) "incompatible a and b"
+                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")}))))
 
 (defn sv!
   "Destructively solves a system of linear equations with a square coefficient matrix `a`,
@@ -166,10 +172,33 @@
   See related info about [lapacke_?gesv](https://software.intel.com/en-us/mkl-developer-reference-c-gesv).
   "
   [^Matrix a ^Matrix b]
-  (if (and (and (= (.ncols a) (.mrows b))) (api/compatible? a b))
+  (if (and (api/compatible? a b) (and (= (.ncols a) (.mrows b))))
     (api/sv (api/engine a) a b false)
-    (throw (ex-info "Dimensions of a and b do not fit."
-                    {:ncols-a (.ncols a) :mrows-b (.mrows b)}))))
+    (dragan-says-ex "You cannot solve incompatible or ill-fitting structures."
+                    {:a  (api/info a) :b (api/info b) :errors
+                     (cond-into []
+                                (not (api/compatible? a b)) "incompatible a and b"
+                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
+
+(defn psv!
+  "Destructively solves a system of linear equations with a positive definite symmetric coefficient
+  matrix `a`, and multiple right sides matrix `b`. Overwrites `b` by the solution matrix.
+
+  Overwrites `a` with G, and `b` with the solution.
+
+  If G is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+
+  See related info about [lapacke_?gesv](https://software.intel.com/en-us/mkl-developer-reference-c-gesv).
+  "
+  [^Matrix a ^Matrix b]
+  (if (and (api/compatible? a b) (and (= (.ncols a) (.mrows b))))
+    (api/sv (api/engine a) a b)
+    (dragan-says-ex "You cannot solve incompatible or ill-fitting structures."
+                    {:a  (api/info a) :b (api/info b) :errors
+                     (cond-into []
+                                (not (api/compatible? a b)) "incompatible a and b"
+                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
 
 (defn sv
   "Solves a system of linear equations with a square coefficient matrix `a`,
@@ -179,13 +208,17 @@
   L is stored as a lower unit triangle, and U as an upper triangle. Pivot is not retained.
   If you need to reuse LU, use [[trf]], and [[trs]], or their destructive versions.
 
+  If `a` is symmetric, tries to do Cholesky factorization first, and only does LDLt if
+  it turns out not to be positive definite.
+
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws ExceptionInfo.
 
   See related info about [[sv!]].
   "
-  [a b]
-  (let-release [res (copy b)]
+  [a ^Matrix b]
+  (let-release [res (ge (api/factory b) (.mrows b) (.ncols b))]
+    (api/copy (api/engine b) b res)
     (api/sv (api/engine a) a res true)
     res))
 

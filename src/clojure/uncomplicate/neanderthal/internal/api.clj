@@ -64,8 +64,7 @@
   (trs [this lu b ipiv] [this a b])
   (con [this lu ipiv nrm nrm1?] [this gg nrm nrm1?] [this a nrm1?])
   (det [this lu ipiv] [this a])
-  (sv [this a b pure])
-  (psv [this a b pure])
+  (sv [this a b pure] [this a b])
   (qrf [this a tau])
   (qrfp [this a tau])
   (gqr [this a tau])
@@ -85,7 +84,8 @@
 
 (defprotocol TRF
   (create-trf [this a pure])
-  (create-ptrf [this a])
+  (create-ptrf [this a]);;TODO move to create-trf
+  (trtrs! [a b])
   (trtrs [a b])
   (trtri! [a])
   (trtri [a])
@@ -119,8 +119,10 @@
   (tr-engine [this])
   (sy-engine [this])
   (gb-engine [this])
-  (tp-engine [this])
-  (sp-engine [this]))
+  (sb-engine [this])
+  (tb-engine [this])
+  (sp-engine [this])
+  (tp-engine [this]))
 
 (defprotocol EngineProvider
   (engine [this]))

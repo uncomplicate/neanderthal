@@ -1314,6 +1314,15 @@
                                    -2 2 0 -8 8 8 6
                                    -3 -5 6 -14 6 20 18 34]
                         {:layout :row})
+                  a-col (sy factory 8 [3
+                                       5 3
+                                       -2 2 0
+                                       2 -2 0 8
+                                       3 5 -2 -6 12
+                                       -5 -3 2 -10 6 16
+                                       -2 2 0 -8 8 8 6
+                                       -3 -5 6 -14 6 20 18 34]
+                            {:layout :column :uplo :upper})
                   b (ge factory 8 3 [1  -38  47
                                      7  -10  73
                                      6   52   2
@@ -1343,13 +1352,15 @@
                                        -1 0 1 -1 1 0 1 16]
                             {:layout :row})
                   a-ge (transfer! a (ge factory 8 8))
-                  ldl (trf a)]
+                  ldl (trf a)
+                  ldl-col (trf a-col)]
      (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0 0.0001)
      (:ipiv ldl) => ipiv
      (con ldl (nrm1 a)) => (roughly 0 0.01)
      (asum (mm (tri ldl) a-ge)) => (roughly 8)
      (nrm2 (axpy! -1 (:lu ldl) ldl-a)) => (roughly 0 0.00001)
-     (nrm2 (axpy! -1 b-solution (trs ldl b))) => (roughly 0 0.0001))))
+     (nrm2 (axpy! -1 b-solution (trs ldl-col b))) => (throws ExceptionInfo)
+     (nrm2 (axpy! -1 b-solution (trs! ldl b))) => (roughly 0 0.0001))))
 
 (defn test-sy-potrx [factory]
   (facts
@@ -1423,6 +1434,46 @@
      (nrm2 (axpy! -1 lu-a lu-solution)) => (roughly 0 0.1)
      (con lu (nrm1 a)) => (roughly 0 0.041)
      (nrm2 (axpy! -1 b-solution (trs! lu b))) => (roughly 0 0.004))))
+
+(defn test-sb-trx [factory]
+  (facts
+   "LAPACK Symmetric banded linear system solver."
+
+   (with-release [a (sb factory 9 3 [1.0 1.0 1.0 1.0
+                                     2.0 2.0 2.0 1.0
+                                     3.0 3.0 2.0 1.0
+                                     4.0 3.0 2.0 1.0
+                                     4.0 3.0 2.0 1.0
+                                     4.0 3.0 2.0 1.0
+                                     4.0 3.0 2.0
+                                     4.0 3.0
+                                     4.0])
+                  b (ge factory 9 3 [4.0  0.0  1.0
+                                     8.0  0.0  1.0
+                                     12.0  0.0  0.0
+                                     16.0  0.0  1.0
+                                     16.0  0.0  0.0
+                                     16.0  0.0 -1.0
+                                     15.0  1.0  0.0
+                                     13.0  1.0 -2.0
+                                     10.0  2.0 -3.0]
+                        {:layout :row})
+                  b-solution (ge factory 9 3 [1.0  1.0  1.0
+                                              1.0 -1.0  0.0
+                                              1.0  1.0 -1.0
+                                              1.0 -1.0  1.0
+                                              1.0  1.0  0.0
+                                              1.0 -1.0 -1.0
+                                              1.0  1.0  1.0
+                                              1.0 -1.0  0.0
+                                              1.0  1.0 -1.0]
+                                 {:layout :row})
+                  gg-solution (doto (sb factory 9 3) (entry! 1.0))
+                  gg (trf! a)]
+
+     (nrm2 (axpy! -1 a gg-solution)) => (roughly 0 0.1)
+     (con gg (nrm1 a)) => (roughly 0 0.041)
+     (nrm2 (axpy! -1 b-solution (trs gg b))) => (roughly 0 0.004))))
 
 (defn test-ge-trs [factory]
   (facts
@@ -1944,6 +1995,7 @@
   (test-sy-trx factory)
   (test-sy-potrx factory)
   (test-gb-trx factory)
+  (test-sb-trx factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)

@@ -88,6 +88,16 @@
   [x]
   (api/info x))
 
+(extend-type Object
+  api/Info
+  (api/info [this]
+    (str this)))
+
+(extend-type nil
+  api/Info
+  (api/info [this]
+    (str this)))
+
 (defmulti transfer!
   "Transfers the data from source to destination regardless of the structure type or memory context.
 
@@ -339,7 +349,9 @@
   ([factory n k arg]
    (if (or (not arg) (map? arg))
      (tb factory n k nil arg)
-     (tb factory n k arg nil))))
+     (tb factory n k arg nil)))
+  ([factory n k]
+   (tb factory n k nil nil)))
 
 (defn sb
   "TODO"
@@ -354,7 +366,9 @@
   ([factory n k arg]
    (if (or (not arg) (map? arg))
      (sb factory n k nil arg)
-     (sb factory n k arg nil))))
+     (sb factory n k arg nil)))
+  ([factory n k]
+   (sb factory n k nil nil)))
 
 (defn tp
   "TODO"
@@ -634,7 +648,7 @@
   (if (and (api/compatible? x y) (api/fits? x y))
     (api/dot (api/engine x) x y)
     (throw (ex-info "You cannot compute dot of incompatible or ill-fitting vectors."
-                    {:x (str x) :y (str y)}))))
+                    {:x (api/info x) :y (api/info y)}))))
 
 (defn nrm1
   "Computes the 1-norm of vector or matrix `x`."
@@ -740,7 +754,7 @@
         (api/swap (api/engine x) x y)
         x)
       (throw (ex-info "You cannot swap data of incompatible or ill-fitting structures."
-                      {:x (str x) :y (str y)})))
+                      {:x (api/info x) :y (api/info y)})))
     x))
 
 (defn copy!
@@ -759,7 +773,7 @@
          (api/copy (api/engine x) x y)
          y)
        (throw (ex-info "You cannot copy data of incompatible or ill-fitting structures."
-                       {:x (str x) :y (str y)})))
+                       {:x (api/info x) :y (api/info y)})))
      y))
   ([^Vector x ^Vector y offset-x length offset-y]
    (if (not (identical? x y))
@@ -770,7 +784,7 @@
          (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
          y)
        (throw (ex-info "You cannot copy data of incompatible vectors"
-                       {:x (str x) :y (str y) :length length})))
+                       {:x (api/info x) :y (api/info y) :length length})))
      y)))
 
 (defn copy
@@ -821,7 +835,7 @@
                                    (not (<= -1.0 s 1.0)) "s is not between -1.0 and 1.0"
                                    (not (f= 1.0 (+ (pow c 2) (pow s 2)))) "s^2 + c^2 is not 1.0")})))
      (throw (ex-info "You cannot rotate incompatible vectors."
-                     {:x (str x) :y (str y)}))))
+                     {:x (api/info x) :y (api/info y)}))))
   ([x y ^double c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
@@ -850,7 +864,7 @@
     (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
       (api/rotm (api/engine x) x y param)
       (throw (ex-info "You cannot apply modified plane rotation with incompatible or ill-fitting vectors."
-                      {:x (str x) :y (str y) :param (str param) :errors
+                      {:x (api/info x) :y (api/info y) :param (api/info param) :errors
                        (cond-into []
                                   (not (api/compatible? x y)) "incompatible x and y"
                                   (not (api/compatible? x param)) "incompatible x and param"
@@ -870,7 +884,7 @@
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
     (api/rotmg (api/engine param) d1d2xy param)
     (throw (ex-info "You cannot generate modified plane rotation with incompatible or ill-fitting vectors."
-                    {:d1d2xy (str d1d2xy) :param (str param) :errors
+                    {:d1d2xy (api/info d1d2xy) :param (api/info param) :errors
                      (cond-into []
                                 (not (api/compatible? d1d2xy param)) "incompatible d2d2xy and param"
                                 (not (< 3 (.dim param))) "d1d2xy is shorter than 3"
@@ -900,7 +914,7 @@
        (api/axpy (api/engine x) alpha x y)
        y)
      (throw (ex-info "You cannot add incompatible or ill-fitting structures."
-                     {:x (str x) :y (str y)}))))
+                     {:x (api/info x) :y (api/info y)}))))
   ([x y]
    (axpy! 1.0 x y))
   ([alpha x y & zs]
@@ -980,7 +994,7 @@
        (api/axpby (api/engine x) alpha x beta y)
        y)
      (throw (ex-info "You cannot add incompatible or ill-fitting structures."
-                     {:x (str x) :y (str y)}))))
+                     {:x (api/info x) :y (api/info y)}))))
   ([x beta y]
    (axpby! 1.0 x beta y))
   ([x y]

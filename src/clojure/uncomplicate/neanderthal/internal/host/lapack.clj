@@ -13,7 +13,7 @@
              [math :refer [pow sqrt abs]]]
             [uncomplicate.neanderthal.internal
              [api :refer [factory index-factory engine data-accessor info raw
-                          create-vector create-ge create-gb create-sy fits-navigation?
+                          create-vector create-ge create-gb create-sb create-sy fits-navigation?
                           nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage]]
              [common :refer [real-accessor dragan-says-ex ->LUFactorization ->CholeskyFactorization]]
              [navigation :refer [dostripe-layout full-storage]]]
@@ -134,9 +134,10 @@
 
 (defmacro sy-lacpy [lacpy copy a b]
   `(let [nav# (navigator ~a)
+         reg-a# (region ~a)
          buff-a# (.buffer ~a)
          buff-b# (.buffer ~b)]
-     (if (= nav# (navigator ~b))
+     (if (or (= nav# (navigator ~b)) (not= (.uplo reg-a#) (.uplo (region ~b))))
        (with-lapack-check
          (~lacpy (.layout nav#) (int (if (.isLower (region ~a)) \L \U)) (.mrows ~a) (.ncols ~a)
           (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
@@ -164,14 +165,13 @@
   `(if (< 0 (.dim ~a))
      (let [stor# (full-storage ~a)
            reg# (region ~a)
-           sd# (.sd stor#)
            fd# (.fd stor#)
            ld# (.ld stor#)
            kl# (.kl reg#)
            ku# (.ku reg#)
            buff# (.buffer ~a)]
        (cond
-         (= (.mrows ~a) (.ncols ~a)) (with-release [work# (.createDataSource (data-accessor ~a) (min sd# fd#))]
+         (= (.mrows ~a) (.ncols ~a)) (with-release [work# (.createDataSource (data-accessor ~a) fd#)]
                                        (~langb ~norm fd# kl# ku# buff# (.offset ~a) ld# work#))
          (= ~norm (long \F)) (sqrt (band-storage-reduce ~a len# offset# acc# 0.0
                                                         (+ acc# (pow (~nrm len# buff# offset# ld#) 2))))
@@ -241,17 +241,21 @@
        (~method (.layout (navigator ~a)) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
         ~k1 ~k2 (.buffer ~ipiv) (.offset ~ipiv) (.stride ~ipiv)))))
 
-(defn matrix-luf [eng ^Matrix a master]
+(defn matrix-lu [^Matrix a master]
   (let-release [ipiv (create-vector (index-factory a) (min (.mrows a) (.ncols a)) false)]
-    (trf eng a ipiv)
+    (trf (engine a) a ipiv)
     (->LUFactorization a ipiv master (atom true))))
 
-(defn ge-luf [eng a pure]
+(defn matrix-cholesky [^Matrix a master]
+  (trf (engine a) a)
+  (->CholeskyFactorization a master (atom true)))
+
+(defn matrix-create-trf [create-fn a pure]
   (if pure
     (let-release [a-copy (raw a)]
-      (copy eng a a-copy)
-      (matrix-luf eng a-copy true))
-    (matrix-luf eng a false)))
+      (copy (engine a) a a-copy)
+      (create-fn a-copy true))
+    (create-fn a false)))
 
 (defmacro ge-trf [method a ipiv]
   `(with-sv-check (check-pivot ~ipiv)
@@ -263,35 +267,28 @@
    `(let [stor# (full-storage ~a)]
       (check-pivot ~ipiv)
       (with-sv-check ~a
-        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.sd stor#)
+        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
          (.buffer ~a) (.offset ~a) (.ld stor#) (buffer ~ipiv) (offset ~ipiv)))))
   ([method a]
    `(let [stor# (full-storage ~a)]
       (with-sv-check ~a
-        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.sd stor#)
+        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
          (.buffer ~a) (.offset ~a) (.ld stor#))))))
 
-(defmacro sy-cholesky
-  ([eng method a pure]
-   `(if ~pure
-      (let-release [a-copy# (raw ~a)]
-        (copy ~eng ~a a-copy#)
-        (let [stor# (full-storage a-copy#)
-              info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
-                     (.sd stor#) (buffer a-copy#) (offset a-copy#) (.ld stor#))]
-          (cond
-            (= 0 info#) (->CholeskyFactorization a-copy# true (atom true))
-            (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
-                                        {:arg-index (- info#)}))
-            :else (do
-                    (copy ~eng ~a a-copy#)
-                    (matrix-luf ~eng a-copy# true)))))
-      (matrix-luf ~eng ~a false)))
-  ([method a]
-   `(let [stor# (full-storage ~a)]
-      (with-sv-check (->CholeskyFactorization ~a false (atom true))
-        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U))
-         (.sd stor#) (.buffer ~a) (.offset ~a) (.ld stor#))))))
+(defmacro sy-cholesky-lu [method a pure]
+  `(if ~pure
+     (let-release [a-copy# (raw ~a)]
+       (copy (engine ~a) ~a a-copy#)
+       (let [info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
+                    (.ncols ~a) (buffer a-copy#) (offset a-copy#) (stride a-copy#))]
+         (cond
+           (= 0 info#) (->CholeskyFactorization a-copy# true (atom true))
+           (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                       {:arg-index (- info#)}))
+           :else (do
+                   (copy (engine ~a) ~a a-copy#)
+                   (matrix-create-trf matrix-lu a-copy# true)))))
+     (matrix-create-trf matrix-lu ~a false)))
 
 (defn check-gb-submatrix [a]
   (let [reg (region a)
@@ -309,35 +306,12 @@
        (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a) (.kl reg#) (.ku reg#)
         (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv)))))
 
-(defmacro gb-cholesky-or-lu [eng method a pure]
-  `(if ~pure
-     (let-release [a-copy# (raw ~a)]
-       (copy ~eng ~a a-copy#)
-       (cond
-         (.isTriangular ~a) ~a
-         (.isSymmetric ~a)
-         (let [stor# (full-storage a-copy#)
-               reg# (region a-copy#)
-               info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
-                      (.sd stor#) (.ku reg#) (buffer a-copy#) (offset a-copy#) (.ld stor#))]
-           (cond
-             (= 0 info#) (->CholeskyFactorization a-copy# true (atom true))
-             (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
-                                         {:arg-index (- info#)}))
-             :else (do
-                     (copy ~eng ~a a-copy#)
-                     (matrix-luf ~eng a-copy# true))))
-         :default (matrix-luf ~eng a-copy# true)))
-     (matrix-luf ~eng ~a false)))
-
-(defmacro gb-cholesky [method a]
-  `(if (.isTriangular ~a)
-     ~a
-     (let [stor# (full-storage ~a)
-           reg# (region ~a)]
-       (with-sv-check (->CholeskyFactorization ~a false (atom true))
-         (~method (.layout (navigator ~a)) (int (if (.isLower reg#) \L \U))
-          (.sd stor#) (.ku reg#) (.buffer ~a) (.offset ~a) (.ld stor#))))))
+(defmacro sb-trf
+  ([method a]
+   `(let [reg# (region ~a)]
+      (with-sv-check ~a
+        (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
+         (.ncols ~a) (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a))))))
 
 (defmacro ge-tri [method a ipiv]
   `(let [stor# (full-storage ~a)]
@@ -374,29 +348,29 @@
          (.buffer ~lu) (- (.offset ~lu) (.kl reg#)) (.stride ~lu)
          (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b))))))
 
-(defmacro uplo-banded-trs [pb-method tb-method a b]
+(defmacro sb-trs [method a b]
   `(let [nav-b# (navigator ~b)
          reg# (region ~a)]
-     (check-gb-submatrix ~a)
-     (cond
-       (.isTriangular ~a)
+     (if (.isColumnMajor nav-b#)
        (with-sv-check ~b
-         (~tb-method (.layout nav-b#) (int (if (.isLower reg#) \L \U))
-          (int (if (= nav-b# (navigator ~a)) \N \T)) (int (if (.isDiagUnit reg#) \U \N))
-          (.mrows ~b) (.ku reg#) (.ncols ~b)
-          (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a)
-          (.buffer ~b) (.offset ~b) (.stride ~b)))
-       (.isSymmetric ~a)
-       (with-sv-check ~b
-         (~pb-method (.layout nav-b#) (int (if (.isLower reg#) \L \U))
-          (.mrows ~b) (.ku reg#) (.ncols ~b)
-          (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a)
-          (.buffer ~b) (.offset ~b) (.stride ~b)))
-       :default (dragan-says-ex "Pivotless solver is not available for general banded matrices."))))
+         (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
+          (.mrows ~b) (+ (.kl reg#) (.ku reg#)) (.ncols ~b)
+          (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
+       (dragan-says-ex "SB solver requires that the right hand matrix have column layout."
+                       {:a (info ~a) :b (info ~b)}))))
+
+(defmacro tb-trs [method a b]
+  `(let [nav-b# (navigator ~b)
+         reg# (region ~a)]
+     (with-sv-check ~b
+       (~method (.layout nav-b#) (int (if (.isLower reg#) \L \U))
+        (int (if (= nav-b# (navigator ~a)) \N \T)) (int (if (.isDiagUnit reg#) \U \N))
+        (.mrows ~b) (+ (.kl reg#) (.ku reg#)) (.ncols ~b)
+        (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
 (defmacro tr-trs [method a b]
   `(let [reg-a# (region ~a)
-         nav-b#(navigator ~b)]
+         nav-b# (navigator ~b)]
      (~method (.layout nav-b#)
       (int (if (.isLower reg-a#) \L \U)) (int (if (= nav-b# (navigator ~a)) \N \T))
       (int (if (.isDiagUnit reg-a#) \U \N)) (.mrows ~b) (.ncols ~b)
@@ -405,15 +379,15 @@
 
 (defmacro sy-trs
   ([method ldl b ipiv]
-   `(let [nav-b# (navigator ~b)
-          uplo# (if (= nav-b# (navigator ~ldl))
-                  (int (if (.isLower (region ~ldl)) \L \U))
-                  (int (if (.isLower (region ~ldl)) \U \L)))]
+   `(let [nav-b# (navigator ~b)]
       (check-pivot ~ipiv)
-      (with-sv-check ~b
-        (~method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b)
-         (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv)
-         (.buffer ~b) (.offset ~b) (.stride ~b)))))
+      (if (= nav-b# (navigator ~ldl))
+        (with-sv-check ~b
+          (~method (.layout nav-b#) (int (if (.isLower (region ~ldl)) \L \U)) (.mrows ~b) (.ncols ~b)
+           (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv)
+           (.buffer ~b) (.offset ~b) (.stride ~b)))
+        (dragan-says-ex "SY pivoted solver (trs only) requires that both matrices have the same layout."
+                        {:ldl (info ~ldl) :b (info ~b)}))))
   ([method gg b]
    `(let [nav-b# (navigator ~b)
           uplo# (if (= nav-b# (navigator ~gg))
@@ -444,24 +418,22 @@
         (.buffer ~lu) (- (.offset ~lu) (.kl reg#)) (.stride ~lu)
         (.buffer ~ipiv) (.offset ~ipiv) ~nrm res#))))
 
-(defmacro pb-con [method gg nrm]
+(defmacro sb-con [method gg nrm]
   `(let [da# (real-accessor ~gg)
          reg# (region ~gg)
          res# (.createDataSource da# 1)]
-     (check-gb-submatrix ~gg)
      (with-sv-check (.get da# res# 0)
-       (~method (.layout (navigator ~gg)) (int (if (.isLower reg#) \L \U))
-        (.ncols ~gg) (.ku reg#) (.buffer ~gg) (- (.offset ~gg) (.kl reg#)) (.stride ~gg) ~nrm res#))))
+       (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
+        (.ncols ~gg) (+ (.kl reg#) (.ku reg#)) (.buffer ~gg) (.offset ~gg) (.stride ~gg) ~nrm res#))))
 
 (defmacro tb-con [method a nrm1?]
   `(let [da# (real-accessor ~a)
          reg# (region ~a)
          res# (.createDataSource da# 1)]
-     (check-gb-submatrix ~a)
      (with-sv-check (.get da# res# 0)
        (~method (.layout (navigator ~a)) (int (if ~nrm1? \O \I))
         (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
-        (.ncols ~a) (.ku reg#) (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) res#))))
+        (.ncols ~a) (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a) res#))))
 
 (defmacro tr-con [method a nrm1?]
   `(with-release [da# (real-accessor ~a)
@@ -500,55 +472,81 @@
             (with-sv-check ~b
               (~method (.layout nav-b#) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
                (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
-          (dragan-says-ex "Orientations of a and b do not fit." {:a (info ~a) :b (info ~b)}))))))
+          (dragan-says-ex "GE solver requires that both matrices have the same layout."
+                          {:a (info ~a) :b (info ~b)}))))))
 
 (defmacro gb-sv
   ([method a b pure]
-   `(let [reg# (region ~a)]
+   `(let [reg# (region ~a)
+          nav-a# (navigator ~a)
+          nav-b# (navigator ~b)]
       (if ~pure
         (with-release [a# (create-gb (factory ~a) (.mrows ~a) (.ncols ~a) (.kl reg#) (.ku reg#)
-                                     (.isColumnMajor (navigator ~b)) false)]
+                                     (.isColumnMajor nav-b#) false)]
           (copy (engine ~a) ~a a#)
           (sv (engine ~a) a# ~b false))
-        (let [nav-b# (navigator ~b)]
-          (if (= (navigator ~a) nav-b#)
-            (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
-              (check-gb-submatrix ~a)
-              (check-pivot ipiv#)
-              (with-sv-check ~b
-                (~method (.layout nav-b#) (.mrows ~b) (.ncols ~b) (.kl reg#) (.ku reg#)
-                 (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) (buffer ipiv#) (offset ipiv#)
-                 (.buffer ~b) (.offset ~b) (.stride ~b))))
-            (dragan-says-ex "Orientations of a and b do not fit." {:a (info ~a) :b (info ~b)})))))))
+        (if (= nav-b# nav-a#)
+          (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
+            (check-gb-submatrix ~a)
+            (check-pivot ipiv#)
+            (with-sv-check ~b
+              (~method (.layout nav-b#) (.mrows ~b) (.kl reg#) (.ku reg#) (.ncols ~b)
+               (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) (buffer ipiv#) (offset ipiv#)
+               (.buffer ~b) (.offset ~b) (.stride ~b))))
+          (dragan-says-ex "GB solver requires that both matrices have the same layout."
+                          {:a (info ~a) :b (info ~b)})))
+      ~b)))
 
-(defmacro tr-sv [method a b]
-  `(let [nav-a# (navigator ~a)
-         nav-b# (navigator ~b)
-         reg# (region ~a)
-         uplo# (if (= nav-a# nav-b#)
-                 (if (.isLower reg#) CBLAS/UPLO_LOWER CBLAS/UPLO_UPPER)
-                 (if (.isLower reg#) CBLAS/UPLO_UPPER CBLAS/UPLO_LOWER))]
-     (~method (.layout nav-b#) CBLAS/SIDE_LEFT uplo#
-      (if (= nav-a# nav-b#) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
-      (.diag reg#) (.mrows ~b) (.ncols ~b) 1.0
-      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
+(defmacro sb-sv [method a b pure]
+  `(let [reg# (region ~a)
+         nav-b# (navigator ~b)]
+     (if ~pure
+       (with-release [a# (raw ~a)]
+         (copy (engine ~a) ~a a#)
+         (sv (engine ~a) a# ~b false))
+       (if (.isColumnMajor nav-b#)
+         (with-sv-check ~b
+           (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
+            (.mrows ~b) (+ (.kl reg#) (.ku reg#)) (.ncols ~b)
+            (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
+         (dragan-says-ex "SB solver requires that the right hand matrix have column layout."
+                         {:a (info ~a) :b (info ~b)})))
      ~b))
 
 (defmacro sy-sv
-  ([method a b pure]
-   `(if ~pure
-      (with-release [a# (create-sy (factory ~a) (.ncols ~a) (.isColumnMajor (navigator ~b))
-                                   (.isLower (region ~a)) false)]
-        (copy (engine ~a) ~a a#)
-        (sv (engine ~a) a# ~b false))
-      (if (fits-navigation? ~a ~b)
-        (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) nil)]
+  ([po-method sy-method a b pure]
+   `(let [nav-b# (navigator ~b)
+          uplo# (if (= nav-b# (navigator ~a))
+                  (int (if (.isLower (region ~a)) \L \U))
+                  (int (if (.isLower (region ~a)) \U \L)))]
+      (if ~pure
+        (with-release [a# (raw ~a)]
+          (copy (engine ~a) ~a a#)
+          (let [info# (~po-method (.layout nav-b#) uplo#
+                       (.mrows ~b) (.ncols ~b) (buffer a#) (offset a#) (stride a#)
+                       (.buffer ~b) (.offset ~b) (.stride ~b))]
+            (cond
+              (= 0 info#) ~b
+              (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                          {:arg-index (- info#)}))
+              :else (do
+                      (copy (engine ~a) ~a a#)
+                      (sv (engine ~a) a# ~b false)))))
+        (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
           (check-pivot ipiv#)
           (with-sv-check ~b
-            (~method (.layout (navigator ~b)) (int (if (.isLower (region ~a)) \L \U))
+            (~sy-method (.layout nav-b#) uplo#
              (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-             (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
-        (dragan-says-ex "Orientations of a and b do not fit." {:a (info ~a) :b (info ~b)})))))
+             (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b)))))))
+  ([method a b]
+   `(let [nav-b# (navigator ~b)
+          uplo# (if (= nav-b# (navigator ~a))
+                  (int (if (.isLower (region ~a)) \L \U))
+                  (int (if (.isLower (region ~a)) \U \L)))]
+      (with-sv-check ~b
+        (~method (.layout nav-b#) uplo#
+         (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+         (.buffer ~b) (.offset ~b) (.stride ~b))))))
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 

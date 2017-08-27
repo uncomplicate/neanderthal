@@ -49,9 +49,9 @@
   (rowEnd [_ i]
     (min n (inc (+ i ku))))
   (isLower [_]
-    (= m (inc kl)))
+    (< ku 1))
   (isUpper [_]
-    (= n (inc ku)))
+    (< kl 1))
   (isDiagUnit [_]
     (or (= -1 kl) (= -1 ku)))
   (uplo [_]
@@ -75,13 +75,25 @@
    (BandRegion. m n kl ku (cond (< 0 kl) 122 (< 0 ku) 121 :default 0)
                 (if (or (= -1 kl) (= -1 ku)) 132 131)))
   ([^long n lower? diag-unit?]
-   (let [diag-pad (if diag-unit? -1 0)
-         diag (if diag-unit? 132 131)]
+   (let [diag-pad (if diag-unit? -1 0)]
      (if lower?
        (band-region n n (max 0 (dec n)) diag-pad)
        (band-region n n diag-pad (max 0 (dec n))))))
   ([^long n lower?]
    (band-region n lower? false)))
+
+(defn tb-region
+  ([^long n ^long k lower? diag-unit?]
+   (let [diag-pad (if diag-unit? -1 0)]
+     (if lower?
+       (band-region n n (min (max 0 k) (dec n)) diag-pad)
+       (band-region n n diag-pad (min (max 0 k) (dec n)))))))
+
+(defn sb-region
+  ([^long n ^long k lower?]
+   (if lower?
+     (band-region n n (min (max 0 k) (dec n)) 0)
+     (band-region n n 0 (min (max 0 k) (dec n))))))
 
 (deftype GERegion [^long m ^long n]
   Object
@@ -228,7 +240,7 @@
   (equals [a b]
     (or (identical? a b)
         (and (instance? StripeFullStorage b) (= sd (.sd ^StripeFullStorage b))
-             (= fd (.fd ^StripeFullStorage b)) (= ld (.ld ^StripeFullStorage b)))))
+             (= fd (.fd ^StripeFullStorage b)))))
   (toString [a]
     (format "#FullStorage[sd:%d, fd:%d, ld:%d]" sd fd ld))
   FullStorage
@@ -260,7 +272,7 @@
 
 ;; =================== Full Band Storage =========================================
 
-(deftype BandStorage [^long h ^long w ^long ld ^long kl ^long ku ^long sym-k]
+(deftype BandStorage [^long h ^long w ^long ld ^long kl ^long ku]
   Info
   (info [s]
     {:storage-type :band
@@ -279,7 +291,7 @@
   (equals [a b]
     (or (identical? a b)
         (and (instance? BandStorage b) (= h (.h ^BandStorage b))
-             (= w (.w ^BandStorage b)) (= ld (.ld ^BandStorage b))
+             (= w (.w ^BandStorage b))
              (= kl (.kl ^BandStorage b)) (= ku (.ku ^BandStorage b)))))
   (toString [a]
     (format "#BandStorage[h:%d, w:%d, ld:%d, kl:%d, ku:%d]" h w ld kl ku))
@@ -305,18 +317,23 @@
          kl (long kl)
          ku (long ku)
          h (inc (+ kl ku))
-         ld (max h (long ld))
-         sym-k (cond (= 0 kl) ku (= 0 ku) kl :default 0)]
+         ld (max h (long ld))]
      (if column?
-       (BandStorage. h (min n (+ (min m n) ku)) ld kl ku sym-k)
-       (BandStorage. h (min m (+ (min m n) kl)) ld ku kl sym-k))))
+       (BandStorage. h (min n (+ (min m n) ku)) ld kl ku)
+       (BandStorage. h (min m (+ (min m n) kl)) ld ku kl))))
   ([column? m n kl ku]
-   (band-storage column? m n (inc (+ (long kl) (long ku))) kl ku))
-  ([column? ^long n lower? diag-unit?]
-   (let [unit-pad (if diag-unit? -1 0)]
-     (if lower?
-       (band-storage column? n n (dec n) unit-pad)
-       (band-storage column? n n unit-pad (dec n))))))
+   (band-storage column? m n (inc (+ (long kl) (long ku))) kl ku)))
+
+(defn tb-storage [column? n k lower? diag-unit?]
+  (let [unit-pad (if diag-unit? -1 0)]
+    (if lower?
+      (band-storage column? n n (min (max 0 (long k)) (dec (long n))) unit-pad)
+      (band-storage column? n n unit-pad (min (max 0 (long k)) (dec (long n)))))))
+
+(defn sb-storage [column? ^long n ^long k lower?]
+  (if lower?
+    (band-storage column? n n (min (max 0 k) (dec n)) 0)
+    (band-storage column? n n 0 (min (max 0 k) (dec n)))))
 
 ;; =================== Packed Storage ======================================
 
@@ -393,7 +410,7 @@
 (deftype SBDefault []
   RealDefault
   (entry [_ nav stor da buf ofst i j]
-    (let [k (.sym-k ^BandStorage stor)]
+    (let [k (+ (.kl ^BandStorage stor) (.ku ^BandStorage stor))]
       (if (<= (- j k) i (+ j k))
         (.get ^RealBufferAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^BandStorage stor j i)))
         0.0))))
