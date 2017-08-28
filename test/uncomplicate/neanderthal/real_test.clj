@@ -17,7 +17,8 @@
              [math :refer :all]
              [real :refer [ls-residual]]]
             [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]])
-  (:import clojure.lang.ExceptionInfo))
+  (:import clojure.lang.ExceptionInfo
+           [uncomplicate.neanderthal.internal.api MatrixImplementation]))
 
 (defn test-group [factory]
   (facts "Group methods."
@@ -664,12 +665,12 @@
   (facts "BLAS 1 copy! uplo matrix"
          (with-release [a (uplo factory 3)
                         b (uplo factory 3 (range 6) {:layout :column})
-                        b-row (uplo factory 3 (range 6) {:layout :row})]
+                        b-row (uplo factory 3 (range 6) {:layout :row :uplo :upper})]
 
            (identical? (copy a) a) => false
            (identical? (copy! (uplo factory 3 [1 2 3 4 5 6]) a) a) => true
            (copy (uplo factory 3 [1 2 3 4 5 6])) => a
-           (copy! b b-row) => b)
+           (copy! b b-row) => (if (.isSymmetric ^MatrixImplementation b) b (throws ExceptionInfo)))
 
          (copy! (uplo factory 3 [10 20 30 40 50 60]) (uplo factory 3 [1 2 3 4 5 6]))
          => (uplo factory 3 [10 20 30 40 50 60])
@@ -982,6 +983,28 @@
            (gb factory 5 8 2 1 nil) => (zero a)
            (gb factory 5 8 5 1) => (throws ExceptionInfo)
            (gb factory 5 8 2 8) => (throws ExceptionInfo))))
+
+(defn test-sb-constructor [factory]
+  (facts "Create a SB matrix."
+         (with-release [a (sb factory 4 2 [1 2 3 4 5 6 7 8 9])
+                        b (ge factory 3 4 [1 2 3 4 5 6 7 8 0 9 0 0])]
+           (view-ge a) => b
+           (sb factory 4 2 nil) => (zero a))))
+
+(defn test-sb [factory]
+  (facts "SB Matrix methods."
+         (with-release [a-upper (sb factory 4 2 (range 15) {:uplo :upper})
+                        a-lower (sb factory 4 2 (range 15) {:uplo :lower})]
+           (= 4 (mrows a-upper) (ncols a-lower)) => true
+           (row a-upper 0) => (vctr factory [0 1 3])
+           (row a-upper 2) => (vctr factory [5 7])
+           (col a-upper 0) => (vctr factory [0])
+           (col a-upper 2) => (vctr factory [3 4 5])
+           (row a-lower 0) => (vctr factory [0])
+           (row a-lower 2) => (vctr factory [2 4 6])
+           (col a-lower 0) => (vctr factory [0 1 2])
+           (col a-lower 2) => (vctr factory [6 7])
+           (dia a-upper) => (vctr factory 0 2 5 8))))
 
 (defn test-gb [factory];;TODO
   (facts "GB Matrix methods."
@@ -1448,6 +1471,7 @@
                                      4.0 3.0 2.0
                                      4.0 3.0
                                      4.0])
+                  a-copy (copy a)
                   b (ge factory 9 3 [4.0  0.0  1.0
                                      8.0  0.0  1.0
                                      12.0  0.0  0.0
@@ -1473,7 +1497,28 @@
 
      (nrm2 (axpy! -1 a gg-solution)) => (roughly 0 0.1)
      (con gg (nrm1 a)) => (roughly 0 0.041)
-     (nrm2 (axpy! -1 b-solution (trs gg b))) => (roughly 0 0.004))))
+     (nrm2 (axpy! -1 b-solution (trs gg b))) => (roughly 0 0.004)
+     (nrm2 (axpy! -1 (sv a-copy b) (trs gg b))) => (roughly 0 0.004))))
+
+(defn test-tb-trx [factory]
+  (facts
+   "LAPACK triangular banded linear system solver."
+
+   (with-release [a (tb factory 5 4 [6.80,
+                                     -6.05, -3.30,
+                                     -0.45,  2.58, -2.70,
+                                     8.32,  2.71,  4.35, -7.17,
+                                     -9.67, -5.14, -7.26,  6.08, -6.87])
+                  t (tr factory 5 [6.80,
+                                   -6.05, -3.30,
+                                   -0.45,  2.58, -2.70,
+                                   8.32,  2.71,  4.35, -7.17,
+                                   -9.67, -5.14, -7.26,  6.08, -6.87])
+                  b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
+                                     -1.56,  4.00, -8.67,  1.75,  2.86,
+                                     9.81, -4.09, -4.57, -8.61,  8.99])]
+     (nrm2 (axpy! -1 (trs a b) (trs t b))) => (roughly 0.0 0.0001)
+     (con a) => (roughly (con t) 0.0000001))))
 
 (defn test-ge-trs [factory]
   (facts
@@ -1996,6 +2041,7 @@
   (test-sy-potrx factory)
   (test-gb-trx factory)
   (test-sb-trx factory)
+  (test-tb-trx factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)
@@ -2011,7 +2057,7 @@
   (test-uplo-swap factory sy)
   (test-uplo-scal factory sy)
   (test-uplo-axpy factory sy)
-  (test-sy-mv factory tp)
+  (test-sy-mv factory sy)
   (test-sy-mm factory))
 
 (defn test-blas-sy-host [factory]
@@ -2043,6 +2089,27 @@
   (test-gb-asum factory)
   (test-gb-sum factory)
   (test-gb-amax factory))
+
+(defn test-blas-sb [factory]
+  (test-sb-constructor factory)
+  (test-sb factory)
+  (test-uplo-copy factory sb)
+  (test-uplo-swap factory sb)
+  (test-uplo-scal factory sb)
+  (test-uplo-axpy factory sb)
+  (test-sy-mv factory sb)
+  (test-sy-mm factory))
+
+(defn test-blas-sb-host [factory]
+  ;;(test-sy-entry factory sb)
+  ;;(test-sy-entry! factory sb)
+  (test-sy-bulk-entry! factory sb)
+  ;;(test-sy-alter! factory sb)
+  (test-sy-dot factory)
+  (test-sy-nrm2 factory sb)
+  (test-sy-asum factory sb)
+  (test-sy-sum factory sb)
+  (test-sy-amax factory sb))
 
 (defn test-blas-tp [factory]
   (test-packed-constructor factory tp)

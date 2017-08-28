@@ -34,6 +34,11 @@
 (real-test/test-blas-gb mkl-float)
 (real-test/test-blas-gb-host mkl-float)
 
+(real-test/test-blas-sb mkl-double)
+(real-test/test-blas-sb-host mkl-double)
+(real-test/test-blas-sb mkl-float)
+(real-test/test-blas-sb-host mkl-float)
+
 (real-test/test-blas-tp mkl-double)
 (real-test/test-blas-tp-host mkl-double)
 (real-test/test-lapack-tp mkl-double)

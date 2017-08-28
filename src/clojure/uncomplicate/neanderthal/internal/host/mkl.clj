@@ -794,11 +794,11 @@
     (gb-sum CBLAS/dasum ^RealBandedMatrix a))
   (axpy [_ alpha a b]
     (gb-axpy CBLAS/daxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (gb-mv CBLAS/dgbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a _]
     (gb-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (gb-mm CBLAS/dgbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]
     (gb-mm a))
@@ -857,11 +857,11 @@
     (gb-sum CBLAS/sasum ^RealBandedMatrix a))
   (axpy [_ alpha a b]
     (gb-axpy CBLAS/saxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (gb-mv CBLAS/sgbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a _]
     (gb-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (gb-mm CBLAS/sgbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]
     (gb-mm a))
@@ -911,28 +911,28 @@
   (dot [_ a b]
     (sb-dot CBLAS/ddot ^RealBandedMatrix a ^RealBandedMatrix b))
   (nrm1 [_ a]
-    (gb-lan LAPACK/dlangb CBLAS/idamax (int \O) ^RealBandedMatrix a))
+    (sb-lan LAPACK/dlansb (int \O) ^RealBandedMatrix a))
   (nrm2 [_ a]
-    (gb-lan LAPACK/dlangb CBLAS/dnrm2 (int \F) ^RealBandedMatrix a))
+    (sb-lan LAPACK/dlansb (int \F) ^RealBandedMatrix a))
   (nrmi [_ a]
-    (gb-lan LAPACK/dlangb CBLAS/idamax (int \I) ^RealBandedMatrix a))
+    (sb-lan LAPACK/dlansb (int \I) ^RealBandedMatrix a))
   (asum [_ a]
-    (gb-sum CBLAS/dasum ^RealBandedMatrix a))
+    (sb-sum CBLAS/dasum ^RealBandedMatrix a))
   (axpy [_ alpha a b]
     (sb-axpy CBLAS/daxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (sb-mv CBLAS/dsbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a _]
     (sb-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (sb-mm CBLAS/dsbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]
     (sb-mm a))
   BlasPlus
   (amax [_ a]
-    (gb-lan LAPACK/dlangb CBLAS/idamax (int \M) ^RealBandedMatrix a))
+    (sb-lan LAPACK/dlansb (int \M) ^RealBandedMatrix a))
   (sum [_ a]
-    (gb-sum CBLAS/dsum ^RealBandedMatrix a));;TODO 2*
+    (sb-sum CBLAS/dsum ^RealBandedMatrix a));;TODO 2*
   (set-all [_ alpha a]
     (gb-laset LAPACK/dlaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
@@ -974,28 +974,28 @@
   (dot [_ a b]
     (sb-dot CBLAS/sdot ^RealBandedMatrix a ^RealBandedMatrix b))
   (nrm1 [_ a]
-    (gb-lan LAPACK/slangb CBLAS/idamax (int \O) ^RealBandedMatrix a))
+    (sb-lan LAPACK/slansb (int \O) ^RealBandedMatrix a))
   (nrm2 [_ a]
-    (gb-lan LAPACK/slangb CBLAS/snrm2 (int \F) ^RealBandedMatrix a))
+    (sb-lan LAPACK/slansb (int \F) ^RealBandedMatrix a))
   (nrmi [_ a]
-    (gb-lan LAPACK/slangb CBLAS/idamax (int \I) ^RealBandedMatrix a))
+    (sb-lan LAPACK/slansb (int \I) ^RealBandedMatrix a))
   (asum [_ a]
-    (gb-sum CBLAS/sasum ^RealBandedMatrix a))
+    (sb-sum CBLAS/sasum ^RealBandedMatrix a))
   (axpy [_ alpha a b]
     (sb-axpy CBLAS/saxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (sb-mv CBLAS/ssbmv alpha ^RealBandedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a _]
     (sb-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (sb-mm CBLAS/ssbmv alpha ^RealBandedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]
     (sb-mm a))
   BlasPlus
   (amax [_ a]
-    (gb-lan LAPACK/slangb CBLAS/idamax (int \M) ^RealBandedMatrix a))
+    (sb-lan LAPACK/slansb (int \M) ^RealBandedMatrix a))
   (sum [_ a]
-    (gb-sum CBLAS/ssum ^RealBandedMatrix a));;TODO 2*
+    (sb-sum CBLAS/ssum ^RealBandedMatrix a));;TODO 2*
   (set-all [_ alpha a]
     (gb-laset LAPACK/slaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
@@ -1025,6 +1025,120 @@
   (create-ptrf [_ a]
     (matrix-create-trf matrix-cholesky ^RealBandedMatrix a false)))
 
+(deftype DoubleTBEngine []
+  Blas
+  (swap [_ a b]
+    (gb-map CBLAS/dswap ^RealBandedMatrix a ^RealBandedMatrix b)
+    a)
+  (copy [_ a b]
+    (gb-map CBLAS/dcopy ^RealBandedMatrix a ^RealBandedMatrix b))
+  (scal [_ alpha a]
+    (gb-scal CBLAS/dscal alpha ^RealBandedMatrix a))
+  (dot [_ a b]
+    (tb-dot CBLAS/ddot ^RealBandedMatrix a ^RealBandedMatrix b))
+  (nrm1 [_ a]
+    (tb-lan LAPACK/dlantb (int \O) ^RealBandedMatrix a))
+  (nrm2 [_ a]
+    (tb-lan LAPACK/dlantb (int \F) ^RealBandedMatrix a))
+  (nrmi [_ a]
+    (tb-lan LAPACK/dlantb (int \I) ^RealBandedMatrix a))
+  (asum [_ a]
+    (tb-sum CBLAS/dasum ^RealBandedMatrix a))
+  (axpy [_ alpha a b]
+    (gb-axpy CBLAS/daxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
+  (mv [_ _ a _ _ _]
+    (tb-mv a))
+  (mv [_ a x]
+    (tb-mv CBLAS/dtbmv ^RealBandedMatrix a ^RealBlockVector x))
+  (mm [_ _ a _ _ _ _]
+    (tb-mm a))
+  (mm [this alpha a b left]
+    (tb-mm CBLAS/dtbmv alpha ^RealBandedMatrix a ^RealGEMatrix b left))
+  BlasPlus
+  (amax [_ a]
+    (tb-lan LAPACK/dlantb (int \M) ^RealBandedMatrix a))
+  (sum [_ a]
+    (tb-sum CBLAS/dsum ^RealBandedMatrix a))
+  (set-all [_ alpha a]
+    (gb-laset LAPACK/dlaset alpha ^RealBandedMatrix a))
+  (axpby [_ alpha a beta b]
+    (gb-axpby MKL/daxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b))
+  (trans [_ a]
+    (dragan-says-ex "In-place transpose is not available for banded matrices."))
+  Lapack
+  (srt [_ a increasing]
+    (matrix-lasrt LAPACK/dlasrt ^RealBandedMatrix a increasing))
+  (tri [_ _ _]
+    (dragan-says-ex "Inverse is not available for banded matrices."))
+  (tri [_ _]
+    (dragan-says-ex "Inverse is not available for banded matrices."))
+  (trs [_ a b]
+    (tb-trs LAPACK/dtbtrs ^RealBandedMatrix a ^RealGEMatrix b))
+  (sv [_ a b _]
+    (tb-sv CBLAS/dtbsv ^RealBandedMatrix a ^RealGEMatrix b))
+  (con [_ a nrm1?]
+    (tb-con LAPACK/dtbcon ^RealBandedMatrix a nrm1?))
+  TRF
+  (create-trf [_ a _]
+    a))
+
+(deftype FloatTBEngine []
+  Blas
+  (swap [_ a b]
+    (gb-map CBLAS/sswap ^RealBandedMatrix a ^RealBandedMatrix b)
+    a)
+  (copy [_ a b]
+    (gb-map CBLAS/scopy ^RealBandedMatrix a ^RealBandedMatrix b))
+  (scal [_ alpha a]
+    (gb-scal CBLAS/sscal alpha ^RealBandedMatrix a))
+  (dot [_ a b]
+    (tb-dot CBLAS/sdot ^RealBandedMatrix a ^RealBandedMatrix b))
+  (nrm1 [_ a]
+    (tb-lan LAPACK/slantb (int \O) ^RealBandedMatrix a))
+  (nrm2 [_ a]
+    (tb-lan LAPACK/slantb (int \F) ^RealBandedMatrix a))
+  (nrmi [_ a]
+    (tb-lan LAPACK/slantb (int \I) ^RealBandedMatrix a))
+  (asum [_ a]
+    (tb-sum CBLAS/sasum ^RealBandedMatrix a))
+  (axpy [_ alpha a b]
+    (gb-axpy CBLAS/saxpy alpha ^RealBandedMatrix a ^RealBandedMatrix b))
+  (mv [_ _ a _ _ _]
+    (tb-mv a))
+  (mv [_ a x]
+    (tb-mv CBLAS/stbmv ^RealBandedMatrix a ^RealBlockVector x))
+  (mm [_ _ a _ _ _ _]
+    (tb-mm a))
+  (mm [this alpha a b left]
+    (tb-mm CBLAS/stbmv alpha ^RealBandedMatrix a ^RealGEMatrix b left))
+  BlasPlus
+  (amax [_ a]
+    (tb-lan LAPACK/slantb (int \M) ^RealBandedMatrix a))
+  (sum [_ a]
+    (tb-sum CBLAS/ssum ^RealBandedMatrix a))
+  (set-all [_ alpha a]
+    (gb-laset LAPACK/slaset alpha ^RealBandedMatrix a))
+  (axpby [_ alpha a beta b]
+    (gb-axpby MKL/saxpby alpha ^RealBandedMatrix a beta ^RealBandedMatrix b))
+  (trans [_ a]
+    (dragan-says-ex "In-place transpose is not available for banded matrices."))
+  Lapack
+  (srt [_ a increasing]
+    (matrix-lasrt LAPACK/slasrt ^RealBandedMatrix a increasing))
+  (tri [_ _ _]
+    (dragan-says-ex "Inverse is not available for banded matrices."))
+  (tri [_ _]
+    (dragan-says-ex "Inverse is not available for banded matrices."))
+  (trs [_ a b]
+    (tb-trs LAPACK/stbtrs ^RealBandedMatrix a ^RealGEMatrix b))
+  (sv [_ a b _]
+    (tb-sv CBLAS/stbsv ^RealBandedMatrix a ^RealGEMatrix b))
+  (con [_ a nrm1?]
+    (tb-con LAPACK/stbcon ^RealBandedMatrix a nrm1?))
+  TRF
+  (create-trf [_ a _]
+    a))
+
 ;; =============== Packed Matrix Engines ===================================
 
 (deftype DoubleTPEngine []
@@ -1037,18 +1151,15 @@
   (scal [_ alpha a]
     (packed-scal CBLAS/dscal alpha ^RealPackedMatrix a))
   (dot [_ a b]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (tp-dot CBLAS/ddot da ^RealPackedMatrix a ^RealPackedMatrix b)))
-  (nrm1 [this a]
-    (ex-info "TODO" nil))
+    (tp-dot CBLAS/ddot ^RealPackedMatrix a ^RealPackedMatrix b))
+  (nrm1 [_ a]
+    (tp-lan LAPACK/dlantp (int \O) ^RealPackedMatrix a))
   (nrm2 [_ a]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (tp-nrm2 CBLAS/dnrm2 da ^RealPackedMatrix a)))
+    (tp-lan LAPACK/dlantp (int \F) ^RealPackedMatrix a))
   (nrmi [_ a]
-    (ex-info "TODO" nil))
+    (tp-lan LAPACK/dlantp (int \I) ^RealPackedMatrix a))
   (asum [_ a]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (tp-sum CBLAS/dasum Math/abs da ^RealPackedMatrix a)))
+    (tp-sum CBLAS/dasum Math/abs ^RealPackedMatrix a))
   (axpy [_ alpha a b]
     (packed-axpy CBLAS/daxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
   (mv [this alpha a x beta y]
@@ -1060,11 +1171,10 @@
   (mm [_ alpha a b left]
     (tp-mm CBLAS/dtpmv alpha ^RealPackedMatrix a ^RealGEMatrix b left))
   BlasPlus
-  (sum [_ a]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (tp-sum CBLAS/dsum double da ^RealPackedMatrix a)))
   (amax [_ a]
-    (packed-amax CBLAS/idamax ^RealBufferAccessor (data-accessor a) ^RealPackedMatrix a))
+    (tp-lan LAPACK/dlantp (int \M) ^RealPackedMatrix a))
+  (sum [_ a]
+    (tp-sum CBLAS/dsum double ^RealPackedMatrix a))
   (set-all [_ alpha a]
     (packed-laset LAPACK/dlaset alpha ^RealPackedMatrix a))
   (axpby [_ alpha a beta b]
@@ -1086,18 +1196,15 @@
   (scal [_ alpha a]
     (packed-scal CBLAS/dscal alpha ^RealPackedMatrix a))
   (dot [_ a b]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (sp-dot CBLAS/ddot da ^RealPackedMatrix a ^RealPackedMatrix b)))
-  (nrm1 [this a]
-    (ex-info "TODO" nil))
+    (sp-dot CBLAS/ddot ^RealPackedMatrix a ^RealPackedMatrix b))
+  (nrm1 [_ a]
+    (sp-lan LAPACK/dlansp (int \O) ^RealPackedMatrix a))
   (nrm2 [_ a]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (sp-nrm2 CBLAS/dnrm2 da ^RealPackedMatrix a)))
+    (sp-lan LAPACK/dlansp (int \F) ^RealPackedMatrix a))
   (nrmi [_ a]
-    (ex-info "TODO" nil))
+    (sp-lan LAPACK/dlansp (int \I) ^RealPackedMatrix a))
   (asum [_ a]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (sp-sum CBLAS/dasum Math/abs da ^RealPackedMatrix a)))
+    (sp-sum CBLAS/dasum Math/abs ^RealPackedMatrix a))
   (axpy [_ alpha a b]
     (packed-axpy CBLAS/daxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
   (mv [this alpha a x beta y]
@@ -1109,11 +1216,10 @@
   (mm [_ _ a _ _]
     (sp-mm a))
   BlasPlus
-  (sum [_ a]
-    (let [da ^RealBufferAccessor (data-accessor a)]
-      (sp-sum CBLAS/dsum double da ^RealPackedMatrix a)))
   (amax [_ a]
-    (packed-amax CBLAS/idamax ^RealBufferAccessor (data-accessor a) ^RealPackedMatrix a))
+    (sp-lan LAPACK/dlansp (int \M) ^RealPackedMatrix a))
+  (sum [_ a]
+    (sp-sum CBLAS/dsum double ^RealPackedMatrix a))
   (set-all [_ alpha a]
     (packed-laset LAPACK/dlaset alpha ^RealPackedMatrix a))
   (axpby [_ alpha a beta b]
@@ -1220,11 +1326,12 @@
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
-                      (->FloatGBEngine) (->FloatSBEngine) nil nil nil))
+                      (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine) nil nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
                       (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
-                      (->DoubleGBEngine) (->DoubleSBEngine) nil (->DoubleTPEngine) (->DoubleSPEngine)))
+                      (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
+                      (->DoubleTPEngine) (->DoubleSPEngine)))
 
   (vreset! index-fact mkl-int))

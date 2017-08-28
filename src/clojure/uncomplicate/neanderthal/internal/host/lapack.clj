@@ -161,14 +161,19 @@
 
 ;; ----------- Banded Matrix --------------------------------------------------------
 
+(defn band-storage-kl ^long [^BandStorage s]
+  (.kl s))
+
+(defn band-storage-ku ^long [^BandStorage s]
+  (.ku s))
+
 (defmacro gb-lan [langb nrm norm a]
   `(if (< 0 (.dim ~a))
      (let [stor# (full-storage ~a)
-           reg# (region ~a)
            fd# (.fd stor#)
            ld# (.ld stor#)
-           kl# (.kl reg#)
-           ku# (.ku reg#)
+           kl# (band-storage-kl stor#)
+           ku# (band-storage-ku stor#)
            buff# (.buffer ~a)]
        (cond
          (= (.mrows ~a) (.ncols ~a)) (with-release [work# (.createDataSource (data-accessor ~a) fd#)]
@@ -182,6 +187,29 @@
          :default (dragan-says-ex "This operation has not been implemented for non-square banded matrix.")))
      0.0))
 
+(defmacro sb-lan [lansb norm a]
+  `(if (< 0 (.dim ~a))
+     (let [stor# (full-storage ~a)
+           reg# (region ~a)
+           fd# (.fd stor#)]
+       (with-release [work# (.createDataSource (data-accessor ~a) fd#)]
+         (~lansb ~norm
+          (int (if (.isColumnMajor (navigator ~a)) (if (.isLower reg#) \L \U) (if (.isLower reg#) \U \L)))
+          fd# (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.ld stor#) work#)))
+     0.0))
+
+(defmacro tb-lan [lantb norm a]
+  `(if (< 0 (.dim ~a))
+     (let [stor# (full-storage ~a)
+           reg# (region ~a)
+           fd# (.fd stor#)]
+       (with-release [work# (.createDataSource (data-accessor ~a) fd#)]
+         (~lantb ~norm
+          (int (if (.isColumnMajor (navigator ~a)) (if (.isLower reg#) \L \U) (if (.isLower reg#) \U \L)))
+          (int (if (.isDiagUnit reg#) \U \N))
+          fd# (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.ld stor#) work#)))
+     0.0))
+
 (defmacro gb-laset [method alpha a]
   `(let [buff# (.buffer ~a)
          ofst# (.offset ~a)
@@ -192,6 +220,29 @@
      ~a))
 
 ;;------------------------ Packed Matrix -------------------------------------------
+
+(defmacro sp-lan [lansp norm a]
+  `(if (< 0 (.dim ~a))
+     (let [stor# (storage ~a)
+           reg# (region ~a)
+           fd# (.fd stor#)]
+       (with-release [work# (.createDataSource (data-accessor ~a) fd#)]
+         (~lansp ~norm
+          (int (if (.isColumnMajor (navigator ~a)) (if (.isLower reg#) \L \U) (if (.isLower reg#) \U \L)))
+          fd# (.buffer ~a) (.offset ~a) work#)))
+     0.0))
+
+(defmacro tp-lan [lantp norm a]
+  `(if (< 0 (.dim ~a))
+     (let [stor# (storage ~a)
+           reg# (region ~a)
+           fd# (.fd stor#)]
+       (with-release [work# (.createDataSource (data-accessor ~a) fd#)]
+         (~lantp ~norm
+          (int (if (.isColumnMajor (navigator ~a)) (if (.isLower reg#) \L \U) (if (.isLower reg#) \U \L)))
+          (int (if (.isDiagUnit reg#) \U \N))
+          fd# (.buffer ~a) (.offset ~a) work#)))
+     0.0))
 
 (defmacro packed-laset [method alpha a]
   `(let [buff# (.buffer ~a)

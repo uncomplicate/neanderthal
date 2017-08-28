@@ -156,50 +156,50 @@
 (defn ftb
   "Creates a TB matrix using single precision floating point native CPU engine
   (see [[uncomplicate.neanderthal.core/tb]])."
-  ([^long n ^long k source options]
+  ([n k source options]
    (tb mkl-float n k source options))
-  ([^long n ^long k arg]
+  ([n k arg]
    (tb mkl-float n k arg))
-  ([^long n ^long k]
-   (tb mkl-float n k))
-  ([arg]
-   (tb mkl-float arg)))
+  ([^long n arg]
+   (tb mkl-float n arg))
+  ([source]
+   (tb mkl-float source)))
 
 (defn dtb
   "Creates a TB matrix using double precision floating point native CPU engine
   (see [[uncomplicate.neanderthal.core/tb]])."
-  ([^long n ^long k source options]
+  ([n k source options]
    (tb mkl-double n k source options))
-  ([^long n ^long k arg]
+  ([n k arg]
    (tb mkl-double n k arg))
-  ([^long n ^long k]
-   (tb mkl-double n k))
-  ([arg]
-   (tb mkl-double arg)))
+  ([^long n arg]
+   (tb mkl-double n arg))
+  ([source]
+   (tb mkl-double source)))
 
 (defn fsb
   "Creates a SB matrix using single precision floating point native CPU engine
   (see [[uncomplicate.neanderthal.core/sb]])."
-  ([^long n ^long k source options]
+  ([n k source options]
    (sb mkl-float n k source options))
-  ([^long n ^long k arg]
+  ([n k arg]
    (sb mkl-float n k arg))
-  ([^long n ^long k]
-   (sb mkl-float n k))
-  ([arg]
-   (sb mkl-float arg)))
+  ([^long n arg]
+   (sb mkl-float n arg))
+  ([source]
+   (sb mkl-float source)))
 
 (defn dsb
   "Creates a SB matrix using double precision floating point native CPU engine
   (see [[uncomplicate.neanderthal.core/sb]])."
-  ([^long n ^long k source options]
+  ([n k source options]
    (sb mkl-double n k source options))
-  ([^long n ^long k arg]
+  ([n k arg]
    (sb mkl-double n k arg))
-  ([^long n ^long k]
-   (sb mkl-double n k))
-  ([arg]
-   (sb mkl-double arg)))
+  ([^long n arg]
+   (sb mkl-double n arg))
+  ([source]
+   (sb mkl-double source)))
 
 (defn ftp
   "Creates a TP matrix using single precision floating point native CPU engine
@@ -208,8 +208,8 @@
    (tp mkl-float n source options))
   ([^long n arg]
    (tp mkl-float n arg))
-  ([arg]
-   (tp mkl-float arg)))
+  ([source]
+   (tp mkl-float source)))
 
 (defn dtp
   "Creates a TP matrix using double precision floating point native CPU engine
@@ -218,8 +218,8 @@
    (tp mkl-double n source options))
   ([^long n arg]
    (tp mkl-double n arg))
-  ([arg]
-   (tp mkl-double arg)))
+  ([source]
+   (tp mkl-double source)))
 
 (defn fsp
   "Creates a SP matrix using single precision floating point native CPU engine
@@ -228,8 +228,8 @@
    (sp mkl-float n source options))
   ([^long n arg]
    (sp mkl-float n arg))
-  ([arg]
-   (sp mkl-float arg)))
+  ([source]
+   (sp mkl-float source)))
 
 (defn dsp
   "Creates a SP matrix using double precision floating point native CPU engine
@@ -238,5 +238,5 @@
    (sp mkl-double n source options))
   ([^long n arg]
    (sp mkl-double n arg))
-  ([arg]
-   (sp mkl-double arg)))
+  ([source]
+   (sp mkl-double source)))

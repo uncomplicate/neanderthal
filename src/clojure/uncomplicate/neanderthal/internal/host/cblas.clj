@@ -10,7 +10,7 @@
   (:require [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal
              [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage info]]
-             [common :refer [dragan-says-ex]]
+             [common :refer [dragan-says-ex real-accessor]]
              [navigation :refer [accu-layout full-storage]]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS]
            [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))
@@ -279,14 +279,14 @@
 ;; =============== Common TR matrix macros and functions ============================
 
 (defmacro tr-sum [method a]
-  `(if-not (.isDiagUnit (region ~a))
-     (matrix-sum ~method ~a)
-     (+ (.ncols ~a) (double (matrix-sum ~method ~a)))))
+  `(if (.isDiagUnit (region ~a))
+     (+ (.ncols ~a) (double (matrix-sum ~method ~a)))
+     (matrix-sum ~method ~a)))
 
 (defmacro tr-dot [method a b]
-  `(if-not (.isDiagUnit (region ~a))
-     (matrix-dot ~method ~a ~b)
-     (+ (.ncols ~a) (double (matrix-dot ~method ~a ~b)))))
+  `(if (.isDiagUnit (region ~a))
+     (+ (.ncols ~a) (double (matrix-dot ~method ~a ~b)))
+     (matrix-dot ~method ~a ~b)))
 
 (defmacro tr-mv
   ([method a x]
@@ -506,7 +506,35 @@
         ~expr))
     ~b))
 
-(defmacro symmetric-band-storage-reduce [a b len offset-a offset-b acc init expr]
+(defmacro symmetric-band-storage-reduce
+  ([a len offset acc init expr]
+   `(let [reg# (region ~a)
+          nav# (navigator ~a)
+          stor# (full-storage ~a)
+          m# (.mrows ~a)
+          n# (.ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)
+          offset# (.offset ~a)]
+      (let [acc# (loop [k# 1 ~acc ~init]
+                   (if (< k# (inc kl#))
+                     (recur (inc k#)
+                            (let [~len (min (- m# k#) n#)
+                                  ~offset (+ offset# (.index nav# stor# k# 0))]
+                              ~expr))
+                     ~acc))]
+        (let [~acc (* 2.0 (double
+                           (loop [k# 1 ~acc (double acc#)]
+                             (if (< k# (inc ku#))
+                               (recur (inc k#)
+                                      (let [~len (min m# (- n# k#))
+                                            ~offset (+ offset# (.index nav# stor# 0 k#))]
+                                        ~expr))
+                               ~acc))))
+              ~len (min m# n#)
+              ~offset (+ offset# (.index nav# stor# 0 0))]
+          ~expr))))
+  ([a b len offset-a offset-b acc init expr]
    `(let [reg# (region ~a)
           nav# (navigator ~a)
           stor-a# (full-storage ~a)
@@ -517,7 +545,7 @@
           ku# (.ku reg#)
           offset-a# (.offset ~a)
           offset-b# (.offset ~b)]
-      (let [acc# (loop [k# 0 ~acc ~init]
+      (let [acc# (loop [k# 1 ~acc ~init]
                    (if (< k# (inc kl#))
                      (recur (inc k#)
                             (let [~len (min (- m# k#) n#)
@@ -525,14 +553,19 @@
                                   ~offset-b (+ offset-b# (.index nav# stor-b# k# 0))]
                               ~expr))
                      ~acc))]
-        (loop [k# 1 ~acc (double acc#)]
-          (if (< k# (inc ku#))
-            (recur (inc k#)
-                   (let [~len (min m# (- n# k#))
-                         ~offset-a (+ offset-a# (.index nav# stor-a# 0 k#))
-                         ~offset-b (+ offset-b# (.index nav# stor-b# 0 k#))]
-                     ~expr))
-            ~acc)))))
+        (let [~acc (* 2.0 (double
+                           (loop [k# 1 ~acc (double acc#)]
+                             (if (< k# (inc ku#))
+                               (recur (inc k#)
+                                      (let [~len (min m# (- n# k#))
+                                            ~offset-a (+ offset-a# (.index nav# stor-a# 0 k#))
+                                            ~offset-b (+ offset-b# (.index nav# stor-b# 0 k#))]
+                                        ~expr))
+                               ~acc))))
+              ~len (min m# n#)
+              ~offset-a (+ offset-a# (.index nav# stor-a# 0 0))
+              ~offset-b (+ offset-b# (.index nav# stor-b# 0 0))]
+          ~expr)))))
 
 (defmacro gb-dot [method a b]
   `(if (< 0 (.dim ~a))
@@ -553,6 +586,11 @@
        (symmetric-band-storage-reduce ~a ~b len# offset-a# offset-b# acc# 0.0
                                       (+ acc# (~method len# buff-a# offset-a# ld-a# buff-b# offset-b# ld-b#))))
      0.0))
+
+(defmacro tb-dot [method a b]
+  `(if (.isDiagUnit (region ~a))
+     (+ (.ncols ~a) (double (gb-dot ~method ~a ~b)))
+     (gb-dot ~method ~a ~b)))
 
 (defmacro gb-map [method a b]
   `(if (< 0 (.dim ~a))
@@ -587,6 +625,19 @@
            ld-a# (.stride ~a)]
        (band-storage-reduce ~a len# offset# acc# 0.0 (+ acc# (~method len# buff# offset# ld-a#))))
      0.0))
+
+(defmacro sb-sum [method a]
+  `(if (< 0 (.dim ~a))
+     (let [buff# (.buffer ~a)
+           ld-a# (.stride ~a)]
+       (symmetric-band-storage-reduce ~a len# offset# acc# 0.0
+                                      (+ acc# (~method len# buff# offset# ld-a#))))
+     0.0))
+
+(defmacro tb-sum [method a]
+  `(if (.isDiagUnit (region ~a))
+     (+ (.ncols ~a) (double (gb-sum ~method ~a)))
+     (gb-sum ~method ~a)))
 
 (defmacro gb-axpy [method alpha a b]
   `(if (< 0 (.dim ~a))
@@ -728,7 +779,7 @@
             nav-b# (navigator ~b)
             stor-b# (storage ~b)
             uplo# (.uplo reg#)
-            diag# (.diag reg)
+            diag# (.diag reg#)
             n-a# (.ncols ~a)
             ku-a# (.ku reg#)
             buff-a# (.buffer ~a)
@@ -747,13 +798,13 @@
    `(dragan-says-ex "Out-of-place mm! is not supported by TB matrices. Copy TB to GE." {:a (info ~a)})))
 
 (defmacro tb-sv
-  ([method a b pure]
+  ([method a b]
    `(let [reg# (region ~a)
           layout# (.layout (navigator ~a))
           nav-b# (navigator ~b)
           stor-b# (storage ~b)
           uplo# (.uplo reg#)
-          diag# (.diag reg)
+          diag# (.diag reg#)
           n-a# (.ncols ~a)
           ku-a# (.ku reg#)
           buff-a# (.buffer ~a)
@@ -788,15 +839,6 @@
      (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matcking layout."
                      {:a (info ~a) :b (info ~b)})))
 
-(defmacro packed-amax [method da a]
-  `(if (< 0 (.dim ~a))
-     (let [buff# (.buffer ~a)
-           ofst# (.offset ~a)]
-       (if-not (.isDiagUnit (region ~a))
-         (Math/abs (.get ~da buff# (+ ofst# (~method (.surface (region ~a)) buff# ofst# 1))))
-         (accu-layout ~a len# idx# max# 1.0
-                      (max max# (Math/abs (.get ~da buff# (+ ofst# idx# (~method len# buff# (+ ofst# idx#) 1))))))))
-     0.0))
 
 (defmacro packed-map
   ([method a]
@@ -825,25 +867,27 @@
     (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
     ~b))
 
-(defmacro tp-sum [method transform da a]
+(defmacro tp-sum [method transform a]
   `(if (< 0 (.dim ~a))
-     (let [n# (.ncols ~a)
-           stor# (storage ~a)
+     (let [stor# (storage ~a)
+           da# (real-accessor ~a)
+           n# (.ncols ~a)
            buff# (.buffer ~a)
            ofst# (.offset ~a)]
        (if-not (.isDiagUnit (region ~a))
          (~method (.surface (region ~a)) buff# ofst# 1)
          (loop [i# 0 acc# (+ n# (~method (+ n# (.surface (region ~a))) buff# ofst# 1))]
            (if (< i# n#)
-             (recur (inc i#) (- acc# (~transform (.get ~da buff# (+ ofst# (.index stor# i# i#))))))
+             (recur (inc i#) (- acc# (~transform (.get da# buff# (+ ofst# (.index stor# i# i#))))))
              acc#))))
      0.0))
 
-(defmacro tp-dot [method da a b]
+(defmacro tp-dot [method a b]
   `(check-layout
     ~a ~b
     (if (< 0 (.dim ~a))
-      (let [n# (.ncols ~a)
+      (let [da# (real-accessor ~a)
+            n# (.ncols ~a)
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
             buff-b# (.buffer ~b)
@@ -854,25 +898,10 @@
           dot#
           (loop [i# 0 acc# (+ n# dot#)]
                (if (< i# n#)
-                 (recur (inc i#) (- acc# (* (.get ~da buff-a# (+ ofst-a# (.index stor# i# i#)))
-                                            (.get ~da buff-b# (+ ofst-b# (.index stor# i# i#))))))
+                 (recur (inc i#) (- acc# (* (.get da# buff-a# (+ ofst-a# (.index stor# i# i#)))
+                                            (.get da# buff-b# (+ ofst-b# (.index stor# i# i#))))))
                  acc#))))
       0.0)))
-
-(defmacro tp-nrm2 [method da a]
-  `(if (< 0 (.dim ~a))
-     (let [n# (.ncols ~a)
-           buff# (.buffer ~a)
-           ofst# (.offset ~a)
-           stor# (storage ~a)
-           nrm# (~method (.surface (region ~a)) buff# ofst# 1)]
-       (if-not (.isDiagUnit (region ~a))
-         nrm#
-         (Math/sqrt (loop [i# 0 acc# (+ n# (* nrm# nrm#))]
-                      (if (< i# n#)
-                        (recur (inc i#) (- acc# (Math/pow (.get ~da buff# (+ ofst# (.index stor# i# i#))) 2)))
-                        acc#)))))
-     0.0))
 
 (defmacro tp-mv
   ([method a x]
@@ -911,35 +940,25 @@
 
 ;; ============================ Symmetric Packed Matrix ================================
 
-(defmacro sp-sum [method transform da a]
+(defmacro sp-sum [method transform a]
   `(if (< 0 (.dim ~a))
-     (let [n# (.ncols ~a)
+     (let [da# (real-accessor ~a)
+           n# (.ncols ~a)
            buff# (.buffer ~a)
            ofst# (.offset ~a)
            stor# (storage ~a)]
        (loop [i# 0 acc# (* 2.0 (~method (.surface (region ~a)) buff# ofst# 1))]
          (if (< i# n#)
-           (recur (inc i#) (- acc# (~transform (.get ~da buff# (+ ofst# (.index stor# i# i#))))))
+           (recur (inc i#) (- acc# (~transform (.get da# buff# (+ ofst# (.index stor# i# i#))))))
            acc#)))
      0.0))
 
-(defmacro sp-nrm2 [method da a]
-  `(if (< 0 (.dim ~a))
-     (let [n# (.ncols ~a)
-           buff# (.buffer ~a)
-           ofst# (.offset ~a)
-           stor# (storage ~a)]
-       (Math/sqrt (loop [i# 0 acc# (* 2.0 (Math/pow (~method (.surface (region ~a)) buff# ofst# 1) 2))]
-                    (if (< i# n#)
-                      (recur (inc i#) (- acc# (Math/pow (.get ~da buff# (+ ofst# (.index stor# i# i#))) 2)))
-                      acc#))))
-     0.0))
-
-(defmacro sp-dot [method da a b]
+(defmacro sp-dot [method a b]
   `(check-layout
     ~a ~b
     (if (< 0 (.dim ~a))
-      (let [n# (.ncols ~a)
+      (let [da# (real-accessor ~a)
+            n# (.ncols ~a)
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
             buff-b# (.buffer ~b)
@@ -950,8 +969,8 @@
           (if (< i# n#)
             (recur (inc i#)
                    (- acc#
-                      (* (.get ~da buff-a# (+ ofst-a# (.index stor# i# i#)))
-                         (.get ~da buff-b# (+ ofst-b# (.index stor# i# i#))))))
+                      (* (.get da# buff-a# (+ ofst-a# (.index stor# i# i#)))
+                         (.get da# buff-b# (+ ofst-b# (.index stor# i# i#))))))
             acc#)))
       0.0)))
 

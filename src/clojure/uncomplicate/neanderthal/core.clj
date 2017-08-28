@@ -81,7 +81,7 @@
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix Changeable GEMatrix
-            MatrixImplementation]))
+            MatrixImplementation Region]))
 
 (defn info
   "TODO"
@@ -335,40 +335,63 @@
   ([factory m n kl ku]
    (gb factory m n kl ku nil nil))
   ([factory m n]
-   (gb factory m n 0 0 nil nil)))
-
-(defn tb
-  "TODO"
-  ([factory n k source options]
-   (if  (< -1 (long k) (long n))
-     (let-release [res (api/create-tb factory n k (api/options-column? options)
-                                      (api/options-lower? options) (api/options-diag-unit? options)
-                                      (not (:raw options)))]
-       (if source (transfer! source res) res))
-     (throw (ex-info "TB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
-  ([factory n k arg]
-   (if (or (not arg) (map? arg))
-     (tb factory n k nil arg)
-     (tb factory n k arg nil)))
-  ([factory n k]
-   (tb factory n k nil nil)))
+   (gb factory m n 0 0 nil nil))
+  ([factory ^Matrix a]
+   (let [reg (api/region a)]
+     (gb factory (.mrows a) (.ncols a) (.kl reg) (.ku reg) nil))))
 
 (defn sb
   "TODO"
   ([factory n k source options]
-   (if  (< -1 (long k) (long n))
+   (if (or (< -1 (long k) (long n)) (= 0 k n))
      (let-release [res (api/create-sb factory n k (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source
          (transfer! source res)
          res))
      (throw (ex-info "SB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
-  ([factory n k arg]
-   (if (or (not arg) (map? arg))
-     (sb factory n k nil arg)
-     (sb factory n k arg nil)))
-  ([factory n k]
-   (sb factory n k nil nil)))
+  ([factory n source arg]
+   (let [[k src] (if (number? source) [source nil] [(max 0 (dec (long n))) source])]
+     (if (or (not arg) (map? arg))
+       (sb factory n k src arg)
+       (sb factory n k arg nil))))
+  ([factory ^long n arg]
+   (cond
+     (number? arg) (sb factory n arg nil nil)
+     (or (not arg) (map? arg)) (sb factory n (max 0 (dec n)) nil arg)
+     :default (sb factory n (max 0 (dec n)) arg nil)))
+  ([factory source]
+   (if (number? source)
+     (sb factory source (max 0 (dec (long source))) nil nil)
+     (let [n (min (.mrows ^Matrix source) (.ncols ^Matrix source))
+           reg (api/region source)]
+       (sb factory n (max 0 (min (dec n) (max (.kl reg) (.ku reg))))  source nil)))))
+
+(defn tb
+  "TODO"
+  ([factory n k source options]
+   (if (or (< -1 (long k) (long n)) (= 0 k n))
+     (let-release [res (api/create-tb factory n k (api/options-column? options)
+                                      (api/options-lower? options) (api/options-diag-unit? options)
+                                      (not (:raw options)))]
+       (if source (transfer! source res) res))
+     (throw (ex-info "TB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
+  ([factory n source arg]
+   (let [[k src] (if (number? source) [source nil] [(max 0 (dec (long n))) source])]
+     (if (or (not arg) (map? arg))
+       (tb factory n k src arg)
+       (tb factory n k arg nil))))
+  ([factory ^long n arg]
+   (cond
+     (number? arg) (tb factory n arg nil nil)
+     (or (not arg) (map? arg)) (tb factory n (max 0 (dec n)) nil arg)
+     :default (tb factory n (max 0 (dec n)) arg nil)))
+  ([factory source]
+   (if (number? source)
+     (tb factory source (max 0 (dec (long source))) nil nil)
+     (let [n (min (.mrows ^Matrix source) (.ncols ^Matrix source))
+           reg (api/region source)]
+       (tb factory n (min (max 0 (dec n)) (max (.kl reg) (.ku reg))) source nil)))))
 
 (defn tp
   "TODO"
@@ -383,10 +406,10 @@
    (if (or (not arg) (map? arg))
      (tp factory n nil arg)
      (tp factory n arg nil)))
-  ([factory arg]
-   (if (number? arg)
-     (tp factory arg nil nil)
-     (tp factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
+  ([factory source]
+   (if (number? source)
+     (tp factory source nil nil)
+     (tp factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
 
 (defn sp
   "TODO"
