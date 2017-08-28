@@ -1182,6 +1182,71 @@
   Lapack
   (srt [_ a increasing]
     (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "There is no use for pivots when working with TP matrices."))
+  (tri [_ a]
+    (tp-tri LAPACK/dtptri ^RealPackedMatrix a))
+  (trs [_ a b]
+    (tp-trs LAPACK/dtptrs ^RealPackedMatrix a ^RealGEMatrix b))
+  (sv [this a b _]
+    (tp-sv CBLAS/dtpsv ^RealPackedMatrix a ^RealGEMatrix b))
+  (con [_ a nrm1?]
+    (tp-con LAPACK/dtpcon ^RealPackedMatrix a nrm1?))
+  TRF
+  (create-trf [_ a _]
+    a))
+
+(deftype FloatTPEngine []
+  Blas
+  (swap [_ a b]
+    (packed-map CBLAS/sswap ^RealPackedMatrix a ^RealPackedMatrix b)
+    a)
+  (copy [_ a b]
+    (packed-map CBLAS/scopy ^RealPackedMatrix a ^RealPackedMatrix b))
+  (scal [_ alpha a]
+    (packed-scal CBLAS/sscal alpha ^RealPackedMatrix a))
+  (dot [_ a b]
+    (tp-dot CBLAS/sdot ^RealPackedMatrix a ^RealPackedMatrix b))
+  (nrm1 [_ a]
+    (tp-lan LAPACK/slantp (int \O) ^RealPackedMatrix a))
+  (nrm2 [_ a]
+    (tp-lan LAPACK/slantp (int \F) ^RealPackedMatrix a))
+  (nrmi [_ a]
+    (tp-lan LAPACK/slantp (int \I) ^RealPackedMatrix a))
+  (asum [_ a]
+    (tp-sum CBLAS/sasum Math/abs ^RealPackedMatrix a))
+  (axpy [_ alpha a b]
+    (packed-axpy CBLAS/saxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
+  (mv [this alpha a x beta y]
+    (tp-mv a))
+  (mv [_ a x]
+    (tp-mv CBLAS/stpmv ^RealPackedMatrix a ^RealBlockVector x))
+  (mm [this _ a _ _ _ _]
+    (tp-mm a))
+  (mm [_ alpha a b left]
+    (tp-mm CBLAS/stpmv alpha ^RealPackedMatrix a ^RealGEMatrix b left))
+  BlasPlus
+  (amax [_ a]
+    (tp-lan LAPACK/slantp (int \M) ^RealPackedMatrix a))
+  (sum [_ a]
+    (tp-sum CBLAS/ssum double ^RealPackedMatrix a))
+  (set-all [_ alpha a]
+    (packed-laset LAPACK/slaset alpha ^RealPackedMatrix a))
+  (axpby [_ alpha a beta b]
+    (packed-axpby MKL/saxpby alpha ^RealPackedMatrix a beta ^RealPackedMatrix b))
+  Lapack
+  (srt [_ a increasing]
+    (packed-lasrt LAPACK/slasrt ^RealPackedMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "There is no use for pivots when working with TP matrices."))
+  (tri [_ a]
+    (tp-tri LAPACK/stptri ^RealPackedMatrix a))
+  (trs [_ a b]
+    (tp-trs LAPACK/stptrs ^RealPackedMatrix a ^RealGEMatrix b))
+  (sv [this a b _]
+    (tp-sv CBLAS/stpsv ^RealPackedMatrix a ^RealGEMatrix b))
+  (con [_ a nrm1?]
+    (tp-con LAPACK/stpcon ^RealPackedMatrix a nrm1?))
   TRF
   (create-trf [_ a _]
     a))
@@ -1227,14 +1292,103 @@
   Lapack
   (srt [_ a increasing]
     (packed-lasrt LAPACK/dlasrt ^RealPackedMatrix a increasing))
+  (trf [_ a ipiv]
+    (sp-trx LAPACK/dsptrf ^RealPackedMatrix a ^IntegerBlockVector ipiv))
+  (trf [_ a]
+    (sp-trx LAPACK/dpptrf ^RealPackedMatrix a))
+  (tri [_ ldl ipiv]
+    (sp-trx LAPACK/dsptri ^RealPackedMatrix ldl ^IntegerBlockVector ipiv))
+  (tri [_ gg]
+    (sp-trx LAPACK/dpptri ^RealPackedMatrix gg))
+  (trs [_ ldl b ipiv]
+    (sp-trs LAPACK/dsptrs ^RealPackedMatrix ldl ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ gg b]
+    (sp-trs LAPACK/dpptrs ^RealPackedMatrix gg ^RealGEMatrix b))
+  (sv [_ a b pure]
+    (sp-sv LAPACK/dppsv LAPACK/dspsv ^RealPackedMatrix a ^RealGEMatrix b pure))
+  (sv [_ a b]
+    (sp-sv LAPACK/dppsv ^RealPackedMatrix a ^RealGEMatrix b))
+  (con [_ ldl ipiv nrm _]
+    (sp-con LAPACK/dspcon ^RealPackedMatrix ldl ^IntegerBlockVector ipiv nrm))
+  (con [_ gg nrm _]
+    (sp-con LAPACK/dppcon ^RealPackedMatrix gg nrm))
   TRF
-  (create-trf [this a master]
-    (matrix-create-trf matrix-lu this ^RealPackedMatrix a master)))
+  (create-trf [_ a pure]
+    (sp-cholesky-lu LAPACK/dpptrf ^RealPackedMatrix a pure))
+  (create-ptrf [_ a]
+    (matrix-create-trf matrix-cholesky ^RealPackedMatrix a false)))
+
+(deftype FloatSPEngine []
+  Blas
+  (swap [_ a b]
+    (packed-map CBLAS/sswap ^RealPackedMatrix a ^RealPackedMatrix b)
+    a)
+  (copy [_ a b]
+    (packed-map CBLAS/scopy ^RealPackedMatrix a ^RealPackedMatrix b))
+  (scal [_ alpha a]
+    (packed-scal CBLAS/sscal alpha ^RealPackedMatrix a))
+  (dot [_ a b]
+    (sp-dot CBLAS/sdot ^RealPackedMatrix a ^RealPackedMatrix b))
+  (nrm1 [_ a]
+    (sp-lan LAPACK/slansp (int \O) ^RealPackedMatrix a))
+  (nrm2 [_ a]
+    (sp-lan LAPACK/slansp (int \F) ^RealPackedMatrix a))
+  (nrmi [_ a]
+    (sp-lan LAPACK/slansp (int \I) ^RealPackedMatrix a))
+  (asum [_ a]
+    (sp-sum CBLAS/sasum Math/abs ^RealPackedMatrix a))
+  (axpy [_ alpha a b]
+    (packed-axpy CBLAS/saxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
+  (mv [this alpha a x beta y]
+    (sp-mv CBLAS/sspmv alpha ^RealPackedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
+  (mv [_ a x]
+    (sp-mv a))
+  (mm [this alpha a b beta c left]
+    (sp-mm CBLAS/sspmv alpha ^RealPackedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
+  (mm [_ _ a _ _]
+    (sp-mm a))
+  BlasPlus
+  (amax [_ a]
+    (sp-lan LAPACK/slansp (int \M) ^RealPackedMatrix a))
+  (sum [_ a]
+    (sp-sum CBLAS/ssum double ^RealPackedMatrix a))
+  (set-all [_ alpha a]
+    (packed-laset LAPACK/slaset alpha ^RealPackedMatrix a))
+  (axpby [_ alpha a beta b]
+    (packed-axpby MKL/saxpby alpha ^RealPackedMatrix a beta ^RealPackedMatrix b))
+  Lapack
+  (srt [_ a increasing]
+    (packed-lasrt LAPACK/slasrt ^RealPackedMatrix a increasing))
+  (trf [_ a ipiv]
+    (sp-trx LAPACK/ssptrf ^RealPackedMatrix a ^IntegerBlockVector ipiv))
+  (trf [_ a]
+    (sp-trx LAPACK/spptrf ^RealPackedMatrix a))
+  (tri [_ ldl ipiv]
+    (sp-trx LAPACK/ssptri ^RealPackedMatrix ldl ^IntegerBlockVector ipiv))
+  (tri [_ gg]
+    (sp-trx LAPACK/spptri ^RealPackedMatrix gg))
+  (trs [_ ldl b ipiv]
+    (sp-trs LAPACK/ssptrs ^RealPackedMatrix ldl ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (trs [_ gg b]
+    (sp-trs LAPACK/spptrs ^RealPackedMatrix gg ^RealGEMatrix b))
+  (sv [_ a b pure]
+    (sp-sv LAPACK/sppsv LAPACK/sspsv ^RealPackedMatrix a ^RealGEMatrix b pure))
+  (sv [_ a b]
+    (sp-sv LAPACK/sppsv ^RealPackedMatrix a ^RealGEMatrix b))
+  (con [_ ldl ipiv nrm _]
+    (sp-con LAPACK/sspcon ^RealPackedMatrix ldl ^IntegerBlockVector ipiv nrm))
+  (con [_ gg nrm _]
+    (sp-con LAPACK/sppcon ^RealPackedMatrix gg nrm))
+  TRF
+  (create-trf [_ a pure]
+    (sp-cholesky-lu LAPACK/spptrf ^RealPackedMatrix a pure))
+  (create-ptrf [_ a]
+    (matrix-create-trf matrix-cholesky ^RealPackedMatrix a false)))
 
 ;; =============== Factories ==================================================
 
 (deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng
-                         ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng tp-eng sp-eng]
+                         ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng sp-eng tp-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1326,12 +1480,13 @@
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
-                      (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine) nil nil))
+                      (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
+                      (->FloatSPEngine) (->FloatTPEngine)))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
                       (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
                       (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
-                      (->DoubleTPEngine) (->DoubleSPEngine)))
+                      (->DoubleSPEngine) (->DoubleTPEngine)))
 
   (vreset! index-fact mkl-int))

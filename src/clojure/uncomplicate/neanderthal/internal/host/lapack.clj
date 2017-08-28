@@ -319,7 +319,7 @@
       (check-pivot ~ipiv)
       (with-sv-check ~a
         (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
-         (.buffer ~a) (.offset ~a) (.ld stor#) (buffer ~ipiv) (offset ~ipiv)))))
+         (.buffer ~a) (.offset ~a) (.ld stor#) (.buffer ~ipiv) (.offset ~ipiv)))))
   ([method a]
    `(let [stor# (full-storage ~a)]
       (with-sv-check ~a
@@ -332,6 +332,21 @@
        (copy (engine ~a) ~a a-copy#)
        (let [info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
                     (.ncols ~a) (buffer a-copy#) (offset a-copy#) (stride a-copy#))]
+         (cond
+           (= 0 info#) (->CholeskyFactorization a-copy# true (atom true))
+           (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                       {:arg-index (- info#)}))
+           :else (do
+                   (copy (engine ~a) ~a a-copy#)
+                   (matrix-create-trf matrix-lu a-copy# true)))))
+     (matrix-create-trf matrix-lu ~a false)))
+
+(defmacro sp-cholesky-lu [method a pure]
+  `(if ~pure
+     (let-release [a-copy# (raw ~a)]
+       (copy (engine ~a) ~a a-copy#)
+       (let [info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
+                    (.ncols ~a) (buffer a-copy#) (offset a-copy#))]
          (cond
            (= 0 info#) (->CholeskyFactorization a-copy# true (atom true))
            (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
@@ -377,6 +392,20 @@
      (~method (.layout (navigator ~a))
       (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
       (.sd stor#) (.buffer ~a) (.offset ~a) (.ld stor#))
+     ~a))
+
+(defmacro sp-tri [method a ipiv]
+  `(let [stor# (full-storage ~a)
+         reg# (region ~a)]
+     (~method (.layout (navigator ~a)) (int (if (.isLower reg#) \L \U))
+      (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~ipiv) (.offset ~ipiv))
+     ~a))
+
+(defmacro tp-tri [method a]
+  `(let [stor# (full-storage ~a)
+         reg# (region ~a)]
+     (~method (.layout (navigator ~a)) (int (if (.isLower reg#) \L \U))
+      (int (if (.isDiagUnit reg#) \U \N)) (.ncols ~a) (.buffer ~a) (.offset ~a))
      ~a))
 
 (defmacro ge-trs [method lu b ipiv]
@@ -427,6 +456,47 @@
       (int (if (.isDiagUnit reg-a#) \U \N)) (.mrows ~b) (.ncols ~b)
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
      ~b))
+
+(defmacro tp-trs [method a b]
+  `(let [reg-a# (region ~a)
+         nav-b# (navigator ~b)]
+     (~method (.layout nav-b#)
+      (int (if (.isLower reg-a#) \L \U)) (int (if (= nav-b# (navigator ~a)) \N \T))
+      (int (if (.isDiagUnit reg-a#) \U \N)) (.mrows ~b) (.ncols ~b)
+      (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
+     ~b))
+
+(defmacro sp-trs
+  ([method ldl b ipiv]
+   `(let [nav-b# (navigator ~b)]
+      (check-pivot ~ipiv)
+      (if (= nav-b# (navigator ~ldl))
+        (with-sv-check ~b
+          (~method (.layout nav-b#) (int (if (.isLower (region ~ldl)) \L \U)) (.mrows ~b) (.ncols ~b)
+           (.buffer ~ldl) (.offset ~ldl) (.buffer ~ipiv) (.offset ~ipiv)
+           (.buffer ~b) (.offset ~b) (.stride ~b)))
+        (dragan-says-ex "SP pivoted solver (trs only) requires that both matrices have the same layout."
+                        {:ldl (info ~ldl) :b (info ~b)}))))
+  ([method a b]
+   `(let [reg-a# (region ~a)
+          nav-b# (navigator ~b)
+          nav# (int (if (= nav-b# (navigator ~a)) (if (.isLower reg-a#) \L \U) (if (.isLower reg-a#) \U \L)))]
+      (~method (.layout nav-b#) nav#
+       (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
+      ~b)))
+
+(defmacro sp-trx
+  ([method a ipiv]
+   `(do
+      (check-pivot ~ipiv)
+      (with-sv-check ~a
+        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
+         (.buffer ~a) (.offset ~a) (buffer ~ipiv) (offset ~ipiv)))))
+  ([method a]
+   `(do
+      (with-sv-check ~a
+        (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
+         (.buffer ~a) (.offset ~a))))))
 
 (defmacro sy-trs
   ([method ldl b ipiv]
@@ -495,20 +565,42 @@
         (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
         (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) res#))))
 
+(defmacro tp-con [method a nrm1?]
+  `(with-release [da# (real-accessor ~a)
+                  res# (.createDataSource da# 1)
+                  reg# (region ~a)]
+     (with-sv-check (.get da# res# 0)
+       (~method (.layout (navigator ~a)) (int (if ~nrm1? \O \I))
+        (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
+        (.ncols ~a) (.buffer ~a) (.offset ~a) res#))))
+
 (defmacro sy-con
   ([method ldl ipiv nrm]
    `(with-release [da# (real-accessor ~ldl)
                    res# (.createDataSource da# 1)]
       (with-sv-check (.get da# res# 0)
         (~method (.layout (navigator ~ldl)) (int (if (.isLower (region ~ldl)) \L \U)) (.ncols ~ldl)
-         (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv)
-         ~nrm res#))))
+         (.buffer ~ldl) (.offset ~ldl) (.stride ~ldl) (.buffer ~ipiv) (.offset ~ipiv) ~nrm res#))))
   ([method gg nrm]
    `(with-release [da# (real-accessor ~gg)
                    res# (.createDataSource da# 1)]
       (with-sv-check (.get da# res# 0)
         (~method (.layout (navigator ~gg)) (int (if (.isLower (region ~gg)) \L \U)) (.ncols ~gg)
          (.buffer ~gg) (.offset ~gg) (.stride ~gg) ~nrm res#)))))
+
+(defmacro sp-con
+  ([method ldl ipiv nrm]
+   `(with-release [da# (real-accessor ~ldl)
+                   res# (.createDataSource da# 1)]
+      (with-sv-check (.get da# res# 0)
+        (~method (.layout (navigator ~ldl)) (int (if (.isLower (region ~ldl)) \L \U)) (.ncols ~ldl)
+         (.buffer ~ldl) (.offset ~ldl) (.buffer ~ipiv) (.offset ~ipiv) ~nrm res#))))
+  ([method gg nrm]
+   `(with-release [da# (real-accessor ~gg)
+                   res# (.createDataSource da# 1)]
+      (with-sv-check (.get da# res# 0)
+        (~method (.layout (navigator ~gg)) (int (if (.isLower (region ~gg)) \L \U)) (.ncols ~gg)
+         (.buffer ~gg) (.offset ~gg) ~nrm res#)))))
 
 (defmacro ge-sv
   ([method a b pure]
@@ -573,9 +665,8 @@
       (if ~pure
         (with-release [a# (raw ~a)]
           (copy (engine ~a) ~a a#)
-          (let [info# (~po-method (.layout nav-b#) uplo#
-                       (.mrows ~b) (.ncols ~b) (buffer a#) (offset a#) (stride a#)
-                       (.buffer ~b) (.offset ~b) (.stride ~b))]
+          (let [info# (~po-method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b)
+                       (buffer a#) (offset a#) (stride a#) (.buffer ~b) (.offset ~b) (.stride ~b))]
             (cond
               (= 0 info#) ~b
               (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
@@ -586,8 +677,40 @@
         (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
           (check-pivot ipiv#)
           (with-sv-check ~b
-            (~sy-method (.layout nav-b#) uplo#
-             (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
+            (~sy-method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b)
+             (.buffer ~a) (.offset ~a) (.stride ~a) (buffer ipiv#) (offset ipiv#)
+             (.buffer ~b) (.offset ~b) (.stride ~b)))))))
+  ([method a b]
+   `(let [nav-b# (navigator ~b)
+          uplo# (if (= nav-b# (navigator ~a))
+                  (int (if (.isLower (region ~a)) \L \U))
+                  (int (if (.isLower (region ~a)) \U \L)))]
+      (with-sv-check ~b
+        (~method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b)
+         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))))))
+
+(defmacro sp-sv
+  ([po-method sp-method a b pure]
+   `(let [nav-b# (navigator ~b)
+          uplo# (if (= nav-b# (navigator ~a))
+                  (int (if (.isLower (region ~a)) \L \U))
+                  (int (if (.isLower (region ~a)) \U \L)))]
+      (if ~pure
+        (with-release [a# (raw ~a)]
+          (copy (engine ~a) ~a a#)
+          (let [info# (~po-method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b)
+                       (buffer a#) (offset a#) (.buffer ~b) (.offset ~b) (.stride ~b))]
+            (cond
+              (= 0 info#) ~b
+              (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                          {:arg-index (- info#)}))
+              :else (do
+                      (copy (engine ~a) ~a a#)
+                      (sv (engine ~a) a# ~b false)))))
+        (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
+          (check-pivot ipiv#)
+          (with-sv-check ~b
+            (~sp-method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a)
              (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b)))))))
   ([method a b]
    `(let [nav-b# (navigator ~b)
@@ -596,8 +719,7 @@
                   (int (if (.isLower (region ~a)) \U \L)))]
       (with-sv-check ~b
         (~method (.layout nav-b#) uplo#
-         (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
-         (.buffer ~b) (.offset ~b) (.stride ~b))))))
+         (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.stride ~b))))))
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 

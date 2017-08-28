@@ -836,7 +836,7 @@
 (defmacro check-layout [a b & expr]
   `(if (= (navigator ~a) (navigator ~b))
      (do ~@expr)
-     (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matcking layout."
+     (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matching layout."
                      {:a (info ~a) :b (info ~b)})))
 
 
@@ -905,8 +905,8 @@
 
 (defmacro tp-mv
   ([method a x]
-   `(let [region# (region ~a)]
-      (~method (.layout (navigator ~a)) (.uplo region#) CBLAS/TRANSPOSE_NO_TRANS (.diag region#)
+   `(let [reg# (region ~a)]
+      (~method (.layout (navigator ~a)) (.uplo reg#) CBLAS/TRANSPOSE_NO_TRANS (.diag reg#)
        (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
       ~x))
   ([a]
@@ -915,7 +915,7 @@
 (defmacro tp-mm
   ([method alpha a b left]
    `(if ~left
-      (let [region# (region ~a)
+      (let [reg# (region ~a)
             layout# (.layout (navigator ~a))
             n-a# (.ncols ~a)
             buff-a# (.buffer ~a)
@@ -923,8 +923,8 @@
             buff-b# (.buffer ~b)
             ofst-b# (.offset ~b)
             ld-b# (.stride ~b)
-            uplo# (.uplo region#)
-            diag# (.diag region#)]
+            uplo# (.uplo reg#)
+            diag# (.diag reg#)]
         (if (.isColumnMajor (navigator ~b))
           (dotimes [j# (.ncols ~b)]
             (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
@@ -937,6 +937,32 @@
                       {:a (info ~a) :b (info ~b)})))
   ([a]
    `(dragan-says-ex "Out-of-place mm! is not supported by TP matrices. Copy to GE." {:a (info ~a)})))
+
+(defmacro tp-sv [method a b]
+  `(let [reg# (region ~a)
+         nav-a# (navigator ~a)
+         nav-b# (navigator ~b)
+         layout# (.layout nav-b#)
+         n-a# (.ncols ~a)
+         buff-a# (.buffer ~a)
+         ofst-a# (.offset ~a)
+         buff-b# (.buffer ~b)
+         ofst-b# (.offset ~b)
+         ld-b# (.stride ~b)
+         uplo# (.uplo reg#)
+         diag# (.diag reg#)
+         trans# (if (= nav-a# nav-b#) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+         uplo# (if (= nav-a# nav-b#)
+                 (if (.isLower reg#) CBLAS/UPLO_LOWER CBLAS/UPLO_UPPER)
+                 (if (.isLower reg#) CBLAS/UPLO_UPPER CBLAS/UPLO_LOWER))]
+     (if (.isColumnMajor (navigator ~b))
+       (dotimes [j# (.ncols ~b)]
+         (~method layout# uplo# trans# diag# n-a#
+          buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1))
+       (dotimes [j# (.ncols ~b)]
+         (~method layout# uplo# trans# diag# n-a#
+          buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#)))
+     ~b))
 
 ;; ============================ Symmetric Packed Matrix ================================
 
@@ -976,8 +1002,8 @@
 
 (defmacro sp-mv
   ([method alpha a x beta y]
-   `(let [region# (region ~a)]
-      (~method (.layout (navigator ~a)) (.uplo region#) (.ncols ~a)
+   `(let [reg# (region ~a)]
+      (~method (.layout (navigator ~a)) (.uplo reg#) (.ncols ~a)
        ~alpha (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x)
        ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
       ~y))
@@ -987,7 +1013,7 @@
 (defmacro sp-mm
   ([method alpha a b beta c left]
    `(if ~left
-      (let [region# (region ~a)
+      (let [reg# (region ~a)
             layout# (.layout (navigator ~a))
             n-a# (.ncols ~a)
             buff-a# (.buffer ~a)
@@ -998,7 +1024,7 @@
             buff-c# (.buffer ~c)
             ofst-c# (.offset ~c)
             ld-c# (.stride ~c)
-            uplo# (.uplo region#)]
+            uplo# (.uplo reg#)]
         (if (.isColumnMajor (navigator ~b))
           (if (.isColumnMajor (navigator ~c))
             (dotimes [j# (.ncols ~b)]

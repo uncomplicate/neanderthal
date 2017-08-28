@@ -30,19 +30,21 @@
 (real-test/test-blas-sy-host mkl-float)
 
 (real-test/test-blas-gb mkl-double)
-(real-test/test-blas-gb-host mkl-double)
 (real-test/test-blas-gb mkl-float)
+(real-test/test-blas-gb-host mkl-double)
 (real-test/test-blas-gb-host mkl-float)
 
 (real-test/test-blas-sb mkl-double)
-(real-test/test-blas-sb-host mkl-double)
 (real-test/test-blas-sb mkl-float)
+(real-test/test-blas-sb-host mkl-double)
 (real-test/test-blas-sb-host mkl-float)
 
 (real-test/test-blas-tp mkl-double)
+(real-test/test-blas-tp mkl-float)
 (real-test/test-blas-tp-host mkl-double)
-(real-test/test-lapack-tp mkl-double)
+(real-test/test-blas-tp-host mkl-float)
 
 (real-test/test-blas-sp mkl-double)
+(real-test/test-blas-sp mkl-float)
 (real-test/test-blas-sp-host mkl-double)
-(real-test/test-lapack-sp mkl-double)
+(real-test/test-blas-sp-host mkl-float)

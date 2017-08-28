@@ -971,7 +971,6 @@
                                                7.00    8.00    0.00    0.00    0.00
                                                9.00    0.00    0.00    0.00    0.00]
                                   {:layout :row})]
-           ;; TODO (view-gb a-ge) => a
            (view-ge a) => a-ge
            (view-ge b) => b-ge
            (view-ge c) => c-ge
@@ -1006,7 +1005,7 @@
            (col a-lower 2) => (vctr factory [6 7])
            (dia a-upper) => (vctr factory 0 2 5 8))))
 
-(defn test-gb [factory];;TODO
+(defn test-gb [factory]
   (facts "GB Matrix methods."
          (with-release [a-row (gb factory 4 3 2 1 (range 1 100) {:layout :row})
                         a-col (gb factory 4 3 2 1 (range 1 100))]
@@ -1324,7 +1323,7 @@
      (:ipiv lu-a) => (vctr (index-factory factory) [5 5 3 4 5])
      (nrm2 (axpy! -1 a lu)) => (roughly 0 0.02))))
 
-(defn test-sy-trx [factory]
+(defn test-sy-trx [factory sy]
   (facts
    "LAPACK SY linear system solver."
 
@@ -1420,6 +1419,48 @@
      (con gg (nrm1 a)) => (roughly 0 0.01)
      (nrm2 (axpy! -1 b-solution (trs gg b))) => (roughly 0 0.0001)
      (nrm2 (axpy! -1 (tri gg) inv)) => (roughly 0)
+     (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0 0.0001))))
+
+(defn test-sp-potrx [factory]
+  (facts
+   "LAPACK SP positive definite linear system solver."
+
+   (with-release [a (sp factory 9 [1
+                                   1 2
+                                   1 2 3
+                                   1 2 3 4
+                                   1 2 3 4 5
+                                   1 2 3 4 5 6
+                                   1 2 3 4 5 6 7
+                                   1 2 3 4 5 6 7 8
+                                   1 2 3 4 5 6 7 8 9]
+                        {:layout :row})
+                  b (ge factory 9 2 [9 17 24 30 35 39 42 44 45
+                                     45 89 131 170 205 235 259 276 285])
+                  b-solution (ge factory 9 2 [1 1
+                                              1 2
+                                              1 3
+                                              1 4
+                                              1 5
+                                              1 6
+                                              1 7
+                                              1 8
+                                              1 9]
+                                 {:layout :row})
+                  gg-sy (trf! (sy factory 9 [1
+                                             1 2
+                                             1 2 3
+                                             1 2 3 4
+                                             1 2 3 4 5
+                                             1 2 3 4 5 6
+                                             1 2 3 4 5 6 7
+                                             1 2 3 4 5 6 7 8
+                                             1 2 3 4 5 6 7 8 9]
+                                  {:layout :row}))
+                  gg (trf a)]
+     (con gg (nrm1 a)) => (roughly (con gg-sy (nrm1 a)) 0.01)
+     (nrm2 (axpy! -1 b-solution (trs gg b))) => (roughly 0 0.0001)
+     (nrm2 (axpy! -1 (tri gg) (transfer! (tri gg-sy) (sp factory 9 {:layout :row})))) => (roughly 0)
      (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0 0.0001))))
 
 (defn test-gb-trx [factory]
@@ -1552,7 +1593,7 @@
      (nrm2 (axpy! -1 a lu)) => (roughly 0.0136)
      (nrm2 (axpy! -1 b solution)) => (roughly 0.0120))))
 
-(defn test-tr-trs [factory]
+(defn test-tr-trs [factory tr]
   (facts
    "LAPACK TR trs!"
 
@@ -1564,7 +1605,7 @@
                   b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
                                      -1.56,  4.00, -8.67,  1.75,  2.86,
                                      9.81, -4.09, -4.57, -8.61,  8.99])
-                  a (copy (view-ge t))
+                  a (transfer! t (ge factory 5 5))
                   b1 (copy b)
                   lu-a (trf! a)]
 
@@ -1582,7 +1623,7 @@
 
      (nrm2 (mm (tri! lu-a) a)) => (roughly (sqrt 5.0)))))
 
-(defn test-tr-tri [factory]
+(defn test-tr-tri [factory tr]
   (facts
    "LAPACK TR tri"
    (with-release [a (ge factory 5 5 [0.378589, 0 0 0 0
@@ -1623,7 +1664,7 @@
      (nrm2 (axpy! -1 (sv! a b) solution)) => (roughly 0.01201)
      (nrm2 (axpy! -1 a lu)) => (roughly 0.01359))))
 
-(defn test-tr-sv [factory]
+(defn test-tr-sv [factory tr]
   (facts
    "LAPACK TR sv!"
 
@@ -1637,7 +1678,7 @@
                                      9.81, -4.09, -4.57, -8.61,  8.99])
                   t1 (copy t)
                   b1 (copy b)
-                  t2 (copy! t (tr factory 5 {:layout :row}))
+                  t2 (transfer! t (tr factory 5 {:layout :row}))
                   b2 (copy b)
                   t3 (copy t2)
                   b3 (copy b)]
@@ -1696,7 +1737,7 @@
      (con lu-a nrm true) => (roughly (/ 152.1620))
      (con lu-copy-a) => (throws ExceptionInfo))))
 
-(defn test-tr-con [factory]
+(defn test-tr-con [factory tr]
   (facts
    "LAPACK TR con!"
 
@@ -2026,22 +2067,31 @@
   (test-ge-srt factory)
   (test-ge-laswp factory)
   (test-uplo-srt factory tr)
+  (test-uplo-srt factory sy)
+  (test-uplo-srt factory sp)
+  (test-uplo-srt factory tp)
   (test-ge-trf factory)
   (test-ge-trs factory)
-  (test-tr-trs factory)
+  (test-tr-trs factory tr)
+  (test-tr-trs factory tp)
   (test-ge-tri factory)
-  (test-tr-tri factory)
+  (test-tr-tri factory tr)
+  (test-tr-tri factory tp)
   (test-ge-con factory)
-  (test-tr-con factory)
+  (test-tr-con factory tr)
+  (test-tr-con factory tp)
   (test-ge-det factory)
   (test-ge-sv factory)
-  (test-tr-sv factory)
+  (test-tr-sv factory tr)
+  (test-tr-sv factory tp)
   (test-sy-sv factory)
-  (test-sy-trx factory)
+  (test-sy-trx factory sy)
   (test-sy-potrx factory)
   (test-gb-trx factory)
   (test-sb-trx factory)
   (test-tb-trx factory)
+  (test-sy-trx factory sp)
+  (test-sp-potrx factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)
@@ -2101,10 +2151,10 @@
   (test-sy-mm factory))
 
 (defn test-blas-sb-host [factory]
-  ;;(test-sy-entry factory sb)
-  ;;(test-sy-entry! factory sb)
+  (test-sy-entry factory sb)
+  (test-sy-entry! factory sb)
   (test-sy-bulk-entry! factory sb)
-  ;;(test-sy-alter! factory sb)
+  (test-sy-alter! factory sb)
   (test-sy-dot factory)
   (test-sy-nrm2 factory sb)
   (test-sy-asum factory sb)
@@ -2132,9 +2182,6 @@
   (test-tr-sum factory tp)
   (test-tr-amax factory tp))
 
-(defn test-lapack-tp [factory]
-  (test-uplo-srt factory tp))
-
 (defn test-blas-sp [factory]
   (test-packed-constructor factory sp)
   (test-packed factory sp)
@@ -2155,6 +2202,3 @@
   (test-sy-asum factory sp)
   (test-sy-sum factory sp)
   (test-sy-amax factory sp))
-
-(defn test-lapack-sp [factory]
-  (test-uplo-srt factory sp))
