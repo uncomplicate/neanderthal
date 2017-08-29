@@ -195,7 +195,7 @@
        (with-release [work# (.createDataSource (data-accessor ~a) fd#)]
          (~lansb ~norm
           (int (if (.isColumnMajor (navigator ~a)) (if (.isLower reg#) \L \U) (if (.isLower reg#) \U \L)))
-          fd# (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.ld stor#) work#)))
+          fd# (max (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.ld stor#) work#)))
      0.0))
 
 (defmacro tb-lan [lantb norm a]
@@ -207,7 +207,7 @@
          (~lantb ~norm
           (int (if (.isColumnMajor (navigator ~a)) (if (.isLower reg#) \L \U) (if (.isLower reg#) \U \L)))
           (int (if (.isDiagUnit reg#) \U \N))
-          fd# (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.ld stor#) work#)))
+          fd# (max (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.ld stor#) work#)))
      0.0))
 
 (defmacro gb-laset [method alpha a]
@@ -377,7 +377,7 @@
    `(let [reg# (region ~a)]
       (with-sv-check ~a
         (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
-         (.ncols ~a) (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a))))))
+         (.ncols ~a) (max (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a))))))
 
 (defmacro ge-tri [method a ipiv]
   `(let [stor# (full-storage ~a)]
@@ -434,7 +434,7 @@
      (if (.isColumnMajor nav-b#)
        (with-sv-check ~b
          (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
-          (.mrows ~b) (+ (.kl reg#) (.ku reg#)) (.ncols ~b)
+          (.mrows ~b) (max (.kl reg#) (.ku reg#)) (.ncols ~b)
           (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
        (dragan-says-ex "SB solver requires that the right hand matrix have column layout."
                        {:a (info ~a) :b (info ~b)}))))
@@ -445,7 +445,7 @@
      (with-sv-check ~b
        (~method (.layout nav-b#) (int (if (.isLower reg#) \L \U))
         (int (if (= nav-b# (navigator ~a)) \N \T)) (int (if (.isDiagUnit reg#) \U \N))
-        (.mrows ~b) (+ (.kl reg#) (.ku reg#)) (.ncols ~b)
+        (.mrows ~b) (max (.kl reg#) (.ku reg#)) (.ncols ~b)
         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
 (defmacro tr-trs [method a b]
@@ -545,7 +545,7 @@
          res# (.createDataSource da# 1)]
      (with-sv-check (.get da# res# 0)
        (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
-        (.ncols ~gg) (+ (.kl reg#) (.ku reg#)) (.buffer ~gg) (.offset ~gg) (.stride ~gg) ~nrm res#))))
+        (.ncols ~gg) (max (.kl reg#) (.ku reg#)) (.buffer ~gg) (.offset ~gg) (.stride ~gg) ~nrm res#))))
 
 (defmacro tb-con [method a nrm1?]
   `(let [da# (real-accessor ~a)
@@ -554,7 +554,7 @@
      (with-sv-check (.get da# res# 0)
        (~method (.layout (navigator ~a)) (int (if ~nrm1? \O \I))
         (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
-        (.ncols ~a) (+ (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a) res#))))
+        (.ncols ~a) (max (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a) res#))))
 
 (defmacro tr-con [method a nrm1?]
   `(with-release [da# (real-accessor ~a)
@@ -650,7 +650,7 @@
        (if (.isColumnMajor nav-b#)
          (with-sv-check ~b
            (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
-            (.mrows ~b) (+ (.kl reg#) (.ku reg#)) (.ncols ~b)
+            (.mrows ~b) (max (.kl reg#) (.ku reg#)) (.ncols ~b)
             (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))
          (dragan-says-ex "SB solver requires that the right hand matrix have column layout."
                          {:a (info ~a) :b (info ~b)})))

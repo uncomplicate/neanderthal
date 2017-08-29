@@ -867,7 +867,7 @@
          (sum (entry! (sy factory 3 [1 2 3 4 5 6] {:uplo :upper}) 22.0)) => 198.0))
 
 (defn test-sy-alter! [factory sy]
-  (facts "Symetric alter!."
+  (facts "Symmetric alter!."
          (entry (alter! (sy factory 3 [1 2 3 4 5 6] {:layout :row}) 1 1 val+) 1 1) => 4.0
          (alter! (sy factory 3 [1 2 3 4 5 6]) val-ind+) => (sy factory 3 [0 0 0 5 7 16])
          (alter! (sy factory 3 [1 2 3 4 5 6] {:layout :row}) val-ind+)
@@ -992,18 +992,52 @@
 
 (defn test-sb [factory]
   (facts "SB Matrix methods."
-         (with-release [a-upper (sb factory 4 2 (range 15) {:uplo :upper})
+         (with-release [a-upper (sb factory 4 2 (range 15) {:layout :row :uplo :upper})
                         a-lower (sb factory 4 2 (range 15) {:uplo :lower})]
            (= 4 (mrows a-upper) (ncols a-lower)) => true
-           (row a-upper 0) => (vctr factory [0 1 3])
-           (row a-upper 2) => (vctr factory [5 7])
+           (row a-upper 0) => (vctr factory [0 1 2])
+           (row a-upper 2) => (vctr factory [6 7])
            (col a-upper 0) => (vctr factory [0])
-           (col a-upper 2) => (vctr factory [3 4 5])
+           (col a-upper 2) => (vctr factory [2 4 6])
            (row a-lower 0) => (vctr factory [0])
            (row a-lower 2) => (vctr factory [2 4 6])
            (col a-lower 0) => (vctr factory [0 1 2])
            (col a-lower 2) => (vctr factory [6 7])
-           (dia a-upper) => (vctr factory 0 2 5 8))))
+           (dia a-upper) => (vctr factory 0 3 6 8)
+           (sb factory 4 2 (range 15) {:uplo :upper}) => (throws ExceptionInfo))))
+
+(defn test-sb-entry [factory]
+  (facts "SB Matrix entry."
+         (with-release [a-upper (sb factory 3 (range 6) {:uplo :upper :layout :row})]
+           (entry a-upper 0 1) => 1.0
+           (entry a-upper 1 0) => 1.0
+           (entry a-upper 1 1) => 3.0
+           (entry a-upper 2 0) => 2.0
+           (entry a-upper 0 2) => 2.0
+           (entry a-upper -1 2) => (throws ExceptionInfo)
+           (entry a-upper 3 2) => (throws ExceptionInfo))))
+
+(defn test-sb-entry! [factory]
+  (facts "SB matrix entry!."
+         (with-release [a (sb factory 3 [1 2 3 4 5 6] {:uplo :upper :layout :row})
+                        c (ge factory 3 3 (range 1 10))]
+
+           (entry (view-ge (entry! (view-sy c) -1)) 1 2) => 8.0
+           (entry (entry! a 0 1 88.0) 0 1) => 88.0
+           (entry (entry! a 1 0 3.0) 0 1) => (throws ExceptionInfo)
+           (entry (entry! a 1 0 4.0) 1 1) => (throws ExceptionInfo))))
+
+(defn test-sb-bulk-entry! [factory]
+  (facts "Bulk SB matrix entry!."
+         (sum (entry! (sb factory 3 [1 2 3 4 5 6]) 33.0)) => 297.0
+         (sum (entry! (sb factory 3 [1 2 3 4 5 6] {:layout :row :uplo :upper}) 22.0)) => 198.0))
+
+(defn test-sb-alter! [factory]
+  (facts "SB alter!."
+         (entry (alter! (sb factory 3 [1 2 3 4 5 6] {:layout :row :uplo :upper}) 1 1 val+) 1 1) => 5.0
+         (alter! (sb factory 3 [1 2 3 4 5 6]) val-ind+) => (sb factory 3 [0 0 0 5 7 16])
+         (alter! (sb factory 3 [1 2 3 4 5 6] {:layout :row :uplo :upper}) val-ind+)
+         => (sb factory 3 [0 2 6 5 12 16] {:layout :row :uplo :upper})))
 
 (defn test-gb [factory]
   (facts "GB Matrix methods."
@@ -2151,10 +2185,10 @@
   (test-sy-mm factory))
 
 (defn test-blas-sb-host [factory]
-  (test-sy-entry factory sb)
-  (test-sy-entry! factory sb)
-  (test-sy-bulk-entry! factory sb)
-  (test-sy-alter! factory sb)
+  (test-sb-entry factory)
+  (test-sb-entry! factory)
+  (test-sb-bulk-entry! factory)
+  (test-sb-alter! factory)
   (test-sy-dot factory)
   (test-sy-nrm2 factory sb)
   (test-sy-asum factory sb)

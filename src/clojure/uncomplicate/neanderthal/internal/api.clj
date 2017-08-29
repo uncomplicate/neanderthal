@@ -154,8 +154,7 @@
   (view-ge [this] [this stride-mult])
   (view-tr [this lower? diag-unit?])
   (view-sy [this lower?])
-  (view-vctr [this] [this stride-mult])
-  (view-gb [this kl ku] [this]))
+  (view-vctr [this] [this stride-mult]))
 
 (defprotocol Subband
   (subband [this kl ku]))

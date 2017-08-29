@@ -1418,9 +1418,15 @@
   (create-gb [this m n kl ku lower? _]
     (real-banded-matrix this m n kl ku lower?))
   (create-tb [this n k column? lower? diag-unit? _]
-    (real-tb-matrix this n k column? lower? diag-unit?))
+    (if (or (and column? lower?) (and (not column?) (not lower?)))
+      (real-tb-matrix this n k column? lower? diag-unit?)
+      (dragan-says-ex "TB matrices have to be either column-major lower or row-major upper."
+                      {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
   (create-sb [this n k column? lower? _]
-    (real-sb-matrix this n k column? lower?))
+    (if (or (and column? lower?) (and (not column?) (not lower?)))
+      (real-sb-matrix this n k column? lower?)
+      (dragan-says-ex "SB matrices have to be either column-major lower or row-major upper."
+                      {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
   (create-packed [this n mat-type column? lower? diag-unit? _]
     (case mat-type
       :tp (real-packed-matrix this n column? lower? diag-unit?)

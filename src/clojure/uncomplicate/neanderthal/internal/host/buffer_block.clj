@@ -1363,6 +1363,21 @@
       (real-ge-matrix fact false buf m n ofst nav
                       (full-storage (.isColumnMajor nav) m n (.ld ^FullStorage stor))
                       (ge-region m n))))
+  (view-tr [_ _ diag-unit?]
+    (if-not (= :gb matrix-type)
+      (let [k (max (.kl reg) (.ku reg))]
+        (real-banded-matrix fact false buf n n ofst nav
+                            (tb-storage (.isColumnMajor nav) n k (.isLower reg) diag-unit?)
+                            (tb-region n k (.isLower reg) diag-unit?) :tb (real-default :tb diag-unit?)
+                            (tb-engine fact)))
+      (dragan-says-ex "GB cannot be viewed as a TB due to specific factorization requirements.")))
+  (view-sy [_ _]
+    (if-not (= :gb matrix-type)
+      (let [k (max (.kl reg) (.ku reg))]
+        (real-banded-matrix fact false buf n n ofst nav
+                            (sb-storage (.isColumnMajor nav) n k (.isLower reg))
+                            (sb-region n k (.isLower reg) false) :sb sb-default (sb-engine fact)))
+      (dragan-says-ex "GB cannot be viewed as a SB due to specific factorization requirements.")))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -1638,6 +1653,19 @@
       (copy eng a res)))
   (native [a]
     a)
+  DenseContainer
+  (view-vctr [a]
+    (real-block-vector fact false buf (.surface reg) ofst 1))
+  (view-vctr [a stride-mult]
+    (view-vctr (view-vctr a) stride-mult))
+  (view-ge [_]
+    (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix."))
+  (view-tr [_ _ diag-unit?]
+    (real-packed-matrix fact false buf n ofst nav stor (band-region n (.isLower reg) diag-unit?)
+                        :tp (real-default :tp diag-unit?) (tp-engine fact)))
+  (view-sy [_ _]
+    (real-packed-matrix fact false buf n ofst nav stor (band-region n (.isLower reg))
+                        :sp sy-default (sp-engine fact)))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
