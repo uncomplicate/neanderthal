@@ -917,21 +917,19 @@
    `(if ~left
       (let [reg# (region ~a)
             layout# (.layout (navigator ~a))
+            nav-b# (navigator ~b)
+            stor-b# (storage ~b)
+            uplo# (.uplo reg#)
+            diag# (.diag reg#)
             n-a# (.ncols ~a)
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
             buff-b# (.buffer ~b)
             ofst-b# (.offset ~b)
-            ld-b# (.stride ~b)
-            uplo# (.uplo reg#)
-            diag# (.diag reg#)]
-        (if (.isColumnMajor (navigator ~b))
-          (dotimes [j# (.ncols ~b)]
-            (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
-             buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1))
-          (dotimes [j# (.ncols ~b)]
-            (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
-             buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#)))
+            stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (.stride ~b))]
+        (dotimes [j# (.ncols ~b)]
+          (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
+           buff-a# ofst-a# buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
         ~b)
       (dragan-says-ex "Transforming a TP matrix by another matrix type is not supported. Copy TP to TR."
                       {:a (info ~a) :b (info ~b)})))
@@ -940,28 +938,20 @@
 
 (defmacro tp-sv [method a b]
   `(let [reg# (region ~a)
-         nav-a# (navigator ~a)
+         layout# (.layout (navigator ~a))
          nav-b# (navigator ~b)
-         layout# (.layout nav-b#)
+         stor-b# (storage ~b)
+         uplo# (.uplo reg#)
+         diag# (.diag reg#)
          n-a# (.ncols ~a)
          buff-a# (.buffer ~a)
          ofst-a# (.offset ~a)
          buff-b# (.buffer ~b)
          ofst-b# (.offset ~b)
-         ld-b# (.stride ~b)
-         uplo# (.uplo reg#)
-         diag# (.diag reg#)
-         trans# (if (= nav-a# nav-b#) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
-         uplo# (if (= nav-a# nav-b#)
-                 (if (.isLower reg#) CBLAS/UPLO_LOWER CBLAS/UPLO_UPPER)
-                 (if (.isLower reg#) CBLAS/UPLO_UPPER CBLAS/UPLO_LOWER))]
-     (if (.isColumnMajor (navigator ~b))
-       (dotimes [j# (.ncols ~b)]
-         (~method layout# uplo# trans# diag# n-a#
-          buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1))
-       (dotimes [j# (.ncols ~b)]
-         (~method layout# uplo# trans# diag# n-a#
-          buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#)))
+         stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (.stride ~b))]
+     (dotimes [j# (.ncols ~b)]
+       (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a#
+        buff-a# ofst-a# buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
      ~b))
 
 ;; ============================ Symmetric Packed Matrix ================================
@@ -1009,37 +999,30 @@
       ~y))
   ([a]
    `(dragan-says-ex "In-place mv! is not supported by SY matrices. Now way around that." {:a (info ~a)})))
-;;TODO update with the similar nav-stor index technique as in GB/TB/SB mm
+
 (defmacro sp-mm
   ([method alpha a b beta c left]
    `(if ~left
       (let [reg# (region ~a)
             layout# (.layout (navigator ~a))
+            nav-b# (navigator ~b)
+            nav-c# (navigator ~c)
+            stor-b# (storage ~b)
+            stor-c# (storage ~c)
+            uplo# (.uplo reg#)
             n-a# (.ncols ~a)
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
             buff-b# (.buffer ~b)
             ofst-b# (.offset ~b)
-            ld-b# (.stride ~b)
             buff-c# (.buffer ~c)
             ofst-c# (.offset ~c)
-            ld-c# (.stride ~c)
-            uplo# (.uplo reg#)]
-        (if (.isColumnMajor (navigator ~b))
-          (if (.isColumnMajor (navigator ~c))
-            (dotimes [j# (.ncols ~b)]
-              (~method layout# uplo# n-a# ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1
-               ~beta buff-c# (+ ofst-c# (* j# ld-c#)) 1))
-            (dotimes [j# (.ncols ~b)]
-              (~method layout# uplo# n-a# ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# (* j# ld-b#)) 1
-               ~beta buff-c# (+ ofst-c# j#) ld-c#)))
-          (if (.isColumnMajor (navigator ~c))
-            (dotimes [j# (.ncols ~b)]
-              (~method layout# uplo# n-a# ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#
-               ~beta buff-c# (+ ofst-c# (* j# ld-c#)) 1))
-            (dotimes [j# (.ncols ~b)]
-              (~method layout# uplo# n-a# ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# j#) ld-b#
-               ~beta buff-c# (+ ofst-c# j#) ld-c#))))
+            stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (.stride ~b))
+            stride-col-c# (if (.isColumnMajor (navigator ~c)) 1 (.stride ~c))]
+        (dotimes [j# (.ncols ~b)]
+          (~method layout# uplo# n-a#
+           ~alpha buff-a# ofst-a# buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#
+           ~beta buff-c# (+ ofst-c# (.index nav-c# stor-c# 0 j#)) stride-col-c#))
         ~c)
       (dragan-says-ex "Transforming a SP matrix by another matrix type is not supported. Copy SP to SY."
                       {:a (info ~a) :b (info ~b)})))
