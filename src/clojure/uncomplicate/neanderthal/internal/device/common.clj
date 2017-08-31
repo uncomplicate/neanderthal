@@ -8,17 +8,23 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.device.common
-  (:require [uncomplicate.neanderthal.internal.api :refer [COLUMN_MAJOR LOWER UPPER]])
-  (:import [uncomplicate.neanderthal.internal.api DenseMatrix TRMatrix]))
+  (:require [uncomplicate.neanderthal.internal.api
+             :refer [compatible? fits? equals-block navigator region]])
+  (:import [uncomplicate.neanderthal.internal.api MatrixImplementation LayoutNavigator Region]))
 
-(defn name-transp [name ^DenseMatrix a ^DenseMatrix b]
-  (format "%s_%s" name (if (= (.order a) (.order b)) "no_transp" "transp")))
+(defn name-transp [name a b]
+  (format "%s_%s" name (if (= (navigator a) (navigator b)) "no_transp" "transp")))
 
-(defn tr-bottom [^TRMatrix a]
-  (if (= (.order a) COLUMN_MAJOR)
-    (= (.uplo a) LOWER)
-    (= (.uplo a) UPPER)))
+(defn tr-bottom [a]
+  (let [reg (region a)]
+    (if (.isColumnMajor (navigator a)) (.isLower reg) (.isUpper reg))))
 
-(defn fits-buffer?
-  ([^DenseMatrix a ^DenseMatrix b]
-   (and (= (.order a) (.order b)) (= (.sd a) (.sd b) (.stride a) (.stride b)))))
+(defn device-matrix-equals [eng a b]
+  (or (identical? a b)
+      (and (instance? (class a) b)
+           (= (.matrixType ^MatrixImplementation a) (.matrixType ^MatrixImplementation b))
+           (compatible? a b) (fits? a b) (equals-block eng a b))))
+
+(defn device-vector-equals [eng x y]
+  (or (identical? x y)
+      (and (instance? (class x) y) (compatible? x y) (fits? x y) (equals-block eng x y))))

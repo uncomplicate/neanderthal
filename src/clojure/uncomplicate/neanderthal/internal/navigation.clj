@@ -151,8 +151,8 @@
 
 ;; =================== Navigator ==========================================
 
-(declare real-column-navigator)
-(declare real-row-navigator)
+(def ^:private real-column-navigator (atom nil))
+(def ^:private real-row-navigator (atom nil))
 
 (deftype RealColumnNavigator []
   Info
@@ -182,7 +182,7 @@
     (.invokePrim ^IFn$LLDD f i j val))
   Flippable
   (flip [_]
-    real-row-navigator))
+    @real-row-navigator))
 
 (deftype RealRowNavigator []
   Info
@@ -212,13 +212,13 @@
     (.invokePrim ^IFn$LLDD f j i val))
   Flippable
   (flip [_]
-    real-column-navigator))
+    @real-column-navigator))
 
-(def ^:const real-column-navigator (RealColumnNavigator.))
-(def ^:const real-row-navigator (RealRowNavigator.))
+(reset! real-column-navigator (RealColumnNavigator.))
+(reset! real-row-navigator (RealRowNavigator.))
 
 (defn layout-navigator [column?]
-  (if column? real-column-navigator real-row-navigator))
+  (if column? @real-column-navigator @real-row-navigator))
 
 (defn real-navigator ^RealLayoutNavigator [a]
   (navigator a))

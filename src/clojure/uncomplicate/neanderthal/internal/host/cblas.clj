@@ -12,7 +12,7 @@
              [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage info]]
              [common :refer [dragan-says-ex real-accessor]]
              [navigation :refer [accu-layout full-storage]]])
-  (:import [uncomplicate.neanderthal.internal.host CBLAS]
+  (:import uncomplicate.neanderthal.internal.host.CBLAS
            [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))
 
 (defn flip-uplo ^long [^long uplo]
@@ -24,17 +24,23 @@
 ;; =============== Common vector engine  macros and functions ==================
 
 (defmacro vector-rot [method x y c s]
-  `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y) ~c ~s))
+  `(do
+     (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y) ~c ~s)
+     ~x))
 
 (defmacro vector-rotm [method x y param]
   `(if (= 1 (.stride ~param))
-     (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
-      (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
+     (do
+       (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
+        (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
+       ~x)
      (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
 (defmacro vector-rotmg [method d1d2xy param]
   `(if (= 1 (.stride ~param))
-     (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param))
+     (do
+       (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param))
+       ~param)
      (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
 (defmacro vector-amax [x]
@@ -48,8 +54,10 @@
   ([method x y]
    `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y)))
   ([method x y z]
-   `(~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y)
-     (.buffer ~z) (.offset ~z) (.stride ~z))))
+   `(do
+      (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x) (.buffer ~y) (.offset ~y) (.stride ~y)
+       (.buffer ~z) (.offset ~z) (.stride ~z))
+      ~z)))
 
 (defn vector-imax [^RealVector x]
   (let [cnt (.dim x)]

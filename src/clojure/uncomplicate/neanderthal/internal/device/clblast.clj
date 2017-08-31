@@ -19,13 +19,18 @@
             [uncomplicate.neanderthal
              [core :refer [transfer!]]
              [native :refer [native-float native-double]]]
-            [uncomplicate.neanderthal.internal.api :refer :all]
+            [uncomplicate.neanderthal.internal
+             [api :refer :all]
+             [navigation :refer [full-storage]]
+             [common :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.internal.device
-             [common :refer :all]
+             [common :refer [name-transp tr-bottom]]
              [clblock :refer :all]])
-  (:import [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
-           [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor]
-           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLTRMatrix]))
+  (:import uncomplicate.neanderthal.internal.host.CBLAS
+           [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
+           [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor Region
+            DenseStorage FullStorage LayoutNavigator]
+           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLUploMatrix]))
 
 ;; =============== OpenCL and CLBlast error handling functions =================
 
@@ -64,7 +69,8 @@
         (with-release [vector-set-kernel (kernel prog "vector_set")]
           (set-args! vector-set-kernel (.wrapPrim da alpha)
                      (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
-          (enq-nd! queue vector-set-kernel (work-size-1d (.dim x))))))))
+          (enq-nd! queue vector-set-kernel (work-size-1d (.dim x)))))))
+  x)
 
 ;; NOTE: rotXX methods are not supported by CLBlast yet
 ;; These signatures might change a bit once they are supported
@@ -73,11 +79,11 @@
    `(with-check error
       (when (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
         (~method (.dim ~x)
-         (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
+         (cl-mem (.buffer ~x)) (.offset ~x) (.stri)
          (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
          ~c ~s
          ~queue nil))
-      nil)))
+      ~x)))
 
 (defmacro ^:private vector-rotg [queue method x]
   `(let [mem# (cl-mem (.buffer ~x))
@@ -86,17 +92,18 @@
      (with-check error
        (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
         ~queue nil)
-       nil)))
+       ~x)))
 
 (defmacro ^:private vector-rotm [queue method x y param]
-  `(when (and (< 0 (.dim ~x)) (< 0 (.dim ~y)) (< 4 (.dim param)))
+  `(if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)) (< 4 (.dim param)))
      (with-check error
        (~method (.dim ~x)
         (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
         (cl-men (.buffer ~y)) (.offset ~y) (.stride ~y)
         (cl-mem (.buffer ~param) (.offset ~param) (.stride ~param))
         ~queue nil)
-       nil)))
+       ~param)
+     ~param))
 
 (defmacro ^:private vector-rotmg [queue method ^CLBlockVector d1d2xy ^CLBlockVector param]
   `(if (= 1 (.stride ~param))
@@ -106,32 +113,35 @@
        (with-check error
          (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
           (cl-mem (.buffer ~param)) (.offset ~param) ~queue nil)
-         nil))
+         ~param))
      (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
 
 (defmacro ^:private vector-method
   ([queue method x]
-   `(when (< 0 (.dim ~x))
+   `(if (< 0 (.dim ~x))
       (with-check error
         (~method (.dim ~x) (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
-        nil)))
+        ~x)
+      ~x))
   ([queue method x y]
-   `(when (< 0 (.dim ~x))
+   `(if (< 0 (.dim ~x))
       (with-check error
         (~method (.dim ~x)
          (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
          (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
          ~queue nil)
-        nil)))
+        ~y)
+      ~y))
   ([queue method x y z]
-   `(when (< 0 (.dim x))
+   `(if (< 0 (.dim x))
       (with-check error
         (~method (.dim ~x)
          (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
          (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
          (cl-mem (.buffer ~z)) (.offset ~z) (.stride ~z)
          ~queue nil)
-        nil))))
+        ~z)
+      ~z)))
 
 (defmacro ^:private vector-dot [ctx queue res-bytes read-method method x y]
   `(if (< 0 (.dim ~x))
@@ -161,17 +171,19 @@
      0))
 
 (defmacro ^:private vector-scal-set [queue method alpha x]
-  `(when (< 0 (.dim ~x))
+  `(if (< 0 (.dim ~x))
      (with-check error
        (~method (.dim ~x) ~alpha (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
-       nil)))
+       ~x)
+     ~x))
 
 (defmacro ^:private vector-axpy [queue method alpha x y]
-  `(when (< 0 (.dim ~x))
+  `(if (< 0 (.dim ~x))
      (with-check error
        (~method (.dim ~x) ~alpha (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
         (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y) ~queue nil)
-       nil)))
+       ~y)
+     ~y))
 
 (defn ^:private vector-axpby [queue prog alpha ^CLBlockVector x beta ^CLBlockVector y]
   (when (< 0 (.dim x))
@@ -180,72 +192,80 @@
         (set-args! vector-axpby-kernel 0
                    (.wrapPrim da alpha) (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                    (.wrapPrim da beta) (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-        (enq-nd! queue vector-axpby-kernel (work-size-1d (.dim x)))))))
+        (enq-nd! queue vector-axpby-kernel (work-size-1d (.dim x))))))
+  y)
 
 (defmacro ^:private vector-subcopy [queue method x y kx lx ky]
-  `(when (< 0 (long ~lx))
+  `(if (< 0 (long ~lx))
      (with-check error
        (~method ~lx (cl-mem (.buffer ~x)) ~kx (.stride ~x) (cl-mem (.buffer ~y)) ~ky (.stride ~y)
         ~queue nil)
-       nil)))
+       ~y)
+     ~y))
 
 ;; =============== Common GE matrix macros and functions =======================
 
 (defn ^:private ge-equals [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
-  (if (< 0 (.count a))
+  (if (< 0 (.dim a))
     (with-release [ge-equals-kernel (kernel prog (name-transp "ge_equals" a b))
                    eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
-      (let [res (wrap-int 0)]
+      (let [res (wrap-int 0)
+            stor (full-storage a)]
         (enq-fill! queue eq-flag-buf res)
         (set-args! ge-equals-kernel 0
-                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                    eq-flag-buf)
-        (enq-nd! queue ge-equals-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-nd! queue ge-equals-kernel (work-size-2d (.sd stor) (.fd stor)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
-    (= 0 (.mrows b) (.ncols b))))
+    (= 0 (.dim b))))
 
 (defn ^:private ge-set [queue prog alpha ^CLGEMatrix a]
-  (when (< 0 (.count a))
-    (let [da (data-accessor a)]
-      (if (and (= (.stride a) (.sd a)) (= 0 (.offset a))
-               (= (* (.mrows a) (.ncols a)) (.count da (.buffer a))))
+  (when (< 0 (.dim a))
+    (let [da (data-accessor a)
+          stor (full-storage a)]
+      (if (and (= (.isGapless stor)) (= 0 (.offset a))
+               (= (.dim a) (.count da (.buffer a))))
         (.initialize da (.buffer a) alpha)
         (with-release [ge-set-kernel (kernel prog "ge_set")]
           (set-args! ge-set-kernel 0 (.wrapPrim da alpha)
-                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a)))
-          (enq-nd! queue ge-set-kernel (work-size-2d (.sd a) (.fd a))))))))
+                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor)))
+          (enq-nd! queue ge-set-kernel (work-size-2d (.sd stor) (.fd stor)))))))
+  a)
 
 (defmacro ^:private ge-swap [queue prog method a b]
-  `(when (< 0 (.count ~a))
-     (if (fits-buffer? ~a ~b)
-       (with-check error
-         (~method (.count ~a)
-          (cl-mem (.buffer ~a)) (.offset ~a) 1 (cl-mem (.buffer ~b)) (.offset ~b) 1
-          ~queue nil)
-         nil)
-       (with-release [ge-swap-kernel# (kernel ~prog (name-transp "ge_swap" ~a ~b))]
-         (set-args! ge-swap-kernel# (.buffer ~a) (wrap-int (.offset ~a)) (wrap-int (.stride ~a))
-                    (.buffer ~b) (wrap-int (.offset ~b)) (wrap-int (.stride ~b)))
-         (enq-nd! ~queue ge-swap-kernel# (work-size-2d (.sd ~a) (.fd ~a)))))))
+  `(if (< 0 (.dim ~a))
+     (let [stor# (full-storage ~a)]
+       (if (and (= (navigator ~a) (navigator ~b)) (.isGapless stor#) (.isGapless (storage ~b)))
+         (with-check error
+           (~method (.dim ~a)
+            (cl-mem (.buffer ~a)) (.offset ~a) 1 (cl-mem (.buffer ~b)) (.offset ~b) 1
+            ~queue nil)
+           ~a)
+         (with-release [ge-swap-kernel# (kernel ~prog (name-transp "ge_swap" ~a ~b))]
+           (set-args! ge-swap-kernel# (.buffer ~a) (wrap-int (.offset ~a)) (wrap-int (.ld stor#))
+                      (.buffer ~b) (wrap-int (.offset ~b)) (wrap-int (.stride ~b)))
+           (enq-nd! ~queue ge-swap-kernel# (work-size-2d (.sd stor#) (.fd stor#)))
+           ~a)))
+     ~a))
 
 (defmacro ^:private ge-sum-nrm2 [ctx queue prog res-bytes read-method method op-name a]
-  `(if (< 0 (.count ~a))
-     (if (fully-packed? ~a)
+  `(if (< 0 (.dim ~a))
+     (if (.isGapless (storage ~a))
        (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
          (with-check error
-           (~method (.count ~a) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~a)) (.offset ~a) 1 ~queue nil)
+           (~method (.dim ~a) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~a)) (.offset ~a) 1 ~queue nil)
            (~read-method ~queue res-buffer#)))
        (not-available))
      0.0))
 
 (defmacro ^:private ge-dot [ctx queue res-bytes read-method method a b]
-  `(if (< 0 (.count ~a))
-     (if (and (fully-packed? ~a) (fully-packed? ~b) (= (.order ~a) (.order ~b)))
+  `(if (< 0 (.dim ~a))
+     (if (and (.isGapless (storage ~a)) (.isGapless (storage ~b)) (= (navigator ~a) (navigator ~b)))
        (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
          (with-check error
-           (~method (.count ~a) (cl-mem res-buffer#) 0
+           (~method (.dim ~a) (cl-mem res-buffer#) 0
             (cl-mem (.buffer ~a)) (.offset ~a) 1
             (cl-mem (.buffer ~b)) (.offset ~b) 1
             ~queue nil)
@@ -255,154 +275,187 @@
 
 (defmacro ^:private ge-omatcopy
   ([queue method alpha a b]
-   `(when (< 0 (.count ~a))
-      (with-check error
-        (~method (.order ~a)
-         (if (= (.order ~a) (.order ~b)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
-         (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-         (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-         ~queue nil)
-        nil)))
+   `(let [nav-a# (navigator ~a)]
+      (if (< 0 (.dim ~a))
+        (with-check error
+          (~method (.layout nav-a#)
+           (if (= nav-a# (navigator ~b))
+             CLBlastTranspose/CLBlastTransposeNo
+             CLBlastTranspose/CLBlastTransposeYes)
+           (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+           (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+           ~queue nil)
+          ~b)
+        ~b)))
   ([queue method alpha a]
-   `(when (< 0 (.count ~a))
-      (with-check error
-        (~method (.order ~a) CLBlastTranspose/CLBlastTransposeNo
-         (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-         (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-         ~queue nil)
-        nil)))
+   `(let [stor# (full-storage ~a)]
+      (if (< 0 (.dim ~a))
+        (with-check error
+          (~method (.layout (navigator ~a)) CLBlastTranspose/CLBlastTransposeNo
+           (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
+           (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
+           ~queue nil)
+          ~a)
+        ~a)))
   ([queue method a]
-   `(when (< 0 (.count ~a))
-      (with-check error
-        (~method COLUMN_MAJOR CLBlastTranspose/CLBlastTransposeYes
-         (.sd ~a) (.fd ~a) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-         (cl-mem (.buffer ~a)) (.offset ~a) (.fd ~a)
-         ~queue nil)
-        nil))))
+   `(let [stor# (full-storage ~a)]
+      (if (< 0 (.dim ~a))
+        (if (.isGapless stor#)
+            (with-check error
+              (~method CBLAS/ORDER_COLUMN_MAJOR CLBlastTranspose/CLBlastTransposeYes
+               (.sd stor#) (.fd stor#) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
+               (cl-mem (.buffer ~a)) (.offset ~a) (.fd stor#)
+               ~queue nil)
+              ~a)
+          (dragan-says-ex "You can not hard-transpose the content of a matrix with a gap in memory. Sorry."
+                          {:a (info ~a)}))
+        ~a))))
 
 (defn ^:private ge-axpby [queue prog alpha ^CLGEMatrix a beta ^CLGEMatrix b]
-  (when (< 0 (.count a))
-    (let [da (data-accessor a)]
+  (when (< 0 (.dim a))
+    (let [da (data-accessor a)
+          stor (full-storage a)]
       (with-release [ge-axpby-kernel (kernel prog (name-transp "ge_axpby" a b))]
         (set-args! ge-axpby-kernel 0
-                   (.wrapPrim da alpha) (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.wrapPrim da alpha) (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.wrapPrim da beta) (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-        (enq-nd! queue ge-axpby-kernel (work-size-2d (.sd a) (.fd a)))))))
+        (enq-nd! queue ge-axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
+  b)
 
 (defmacro ^:private ge-axpy [queue prog method alpha a b]
-  `(when (< 0 (.count ~a))
-     (if (fits-buffer? ~a ~b)
+  `(if (< 0 (.dim ~a))
+     (if (and (= (navigator ~a) (navigator ~b)) (.isGapless (storage ~a)) (.isGapless (storage ~b)))
        (with-check error
-         (~method (.count ~a) ~alpha
+         (~method (.dim ~a) ~alpha
           (cl-mem (.buffer ~a)) (.offset ~a) 1 (cl-mem (.buffer ~b)) (.offset ~b) 1
           ~queue nil)
-         nil)
-       (ge-axpby ~queue ~prog ~alpha ~a 1.0 ~b))))
+         ~b)
+       (ge-axpby ~queue ~prog ~alpha ~a 1.0 ~b))
+     ~b))
 
 (defmacro ^:private ge-mv
   ([queue method alpha a x beta y]
-   `(when (< 0 (.count ~a))
+   `(if (< 0 (.dim ~a))
       (with-check error
-        (~method (.order ~a) CLBlastTranspose/CLBlastTransposeNo (.mrows ~a) (.ncols ~a)
+        (~method (.layout (navigator ~a)) CLBlastTranspose/CLBlastTransposeNo (.mrows ~a) (.ncols ~a)
          ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
          (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
          ~beta (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
          ~queue nil)
-        nil)))
+        ~y)
+      ~y))
   ([a]
    `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (str ~a)}))))
 
 (defmacro ^:private ge-rk [queue method alpha x y a]
-  `(when (< 0 (.count ~a))
+  `(if (< 0 (.dim ~a))
      (with-check error
-       (~method (.order ~a) (.mrows ~a) (.ncols ~a)
+       (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
         ~alpha (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
         (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
         (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
         ~queue nil)
-       nil)))
+       ~a)
+     ~a))
 
 (defmacro ^:private ge-mm
   ([alpha a b]
    `(mm (engine ~b) ~alpha ~b ~a false))
   ([queue method alpha a b beta c]
-   `(when (< 0 (.count ~a))
+   `(if (< 0 (.dim ~a))
       (with-check error
-        (~method (.order ~c)
-         (if (= (.order ~a) (.order ~c)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
-         (if (= (.order ~b) (.order ~c)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
-         (.mrows ~a) (.ncols ~b) (.ncols ~a)
-         ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-         (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-         ~beta (cl-mem (.buffer ~c)) (.offset ~c) (.stride ~c)
-         ~queue nil)
-        nil))))
+        (let [nav-c# (navigator ~c)]
+          (~method (.layout nav-c#)
+           (if (= (navigator ~a) nav-c#)
+             CLBlastTranspose/CLBlastTransposeNo
+             CLBlastTranspose/CLBlastTransposeYes)
+           (if (= (navigator ~b) nav-c#)
+             CLBlastTranspose/CLBlastTransposeNo
+             CLBlastTranspose/CLBlastTransposeYes)
+           (.mrows ~a) (.ncols ~b) (.ncols ~a)
+           ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+           (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+           ~beta (cl-mem (.buffer ~c)) (.offset ~c) (.stride ~c)
+           ~queue nil))
+        ~c)
+      ~c)))
 
 ;; =============== Common TR matrix macros and functions ==========================
 
-(defn ^:private tr-equals [ctx queue prog ^CLTRMatrix a ^CLTRMatrix b]
-  (if (< 0 (.count a))
-    (let [res (wrap-int 0)]
+(defn ^:private tr-equals [ctx queue prog ^CLUploMatrix a ^CLUploMatrix b]
+  (if (< 0 (.dim a))
+    (let [res (wrap-int 0)
+          stor (full-storage a)]
       (with-release [tr-equals-kernel (kernel prog (name-transp "tr_equals" a b))
                      eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
         (enq-fill! queue eq-flag-buf res)
-        (set-args! tr-equals-kernel 0 (wrap-int (.diag a)) (wrap-int (if (tr-bottom a) 1 -1))
-                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+        (set-args! tr-equals-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                    eq-flag-buf)
-        (enq-nd! queue tr-equals-kernel (work-size-2d (.sd a) (.fd a)))
+        (enq-nd! queue tr-equals-kernel (work-size-2d (.sd stor) (.fd stor)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
 
-(defn ^:private tr-map [queue prog op-name ^CLTRMatrix a ^CLTRMatrix b]
-  (if (< 0 (.count a))
-    (with-release [tr-map-kernel (kernel prog (name-transp op-name a b))]
-      (set-args! tr-map-kernel 0 (wrap-int (.diag a)) (wrap-int (if (tr-bottom a) 1 -1))
-                 (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
-                 (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-      (enq-nd! queue tr-map-kernel (work-size-2d (.sd a) (.fd a))))))
+(defn ^:private tr-map [queue prog op-name ^CLUploMatrix a ^CLUploMatrix b]
+  (when (< 0 (.dim a))
+    (let [stor (full-storage a)]
+      (with-release [tr-map-kernel (kernel prog (name-transp op-name a b))]
+        (set-args! tr-map-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
+                   (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
+        (enq-nd! queue tr-map-kernel (work-size-2d (.sd stor) (.fd stor))))))
+  b)
 
-(defn ^:private tr-axpby [queue prog alpha ^CLTRMatrix a beta ^CLTRMatrix b]
-  (if (< 0 (.count a))
-    (let [da (data-accessor a)]
+(defn ^:private tr-axpby [queue prog alpha ^CLUploMatrix a beta ^CLUploMatrix b]
+  (when (< 0 (.dim a))
+    (let [da (data-accessor a)
+          stor (full-storage a)]
       (with-release [tr-axpby-kernel (kernel prog (name-transp "tr_axpby" a b))]
-        (set-args! tr-axpby-kernel 0 (wrap-int (.diag a)) (wrap-int (if (tr-bottom a) 1 -1))
-                   (.wrapPrim da alpha) (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+        (set-args! tr-axpby-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+                   (.wrapPrim da alpha) (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.wrapPrim da beta) (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-        (enq-nd! queue tr-axpby-kernel (work-size-2d (.sd a) (.fd a)))))))
+        (enq-nd! queue tr-axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
+  b)
 
-(defn ^:private tr-set-scal [queue prog op-name alpha ^CLTRMatrix a]
-  (if (< 0 (.count a))
-    (with-release [tr-op-kernel (kernel prog op-name)]
-      (set-args! tr-op-kernel 0 (wrap-int (.diag a)) (wrap-int (if (tr-bottom a) 1 -1))
-                 (.wrapPrim (data-accessor a) alpha)
-                 (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a)))
-      (enq-nd! queue tr-op-kernel (work-size-2d (.sd a) (.fd a))))))
+(defn ^:private tr-set-scal [queue prog op-name alpha ^CLUploMatrix a]
+  (when (< 0 (.dim a))
+    (let [stor (full-storage a)]
+      (with-release [tr-op-kernel (kernel prog op-name)]
+        (set-args! tr-op-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+                   (.wrapPrim (data-accessor a) alpha)
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor)))
+        (enq-nd! queue tr-op-kernel (work-size-2d (.sd stor) (.fd stor))))))
+  a)
 
 (defmacro ^:private tr-mv
   ([queue method a x]
    `(with-check error
-      (~method (.order ~a) (.uplo ~a) CLBlastTranspose/CLBlastTransposeNo (.diag ~a) (.ncols ~a)
+      (~method (.layout (navigator ~a)) (.uplo (region ~a)) CLBlastTranspose/CLBlastTransposeNo
+       (.diag (region ~a)) (.ncols ~a)
        (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
        (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
        ~queue nil)
-      nil))
+      ~x))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
 (defmacro ^:private tr-mm
   ([queue method alpha a b left]
    `(with-check error
-      (~method (.order ~b)
-       (if ~left CLBlastSide/CLBlastSideLeft CLBlastSide/CLBlastSideRight)
-       (.uplo ~a)
-       (if (= (.order ~a) (.order ~b)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
-       (.diag ~a) (.mrows ~b) (.ncols ~b)
-       ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-       (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-       ~queue nil)
-      nil))
+      (let [reg# (region ~a)]
+        (~method (.layout (navigator ~b))
+         (if ~left CLBlastSide/CLBlastSideLeft CLBlastSide/CLBlastSideRight)
+         (.uplo reg#)
+         (if (= (navigator ~a) (navigator ~b))
+           CLBlastTranspose/CLBlastTransposeNo
+           CLBlastTranspose/CLBlastTransposeYes)
+         (.diag reg#) (.mrows ~b) (.ncols ~b)
+         ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+         (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+         ~queue nil))
+      ~b))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
@@ -417,8 +470,7 @@
     (vector-method queue CLBlast/CLBlastDswap ^CLBlockVector x ^CLBlockVector y)
     x)
   (copy [_ x y]
-    (vector-method queue CLBlast/CLBlastDcopy ^CLBlockVector x ^CLBlockVector y)
-    y)
+    (vector-method queue CLBlast/CLBlastDcopy ^CLBlockVector x ^CLBlockVector y))
   (dot [_ x y]
     (vector-dot ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDdot
                 ^CLBlockVector x ^CLBlockVector y))
@@ -443,17 +495,14 @@
   (rotmg [_ _ _]
     (not-available))
   (scal [_ alpha x]
-    (vector-scal-set queue CLBlast/CLBlastDscal alpha ^CLBlockVector x)
-    x)
+    (vector-scal-set queue CLBlast/CLBlastDscal alpha ^CLBlockVector x))
   (axpy [_ alpha x y]
-    (vector-axpy queue CLBlast/CLBlastDaxpy alpha ^CLBlockVector x ^CLBlockVector y)
-    y)
+    (vector-axpy queue CLBlast/CLBlastDaxpy alpha ^CLBlockVector x ^CLBlockVector y))
   BlasPlus
   (amax [_ _]
     (not-available))
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy queue CLBlast/CLBlastDcopy ^CLBlockVector x ^CLBlockVector y kx lx ky)
-    y)
+    (vector-subcopy queue CLBlast/CLBlastDcopy ^CLBlockVector x ^CLBlockVector y kx lx ky))
   (sum [_ x]
     (vector-sum-nrm2 ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDsum ^CLBlockVector x))
   (imax [_ x]
@@ -461,11 +510,9 @@
   (imin [this x]
     (vector-ipeak ctx queue CLBlast/CLBlastiDmin ^CLBlockVector x))
   (set-all [_ alpha x]
-    (vector-set ctx queue prog alpha x)
-    x)
+    (vector-set ctx queue prog alpha x))
   (axpby [_ alpha x beta y]
-    (vector-axpby queue prog alpha x beta y)
-    y))
+    (vector-axpby queue prog alpha x beta y)))
 
 (deftype FloatVectorEngine [ctx queue prog]
   BlockEngine
@@ -476,8 +523,7 @@
     (vector-method queue CLBlast/CLBlastSswap ^CLBlockVector x ^CLBlockVector y)
     x)
   (copy [_ x y]
-    (vector-method queue CLBlast/CLBlastScopy ^CLBlockVector x ^CLBlockVector y)
-    y)
+    (vector-method queue CLBlast/CLBlastScopy ^CLBlockVector x ^CLBlockVector y))
   (dot [_ x y]
     (vector-dot ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSdot ^CLBlockVector x ^CLBlockVector y))
   (nrm1 [this x]
@@ -501,17 +547,14 @@
   (rotmg [_ _ args]
     (not-available))
   (scal [_ alpha x]
-    (vector-scal-set queue CLBlast/CLBlastSscal alpha ^CLBlockVector x)
-    x)
+    (vector-scal-set queue CLBlast/CLBlastSscal alpha ^CLBlockVector x))
   (axpy [_ alpha x y]
-    (vector-axpy queue CLBlast/CLBlastSaxpy alpha ^CLBlockVector x ^CLBlockVector y)
-    y)
+    (vector-axpy queue CLBlast/CLBlastSaxpy alpha ^CLBlockVector x ^CLBlockVector y))
   BlasPlus
   (amax [_ _]
     (not-available))
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy queue CLBlast/CLBlastScopy ^CLBlockVector x ^CLBlockVector y kx lx ky)
-    y)
+    (vector-subcopy queue CLBlast/CLBlastScopy ^CLBlockVector x ^CLBlockVector y kx lx ky))
   (sum [_ x]
     (vector-sum-nrm2 ctx queue Float/BYTES enq-read-float CLBlast/CLBlastSsum ^CLBlockVector x))
   (imax [_ x]
@@ -519,11 +562,9 @@
   (imin [this x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSmin ^CLBlockVector x))
   (set-all [_ alpha x]
-    (vector-set ctx queue prog alpha x)
-    x)
+    (vector-set ctx queue prog alpha x))
   (axpby [_ alpha x beta y]
-    (vector-axpby queue prog alpha x beta y)
-    y))
+    (vector-axpby queue prog alpha x beta y)))
 
 (deftype DoubleGEEngine [ctx queue prog]
   BlockEngine
@@ -531,11 +572,9 @@
     (ge-equals ctx queue prog a b))
   Blas
   (swap [_ a b]
-    (ge-swap queue prog CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b)
-    a)
+    (ge-swap queue prog CLBlast/CLBlastDswap ^CLGEMatrix a ^CLGEMatrix b))
   (copy [_ a b]
-    (ge-omatcopy queue CLBlast/CLBlastDomatcopy 1.0 ^CLGEMatrix a ^CLGEMatrix b)
-    b)
+    (ge-omatcopy queue CLBlast/CLBlastDomatcopy 1.0 ^CLGEMatrix a ^CLGEMatrix b))
   (scal [_ alpha a]
     (ge-omatcopy queue CLBlast/CLBlastDomatcopy alpha ^CLGEMatrix a))
   (dot [_ a b]
@@ -549,35 +588,28 @@
   (asum [this a]
     (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDasum "ge_asum" ^CLGEMatrix a))
   (axpy [_ alpha a b]
-    (ge-axpy queue prog CLBlast/CLBlastDaxpy alpha ^CLGEMatrix a ^CLGEMatrix b)
-    b)
+    (ge-axpy queue prog CLBlast/CLBlastDaxpy alpha ^CLGEMatrix a ^CLGEMatrix b))
   (mv [_ alpha a x beta y]
-    (ge-mv queue CLBlast/CLBlastDgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
-    y)
+    (ge-mv queue CLBlast/CLBlastDgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y))
   (mv [this a x]
     (ge-mv a))
   (rk [_ alpha x y a]
-    (ge-rk queue CLBlast/CLBlastDger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
-    a)
+    (ge-rk queue CLBlast/CLBlastDger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a))
   (mm [_ alpha a b _]
     (ge-mm alpha a b))
   (mm [_ alpha a b beta c _]
-    (ge-mm queue CLBlast/CLBlastDgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
-    c)
+    (ge-mm queue CLBlast/CLBlastDgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c))
   BlasPlus
   (amax [_ _]
     (not-available))
   (sum [this a]
     (ge-sum-nrm2 ctx queue prog Double/BYTES enq-read-double CLBlast/CLBlastDsum "ge_sum" ^CLGEMatrix a))
   (set-all [_ alpha a]
-    (ge-set queue prog alpha a)
-    a)
+    (ge-set queue prog alpha a))
   (axpby [_ alpha a beta b]
-    (ge-axpby queue prog alpha a beta b)
-    b)
+    (ge-axpby queue prog alpha a beta b))
   (trans [_ a]
-    (ge-omatcopy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a)
-    a))
+    (ge-omatcopy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a)))
 
 (deftype FloatGEEngine [ctx queue prog]
   BlockEngine
@@ -585,11 +617,9 @@
     (ge-equals ctx queue prog a b))
   Blas
   (swap [_ a b]
-    (ge-swap queue prog CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b)
-    a)
+    (ge-swap queue prog CLBlast/CLBlastSswap ^CLGEMatrix a ^CLGEMatrix b))
   (copy [_ a b]
-    (ge-omatcopy queue CLBlast/CLBlastSomatcopy 1.0 ^CLGEMatrix a ^CLGEMatrix b)
-    b)
+    (ge-omatcopy queue CLBlast/CLBlastSomatcopy 1.0 ^CLGEMatrix a ^CLGEMatrix b) b)
   (scal [_ alpha a]
     (ge-omatcopy queue  CLBlast/CLBlastSomatcopy alpha ^CLGEMatrix a))
   (dot [_ a b]
@@ -603,35 +633,28 @@
   (asum [this a]
     (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSasum "ge_asum" ^CLGEMatrix a))
   (axpy [_ alpha a b]
-    (ge-axpy queue prog CLBlast/CLBlastSaxpy alpha ^CLGEMatrix a ^CLGEMatrix b)
-    b)
+    (ge-axpy queue prog CLBlast/CLBlastSaxpy alpha ^CLGEMatrix a ^CLGEMatrix b))
   (mv [_ alpha a x beta y]
-    (ge-mv queue CLBlast/CLBlastSgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y)
-    y)
+    (ge-mv queue CLBlast/CLBlastSgemv alpha ^CLGEMatrix a ^CLBlockVector x beta ^CLBlockVector y))
   (mv [this a x]
     (ge-mv a))
   (rk [_ alpha x y a]
-    (ge-rk queue CLBlast/CLBlastSger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a)
-    a)
+    (ge-rk queue CLBlast/CLBlastSger alpha ^CLBlockVector x ^CLBlockVector y ^CLGEMatrix a))
   (mm [_ alpha a b _]
     (ge-mm alpha a b))
   (mm [_ alpha a b beta c _]
-    (ge-mm queue CLBlast/CLBlastSgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c)
-    c)
+    (ge-mm queue CLBlast/CLBlastSgemm alpha ^CLGEMatrix a ^CLGEMatrix b beta ^CLGEMatrix c))
   BlasPlus
   (amax [_ _]
     (not-available))
   (sum [this a]
     (ge-sum-nrm2 ctx queue prog Float/BYTES enq-read-float CLBlast/CLBlastSsum "ge_sum" ^CLGEMatrix a))
   (set-all [_ alpha a]
-    (ge-set queue prog alpha a)
-    a)
+    (ge-set queue prog alpha a))
   (axpby [_ alpha a beta b]
-    (ge-axpby queue prog alpha a beta b)
-    b)
+    (ge-axpby queue prog alpha a beta b))
   (trans [_ a]
-    (ge-omatcopy queue CLBlast/CLBlastSomatcopy ^CLGEMatrix a)
-    a))
+    (ge-omatcopy queue CLBlast/CLBlastSomatcopy ^CLGEMatrix a)))
 
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine
@@ -642,11 +665,9 @@
     (tr-map queue prog "tr_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map queue prog "tr_copy" a b)
-    b)
+    (tr-map queue prog "tr_copy" a b) b)
   (scal [_ alpha a]
-    (tr-set-scal queue prog "tr_scal" alpha a)
-    a)
+    (tr-set-scal queue prog "tr_scal" alpha a))
   (dot [_ _ _]
     (not-available))
   (nrm1 [_ _]
@@ -658,29 +679,24 @@
   (asum [_ _]
     (not-available))
   (axpy [_ alpha a b]
-    (tr-axpby queue prog alpha a 1.0 b)
-    b)
+    (tr-axpby queue prog alpha a 1.0 b))
   (mv [this alpha a x beta y]
     (tr-mv a))
   (mv [_ a x]
-    (tr-mv queue CLBlast/CLBlastDtrmv ^CLTRMatrix a ^CLBlockVector x)
-    x)
+    (tr-mv queue CLBlast/CLBlastDtrmv ^CLUploMatrix a ^CLBlockVector x))
   (mm [this alpha a b beta c _]
     (tr-mm a))
   (mm [_ alpha a b left]
-    (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
-    b)
+    (tr-mm queue CLBlast/CLBlastDtrmm alpha ^CLUploMatrix a ^CLGEMatrix b left))
   BlasPlus
   (amax [_ _]
     (not-available))
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (tr-set-scal queue prog "tr_set" alpha a)
-    a)
+    (tr-set-scal queue prog "tr_set" alpha a))
   (axpby [_ alpha a beta b]
-    (tr-axpby queue prog alpha a beta b)
-    b))
+    (tr-axpby queue prog alpha a beta b)))
 
 (deftype FloatTREngine [ctx queue prog]
   BlockEngine
@@ -691,11 +707,9 @@
     (tr-map queue prog "tr_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map queue prog "tr_copy" a b)
-    b)
+    (tr-map queue prog "tr_copy" a b))
   (scal [_ alpha a]
-    (tr-set-scal queue prog "tr_scal" alpha a)
-    a)
+    (tr-set-scal queue prog "tr_scal" alpha a))
   (dot [_ _ _]
     (not-available))
   (nrm1 [_ _]
@@ -707,29 +721,24 @@
   (asum [_ _]
     (not-available))
   (axpy [_ alpha a b]
-    (tr-axpby queue prog alpha a 1.0 b)
-    b)
+    (tr-axpby queue prog alpha a 1.0 b))
   (mv [this alpha a x beta y]
     (tr-mv a))
   (mv [_ a x]
-    (tr-mv queue CLBlast/CLBlastStrmv ^CLTRMatrix a ^CLBlockVector x)
-    x)
+    (tr-mv queue CLBlast/CLBlastStrmv ^CLUploMatrix a ^CLBlockVector x))
   (mm [this alpha a b beta c _]
     (tr-mm a))
   (mm [_ alpha a b left]
-    (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLTRMatrix a ^CLGEMatrix b left)
-    b)
+    (tr-mm queue CLBlast/CLBlastStrmm alpha ^CLUploMatrix a ^CLGEMatrix b left))
   BlasPlus
   (amax [_ _]
     (not-available))
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (tr-set-scal queue prog "tr_set" alpha a)
-    a)
+    (tr-set-scal queue prog "tr_set" alpha a))
   (axpby [_ alpha a beta b]
-    (tr-axpby queue prog alpha a beta b)
-    b))
+    (tr-axpby queue prog alpha a beta b)))
 
 (deftype CLFactory [ctx queue prog ^DataAccessor da native-fact vector-eng ge-eng tr-eng]
   Releaseable
@@ -757,13 +766,18 @@
       (when init
         (.initialize da (.buffer ^Block res)))
       res))
-  (create-ge [this m n ord init]
-    (let-release [res (cl-ge-matrix this m n ord)]
+  (create-ge [this m n column? init]
+    (let-release [res (cl-ge-matrix this m n column?)]
       (when init
         (.initialize da (.buffer ^Block res)))
       res))
-  (create-tr [this n ord uplo diag init]
-    (let-release [res (cl-tr-matrix this n ord uplo diag)]
+  (create-uplo [this n mat-type column? lower? diag-unit? init]
+    (let-release [res (cl-uplo-matrix this n column? lower? diag-unit? mat-type)]
+      (when init
+        (.initialize da (.buffer ^Block res)))
+      res))
+  (create-tr [this n column? lower? diag-unit? init]
+    (let-release [res (cl-uplo-matrix this n column? lower? diag-unit?)]
       (when init
         (.initialize da (.buffer ^Block res)))
       res))

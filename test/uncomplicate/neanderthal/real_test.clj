@@ -324,7 +324,6 @@
          (submatrix (ge factory 3 4 (range 12)) 1 1 3 3) => (throws ExceptionInfo)
 
          (trans (ge factory 2 3 (range 6))) => (ge factory 3 2 (range 6) {:layout :row})))
-
 (defn test-ge-entry [factory]
   (facts "GE matrix entry."
          (entry (ge factory 2 3 [1 2 3 4 5 6]) 0 1) => 3.0

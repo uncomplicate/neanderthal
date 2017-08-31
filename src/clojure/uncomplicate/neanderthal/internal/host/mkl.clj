@@ -203,11 +203,9 @@
     (CBLAS/drotg (.buffer ^RealBlockVector abcs) (.offset ^Block abcs) (.stride ^Block abcs))
     abcs)
   (rotm [_ x y param]
-    (vector-rotm CBLAS/drotm ^RealBlockVector x ^RealBlockVector y ^RealBlockVector param)
-    x)
+    (vector-rotm CBLAS/drotm ^RealBlockVector x ^RealBlockVector y ^RealBlockVector param))
   (rotmg [_ d1d2xy param]
-    (vector-rotmg CBLAS/drotmg ^RealBlockVector d1d2xy ^RealBlockVector param)
-    param)
+    (vector-rotmg CBLAS/drotmg ^RealBlockVector d1d2xy ^RealBlockVector param))
   (scal [_ alpha x]
     (CBLAS/dscal (.dim ^RealBlockVector x)
                  alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
@@ -231,16 +229,14 @@
   (imin [_ x]
     (vector-imin ^RealBlockVector x))
   (set-all [_ alpha x]
-    (vctr-laset LAPACK/dlaset alpha ^RealBlockVector x)
-    x)
+    (vctr-laset LAPACK/dlaset alpha ^RealBlockVector x))
   (axpby [_ alpha x beta y]
     (MKL/daxpby (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
                 beta (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
   Lapack
   (srt [_ x increasing]
-    (vctr-lasrt LAPACK/dlasrt ^RealBlockVector x increasing)
-    x))
+    (vctr-lasrt LAPACK/dlasrt ^RealBlockVector x increasing)))
 
 (deftype FloatVectorEngine []
   Blas
@@ -265,17 +261,14 @@
   (iamin [_ x]
     (vector-method CBLAS/isamin ^RealBlockVector x))
   (rot [_ x y c s]
-    (vector-rot CBLAS/srot ^RealBlockVector x ^RealBlockVector y c s)
-    x)
+    (vector-rot CBLAS/srot ^RealBlockVector x ^RealBlockVector y c s))
   (rotg [_ abcs]
     (CBLAS/srotg (.buffer ^RealBlockVector abcs) (.offset ^Block abcs) (.stride ^Block abcs))
     abcs)
   (rotm [_ x y param]
-    (vector-rotm CBLAS/srotm ^RealBlockVector x ^RealBlockVector y ^RealBlockVector param)
-    x)
+    (vector-rotm CBLAS/srotm ^RealBlockVector x ^RealBlockVector y ^RealBlockVector param))
   (rotmg [_ d1d2xy param]
-    (vector-rotmg CBLAS/srotmg ^RealBlockVector d1d2xy ^RealBlockVector param)
-    param)
+    (vector-rotmg CBLAS/srotmg ^RealBlockVector d1d2xy ^RealBlockVector param))
   (scal [_ alpha x]
     (CBLAS/sscal (.dim ^RealBlockVector x)
                  alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x))
@@ -299,16 +292,14 @@
   (imin [_ x]
     (vector-imin ^RealBlockVector x))
   (set-all [_ alpha x]
-    (vctr-laset LAPACK/slaset alpha ^RealBlockVector x)
-    x)
+    (vctr-laset LAPACK/slaset alpha ^RealBlockVector x))
   (axpby [_ alpha x beta y]
     (MKL/saxpby (.dim ^RealBlockVector x) alpha (.buffer ^Block x) (.offset ^Block x) (.stride ^Block x)
                 beta (.buffer ^RealBlockVector y) (.offset ^Block y) (.stride ^Block y))
     y)
   Lapack
   (srt [_ x increasing]
-    (vctr-lasrt LAPACK/slasrt ^RealBlockVector x increasing)
-    x))
+    (vctr-lasrt LAPACK/slasrt ^RealBlockVector x increasing)))
 
 ;; ================= General Matrix Engines ====================================
 (let [zero-storage (full-storage true 0 0 1)]

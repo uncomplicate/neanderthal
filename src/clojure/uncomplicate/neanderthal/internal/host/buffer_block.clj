@@ -19,7 +19,7 @@
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! subvector]]
              [real :refer [entry entry!]]
-             [math :refer [ceil abs]]]
+             [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [common :refer [dense-rows dense-cols dense-dias region-dias region-cols region-rows
@@ -33,9 +33,10 @@
            [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
             VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
-            RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault LayoutNavigator
-            RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix]
-           uncomplicate.neanderthal.internal.navigation.BandStorage));;TODO clean up
+            RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault
+            LayoutNavigator RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix
+            BandedMatrix PackedMatrix]
+           uncomplicate.neanderthal.internal.navigation.BandStorage))
 
 (defn ^:private hash* ^double [^double h ^double x]
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
@@ -43,7 +44,7 @@
 (def ^:private f* (double-fn *))
 
 (defn ^:private require-trf []
-  (throw (ex-info "Please do the triangular factorization of this matrix first." {})))
+  (dragan-says-ex "Please do the triangular factorization of this matrix first."))
 
 (extend-type DirectByteBuffer
   Releaseable
@@ -239,7 +240,8 @@
 
 (defn matrix-equals [^RealNativeMatrix a ^RealNativeMatrix b]
   (or (identical? a b)
-      (and (instance? (class a) b) (= (.matrixType ^MatrixImplementation a) (.matrixType ^MatrixImplementation b))
+      (and (instance? (class a) b)
+           (= (.matrixType ^MatrixImplementation a) (.matrixType ^MatrixImplementation b))
            (compatible? a b) (fits? a b)
            (let [nav (real-navigator a)
                  da (real-accessor a)
@@ -383,7 +385,8 @@
      :dim n
      :offset ofst
      :stride strd
-     :master master})
+     :master master
+     :info (info eng)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -549,7 +552,8 @@
      :dim n
      :offset ofst
      :stride strd
-     :master master})
+     :master master
+     :engine (info eng)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -764,12 +768,12 @@
 
 ;; =================== Real Matrix =============================================
 
-(deftype RealGEMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg
+(deftype RealGEMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg
                        fact ^RealBufferAccessor da eng ^Boolean master
                        ^ByteBuffer buf ^long m ^long n ^long ofst]
   Object
   (hashCode [a]
-    (-> (hash :RealGEMatrix) (hash-combine m) (hash-combine n) (hash-combine (nrm2 eng (.dia a)))))
+    (-> (hash :RealGEMatrix) (hash-combine m) (hash-combine n) (hash-combine (nrm2 eng a))))
   (equals [a b]
     (matrix-equals a b))
   (toString [a]
@@ -785,11 +789,12 @@
      :m m
      :n n
      :offset ofst
-     :stride (.ld ^FullStorage stor)
+     :stride (.ld stor)
      :master master
      :layout (:layout (info nav))
      :storage (info stor)
-     :region (info reg)})
+     :region (info reg)
+     :engine (info eng)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -848,16 +853,16 @@
           column-major (.isColumnMajor nav)
           [m n] (if column-major [m shrinked] [shrinked n])]
       (real-ge-matrix fact false buf m n ofst nav
-                      (full-storage column-major m n (* (long stride-mult) (.ld ^FullStorage stor)))
+                      (full-storage column-major m n (* (long stride-mult) (.ld stor)))
                       (ge-region m n))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
-      (real-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld ^FullStorage stor))
+      (real-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld stor))
                         (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?)
                         (tr-engine fact))))
   (view-sy [_ lower?]
     (let [n (min m n)]
-      (real-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld ^FullStorage stor))
+      (real-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld stor))
                         (band-region n lower?) :sy sy-default (sy-engine fact))))
   MemoryContext
   (compatible? [_ b]
@@ -923,7 +928,7 @@
   (offset [_]
     ofst)
   (stride [_]
-    (.ld ^FullStorage stor))
+    (.ld stor))
   (dim [_]
     (* m n))
   (mrows [_]
@@ -936,27 +941,25 @@
     (.entry a i j))
   (row [a i]
     (real-block-vector fact false buf n (+ ofst (.index nav stor i 0))
-                       (if (.isRowMajor nav) 1 (.ld ^FullStorage stor))))
+                       (if (.isRowMajor nav) 1 (.ld stor))))
   (rows [a]
     (dense-rows a))
   (col [a j]
     (real-block-vector fact false buf m (+ ofst (.index nav stor 0 j))
-                       (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor))))
+                       (if (.isColumnMajor nav) 1 (.ld stor))))
   (cols [a]
     (dense-cols a))
   (dia [a]
-    (real-block-vector fact false buf (min m n) ofst (inc (.ld ^FullStorage stor))))
+    (real-block-vector fact false buf (min m n) ofst (inc (.ld stor))))
   (dia [a k]
     (if (< 0 k)
-      (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor 0 k))
-                         (inc (.ld ^FullStorage stor)))
-      (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor (- k) 0))
-                         (inc (.ld ^FullStorage stor)))))
+      (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor 0 k)) (inc (.ld stor)))
+      (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor (- k) 0)) (inc (.ld stor)))))
   (dias [a]
     (dense-dias a))
   (submatrix [a i j k l]
     (real-ge-matrix fact false buf k l (+ ofst (.index nav stor i j))
-                    nav (full-storage (.isColumnMajor nav) k l (.ld ^FullStorage stor)) (ge-region k l)))
+                    nav (full-storage (.isColumnMajor nav) k l (.ld stor)) (ge-region k l)))
   (transpose [a]
     (real-ge-matrix fact false buf n m ofst (flip nav) stor (flip reg)))
   TRF
@@ -978,7 +981,7 @@
 (defn real-ge-matrix
   ([fact master buf m n ofst nav stor reg]
    (->RealGEMatrix nav stor reg fact (data-accessor fact) (ge-engine fact) master buf m n ofst))
-  ([fact m n nav ^DenseStorage stor reg]
+  ([fact m n nav ^FullStorage stor reg]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
      (real-ge-matrix fact true buf m n 0 nav stor reg)))
   ([fact ^long m ^long n column?]
@@ -1005,12 +1008,12 @@
 
 ;; =================== Real Uplo Matrix ==================================
 
-(deftype RealUploMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
-                         fact ^RealBufferAccessor da eng matrix-type
-                         ^Boolean master ^ByteBuffer buf ^long n ^long ofst]
+(deftype RealUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
+                         fact ^RealBufferAccessor da eng matrix-type ^Boolean master
+                         ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
-    (-> (hash :RealUploMatrix) (hash-combine n) (hash-combine (nrm2 eng (.dia a)))))
+    (-> (hash :RealUploMatrix) (hash-combine n) (hash-combine (nrm2 eng a))))
   (equals [a b]
     (matrix-equals a b))
   (toString [a]
@@ -1026,11 +1029,12 @@
      :m n
      :n n
      :offset ofst
-     :stride (.ld ^FullStorage stor)
+     :stride (.ld stor)
      :master master
      :layout (:layout (info nav))
      :storage (info stor)
-     :region (info reg)})
+     :region (info reg)
+     :engine (info eng)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1069,7 +1073,7 @@
   (zero [a]
     (raw a))
   (zero [_ fact]
-    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
+    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) true))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
@@ -1160,7 +1164,7 @@
   (offset [_]
     ofst)
   (stride [_]
-    (.ld ^FullStorage stor))
+    (.ld stor))
   (dim [_]
     (* n n))
   (mrows [_]
@@ -1256,7 +1260,7 @@
   ([fact master buf n ofst nav stor reg matrix-type default engine]
    (->RealUploMatrix nav stor reg default fact (data-accessor fact) engine matrix-type
                      master buf n ofst))
-  ([fact n nav ^DenseStorage stor reg matrix-type default engine]
+  ([fact n nav ^FullStorage stor reg matrix-type default engine]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
      (real-uplo-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
   ([fact n column? lower? diag-unit? matrix-type]
@@ -1287,7 +1291,7 @@
   Object
   (hashCode [a]
     (-> (hash :RealBandedMatrix) (hash-combine matrix-type) (hash-combine m) (hash-combine n)
-        (hash-combine (nrm2 eng (.dia a)))))
+        (hash-combine (nrm2 eng a))))
   (equals [a b]
     (matrix-equals a b))
   (toString [a]
@@ -1307,7 +1311,8 @@
      :master master
      :layout (:layout (info nav))
      :storage (info stor)
-     :region (info reg)})
+     :region (info reg)
+     :engine (info eng)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
@@ -1608,7 +1613,8 @@
      :master master
      :layout (:layout (info nav))
      :storage (info stor)
-     :region (info reg)})
+     :region (info reg)
+     :engine (info eng)})
   Releaseable
   (release [_]
     (if master (clean-buffer buf) true))
