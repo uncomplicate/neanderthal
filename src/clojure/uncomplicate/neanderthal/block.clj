@@ -7,8 +7,6 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.block
-  (:require [uncomplicate.neanderthal.internal.api
-             :refer [dec-property COLUMN_MAJOR ROW_MAJOR UPPER LOWER DIAG_UNIT DIAG_NON_UNIT]])
   (:import [uncomplicate.neanderthal.internal.api Block]))
 
 (defn buffer [^Block x]

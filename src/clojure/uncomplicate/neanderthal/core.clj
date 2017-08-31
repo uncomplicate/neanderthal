@@ -79,12 +79,14 @@
              [core :refer [release let-release with-release]]
              [utils :refer [cond-into]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
-            [uncomplicate.neanderthal.internal.api :as api])
+            [uncomplicate.neanderthal.internal
+             [api :as api]
+             [common :refer [dragan-says-ex]]])
   (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix Changeable GEMatrix
             MatrixImplementation Region]))
 
 (defn info
-  "TODO"
+  "Displays details of any data structure internals."
   [x]
   (api/info x))
 
@@ -101,10 +103,10 @@
 (defmulti transfer!
   "Transfers the data from source to destination regardless of the structure type or memory context.
 
-  Typically you would use it when you want to move data between the host memory and the OpenCL device
-  memory. If you want to simply move data from one object to another in the same memory context,
-  you should prefer [[copy!]].  If both arguments are already in the same memory context, the data
-  will simply be copied, but with multimethod call overhead.
+  Typically you would use it when you want to move data between the host memory and external device
+  memory, or between incompatible data types. If you want to simply move data from one object
+  to another in the same memory context, you should prefer [[copy!]].
+  If possible, the data will simply be copied, but with multimethod call overhead.
 
       (transfer! (fv 1 2 3) device-vctr)
       (transfer! device-vctr (fv 3))
@@ -113,16 +115,16 @@
 
 (defmethod transfer! [nil Object]
   [source destination]
-  (throw (ex-info "You cannot transfer data from nil." {:source source :destination (str destination)})))
+  (dragan-says-ex "You cannot transfer data from nil." {:source source :destination (info destination)}))
 
 (defmethod transfer! [Object nil]
   [source destination]
-  (throw (ex-info "You cannot transfer data to nil." {:source (str source) :destination destination})))
+  (dragan-says-ex "You cannot transfer data to nil." {:source (info source) :destination destination}))
 
 (defmethod transfer! [Object Object]
   [source destination]
-  (throw (ex-info "You cannot transfer data between these types of objects."
-                  {:source (type source) :destination (str destination)})))
+  (dragan-says-ex "You cannot transfer data between these types of objects."
+                  {:source (info source) :destination (info destination)}))
 
 (defn transfer
   "Transfers the data to the memory context defined by `factory` (native, OpenCL, CUDA, etc.).
@@ -170,7 +172,7 @@
    (cond
      (integer? source) (if (<= 0 (long source))
                          (api/create-vector factory source true)
-                         (throw (ex-info "Vector cannot have a negative dimension." {:source (str source)})))
+                         (dragan-says-ex  "Vector cannot have a negative dimension." {:source (info source)}))
      (number? source) (.setBoxed ^Changeable (vctr factory 1) 0 source)
      :default (transfer factory source)))
   ([factory x & xs]
@@ -189,7 +191,7 @@
   ([a ^long stride-mult]
    (if (< 0 stride-mult)
      (api/view-vctr a stride-mult)
-     (throw (ex-info "Cannot use a negative stride multiplier." {:stirde-mult stride-mult})))))
+     (dragan-says-ex "Cannot use a negative stride multiplier." {:stirde-mult stride-mult}))))
 
 (defn vctr?
   "Tests if x is a (neanderthal) vector."
@@ -206,7 +208,7 @@
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
   a matrix, or another structure that can be transferred to the context of `factory`.
-  If `source` is a matrix, dimensions `m` and `n` are not required.
+  If `source` is a matrix, dimensions `m` and `n` are not mandatory.
 
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`).
 
@@ -221,7 +223,7 @@
      (let-release [res (api/create-ge factory m n (api/options-column? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
-     (throw (ex-info "GE matrix cannot have a negative dimension." {:m m :n n}))))
+     (dragan-says-ex "GE matrix cannot have a negative dimension." {:m m :n n})))
   ([factory ^long m ^long n arg]
    (if (or (not arg) (map? arg))
      (ge factory m n nil arg)
@@ -244,17 +246,17 @@
   ([a ^long stride-mult]
    (if (< 0 stride-mult)
      (api/view-ge a stride-mult)
-     (throw (ex-info "Cannot use a negative stride multiplier." {:stirde-mult stride-mult})))))
+     (dragan-says-ex "You cannot use a negative stride multiplier." {:stirde-mult stride-mult}))))
 
 (defn tr
   "Creates a dense triangular matrix (TR) in the context of `factory`, with `n` rows and `n` columns.
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
   a matrix, or another structure that can be transferred to the context of `factory`.
-  If `source` is a matrix, dimension `n` is not required.
+  If `source` is a matrix, dimension `n` is not mandatory.
 
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
-  `:uplo` (`upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
+  `:uplo` (`:upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
   If the provided indices or source do not make sense, throws ExceptionInfo.
 
@@ -268,7 +270,7 @@
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
-     (throw (ex-info "TR matrix cannot have a negative dimension." {:n n}))))
+     (dragan-says-ex "TR matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
      (tr factory n nil arg)
@@ -279,14 +281,14 @@
      (tr factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
 
 (defn view-tr
-  "Attach a TR matrix to the raw data of `a`.
+  "Attach a triangular matrix to the raw data of `a`.
 
   Changes to the resulting object affect the source `a`, even the parts of data that might not be
   accessible by a. Use with caution!
 
   Options: `:uplo` (`upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
-      (view-ge (tr float-factory 3 (range 6)))
+      (view-tr (ge float-factory 3 2 (range 6)))
   "
   ([a]
    (api/view-tr a true false))
@@ -294,13 +296,27 @@
    (api/view-tr a (api/options-lower? options) (api/options-diag-unit? options))))
 
 (defn sy
-  "TODO"
+  "Creates a dense symmetric matrix (TR) in the context of `factory`, with `n` rows and `n` columns.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimension `n` is not mandatory
+
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
+  and `:uplo` (`:upper` or `:lower`).
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (sy float-factory 2)
+      (sy opencl-factory 3 (range 6))
+      (sy opencl-factory (ge double-factory 2 3 (range 6)))
+  "
   ([factory ^long n source options]
    (if (<= 0 n)
      (let-release [res (api/create-sy factory n (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source (transfer! source res) res))
-     (throw (ex-info "SY matrix cannot have a negative dimension." {:n n}))))
+     (dragan-says-ex "SY matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
      (sy factory n nil arg)
@@ -311,21 +327,41 @@
      (sy factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
 
 (defn view-sy
-  "TODO"
+  "Attach a symmetric matrix to the raw data of `a`.
+
+  Changes to the resulting object affect the source `a`, even the parts of data that might not be
+  accessible by a. Use with caution!
+
+  Options: `:uplo` (`upper` or `:lower`)..
+
+      (view-sy (tr float-factory 3 (range 6)))
+  "
   ([a]
    (api/view-sy a true))
   ([^Matrix a options]
    (api/view-sy a (api/options-lower? options))))
 
 (defn gb
-  "TODO"
+  "Creates a general banded matrix (GB) in the context of `factory`, with `m` rows, `n` columns,
+  `kl` sub (lower) diagonals, and `ku` super (upper) diagonals.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimensions `m`, `n`, `kl`, and `ku` are not mandatory.
+
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`).
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (gb float-factory 4 3 1 2 (range 20) {:layout :row})
+  "
   ([factory m n kl ku source options]
    (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
      (let-release [res (api/create-gb factory m n kl ku
                                       (api/options-column? options) (not (:raw options)))]
        (if source (transfer! source res) res))
-     (throw (ex-info "GB matrix cannot have a negative dimension nor overflow diagonals."
-                     {:m m :n n :kl kl :ku ku}))))
+     (dragan-says-ex "GB matrix cannot have a negative dimension nor overflow diagonals."
+                     {:m m :n n :kl kl :ku ku})))
   ([factory m n kl ku arg]
    (if (or (not arg) (map? arg))
      (gb factory m n kl ku nil arg)
@@ -341,7 +377,20 @@
      (gb factory (.mrows a) (.ncols a) (.kl reg) (.ku reg) nil))))
 
 (defn sb
-  "TODO"
+  "Creates a symmetric banded matrix (SB) in the context of `factory`, with `n` rows and columns,
+  `k` sub (lower)  or super (upper) diagonals.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimensions `n` and `k` are not mandatory.
+
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
+  and `:uplo` (`:upper` or `:lower`).
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (sb float-factory 4 2 (range 20) {:layout :row})
+  "
   ([factory n k source options]
    (if (or (< -1 (long k) (long n)) (= 0 k n))
      (let-release [res (api/create-sb factory n k (api/options-column? options)
@@ -349,7 +398,7 @@
        (if source
          (transfer! source res)
          res))
-     (throw (ex-info "SB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
+     (dragan-says-ex "SB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k})))
   ([factory n source arg]
    (let [[k src] (if (number? source) [source nil] [(max 0 (dec (long n))) source])]
      (if (or (not arg) (map? arg))
@@ -368,14 +417,27 @@
        (sb factory n (max 0 (min (dec n) (max (.kl reg) (.ku reg))))  source nil)))))
 
 (defn tb
-  "TODO"
+  "Creates a triangular banded matrix (SB) in the context of `factory`, with `n` rows and columns,
+  `k` sub (lower)  or super (upper) diagonals.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimensions `n` and `k` are not mandatory.
+
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
+  `:uplo` (`:upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (tb float-factory 4 2 (range 20) {:layout :row})
+  "
   ([factory n k source options]
    (if (or (< -1 (long k) (long n)) (= 0 k n))
      (let-release [res (api/create-tb factory n k (api/options-column? options)
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
-     (throw (ex-info "TB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k}))))
+     (dragan-says-ex "TB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k})))
   ([factory n source arg]
    (let [[k src] (if (number? source) [source nil] [(max 0 (dec (long n))) source])]
      (if (or (not arg) (map? arg))
@@ -394,14 +456,26 @@
        (tb factory n (min (max 0 (dec n)) (max (.kl reg) (.ku reg))) source nil)))))
 
 (defn tp
-  "TODO"
+  "Creates a triangular packed matrix (TP) in the context of `factory`, with `n` rows and columns.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimensions `n` and `k` are not mandatory.
+
+  The internal structure can be specified with a map of options: `:uplo` (`:upper` or `:lower`),
+  and `:diag` (`:unit` or `:non-unit`).
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (tp float-factory 4 2 (range 20) {:uplo :upper :diag :unit})
+  "
   ([factory n source options]
    (if  (< -1 (long n))
      (let-release [res (api/create-tp factory n (api/options-column? options)
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
-     (throw (ex-info "TP matrix cannot have a negative dimension." {:n n}))))
+     (dragan-says-ex "TP matrix cannot have a negative dimension." {:n n})))
   ([factory n arg]
    (if (or (not arg) (map? arg))
      (tp factory n nil arg)
@@ -412,13 +486,25 @@
      (tp factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
 
 (defn sp
-  "TODO"
+  "Creates a symmetric packed matrix (SP) in the context of `factory`, with `n` rows and columns.
+
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+  If `source` is a matrix, dimensions `n` and `k` are not mandatory.
+
+  The internal structure can be specified with a map of options: `:uplo` (`:upper` or `:lower`).
+
+
+  If the provided indices or source do not make sense, throws ExceptionInfo.
+
+      (sp float-factory 4 2 (range 20) {:uplo :upper})
+  "
   ([factory n source options]
    (if  (< -1 (long n))
      (let-release [res (api/create-sp factory n (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source (transfer! source res) res))
-     (throw (ex-info "SP matrix cannot have a negative dimension." {:n n}))))
+     (dragan-says-ex "SP matrix cannot have a negative dimension." {:n n})))
   ([factory n arg]
    (if (or (not arg) (map? arg))
      (sp factory n nil arg)
@@ -670,8 +756,8 @@
   [^Vector x ^Vector y]
   (if (and (api/compatible? x y) (api/fits? x y))
     (api/dot (api/engine x) x y)
-    (throw (ex-info "You cannot compute dot of incompatible or ill-fitting vectors."
-                    {:x (api/info x) :y (api/info y)}))))
+    (dragan-says-ex "You cannot compute dot of incompatible or ill-fitting vectors."
+                    {:x (api/info x) :y (api/info y)})))
 
 (defn nrm1
   "Computes the 1-norm of vector or matrix `x`."
@@ -776,8 +862,8 @@
       (if (< 0 (.dim x))
         (api/swap (api/engine x) x y)
         x)
-      (throw (ex-info "You cannot swap data of incompatible or ill-fitting structures."
-                      {:x (api/info x) :y (api/info y)})))
+      (dragan-says-ex "You cannot swap data of incompatible or ill-fitting structures."
+                      {:x (api/info x) :y (api/info y)}))
     x))
 
 (defn copy!
@@ -795,8 +881,8 @@
        (if (< 0 (.dim x))
          (api/copy (api/engine x) x y)
          y)
-       (throw (ex-info "You cannot copy data of incompatible or ill-fitting structures."
-                       {:x (api/info x) :y (api/info y)})))
+       (dragan-says-ex "You cannot copy data of incompatible or ill-fitting structures."
+                       {:x (api/info x) :y (api/info y)}))
      y))
   ([^Vector x ^Vector y offset-x length offset-y]
    (if (not (identical? x y))
@@ -806,8 +892,8 @@
        (if (< 0 (.dim x))
          (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
          y)
-       (throw (ex-info "You cannot copy data of incompatible vectors"
-                       {:x (api/info x) :y (api/info y) :length length})))
+       (dragan-says-ex "You cannot copy data of incompatible vectors"
+                       {:x (api/info x) :y (api/info y) :length length}))
      y)))
 
 (defn copy
@@ -851,14 +937,13 @@
    (if (and (api/compatible? x y))
      (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0) (f= 1.0 (+ (pow c 2) (pow s 2))))
        (api/rot (api/engine x) x y c s)
-       (throw (ex-info "You cannot rotate vectors with c and s that are not sin and cos."
+       (dragan-says-ex "You cannot rotate vectors with c and s that are not sin and cos."
                        {:c c :s s :errors
                         (cond-into []
                                    (not (<= -1.0 c 1.0)) "c is not between -1.0 and 1.0"
                                    (not (<= -1.0 s 1.0)) "s is not between -1.0 and 1.0"
-                                   (not (f= 1.0 (+ (pow c 2) (pow s 2)))) "s^2 + c^2 is not 1.0")})))
-     (throw (ex-info "You cannot rotate incompatible vectors."
-                     {:x (api/info x) :y (api/info y)}))))
+                                   (not (f= 1.0 (+ (pow c 2) (pow s 2)))) "s^2 + c^2 is not 1.0")}))
+     (dragan-says-ex "You cannot rotate incompatible vectors." {:x (api/info x) :y (api/info y)})))
   ([x y ^double c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
@@ -886,13 +971,13 @@
   (if (and (< 0 (.dim x)) (< 0 (.dim y)))
     (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
       (api/rotm (api/engine x) x y param)
-      (throw (ex-info "You cannot apply modified plane rotation with incompatible or ill-fitting vectors."
+      (dragan-says-ex "You cannot apply modified plane rotation with incompatible or ill-fitting vectors."
                       {:x (api/info x) :y (api/info y) :param (api/info param) :errors
                        (cond-into []
                                   (not (api/compatible? x y)) "incompatible x and y"
                                   (not (api/compatible? x param)) "incompatible x and param"
                                   (not (api/fits? x y)) "ill-fitting x and y"
-                                  (not (< 4 (.dim param))) "param is shorter than 4")})))
+                                  (not (< 4 (.dim param))) "param is shorter than 4")}))
     x))
 
 (defn rotmg!
@@ -906,12 +991,12 @@
   [^Vector d1d2xy ^Vector param]
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
     (api/rotmg (api/engine param) d1d2xy param)
-    (throw (ex-info "You cannot generate modified plane rotation with incompatible or ill-fitting vectors."
+    (dragan-says-ex "You cannot generate modified plane rotation with incompatible or ill-fitting vectors."
                     {:d1d2xy (api/info d1d2xy) :param (api/info param) :errors
                      (cond-into []
                                 (not (api/compatible? d1d2xy param)) "incompatible d2d2xy and param"
                                 (not (< 3 (.dim param))) "d1d2xy is shorter than 3"
-                                (not (< 4 (.dim param))) "param is shorter than 4")}))))
+                                (not (< 4 (.dim param))) "param is shorter than 4")})))
 
 (defn axpy!
   "Multiplies elements of a vector or matrix `x` by scalar `alpha` and adds it to a vector or matrix `y`.
@@ -936,8 +1021,8 @@
      (if (< 0 (.dim x))
        (api/axpy (api/engine x) alpha x y)
        y)
-     (throw (ex-info "You cannot add incompatible or ill-fitting structures."
-                     {:x (api/info x) :y (api/info y)}))))
+     (dragan-says-ex "You cannot add incompatible or ill-fitting structures."
+                     {:x (api/info x) :y (api/info y)})))
   ([x y]
    (axpy! 1.0 x y))
   ([alpha x y & zs]
@@ -1016,8 +1101,8 @@
      (if (< 0 (.dim x))
        (api/axpby (api/engine x) alpha x beta y)
        y)
-     (throw (ex-info "You cannot add incompatible or ill-fitting structures."
-                     {:x (api/info x) :y (api/info y)}))))
+     (dragan-says-ex "You cannot add incompatible or ill-fitting structures."
+                     {:x (api/info x) :y (api/info y)})))
   ([x beta y]
    (axpby! 1.0 x beta y))
   ([x y]
@@ -1057,13 +1142,13 @@
    (if (and (api/compatible? a x) (api/compatible? a y)
             (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
      (api/mv (api/engine a) alpha a x beta y)
-     (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
+     (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
                      {:a (api/info a) :x (api/info x) :y (api/info y) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (api/compatible? a y)) "incompatible a and y"
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)"
-                                 (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")}))))
+                                 (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")})))
   ([alpha a x y]
    (mv! alpha a x 1.0 y))
   ([a x y]
@@ -1071,11 +1156,11 @@
   ([^Matrix a ^Vector x]
    (if (and (api/compatible? a x) (= (.ncols a) (.dim x)))
      (api/mv (api/engine a) a x)
-     (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
+     (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
                      {:a (api/info a) :x (api/info x) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
-                                 (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")})))))
+                                 (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")}))))
 
 (defn mv
   "Matrix-vector multiplication. A pure version of mv! that returns the result in a new vector
@@ -1110,13 +1195,13 @@
   ([alpha ^Vector x ^Vector y ^Matrix a]
    (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
      (api/rk (api/engine a) alpha x y a)
-     (throw (ex-info "You cannot multiply incompatible or ill-fitting structures."
+     (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
                      {:a (api/info a) :x (api/info x) :y (api/info y) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (api/compatible? a y)) "incompatible a and y"
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)"
-                                 (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")}))))
+                                 (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")})))
   ([x y a]
    (rk! 1.0 x y a)))
 
@@ -1162,24 +1247,24 @@
    (if (and (api/compatible? a b) (api/compatible? a c)
             (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
      (api/mm (api/engine a) alpha a b beta c true)
-     (throw (ex-info "You cannot multiply incompatible or ill-fitting matrices."
+     (dragan-says-ex "You cannot multiply incompatible or ill-fitting matrices."
                      {:a (api/info a) :b (api/info b) :c (api/info c) :errors
                       (cond-into []
                                  (not (api/compatible? a b)) "incompatible a and b"
                                  (not (api/compatible? a c)) "incompatible a and c"
                                  (not (= (.ncols a) (.mrows b))) "(ncols a) is not equals to (mrows b)"
                                  (not (= (.mrows a) (.mrows c))) "(mrows a) is not equals to (mrows c)"
-                                 (not (= (.ncols b) (.ncols c))) "(ncols b) is not equals to (ncols c)")}))))
+                                 (not (= (.ncols b) (.ncols c))) "(ncols b) is not equals to (ncols c)")})))
   ([alpha a b c]
    (mm! alpha a b 1.0 c))
   ([alpha ^Matrix a ^Matrix b]
    (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
      (api/mm (api/engine a) alpha a b true)
-     (throw (ex-info "You cannot multiply incompatible or ill-fitting matrices."
+     (dragan-says-ex "You cannot multiply incompatible or ill-fitting matrices."
                      {:a (api/info a) :b (api/info b) :errors
                       (cond-into []
                                  (not (api/compatible? a b)) "incompatible a and b"
-                                 (not (= (.ncols a) (.mrows b))) "(ncols a) is not equals to (mrows b)")}))))
+                                 (not (= (.ncols a) (.mrows b))) "(ncols a) is not equals to (mrows b)")})))
   ([a b]
    (mm! 1.0 a b)))
 
@@ -1197,7 +1282,7 @@
                   n (ncols a)]
               (if (= k (mrows a))
                 (recur (inc i) (aset p (inc i) n) (and quad (= m n) (instance? GEMatrix a)))
-                (throw (ex-info "You cannot chain-multiply ill-fitting matrices." {:ill-fitting-idx i}))))
+                (dragan-says-ex "You cannot chain-multiply ill-fitting matrices." {:ill-fitting-idx i})))
             quad))
       nil
       p)))

@@ -42,7 +42,7 @@
 
 ;; ============================= LAPACK =======================================================
 
-;; =============  Triangular Linear Systems LAPACK ============================================
+;; ============= Linear Systems LAPACK ============================================
 
 (defn trf!
   "Triangularizes a non-triangular matrix `a`. Destructively computes the LU (or LDLt, or UDUt, or GGt)
@@ -104,8 +104,8 @@
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
     (api/trtri! a)
-    (throw (ex-info "Can not compute an inverse of a non-square matrix."
-                    {:m (.mrows a) :n (.ncols a)}))))
+    (dragan-says-ex "You can not compute an inverse of a non-square matrix."
+                    {:m (.mrows a) :n (.ncols a)})))
 
 (defn tri
   "Computes the inverse of a triangularized matrix `a`. Returns the results in a new matrix instance.
@@ -119,8 +119,8 @@
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
     (api/trtri a)
-    (throw (ex-info "Can not compute an inverse of a non-square matrix."
-                    {:m (.mrows a) :n (.ncols a)}))))
+    (dragan-says-ex "You can not compute an inverse of a non-square matrix."
+                    {:m (.mrows a) :n (.ncols a)})))
 
 (defn trs!
   "Destructively solves a system of linear equations with a triangularized matrix `a`,
@@ -134,11 +134,11 @@
   [^Matrix a ^Matrix b]
   (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
     (api/trtrs! a b)
-    (throw (ex-info "Dimensions and orientation of a and b do not fit."
+    (dragan-says-ex "Dimensions and orientation of a and b do not fit."
                     {:a  (api/info a) :b (api/info b) :errors
                      (cond-into []
                                 (not (api/compatible? a b)) "incompatible a and b"
-                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")}))))
+                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
 
 (defn trs
   "Solves a system of linear equations with a triangularized matrix `a`,
@@ -152,11 +152,11 @@
   [^Matrix a ^Matrix b]
   (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
     (api/trtrs a b)
-    (throw (ex-info "Dimensions and orientation of a and b do not fit."
+    (dragan-says-ex "Dimensions and orientation of a and b do not fit."
                     {:a  (api/info a) :b (api/info b) :errors
                      (cond-into []
                                 (not (api/compatible? a b)) "incompatible a and b"
-                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")}))))
+                                (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
 
 (defn sv!
   "Destructively solves a system of linear equations with a square coefficient matrix `a`,
@@ -248,8 +248,8 @@
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
     (api/trdet a)
-    (throw (ex-info "Determinant computation requires a square matrix."
-                    {:mrows (.mrows a) :ncols (.ncols a)}))))
+    (dragan-says-ex "Determinant computation requires a square matrix."
+                    {:mrows (.mrows a) :ncols (.ncols a)})))
 
 ;; =============== Orthogonal Factorization (L, Q, R) LAPACK =======================================
 

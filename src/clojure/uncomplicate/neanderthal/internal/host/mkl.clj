@@ -923,7 +923,7 @@
   (amax [_ a]
     (sb-lan LAPACK/dlansb (int \M) ^RealBandedMatrix a))
   (sum [_ a]
-    (sb-sum CBLAS/dsum ^RealBandedMatrix a));;TODO 2*
+    (sb-sum CBLAS/dsum ^RealBandedMatrix a))
   (set-all [_ alpha a]
     (gb-laset LAPACK/dlaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
@@ -986,7 +986,7 @@
   (amax [_ a]
     (sb-lan LAPACK/slansb (int \M) ^RealBandedMatrix a))
   (sum [_ a]
-    (sb-sum CBLAS/ssum ^RealBandedMatrix a));;TODO 2*
+    (sb-sum CBLAS/ssum ^RealBandedMatrix a))
   (set-all [_ alpha a]
     (gb-laset LAPACK/slaset alpha ^RealBandedMatrix a))
   (axpby [_ alpha a beta b]
@@ -1422,7 +1422,8 @@
     (case mat-type
       :tp (real-packed-matrix this n column? lower? diag-unit?)
       :sy (real-packed-matrix this n column? lower?)
-      (throw (ex-info "TODO" {}))))
+      (dragan-says-ex "Packed matrices have to be either triangular or symmetric."
+                      {:matrix-type mat-type})))
   (create-tp [this n column? lower? diag-unit? _]
     (real-packed-matrix this n column? lower? diag-unit?))
   (create-sp [this n column? lower? _]

@@ -84,7 +84,7 @@
 
 (defprotocol TRF
   (create-trf [this a pure])
-  (create-ptrf [this a]);;TODO move to create-trf
+  (create-ptrf [this a])
   (trtrs! [a b])
   (trtrs [a b])
   (trtri! [a])
@@ -196,20 +196,6 @@
 
 (defn options-diag-unit? [options]
   (= :unit (:diag options)))
-
-
-;;TODO (probably) remove all this
-(def ^:const ROW_MAJOR 101)
-(def ^:const COLUMN_MAJOR 102)
-(def ^:const DEFAULT_ORDER COLUMN_MAJOR)
-
-(def ^:const UPPER 121)
-(def ^:const LOWER 122)
-(def ^:const DEFAULT_UPLO LOWER)
-
-(def ^:const DIAG_NON_UNIT 131)
-(def ^:const DIAG_UNIT 132)
-(def ^:const DEFAULT_DIAG DIAG_NON_UNIT)
 
 (defn dec-property
   [^long code]

@@ -10,8 +10,10 @@
 
 ### Enhancements
 
-* Printing
+* Better printing
 * Fluokitten protocols supported by all matrix types.
+* Overhaul of internals that opens easier path for new matrix types and specialized engines.
+* Automatized triangular factorizations and solvers.
 
 ### Breaking changes
 

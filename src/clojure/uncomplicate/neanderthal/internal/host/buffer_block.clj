@@ -896,7 +896,7 @@
   (invokePrim [a]
     (.fd stor))
   RealChangeable
-  (isAllowed [a i j];;TODO rename to isAccessible
+  (isAllowed [a i j]
     true)
   (set [a val]
     (if (not (Double/isNaN val))
