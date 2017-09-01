@@ -37,8 +37,7 @@
             Region MatrixImplementation NativeBlock FullStorage RealDefault UploMatrix
             RealNativeVector RealNativeMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix
-            RealUploMatrix]
-           [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLUploMatrix]))
+            RealUploMatrix]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -332,12 +331,12 @@
   [source destination]
   (set-vector! source destination))
 
-(defmethod transfer! [CUBlockVector Object]
+(defmethod transfer! [CUVector Object]
   [source destination]
   (with-release [h (host source)]
     (transfer! h destination)))
 
-(defmethod transfer! [Object CUBlockVector]
+(defmethod transfer! [Object CUVector]
   [source destination]
   (with-release [h (raw destination (native-factory destination))]
     (transfer! (transfer! source h) destination)))
@@ -771,9 +770,7 @@
 
 ;; =============== Transfer preferences ========================================
 
-(prefer-method transfer! [CUBlockVector Object] [Object CLBlockVector])
-(prefer-method transfer! [CUGEMatrix Object] [Object CLGEMatrix])
-(prefer-method transfer! [CUUploMatrix Object] [Object CLGEMatrix])
-(prefer-method transfer! [CLBlockVector Object] [Object CUBlockVector])
-(prefer-method transfer! [CLGEMatrix Object] [Object CUGEMatrix])
-(prefer-method transfer! [CLUploMatrix Object] [Object CUUploMatrix])
+(prefer-method transfer! [CUVector Object] [Object CLVector])
+(prefer-method transfer! [CUMatrix Object] [Object CLMatrix])
+(prefer-method transfer! [CLVector Object] [Object CUVector])
+(prefer-method transfer! [CLMatrix Object] [Object CUMatrix])

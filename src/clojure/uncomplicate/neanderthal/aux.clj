@@ -47,10 +47,10 @@
   "Performs a series of row interchanges on a general rectangular matrix.
 
   If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
-  ([a ^IntegerVector x ^long k1 ^long k2]
-   (if (and (<= 1 k1 k2 (.dim x)) (<= (- k2 k1) (.dim x)))
-     (api/laswp (api/engine a) a x k1 k2)
+  ([a ^IntegerVector ipiv ^long k1 ^long k2]
+   (if (and (<= 1 k1 k2 (.dim ipiv)) (<= (- k2 k1) (.dim ipiv)))
+     (api/laswp (api/engine a) a ipiv k1 k2)
      (dragan-says-ex "There is not enough indices in ipiv. Check the ipiv and k1 and k2."
-                     {:a (api/info a) :x (api/info x)})))
-  ([a ^IntegerVector x]
-   (laswp! a x 1 (.dim x))))
+                     {:a (api/info a) :ipiv (api/info ipiv)})))
+  ([a ^IntegerVector ipiv]
+   (laswp! a ipiv 1 (.dim ipiv))))

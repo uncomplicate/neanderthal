@@ -294,11 +294,11 @@
   [source destination]
   (host-to-cl source destination))
 
-(defmethod transfer! [CLBlockVector Object]
+(defmethod transfer! [CLVector Object]
   [source destination]
   (cl-to-obj source destination))
 
-(defmethod transfer! [Object CLBlockVector]
+(defmethod transfer! [Object CLVector]
   [source destination]
   (obj-to-cl source destination))
 

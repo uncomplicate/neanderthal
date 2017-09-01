@@ -584,7 +584,7 @@
 (defn svd!
   "Computes the singular value decomposition of a matrix `a`.
 
-  On exit, `a` is destroyed, or, if `u` or `vt` are `nil`, overwritten with U or transposed V
+  On exit, `a`'s contents is destroyed, or, if `u` or `vt` are `nil`, overwritten with U or transposed V
   singular vectors of `a`. `s` is a diagonal banded matrix populated with sorted singular values.
   If the factorization does not converge, a diagonal banded matrix `superb` is populated with
   the unconverged superdiagonal elements (see LAPACK documentation). If called without `u` and `vt`,
