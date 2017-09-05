@@ -11,13 +11,18 @@
             [uncomplicate.commons.core :refer [Releaseable release let-release double-fn]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor
-            MatrixImplementation LayoutNavigator]))
+            MatrixImplementation LayoutNavigator Block]))
 
 (defn dragan-says-ex
   ([message data]
    (throw (ex-info (format "Dragan says: %s" message) data)))
   ([message]
    (dragan-says-ex message {})))
+
+(defn check-stride ^Block [^Block x]
+  (if (= 1 (.stride x))
+    x
+    (dragan-says-ex "You cannot use vector with stride different than 1." {:stride (.stride x)})))
 
 ;; ================= Core Functions ===================================
 

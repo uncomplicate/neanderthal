@@ -847,7 +847,6 @@
      (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matching layout."
                      {:a (info ~a) :b (info ~b)})))
 
-
 (defmacro packed-map
   ([method a]
    `(do
@@ -1036,3 +1035,39 @@
                       {:a (info ~a) :b (info ~b)})))
   ([a]
    `(dragan-says-ex "In-place mm! is not supported by SP matrices. No way around that." {:a (info ~a)})))
+
+;; ===================== Tridiagonal matrix ==================================================
+
+(defmacro diagonal-method
+  ([method a]
+   `(~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1))
+  ([method a b]
+   `(~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1))
+  ([method a b c]
+   `(do
+      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1
+       (.buffer ~c) (.offset ~c) 1)
+      ~c)))
+
+(defmacro diagonal-scal [method alpha a]
+  `(do
+     (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1)
+     ~a))
+
+(defmacro diagonal-axpy [method alpha a b]
+  `(do
+     (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
+     ~b))
+
+(defmacro diagonal-axpby [method alpha a beta b]
+  `(do
+     (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
+     ~b))
+
+(defmacro diagonal-amax [method a]
+  `(if (< 0 (.dim ~a))
+     (let [da# (real-accessor ~a)
+           buff# (.buffer ~a)
+           ofst# (.offset ~a)]
+       (Math/abs (.get da# buff# (+ ofst# (~method (.surface (region ~a)) buff# ofst# 1)))))
+     0.0))

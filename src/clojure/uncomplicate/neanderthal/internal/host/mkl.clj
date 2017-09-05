@@ -12,7 +12,7 @@
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage]]
-             [common :refer [dragan-says-ex]]]
+             [common :refer [dragan-says-ex check-stride real-accessor]]]
             [uncomplicate.neanderthal.internal.host
              [buffer-block :refer :all]
              [cblas :refer :all]
@@ -20,9 +20,9 @@
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
            [java.nio ByteBuffer DirectByteBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
-            Block RealVector Region LayoutNavigator DenseStorage]
+            Block RealVector Region LayoutNavigator DenseStorage RealNativeMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
-            RealGEMatrix RealUploMatrix RealBandedMatrix RealPackedMatrix]))
+            RealGEMatrix RealUploMatrix RealBandedMatrix RealPackedMatrix RealDiagonalMatrix]))
 
 (defn ^:private not-available [kind]
   (throw (UnsupportedOperationException. "Operation not available for %s matrix")))
@@ -71,6 +71,56 @@
         (.buffer ~b) (.offset ~b) (.stride ~b))
        ~b)
      ~b))
+
+(defmacro gd-mv
+  ([vmul-method tb-method a x]
+   `(do
+      (if (= 1 (.stride ~x))
+        (~vmul-method (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.buffer ~x) (.offset ~x))
+        (~tb-method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER CBLAS/TRANSPOSE_NO_TRANS CBLAS/DIAG_NON_UNIT
+         (.ncols ~a) 0 (.buffer ~a) (.offset ~a) 1 (.buffer ~x) (.offset ~x) (.stride ~x)))
+      ~x))
+  ([method alpha a x beta y]
+   `(do
+      (~method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER (.ncols ~a) 0
+       ~alpha (.buffer ~a) (.offset ~a) 1
+       (.buffer ~x) (.offset ~x) (.stride ~x) ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
+      ~y)))
+
+(defmacro gd-mm
+  ([vmul-method scal-method alpha a b left]
+   `(if (instance? RealDiagonalMatrix ~b)
+      (if (= (+ (.kl (region ~b)) (.ku (region ~b))) 0)
+        (let [buff-a# (.buffer ~a)
+              ofst-a# (.offset ~a)
+              buff-b# (.buffer ~b)
+              ofst-b# (.offset ~b)
+              n# (.ncols ~a)]
+          (~vmul-method n# buff-a# ofst-a# buff-b# ofst-b# buff-b# ofst-b#)
+          (when (= 1.0 ~alpha)
+            (~scal-method n# ~alpha buff-b# ofst-b# 1))
+          ~b)
+        (dragan-says-ex "mm! is not supported for GT and PT matrices." {:b (info ~b)}))
+      (let [da# (real-accessor ~a)
+            nav-b# (navigator ~b)
+            stor-b# (storage ~b)
+            buff-a# (.buffer ~a)
+            ofst-a# (.offset ~a)
+            buff-b# (.buffer ~b)
+            ofst-b# (.offset ~b)
+            mrows-b# (.mrows ~b)
+            ncols-b# (.ncols ~b)
+            stride-b# (if (.isColumnMajor nav-b#) (if ~left (.stride ~b) 1) (if ~left 1 (.stride ~b)))]
+        (if ~left
+          (dotimes [i# (.mrows ~b)]
+            (~scal-method ncols-b# (* ~alpha (.get da# buff-a# i#))
+             buff-b# (+ ofst-b# (.index nav-b# stor-b# i# 0)) stride-b#))
+          (dotimes [j# (.ncols ~b)]
+            (~scal-method mrows-b# (* ~alpha (.get da# buff-a# j#))
+             buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) stride-b#)))
+        ~b)))
+  ([a];;TODO quite possible to do!
+   `(dragan-says-ex "Out-of-place mm! is not supported for GD matrices." {:a (info ~a)})))
 
 ;; ============ Integer Vector Engines ============================================
 
@@ -1376,10 +1426,177 @@
   (create-ptrf [_ a]
     (matrix-create-trf matrix-cholesky ^RealPackedMatrix a false)))
 
+;; =============== Tridiagonal Matrix Engines =================================
+
+(deftype DoubleGTEngine []
+  Blas
+  (swap [_ a b]
+    (diagonal-method CBLAS/dswap ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    a)
+  (copy [_ a b]
+    (diagonal-method CBLAS/dcopy ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    b)
+  (scal [_ alpha a]
+    (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
+  (dot [_ a b]
+    (diagonal-method CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (nrm1 [_ a]
+    (dragan-says-ex "nrm1 is not available for GT matrices."))
+  (nrm2 [_ a]
+    (diagonal-method CBLAS/dnrm2 ^RealDiagonalMatrix a))
+  (nrmi [_ a]
+    (dragan-says-ex "nrmi is not available for GT matrices."))
+  (asum [_ a]
+    (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
+  (axpy [_ alpha a b]
+    (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (mv [this alpha a x beta y]
+    (dragan-says-ex "mv is not available for GT matrices."))
+  (mv [_ a x]
+    (dragan-says-ex "mv is not available for GT matrices."))
+  (mm [this alpha a b beta c left]
+    (dragan-says-ex "mm is not available for GT matrices."))
+  (mm [_ _ a _ _]
+    (dragan-says-ex "mm is not available for GT matrices."))
+  BlasPlus
+  (amax [_ a]
+    (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
+  (sum [_ a]
+    (diagonal-method CBLAS/dsum ^RealDiagonalMatrix a))
+  (set-all [_ alpha a]
+    (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
+  (axpby [_ alpha a beta b]
+    (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
+  )
+
+(deftype DoubleGDEngine []
+  Blas
+  (swap [_ a b]
+    (diagonal-method CBLAS/dswap ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    a)
+  (copy [_ a b]
+    (diagonal-method CBLAS/dcopy ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    b)
+  (scal [_ alpha a]
+    (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
+  (dot [_ a b]
+    (diagonal-method CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (nrm1 [_ a]
+    (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
+  (nrm2 [_ a]
+    (diagonal-method CBLAS/dnrm2 ^RealDiagonalMatrix a))
+  (nrmi [_ a]
+    (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
+  (asum [_ a]
+    (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
+  (axpy [_ alpha a b]
+    (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (mv [this alpha a x beta y]
+    (gd-mv CBLAS/dsbmv alpha ^RealDiagonalMatrix a ^RealBlockVector x beta ^RealBlockVector y))
+  (mv [_ a x]
+    (gd-mv MKL/vdmul CBLAS/dtbmv ^RealDiagonalMatrix a ^RealBlockVector x))
+  (mm [this _ a _ _ _ _]
+    (gd-mm a))
+  (mm [_ alpha a b left]
+    (gd-mm MKL/vdmul CBLAS/dscal (double alpha) ^RealDiagonalMatrix a ^RealNativeMatrix b left))
+  BlasPlus
+  (amax [_ a]
+    (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
+  (sum [_ a]
+    (diagonal-method CBLAS/dsum ^RealDiagonalMatrix a))
+  (set-all [_ alpha a]
+    (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
+  (axpby [_ alpha a beta b]
+    (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
+  )
+
+(deftype DoubleDTEngine []
+  Blas
+  (swap [_ a b]
+    (diagonal-method CBLAS/dswap ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    a)
+  (copy [_ a b]
+    (diagonal-method CBLAS/dcopy ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    b)
+  (scal [_ alpha a]
+    (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
+  (dot [_ a b]
+    (diagonal-method CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (nrm1 [_ a]
+    (dragan-says-ex "nrm1 is not available for DT matrices."))
+  (nrm2 [_ a]
+    (diagonal-method CBLAS/dnrm2 ^RealDiagonalMatrix a))
+  (nrmi [_ a]
+    (dragan-says-ex "nrmi is not available for DT matrices."))
+  (asum [_ a]
+    (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
+  (axpy [_ alpha a b]
+    (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (mv [this alpha a x beta y]
+    (dragan-says-ex "mv is not available for DT matrices."))
+  (mv [_ a x]
+    (dragan-says-ex "mv is not available for DT matrices."))
+  (mm [this alpha a b beta c left]
+    (dragan-says-ex "mm is not available for DT matrices."))
+  (mm [_ _ a _ _]
+    (dragan-says-ex "mm is not available for DT matrices."))
+  BlasPlus
+  (amax [_ a]
+    (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
+  (sum [_ a]
+    (diagonal-method CBLAS/dsum ^RealDiagonalMatrix a))
+  (set-all [_ alpha a]
+    (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
+  (axpby [_ alpha a beta b]
+    (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
+  )
+
+(deftype DoublePTEngine []
+  Blas
+  (swap [_ a b]
+    (diagonal-method CBLAS/dswap ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    a)
+  (copy [_ a b]
+    (diagonal-method CBLAS/dcopy ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
+    b)
+  (scal [_ alpha a]
+    (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
+  (dot [_ a b]
+    (diagonal-method CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (nrm1 [_ a]
+    (dragan-says-ex "nrm1 is not available for PT matrices."))
+  (nrm2 [_ a]
+    (diagonal-method CBLAS/dnrm2 ^RealDiagonalMatrix a))
+  (nrmi [_ a]
+    (dragan-says-ex "nrmi is not available for PT matrices."))
+  (asum [_ a]
+    (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
+  (axpy [_ alpha a b]
+    (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+  (mv [this alpha a x beta y]
+    (dragan-says-ex "mv is not available for PT matrices."))
+  (mv [_ a x]
+    (dragan-says-ex "mv is not available for PT matrices."))
+  (mm [this alpha a b beta c left]
+    (dragan-says-ex "mm is not available for PT matrices."))
+  (mm [_ _ a _ _]
+    (dragan-says-ex "mm is not available for PT matrices."))
+  BlasPlus
+  (amax [_ a]
+    (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
+  (sum [_ a]
+    (diagonal-method CBLAS/dsum ^RealDiagonalMatrix a))
+  (set-all [_ alpha a]
+    (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
+  (axpby [_ alpha a beta b]
+    (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
+  )
+
 ;; =============== Factories ==================================================
 
-(deftype MKLRealFactory [index-fact ^DataAccessor da vector-eng
-                         ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng sp-eng tp-eng]
+(deftype MKLRealFactory [index-fact ^DataAccessor da
+                         vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng sp-eng tp-eng
+                         gd-eng gt-eng dt-eng pt-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1404,8 +1621,8 @@
     (real-uplo-matrix this n column? lower? diag-unit?))
   (create-sy [this n column? lower? _]
     (real-uplo-matrix this n column? lower?))
-  (create-banded [this m n kl ku mat-type column? _]
-    (real-banded-matrix this m n kl ku column? mat-type))
+  (create-banded [this m n kl ku matrix-type column? _]
+    (real-banded-matrix this m n kl ku column? matrix-type))
   (create-gb [this m n kl ku lower? _]
     (real-banded-matrix this m n kl ku lower?))
   (create-tb [this n k column? lower? diag-unit? _]
@@ -1418,16 +1635,18 @@
       (real-sb-matrix this n k column? lower?)
       (dragan-says-ex "SB matrices have to be either column-major lower or row-major upper."
                       {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
-  (create-packed [this n mat-type column? lower? diag-unit? _]
-    (case mat-type
+  (create-packed [this n matrix-type column? lower? diag-unit? _]
+    (case matrix-type
       :tp (real-packed-matrix this n column? lower? diag-unit?)
       :sy (real-packed-matrix this n column? lower?)
       (dragan-says-ex "Packed matrices have to be either triangular or symmetric."
-                      {:matrix-type mat-type})))
+                      {:matrix-type matrix-type})))
   (create-tp [this n column? lower? diag-unit? _]
     (real-packed-matrix this n column? lower? diag-unit?))
   (create-sp [this n column? lower? _]
     (real-packed-matrix this n column? lower?))
+  (create-diagonal [this n matrix-type _]
+    (real-diagonal-matrix this n matrix-type))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
@@ -1445,7 +1664,15 @@
   (tp-engine [_]
     tp-eng)
   (sp-engine [_]
-    sp-eng))
+    sp-eng)
+  (gd-engine [_]
+    gd-eng)
+  (gt-engine [_]
+    gt-eng)
+  (dt-engine [_]
+    dt-eng)
+  (pt-engine [_]
+    pt-eng))
 
 (deftype MKLIntegerFactory [index-fact ^DataAccessor da vector-eng]
   DataAccessorProvider
@@ -1479,12 +1706,13 @@
     (->MKLRealFactory index-fact float-accessor
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
                       (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
-                      (->FloatSPEngine) (->FloatTPEngine)))
+                      (->FloatSPEngine) (->FloatTPEngine) nil nil nil nil))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
                       (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
                       (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
-                      (->DoubleSPEngine) (->DoubleTPEngine)))
+                      (->DoubleSPEngine) (->DoubleTPEngine)
+                      (->DoubleGDEngine) (->DoubleGTEngine) (->DoubleDTEngine) (->DoublePTEngine)))
 
   (vreset! index-fact mkl-int))

@@ -514,6 +514,62 @@
      (sp factory arg nil nil)
      (sp factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
+(defn gd
+  "TODO"
+  ([factory ^long n source options]
+   (if (< 0 n)
+     (let-release [res (api/create-diagonal factory n :gd (not (:raw options)))]
+       (if source (transfer! source res) res))
+     (dragan-says-ex "GT matrix cannot have a negative dimension." {:n n})))
+  ([factory ^long n arg]
+   (if (or (not arg) (map? arg))
+     (gd factory n nil arg)
+     (gd factory n arg nil)))
+  ([factory n]
+   (gd factory n nil nil)))
+
+(defn gt
+  "TODO"
+  ([factory ^long n source options]
+   (if (< 0 n)
+     (let-release [res (api/create-diagonal factory n :gt (not (:raw options)))]
+       (if source (transfer! source res) res))
+     (dragan-says-ex "GT matrix cannot have a negative dimension." {:n n})))
+  ([factory ^long n arg]
+   (if (or (not arg) (map? arg))
+     (gt factory n nil arg)
+     (gt factory n arg nil)))
+  ([factory n]
+   (gt factory n nil nil)))
+
+(defn dt
+  "TODO"
+  ([factory ^long n source options]
+   (if (< 0 n)
+     (let-release [res (api/create-diagonal factory n :dt (not (:raw options)))]
+       (if source (transfer! source res) res))
+     (dragan-says-ex "DT matrix cannot have a negative dimension." {:n n})))
+  ([factory ^long n arg]
+   (if (or (not arg) (map? arg))
+     (dt factory n nil arg)
+     (dt factory n arg nil)))
+  ([factory n]
+   (dt factory n nil nil)))
+
+(defn pt
+  "TODO"
+  ([factory ^long n source options]
+   (if (= 0 n)
+     (let-release [res (api/create-diagonal factory n :pt (not (:raw options)))]
+       (if source (transfer! source res) res))
+     (dragan-says-ex "PT matrix cannot have a negative dimension." {:n n})))
+  ([factory ^long n arg]
+   (if (or (not arg) (map? arg))
+     (pt factory n nil arg)
+     (pt factory n arg nil)))
+  ([factory n]
+   (pt factory n nil nil)))
+
 ;; ================= Container  ================================================
 
 (defn raw
@@ -737,10 +793,10 @@
        (throw (ex-info "The element you're trying to alter is out of bounds of the vector."
                        {:i i :dim (dim x)})))))
   ([^Matrix a ^long i ^long j f]
-   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)))
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^Changeable a i j))
      (.alter ^Changeable a i j f)
-     (throw (ex-info "The element you're trying to alter is out of bounds of the matrix."
-                     {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
+     (throw (ex-info "The element you're trying to alter is out of editable bounds of the matrix."
+                     {:a (info a)})))))
 
 ;;================== BLAS 1 =======================
 

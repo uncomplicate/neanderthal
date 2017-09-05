@@ -7,7 +7,8 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.navigation
-  (:require [uncomplicate.neanderthal.internal
+  (:require [uncomplicate.neanderthal.math :refer [signum]]
+            [uncomplicate.neanderthal.internal
              [api :refer :all]
              [common :refer [dragan-says-ex]]])
   (:import [clojure.lang IFn$LLDD]
@@ -214,8 +215,34 @@
   (flip [_]
     @real-column-navigator))
 
+(deftype RealDiagonalNavigator []
+  Info
+  (info [n]
+    {:layout :diagonal})
+  LayoutNavigator
+  (start [_ _ _]
+    0)
+  (end [_ region j]
+    (if (= 0 j) (.surface region) 0))
+  (index [_ stor i j]
+    (.index ^DenseStorage stor i (- j i)))
+  (isColumnMajor [_]
+    false)
+  (isRowMajor [_]
+    false)
+  (layout [_]
+    -1)
+  RealLayoutNavigator
+  (get [_ a i j]
+    (.entry ^RealMatrix a i j))
+  (set [_ a i j val]
+    (.set ^RealChangeable a i j val))
+  (invokePrimitive [_ f i j val]
+    (.invokePrim ^IFn$LLDD f i j val)))
+
 (reset! real-column-navigator (RealColumnNavigator.))
 (reset! real-row-navigator (RealRowNavigator.))
+(def diagonal-navigator (RealDiagonalNavigator.))
 
 (defn layout-navigator [column?]
   (if column? @real-column-navigator @real-row-navigator))
@@ -400,6 +427,65 @@
       (TopPackedStorage. n)
       (BottomPackedStorage. n))))
 
+;; ========================= Diagonal Storage ============================
+
+(deftype TridiagonalStorage [^long n]
+  Info
+  (info [s]
+    {:storage-type :tridiagonal
+     :n n
+     :capacity (.capacity s)})
+  Object
+  (hashCode [a]
+    (-> (hash-combine :TridiagonalStorage) (hash-combine n)))
+  (equals [a b]
+    (or (identical? a b) (and (instance? TridiagonalStorage b) (= n (.n ^TridiagonalStorage b)))))
+  (toString [a]
+    (format "#TridiagonalStorage[n:%d]" n))
+  DenseStorage
+  (index [_ i j]
+    (case j
+      0 i
+      1 (+ n i)
+      (+ n (dec n) i)))
+  (fd [_]
+    1)
+  (isGapless [_]
+    true)
+  (capacity [_]
+    (- (* 3 n) 2)))
+
+(deftype BidiagonalStorage [^long n]
+  Info
+  (info [s]
+    {:storage-type :bidiagonal
+     :n n
+     :capacity (.capacity s)})
+  Object
+  (hashCode [a]
+    (-> (hash-combine :BidiagonalStorage) (hash-combine n)))
+  (equals [a b]
+    (or (identical? a b) (and (instance? BidiagonalStorage b) (= n (.n ^BidiagonalStorage b)))))
+  (toString [a]
+    (format "#BidiagonalStorage[n:%d]" n))
+  DenseStorage
+  (index [_ i j]
+    (+ (* n j) i))
+  (fd [_]
+    1)
+  (isGapless [_]
+    true)
+  (capacity [_]
+    (+ n (dec n))))
+
+(defn diagonal-storage [^long n matrix-type]
+  (case matrix-type
+    :pt (BidiagonalStorage. n)
+    :gd (BidiagonalStorage. n)
+    :gt (TridiagonalStorage. n)
+    :dt (TridiagonalStorage. n)
+    (dragan-says-ex "Unknown (tri)diagonal matrix type." {:type type})))
+
 ;; ========================= Default value ===============================
 
 (deftype SYDefault []
@@ -415,6 +501,13 @@
         (.get ^RealBufferAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^BandStorage stor j i)))
         0.0))))
 
+(deftype PTDefault []
+  RealDefault
+  (entry [_ nav stor da buf ofst i j]
+    (if (< -2 (- i j) 2)
+      (.get ^RealBufferAccessor da buf (+ ofst (.index ^BandStorage stor i (Math/abs j))))
+      0.0)))
+
 (deftype ZeroDefault []
   RealDefault
   (entry [_ _ _ _ _ _ _ _]
@@ -427,6 +520,7 @@
 
 (def sy-default (SYDefault.))
 (def sb-default (SBDefault.))
+(def pt-default (PTDefault.))
 (def zero-default (ZeroDefault.))
 (def unit-default (UnitDefault.))
 
@@ -439,7 +533,12 @@
      :tb (if diag-unit unit-default zero-default)
      :sp sy-default
      :tp (if diag-unit unit-default zero-default)
-     (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report." {:type type})))
+     :gt zero-default
+     :gd zero-default
+     :dt zero-default
+     :pt pt-default
+     (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report."
+                     {:type type})))
   ([type]
    (case type
      :sy sy-default
@@ -448,7 +547,13 @@
      :tb zero-default
      :sp sy-default
      :tp zero-default
-     (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report." {:type type}))))
+     :td zero-default
+     :gt zero-default
+     :gd zero-default
+     :dt zero-default
+     :pt pt-default
+     (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report."
+                     {:type type}))))
 
 ;; ======================= Layout utillities ==============================
 

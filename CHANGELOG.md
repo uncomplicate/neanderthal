@@ -1,5 +1,11 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.16.0
+
+### Enhancements
+
+* Updated JOCLBlast dependency to 1.0.1.
+
 ## 0.15.0
 
 ### New features

@@ -24,7 +24,7 @@
              [api :refer :all]
              [common :refer [dense-rows dense-cols dense-dias region-dias region-cols region-rows
                              dragan-says-ex real-accessor]]
-             [printing :refer [print-vector print-ge print-uplo print-banded]]
+             [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
   (:import [java.nio ByteBuffer DirectByteBuffer]
@@ -35,7 +35,7 @@
             VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
             RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault
             LayoutNavigator RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix
-            BandedMatrix PackedMatrix]
+            BandedMatrix PackedMatrix DiagonalMatrix]
            uncomplicate.neanderthal.internal.navigation.BandStorage))
 
 (defn ^:private hash* ^double [^double h ^double x]
@@ -59,6 +59,7 @@
 (declare real-uplo-matrix)
 (declare real-banded-matrix)
 (declare real-packed-matrix)
+(declare real-diagonal-matrix)
 
 ;; ============ Real Buffer ====================================================
 
@@ -1568,8 +1569,7 @@
                          :sb (sb-engine fact)
                          :tb (tb-engine fact)
                          (dragan-says-ex (format "%s is not a valid banded matrix type. Please send me a bug report."
-                                                 matrix-type)
-                                         {:type matrix-type}))))
+                                                 matrix-type)))))
   ([fact m n kl ku column?]
    (real-banded-matrix fact m n (layout-navigator column?) (band-storage column? m n kl ku)
                        (band-region m n kl ku) :gb zero-default (gb-engine fact))))
@@ -1836,6 +1836,208 @@
 (defmethod print-method RealPackedMatrix [a ^java.io.Writer w]
   (.write w (str a))
   (print-uplo w a "."))
+
+(deftype RealDiagonalMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
+                             fact ^RealBufferAccessor da eng matrix-type
+                             ^Boolean master ^ByteBuffer buf ^long n ^long ofst]
+  Object
+  (hashCode [a]
+    (-> (hash :RealDiagonalMatrix) (hash-combine n) (hash-combine (nrm2 eng a))))
+  (equals [a b]
+    (matrix-equals a b))
+  (toString [a]
+    (format "#RealDiagonalMatrix[%s, type%s mxn:%dx%d, offset:%d]"
+            (.entryType da) matrix-type n n ofst))
+  Info
+  (info [a]
+    {:entry-type (.entryType da)
+     :class (class a)
+     :device :cpu
+     :matrix-type matrix-type
+     :dim (.dim ^Matrix a)
+     :n n
+     :offset ofst
+     :master master
+     :layout :diagonal
+     :storage (info stor)
+     :region (info reg)
+     :engine (info eng)})
+  Releaseable
+  (release [_]
+    (if master (clean-buffer buf) true))
+  DiagonalMatrix
+  (matrixType [_]
+    matrix-type)
+  (isTriangular [_]
+    false)
+  (isSymmetric [_]
+    (= :pt matrix-type))
+  EngineProvider
+  (engine [_]
+    eng)
+  FactoryProvider
+  (factory [_]
+    fact)
+  (native-factory [_]
+    (native-factory fact))
+  (index-factory [_]
+    (index-factory fact))
+  DataAccessorProvider
+  (data-accessor [_]
+    da)
+  Navigable
+  (navigator [_]
+    nav)
+  (storage [_]
+    stor)
+  (region [_]
+    reg)
+  Container
+  (raw [_]
+    (real-diagonal-matrix fact n nav stor reg matrix-type default eng))
+  (raw [_ fact]
+    (create-diagonal fact n matrix-type false))
+  (zero [a]
+    (raw a))
+  (zero [_ fact]
+    (create-diagonal fact n matrix-type true))
+  (host [a]
+    (let-release [res (raw a)]
+      (copy eng a res)))
+  (native [a]
+    a)
+  DenseContainer
+  (view-vctr [a]
+    (real-block-vector fact false (.surface reg) ofst 1))
+  (view-vctr [_ _]
+    (dragan-says-ex "TD cannot be viewed as a strided vector."))
+  (view-ge [_]
+    (dragan-says-ex "TD cannot be viewed as a GE matrix."))
+  (view-tr [_ _ diag-unit?]
+    (dragan-says-ex "TD cannot be viewed as a TR matrix."))
+  (view-sy [_ _]
+    (dragan-says-ex "TD cannot be viewed as a SY matrix."))
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? da b))
+  (fits? [a b]
+    (and (instance? DiagonalMatrix b) (= reg (region b))))
+  (fits-navigation? [_ b]
+    true)
+  (device [_]
+    :cpu)
+  Monoid
+  (id [a]
+    (real-diagonal-matrix fact 0 matrix-type))
+  Seqable
+  (seq [a]
+    (map seq (.dias a)))
+  IFn$LLDD
+  (invokePrim [x i j v]
+    (entry! x i j v))
+  IFn$LLD
+  (invokePrim [a i j]
+    (entry a i j))
+  IFn
+  (invoke [x i j v]
+    (entry! x i j v))
+  (invoke [a i j]
+    (entry a i j))
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
+  RealChangeable
+  (isAllowed [a i j]
+    (.accessible reg i j))
+  (set [a val]
+    (if (not (Double/isNaN val))
+      (set-all eng val a)
+      (dotimes [idx (.capacity stor)]
+        (.set da buf (+ ofst idx) val)))
+    a)
+  (set [a i j val]
+    (.set da buf (+ ofst (.index nav stor i j)) val)
+    a)
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a f]
+    (if (instance? IFn$DD f)
+      (dotimes [idx (.capacity stor)]
+        (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
+      (dragan-says-ex "You cannot call indexed alter on diagonal matrices. Use banded matrix."))
+    a)
+  (alter [a i j f]
+    (let [idx (+ ofst (.index nav stor i j))]
+      (.set da buf idx (.invokePrim ^IFn$DD f (.get da buf idx)))
+      a))
+  RealNativeMatrix
+  (buffer [_]
+    buf)
+  (offset [_]
+    ofst)
+  (stride [_]
+    1)
+  (dim [_]
+    (* n n))
+  (mrows [_]
+    n)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (if (.accessible reg i j)
+      (.get da buf (+ ofst (.index nav stor i j)))
+      0.0))
+  (boxedEntry [a i j]
+    (.entry a i j))
+  (row [a i]
+    (dragan-says-ex "You cannot access rows of a (tri)diagonal matrix."))
+  (rows [a]
+    (dragan-says-ex "You cannot access rows of a (tri)diagonal matrix."))
+  (col [a j]
+    (dragan-says-ex "You cannot access columns of a (tri)diagonal matrix."))
+  (cols [a]
+    (dragan-says-ex "You cannot access columns of a (tri)diagonal matrix."))
+  (dia [a]
+    (real-block-vector fact false buf n ofst 1))
+  (dia [a k]
+    (if (<= (- (.kl reg)) k (.ku reg))
+      (real-block-vector fact false buf (- n (Math/abs k)) (+ ofst (.index stor 0 k)) 1)
+      (real-block-vector fact false buf 0 ofst 1)))
+  (dias [a]
+    (region-dias a))
+  (submatrix [a i j k l]
+    (dragan-says-ex "You cannot create a submatrix of a (tri)diagonal matrix."
+                    {:a (info a)}))
+  (transpose [a]
+    (dragan-says-ex "You cannot transpose a (tri)diagonal matrix.")))
+
+(defn real-diagonal-matrix
+  ([fact master buf n ofst nav stor reg matrix-type default engine]
+   (->RealDiagonalMatrix nav stor reg default fact (data-accessor fact) engine
+                         matrix-type master buf n ofst))
+  ([fact n nav ^DenseStorage stor reg matrix-type default engine]
+   (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
+     (real-diagonal-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
+  ([fact ^long n matrix-type]
+   (let [kl (case matrix-type :pt 0 :gd 0 :gt 1 :dt 1 1)
+         ku (if (= :gd matrix-type) 0 1)]
+     (real-diagonal-matrix fact n diagonal-navigator (diagonal-storage n matrix-type)
+                           (band-region n n kl ku) matrix-type (real-default matrix-type)
+                           (case matrix-type
+                             :gd (gd-engine fact)
+                             :gt (gt-engine fact)
+                             :dt (dt-engine fact)
+                             :pt (pt-engine fact)
+                             (dragan-says-ex (format "%s is not a valid (tri)diagonal matrix type."
+                                                     matrix-type)))))))
+
+(defmethod print-method RealDiagonalMatrix [a ^java.io.Writer w]
+  (.write w (str a))
+  (print-diagonal w a))
 
 (defmethod transfer! [RealNativeMatrix RealNativeMatrix]
   [^RealNativeMatrix source ^RealNativeMatrix destination]

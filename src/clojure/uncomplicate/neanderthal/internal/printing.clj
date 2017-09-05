@@ -31,11 +31,13 @@
                         :matrix-height 5}
       settings (atom default-settings)
       pad-str (cl-format nil format-a "*")
+      pad-dot (cl-format nil format-a ".")
       diag-arrow (cl-format nil format-a \u2198)
       row-arrow (cl-format nil format-a7 \u2192)
       col-arrow (cl-format nil format-a8 \u2193)
       row-major (cl-format nil format-a \u25a4)
       col-major (cl-format nil format-a \u25a5)
+      dia-major (cl-format nil format-a \u25a7)
       hdots (cl-format nil format-a7 \u22ef)
       vdots (cl-format nil format-a8 \u22ee)
       up-elipsis (cl-format nil format-a8 \u22f0)
@@ -183,7 +185,7 @@
              formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
          (print-uplo w formatter a placeholder)))))
 
-  (defn print-banded
+    (defn print-banded
     ([^java.io.Writer w formatter a]
      (let [nav (navigator a)
            stor (storage a)
@@ -228,4 +230,48 @@
      (when (< 0 (dim a))
        (let [max-value (double (amax (engine a) a))
              formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
-         (print-banded w formatter a))))))
+         (print-banded w formatter a)))))
+
+    (defn print-diagonal
+    ([^java.io.Writer w formatter a]
+     (let [stor (storage a)
+           reg (region a)
+           ku (.ku reg)
+           kl (.kl reg)
+           width (ncols a)
+           height (inc (+ ku kl))
+           print-height (min height (long (:matrix-height @settings)))
+           print-width (min width (long (:matrix-width @settings)))
+           print-table (string-table print-height print-width pad-dot)
+           k-max (min ku (max (long (/ print-height 2)) (- print-height kl)))
+           format-header format-header-col]
+       (dotimes [i print-height]
+         (let [k (- k-max i)
+               d (dia a k)
+               j0 (max 0 k)]
+           (dotimes [j (min (dim d) print-width (- print-width k))]
+             (aset print-table (inc i) (inc (+ j0 j)) (formatter (entry d j))))))
+       (aset print-table 0 0 dia-major)
+       (dotimes [i print-height]
+         (aset print-table (inc i) 0 diag-arrow))
+       (if (< k-max ku)
+         (aset print-table 0 (inc print-width) (if (< print-width width) up-elipsis vline))
+         (when (< print-width width)
+           (aset print-table 0 (inc print-width) hline)
+           (aset print-table 1 (inc print-width) hdots)))
+       (when (< print-height (+ k-max (.kl reg) 1))
+         (aset print-table (inc print-height) 0 vline)
+         (aset print-table (inc print-height) 1 vdots)
+         (if (< print-width width)
+           (aset print-table (inc print-height) (inc print-width) down-elipsis)
+           (aset print-table (inc print-height) (inc print-width) vline)))
+       (.write w "\n")
+       (cl-format w format-header (first print-table))
+       (doseq [print-row (rest print-table)]
+         (cl-format w format-seq print-row)
+         (.write w "\n"))))
+    ([^java.io.Writer w a]
+     (when (< 0 (dim a))
+       (let [max-value (double (amax (engine a) a))
+             formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
+         (print-diagonal w formatter a))))))

@@ -17,5 +17,9 @@
 (mm a b)
 
 ;; If you see something like this:
-;; #RealGeneralMatrix[double, COL, mxn: 2x2, ld:2]((35.0 44.0) (89.0 116.0))
+;; #RealGEMatrix[double, mxn:2x2, layout:column, offset:0]
+;; ▥       ↓       ↓       ┓
+;; →       35.0    89.0
+;; →       44.0   116.0
+;; ┗                       ┛
 ;; It means that everything is set up and you can enjoy programming with Neanderthal :)

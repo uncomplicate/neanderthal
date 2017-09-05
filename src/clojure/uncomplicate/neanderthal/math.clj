@@ -51,6 +51,9 @@
   ([^double x ^double nepsilons]
    (f= x (Math/floor (+ 0.5 x)) nepsilons)))
 
+(defn signum ^double [^double x]
+  (Math/signum x))
+
 (defn floor ^double [^double x]
   (Math/floor x))
 

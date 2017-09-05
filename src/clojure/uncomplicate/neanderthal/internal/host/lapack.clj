@@ -15,7 +15,7 @@
              [api :refer [factory index-factory engine data-accessor info raw
                           create-vector create-ge create-gb create-sb create-sy fits-navigation?
                           nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage]]
-             [common :refer [real-accessor dragan-says-ex ->LUFactorization ->CholeskyFactorization]]
+             [common :refer [check-stride real-accessor dragan-says-ex ->LUFactorization ->CholeskyFactorization]]
              [navigation :refer [dostripe-layout full-storage]]]
             [uncomplicate.neanderthal.internal.host.cblas
              :refer [band-storage-reduce band-storage-map full-storage-map]])
@@ -265,14 +265,18 @@
                       (with-lapack-check (~method increasing# len# buff# (+ ofst# idx#))))
      ~a))
 
+;; ----------------- Diagonal matrix -----------------------------------------------
+
+(defmacro diagonal-laset [method alpha a]
+  `(do
+     (with-lapack-check
+       (~method CBLAS/ORDER_ROW_MAJOR (int \g) (.surface (region ~a)) 1
+        ~alpha ~alpha (.buffer ~a) (.offset ~a) 1))
+     ~a))
+
 ;; =========== Drivers and Computational LAPACK Routines ===========================
 
 ;; ------------- Singular Value Decomposition LAPACK -------------------------------
-
-(defn check-pivot [ipiv]
-  (if (= 1 (stride ipiv))
-    ipiv
-    (dragan-says-ex "You cannot use ipiv with stride different than 1." {:stride (stride ipiv)})))
 
 (defmacro with-sv-check [res expr]
   `(let [info# ~expr]
@@ -287,7 +291,7 @@
 
 (defmacro ge-laswp [method a ipiv k1 k2]
   `(do
-     (check-pivot ~ipiv)
+     (check-stride ~ipiv)
      (with-sv-check ~a
        (~method (.layout (navigator ~a)) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
         ~k1 ~k2 (.buffer ~ipiv) (.offset ~ipiv) (.stride ~ipiv)))))
@@ -309,14 +313,14 @@
     (create-fn a false)))
 
 (defmacro ge-trf [method a ipiv]
-  `(with-sv-check (check-pivot ~ipiv)
+  `(with-sv-check (check-stride ~ipiv)
      (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv))))
 
 (defmacro sy-trx
   ([method a ipiv]
    `(let [stor# (full-storage ~a)]
-      (check-pivot ~ipiv)
+      (check-stride ~ipiv)
       (with-sv-check ~a
         (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
          (.buffer ~a) (.offset ~a) (.ld stor#) (.buffer ~ipiv) (.offset ~ipiv)))))
@@ -368,7 +372,7 @@
 (defmacro gb-trf [method a ipiv]
   `(let [reg# (region ~a)]
      (check-gb-submatrix ~a)
-     (with-sv-check (check-pivot ~ipiv)
+     (with-sv-check (check-stride ~ipiv)
        (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a) (.kl reg#) (.ku reg#)
         (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) (.buffer ~ipiv) (.offset ~ipiv)))))
 
@@ -381,7 +385,7 @@
 
 (defmacro ge-tri [method a ipiv]
   `(let [stor# (full-storage ~a)]
-     (check-pivot ~ipiv)
+     (check-stride ~ipiv)
      (with-sv-check ~a
        (~method (.layout (navigator ~a)) (.sd stor#)
         (.buffer ~a) (.offset ~a) (.ld stor#) (.buffer ~ipiv) (.offset ~ipiv)))))
@@ -410,7 +414,7 @@
 
 (defmacro ge-trs [method lu b ipiv]
   `(let [nav-b# (navigator ~b)]
-     (check-pivot ~ipiv)
+     (check-stride ~ipiv)
      (with-sv-check ~b
        (~method (.layout nav-b#) (int (if (= nav-b# (navigator ~lu)) \N \T))
         (.mrows ~b) (.ncols ~b) (.buffer ~lu) (.offset ~lu) (.stride ~lu)
@@ -421,7 +425,7 @@
    `(let [nav-b# (navigator ~b)
           reg# (region ~lu)]
       (check-gb-submatrix ~lu)
-      (check-pivot ~ipiv)
+      (check-stride ~ipiv)
       (with-sv-check ~b
         (~method (.layout nav-b#) (int (if (= nav-b# (navigator ~lu)) \N \T))
          (.mrows ~b) (.kl reg#) (.ku reg#) (.ncols ~b)
@@ -469,7 +473,7 @@
 (defmacro sp-trs
   ([method ldl b ipiv]
    `(let [nav-b# (navigator ~b)]
-      (check-pivot ~ipiv)
+      (check-stride ~ipiv)
       (if (= nav-b# (navigator ~ldl))
         (with-sv-check ~b
           (~method (.layout nav-b#) (int (if (.isLower (region ~ldl)) \L \U)) (.mrows ~b) (.ncols ~b)
@@ -488,7 +492,7 @@
 (defmacro sp-trx
   ([method a ipiv]
    `(do
-      (check-pivot ~ipiv)
+      (check-stride ~ipiv)
       (with-sv-check ~a
         (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
          (.buffer ~a) (.offset ~a) (buffer ~ipiv) (offset ~ipiv)))))
@@ -501,7 +505,7 @@
 (defmacro sy-trs
   ([method ldl b ipiv]
    `(let [nav-b# (navigator ~b)]
-      (check-pivot ~ipiv)
+      (check-stride ~ipiv)
       (if (= nav-b# (navigator ~ldl))
         (with-sv-check ~b
           (~method (.layout nav-b#) (int (if (.isLower (region ~ldl)) \L \U)) (.mrows ~b) (.ncols ~b)
@@ -532,7 +536,7 @@
                   reg# (region ~lu)
                   res# (.createDataSource da# 1)]
      (check-gb-submatrix ~lu)
-     (check-pivot ~ipiv)
+     (check-stride ~ipiv)
      (with-sv-check (.get da# res# 0)
        (~method (.layout (navigator ~lu)) (int (if ~nrm1? \O \I))
         (min (.mrows ~lu) (.ncols ~lu)) (.kl reg#) (.ku reg#)
@@ -611,7 +615,7 @@
       (let [nav-b# (navigator ~b)]
         (if (= (navigator ~a) nav-b#)
           (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
-            (check-pivot ipiv#)
+            (check-stride ipiv#)
             (with-sv-check ~b
               (~method (.layout nav-b#) (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.stride ~a)
                (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b))))
@@ -631,7 +635,7 @@
         (if (= nav-b# nav-a#)
           (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
             (check-gb-submatrix ~a)
-            (check-pivot ipiv#)
+            (check-stride ipiv#)
             (with-sv-check ~b
               (~method (.layout nav-b#) (.mrows ~b) (.kl reg#) (.ku reg#) (.ncols ~b)
                (.buffer ~a) (- (.offset ~a) (.kl reg#)) (.stride ~a) (buffer ipiv#) (offset ipiv#)
@@ -675,7 +679,7 @@
                       (copy (engine ~a) ~a a#)
                       (sv (engine ~a) a# ~b false)))))
         (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
-          (check-pivot ipiv#)
+          (check-stride ipiv#)
           (with-sv-check ~b
             (~sy-method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b)
              (.buffer ~a) (.offset ~a) (.stride ~a) (buffer ipiv#) (offset ipiv#)
@@ -708,7 +712,7 @@
                       (copy (engine ~a) ~a a#)
                       (sv (engine ~a) a# ~b false)))))
         (with-release [ipiv# (create-vector (index-factory ~a) (.ncols ~a) false)]
-          (check-pivot ipiv#)
+          (check-stride ipiv#)
           (with-sv-check ~b
             (~sp-method (.layout nav-b#) uplo# (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a)
              (buffer ipiv#) (offset ipiv#) (.buffer ~b) (.offset ~b) (.stride ~b)))))))
