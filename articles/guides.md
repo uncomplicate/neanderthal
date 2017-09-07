@@ -38,7 +38,7 @@ book.
 ## Clojure Numerics
 
 * [Clojure Numerics, Part 1 - Use Matrices Efficiently](http://dragan.rocks/articles/17/Clojure-Numerics-1-Use-Matrices-Efficiently)
-
+* [Clojure Numerics, Part 2 - General Linear Systems and LU Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-2-General-Linear-Systems-and-LU-Factorization)
 ## Internal details and edge cases
 
 * [Neanderthal Tests](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal) show many more details, but without explanations in prose. It will help when you are struggling with an edge case.
