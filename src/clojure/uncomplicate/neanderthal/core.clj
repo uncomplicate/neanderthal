@@ -499,8 +499,8 @@
 
       (sp float-factory 4 2 (range 20) {:uplo :upper})
   "
-  ([factory n source options]
-   (if  (< -1 (long n))
+  ([factory ^long n source options]
+   (if  (< -1 n)
      (let-release [res (api/create-sp factory n (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source (transfer! source res) res))
@@ -517,7 +517,7 @@
 (defn gd
   "TODO"
   ([factory ^long n source options]
-   (if (< 0 n)
+   (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :gd (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "GT matrix cannot have a negative dimension." {:n n})))
@@ -525,13 +525,15 @@
    (if (or (not arg) (map? arg))
      (gd factory n nil arg)
      (gd factory n arg nil)))
-  ([factory n]
-   (gd factory n nil nil)))
+  ([factory arg]
+   (if (number? arg)
+     (gd factory arg nil nil)
+     (gd factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 (defn gt
   "TODO"
   ([factory ^long n source options]
-   (if (< 0 n)
+   (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :gt (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "GT matrix cannot have a negative dimension." {:n n})))
@@ -539,13 +541,15 @@
    (if (or (not arg) (map? arg))
      (gt factory n nil arg)
      (gt factory n arg nil)))
-  ([factory n]
-   (gt factory n nil nil)))
+  ([factory arg]
+   (if (number? arg)
+     (gt factory arg nil nil)
+     (gt factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 (defn dt
   "TODO"
   ([factory ^long n source options]
-   (if (< 0 n)
+   (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :dt (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "DT matrix cannot have a negative dimension." {:n n})))
@@ -553,13 +557,15 @@
    (if (or (not arg) (map? arg))
      (dt factory n nil arg)
      (dt factory n arg nil)))
-  ([factory n]
-   (dt factory n nil nil)))
+  ([factory arg]
+   (if (number? arg)
+     (dt factory arg nil nil)
+     (dt factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 (defn pt
   "TODO"
   ([factory ^long n source options]
-   (if (= 0 n)
+   (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :pt (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "PT matrix cannot have a negative dimension." {:n n})))
@@ -567,8 +573,10 @@
    (if (or (not arg) (map? arg))
      (pt factory n nil arg)
      (pt factory n arg nil)))
-  ([factory n]
-   (pt factory n nil nil)))
+  ([factory arg]
+   (if (number? arg)
+     (pt factory arg nil nil)
+     (pt factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 ;; ================= Container  ================================================
 

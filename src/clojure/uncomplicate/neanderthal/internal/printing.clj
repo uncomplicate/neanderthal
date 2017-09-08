@@ -190,21 +190,24 @@
      (let [nav (navigator a)
            stor (storage a)
            reg (region a)
-           ku (.ku reg)
+           ku (max 0 (.ku reg))
            width (.fd stor)
            height (.sd ^FullStorage stor)
            print-height (min height (long (:matrix-height @settings)))
            print-width (min width (long (:matrix-width @settings)))
            print-table (string-table print-height print-width)
-           k-max (min ku (max (long (/ print-height 2)) (- print-height (.kl reg))))
+           k-max (min ku (max (long (/ print-height 2)) (- print-height (max 0 (.kl reg)))))
            format-header (if (.isColumnMajor nav) format-header-col format-header-row)
            direction-arrow (if (.isColumnMajor nav) col-arrow row-arrow)]
        (dotimes [i print-height]
          (let [k (- k-max i)
                d (dia a k)
                j0 (max 0 k)]
-           (dotimes [j (min (dim d) print-width (- print-width k))]
-             (aset print-table (inc i) (inc (+ j0 j)) (formatter (entry d j))))))
+           (if (< 0 (dim d))
+             (dotimes [j (min (dim d) print-width (- print-width k))]
+               (aset print-table (inc i) (inc (+ j0 j)) (formatter (entry d j))))
+             (dotimes [j print-width]
+               (aset print-table (inc i) (inc j) one)))))
        (aset print-table 0 0 (if (.isColumnMajor nav) col-major row-major))
        (dotimes [i print-height]
          (aset print-table (inc i) 0 diag-arrow))

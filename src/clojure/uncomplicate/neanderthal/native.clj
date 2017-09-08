@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp]]
+  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt pt]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 ;; ============ Creating real constructs  ==============
@@ -240,3 +240,83 @@
    (sp mkl-double n arg))
   ([source]
    (sp mkl-double source)))
+
+(defn fgd
+  "Creates a GD (diagonal) matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/gd]])."
+  ([^long n source options]
+   (gd mkl-float n source options))
+  ([^long n arg]
+   (gd mkl-float n arg))
+  ([source]
+   (gd mkl-float source)))
+
+(defn dgd
+  "Creates a GD (diagonal) matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/gd]])."
+  ([^long n source options]
+   (gd mkl-double n source options))
+  ([^long n arg]
+   (gd mkl-double n arg))
+  ([source]
+   (gd mkl-double source)))
+
+(defn fgt
+  "Creates a GT (tridiagonal) matrix using single precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/gt]])."
+  ([^long n source options]
+   (gt mkl-float n source options))
+  ([^long n arg]
+   (gt mkl-float n arg))
+  ([source]
+   (gt mkl-float source)))
+
+(defn dgt
+  "Creates a GT (tridiagonal) matrix using double precision floating point native CPU engine
+  (see [[uncomplicate.neanderthal.core/gt]])."
+  ([^long n source options]
+   (gt mkl-double n source options))
+  ([^long n arg]
+   (gt mkl-double n arg))
+  ([source]
+   (gt mkl-double source)))
+
+(defn fdt
+  "Creates a DT (diagonally dominant tridiagonal) matrix using single precision floating point
+  native CPU engine (see [[uncomplicate.neanderthal.core/dt]])."
+  ([^long n source options]
+   (dt mkl-float n source options))
+  ([^long n arg]
+   (dt mkl-float n arg))
+  ([source]
+   (dt mkl-float source)))
+
+(defn ddt
+  "Creates a DT (diagonally dominant tridiagonal) matrix using double precision floating point
+  native CPU engine (see [[uncomplicate.neanderthal.core/dt]])."
+  ([^long n source options]
+   (dt mkl-double n source options))
+  ([^long n arg]
+   (dt mkl-double n arg))
+  ([source]
+   (dt mkl-double source)))
+
+(defn fpt
+  "Creates a PT (symmetric positive definite tridiagonal) matrix using single precision
+  floating point native CPU engine (see [[uncomplicate.neanderthal.core/pt]])."
+  ([^long n source options]
+   (pt mkl-float n source options))
+  ([^long n arg]
+   (pt mkl-float n arg))
+  ([source]
+   (pt mkl-float source)))
+
+(defn dpt
+  "Creates a PT (symmetric positive definite tridiagonal) matrix using double precision
+  floating point native CPU engine (see [[uncomplicate.neanderthal.core/pt]])."
+  ([^long n source options]
+   (pt mkl-double n source options))
+  ([^long n arg]
+   (pt mkl-double n arg))
+  ([source]
+   (pt mkl-double source)))

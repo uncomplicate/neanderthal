@@ -700,7 +700,7 @@
 (defmacro sb-mv
   ([method alpha a x beta y]
    `(let [reg# (region ~a)]
-      (~method (.layout (navigator ~a)) (.uplo reg#) (.ncols ~a) (.ku reg#)
+      (~method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER (.ncols ~a) (max (.kl reg#) (.ku reg#))
        ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
        (.buffer ~x) (.offset ~x) (.stride ~x) ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
       ~y))
@@ -710,8 +710,10 @@
 (defmacro tb-mv
   ([method a x]
    `(let [reg# (region ~a)]
-      (~method (.layout (navigator ~a)) (.uplo reg#) CBLAS/TRANSPOSE_NO_TRANS (.diag reg#) (.ncols ~a)
-       (.ku reg#) (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
+      (~method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER
+       (if (.isLower reg#) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS) (.diag reg#) (.ncols ~a)
+       (max (.kl reg#) (.ku reg#))
+       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
       ~x))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TB matrices." {:a (info ~a)}))))
@@ -746,20 +748,19 @@
       (dragan-says-ex "Transforming a GB matrix by another matrix type is not supported. Copy GB to GE."
                       {:a (info ~a) :b (info ~b)})))
   ([a]
-   `(dragan-says-ex "In-place mm! is not supported by TB matrices. Copy GB to GE." {:a (info ~a)})))
+   `(dragan-says-ex "In-place mm! is not supported by GB matrices. Copy GB to GE." {:a (info ~a)})))
 
 (defmacro sb-mm
   ([method alpha a b beta c left]
    `(if ~left
       (let [reg# (region ~a)
-            layout# (.layout (navigator ~a))
             nav-b# (navigator ~b)
             nav-c# (navigator ~c)
             stor-b# (storage ~b)
             stor-c# (storage ~c)
             uplo# (.uplo reg#)
             n-a# (.ncols ~a)
-            ku-a# (.ku reg#)
+            k-a# (max (.kl reg#) (.ku reg#))
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
             ld-a# (.stride ~a)
@@ -770,7 +771,7 @@
             stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (.stride ~b))
             stride-col-c# (if (.isColumnMajor (navigator ~c)) 1 (.stride ~c))]
         (dotimes [j# (.ncols ~b)]
-          (~method layout# uplo# n-a# ku-a#
+          (~method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER n-a# k-a#
            ~alpha buff-a# ofst-a# ld-a# buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#
            ~beta buff-c# (+ ofst-c# (.index nav-c# stor-c# 0 j#)) stride-col-c#))
         ~c)
@@ -789,15 +790,18 @@
             uplo# (.uplo reg#)
             diag# (.diag reg#)
             n-a# (.ncols ~a)
-            ku-a# (.ku reg#)
+            k-a# (max (.kl reg#) (.ku reg#))
             buff-a# (.buffer ~a)
             ofst-a# (.offset ~a)
             ld-a# (.stride ~a)
             buff-b# (.buffer ~b)
             ofst-b# (.offset ~b)
-            stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (.stride ~b))]
+            stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (.stride ~b))
+            transpose# (if (.isLower reg#) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)]
+        (when-not (f= 1.0 ~alpha)
+          (scal (engine ~b) ~alpha ~b))
         (dotimes [j# (.ncols ~b)]
-          (~method layout# uplo# CBLAS/TRANSPOSE_NO_TRANS diag# n-a# ku-a#
+          (~method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER transpose# diag# n-a# k-a#
            buff-a# ofst-a# ld-a# buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
         ~b)
       (dragan-says-ex "Transforming a TB matrix by another matrix type is not supported. Copy TB to TR."

@@ -16,7 +16,7 @@
 (block-test/test-host mkl-double)
 (block-test/test-host mkl-float)
 (block-test/test-both-factories mkl-float mkl-double)
-(block-test/test-both-factories mkl-float mkl-double)
+(block-test/test-both-factories mkl-double mkl-float)
 (real-test/test-blas mkl-double)
 (real-test/test-blas mkl-float)
 (real-test/test-blas-host mkl-double)
@@ -39,6 +39,11 @@
 (real-test/test-blas-sb-host mkl-double)
 (real-test/test-blas-sb-host mkl-float)
 
+(real-test/test-blas-tb mkl-double)
+(real-test/test-blas-tb mkl-float)
+(real-test/test-blas-tb-host mkl-double)
+(real-test/test-blas-tb-host mkl-float)
+
 (real-test/test-blas-tp mkl-double)
 (real-test/test-blas-tp mkl-float)
 (real-test/test-blas-tp-host mkl-double)
@@ -48,3 +53,8 @@
 (real-test/test-blas-sp mkl-float)
 (real-test/test-blas-sp-host mkl-double)
 (real-test/test-blas-sp-host mkl-float)
+
+(real-test/test-blas-gd mkl-double)
+(real-test/test-blas-gd mkl-float)
+(real-test/test-blas-gd-host mkl-double)
+(real-test/test-blas-gd-host mkl-float)

@@ -236,7 +236,7 @@ A million is still smallish, though. Let's get serious. Let's give a vector of
 
 $code"
 
-(with-default
+#_(with-default
   (with-default-engine
     ;; I had to change it to 2^28 because a recent update for my GPU driver caused
     ;; it to complain about insufficient memory, but this is probably a temporary issue.
@@ -274,7 +274,7 @@ that the main constraint is memory throughput, not computing power.
 
 $code"
 
-(with-default
+#_(with-default
   (with-default-engine
     (let [cnt (long (Math/pow 2 28))]
       (with-release [host-x (fv (range cnt))

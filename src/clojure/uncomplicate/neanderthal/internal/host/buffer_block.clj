@@ -670,7 +670,7 @@
     (vector-fmap* ^IFn$DD f x))
   (fmap! [x f y]
     (vector-fmap* ^IFn$DDD f x ^RealVector y))
-  (fmap! [ x f y z]
+  (fmap! [x f y z]
     (vector-fmap* ^IFn$DDDD f x ^RealVector y ^RealVector z))
   (fmap! [x f y z v]
     (vector-fmap* ^IFn$DDDDD f x ^RealVector y ^RealVector z ^RealVector v))
@@ -1373,7 +1373,7 @@
     (if-not (= :gb matrix-type)
       (let [k (max (.kl reg) (.ku reg))]
         (real-banded-matrix fact false buf n n ofst nav
-                            (tb-storage (.isColumnMajor nav) n k (.isLower reg) diag-unit?)
+                            (uplo-storage (.isColumnMajor nav) n k (.isLower reg))
                             (tb-region n k (.isLower reg) diag-unit?) :tb (real-default :tb diag-unit?)
                             (tb-engine fact)))
       (dragan-says-ex "GB cannot be viewed as a TB due to specific factorization requirements.")))
@@ -1381,7 +1381,7 @@
     (if-not (= :gb matrix-type)
       (let [k (max (.kl reg) (.ku reg))]
         (real-banded-matrix fact false buf n n ofst nav
-                            (sb-storage (.isColumnMajor nav) n k (.isLower reg))
+                            (uplo-storage (.isColumnMajor nav) n k (.isLower reg))
                             (sb-region n k (.isLower reg) false) :sb sb-default (sb-engine fact)))
       (dragan-says-ex "GB cannot be viewed as a SB due to specific factorization requirements.")))
   MemoryContext
@@ -1479,7 +1479,7 @@
   (cols [a]
     (region-cols a))
   (dia [a]
-    (real-block-vector fact false buf (min m n) (+ ofst (.index nav stor 0 0)) (.ld ^FullStorage stor)))
+    (.dia a 0))
   (dia [a k]
     (if (<= (- (.kl reg)) k (.ku reg))
       (if (< 0 k)
@@ -1575,11 +1575,11 @@
                        (band-region m n kl ku) :gb zero-default (gb-engine fact))))
 
 (defn real-tb-matrix [fact n k column? lower? diag-unit?]
- (real-banded-matrix fact n n (layout-navigator column?) (tb-storage column? n k lower? diag-unit?)
+ (real-banded-matrix fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
                      (tb-region n k lower? diag-unit?) :tb (real-default :tb diag-unit?) (tb-engine fact)))
 
 (defn real-sb-matrix [fact n k column? lower?]
- (real-banded-matrix fact n n (layout-navigator column?) (sb-storage column? n k lower?)
+ (real-banded-matrix fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
                      (sb-region n k lower?) :sb sb-default (sb-engine fact)))
 
 (defmethod print-method RealBandedMatrix [a ^java.io.Writer w]
@@ -1844,7 +1844,15 @@
   (hashCode [a]
     (-> (hash :RealDiagonalMatrix) (hash-combine n) (hash-combine (nrm2 eng a))))
   (equals [a b]
-    (matrix-equals a b))
+    (or (identical? a b)
+        (and (instance? RealDiagonalMatrix b) (compatible? a b) (fits? a b)
+             (let [n (.fd stor)
+                   buf-b (.buffer ^RealDiagonalMatrix b)]
+               (loop [i 0]
+                 (if (< i n)
+                   (and (= (.get da buf i) (.get da buf-b i))
+                        (recur (inc i) ))
+                   true))))))
   (toString [a]
     (format "#RealDiagonalMatrix[%s, type%s mxn:%dx%d, offset:%d]"
             (.entryType da) matrix-type n n ofst))
@@ -1908,7 +1916,7 @@
     a)
   DenseContainer
   (view-vctr [a]
-    (real-block-vector fact false (.surface reg) ofst 1))
+    (real-block-vector fact false buf (.surface reg) ofst 1))
   (view-vctr [_ _]
     (dragan-says-ex "TD cannot be viewed as a strided vector."))
   (view-ge [_]
@@ -2015,6 +2023,19 @@
   (transpose [a]
     (dragan-says-ex "You cannot transpose a (tri)diagonal matrix.")))
 
+(extend RealDiagonalMatrix
+  Functor
+  {:fmap copy-fmap}
+  PseudoFunctor
+  {:fmap! diagonal-fmap!}
+  Applicative
+  {:pure matrix-pure}
+  Foldable
+  {:fold diagonal-fold
+   :foldmap diagonal-foldmap}
+  Magma
+  {:op (constantly matrix-op)})
+
 (defn real-diagonal-matrix
   ([fact master buf n ofst nav stor reg matrix-type default engine]
    (->RealDiagonalMatrix nav stor reg default fact (data-accessor fact) engine
@@ -2039,6 +2060,19 @@
   (.write w (str a))
   (print-diagonal w a))
 
+(defn ^:private transfer-diagonal [^Matrix source ^Matrix destination]
+  (doseq [k (range -1 2)]
+    (let [dia-src ^RealBlockVector (.dia source k)
+          dia-dest ^RealBlockVector (.dia destination k)]
+      (transfer-vector-vector dia-src dia-dest)))
+  destination)
+
+(defn ^:private transfer-diagonal-diagonal [source destination]
+  (let [diag-src ^RealBlockVector (view-vctr source)
+        diag-dest ^RealBlockVector (view-vctr destination)]
+    (transfer-vector-vector diag-src diag-dest)
+    destination))
+
 (defmethod transfer! [RealNativeMatrix RealNativeMatrix]
   [^RealNativeMatrix source ^RealNativeMatrix destination]
   (transfer-matrix-matrix source destination))
@@ -2046,6 +2080,18 @@
 (defmethod transfer! [RealPackedMatrix RealPackedMatrix]
   [^RealPackedMatrix source ^RealPackedMatrix destination]
   (transfer-matrix-matrix (= (navigator source) (navigator destination)) source destination))
+
+(defmethod transfer! [RealDiagonalMatrix RealDiagonalMatrix]
+  [source destination]
+  (transfer-diagonal-diagonal source destination))
+
+(defmethod transfer! [RealDiagonalMatrix RealNativeMatrix]
+  [source destination]
+  (transfer-diagonal source destination))
+
+(defmethod transfer! [RealNativeMatrix RealDiagonalMatrix]
+  [source destination]
+  (transfer-diagonal source destination))
 
 (defmethod transfer! [clojure.lang.Sequential RealNativeMatrix]
   [source ^RealNativeMatrix destination]

@@ -341,8 +341,8 @@
   ([column? m n ld kl ku]
    (let [m (long m)
          n (long n)
-         kl (long kl)
-         ku (long ku)
+         kl (max 0 (long kl))
+         ku (max 0 (long ku))
          h (inc (+ kl ku))
          ld (max h (long ld))]
      (if column?
@@ -351,16 +351,10 @@
   ([column? m n kl ku]
    (band-storage column? m n (inc (+ (long kl) (long ku))) kl ku)))
 
-(defn tb-storage [column? n k lower? diag-unit?]
-  (let [unit-pad (if diag-unit? -1 0)]
-    (if lower?
-      (band-storage column? n n (min (max 0 (long k)) (dec (long n))) unit-pad)
-      (band-storage column? n n unit-pad (min (max 0 (long k)) (dec (long n)))))))
-
-(defn sb-storage [column? ^long n ^long k lower?]
+(defn uplo-storage [column? ^long n ^long k lower?]
   (if lower?
-    (band-storage column? n n (min (max 0 k) (dec n)) 0)
-    (band-storage column? n n 0 (min (max 0 k) (dec n)))))
+    (band-storage column? n n (min k (dec n)) 0)
+    (band-storage column? n n 0 (min k (dec n)))))
 
 ;; =================== Packed Storage ======================================
 
@@ -447,7 +441,7 @@
     (case j
       0 i
       1 (+ n i)
-      (+ n (dec n) i)))
+      (+ n (max 0 (dec n)) i)))
   (fd [_]
     1)
   (isGapless [_]
@@ -476,7 +470,7 @@
   (isGapless [_]
     true)
   (capacity [_]
-    (+ n (dec n))))
+    (+ n (max 0 (dec n)))))
 
 (defn diagonal-storage [^long n matrix-type]
   (case matrix-type

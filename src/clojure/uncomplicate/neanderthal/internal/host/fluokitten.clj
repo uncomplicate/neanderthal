@@ -16,13 +16,14 @@
             [uncomplicate.neanderthal.internal
              [api :refer [factory compatible? engine raw subcopy sum ReductionFunction
                           vector-reduce vector-map-reduce matrix-reduce matrix-map-reduce
-                          data-accessor create-ge navigator storage region]]
+                          data-accessor create-ge navigator storage region view-vctr]]
              [common :refer [real-accessor]]]
             [uncomplicate.neanderthal.internal.navigation :refer [doall-layout real-navigator]])
   (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
             IFn$DLDD IFn$ODO IFn$OLDO]
            [uncomplicate.neanderthal.internal.api RealBufferAccessor RealVector RealMatrix
-            Vector Matrix RealChangeable LayoutNavigator RealLayoutNavigator DenseStorage Region]))
+            Vector Matrix DiagonalMatrix RealChangeable LayoutNavigator RealLayoutNavigator
+            DenseStorage Region]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
   "Matrices should have fitting dimensions.")
@@ -231,6 +232,49 @@
   ([a f b c d es]
    (throw (UnsupportedOperationException. "Matrix fmap! supports up to 4 matrices."))))
 
+(defn diagonal-fmap!
+  ([a ^IFn$DD f]
+   (let [va ^RealVector (view-vctr a)]
+     (fmap! va f)))
+  ([^Matrix a ^IFn$DDD f ^Matrix b]
+   (if (instance? DiagonalMatrix b)
+     (let [va ^RealVector (view-vctr a)
+           vb ^RealVector (view-vctr b)]
+       (fmap! va f vb))
+     (dotimes [i 3]
+       (let [va ^RealVector (.dia a (dec i))
+             vb ^RealVector (.dia b (dec i))]
+         (fmap! va f vb))))
+   a)
+  ([^Matrix a ^IFn$DDDD f ^Matrix b ^Matrix c]
+   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c))
+     (let [va ^RealVector (view-vctr a)
+           vb ^RealVector (view-vctr b)
+           vc ^RealVector (view-vctr c)]
+       (fmap! va f vb vc))
+     (dotimes [i 3]
+       (let [va ^RealVector (.dia a (dec i))
+             vb ^RealVector (.dia b (dec i))
+             vc ^RealVector (.dia c (dec i))]
+         (fmap! va f vb vc))))
+   a)
+  ([^Matrix a ^IFn$DDDDD f ^Matrix b ^Matrix c ^Matrix d]
+   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
+     (let [va ^RealVector (view-vctr a)
+           vb ^RealVector (view-vctr b)
+           vc ^RealVector (view-vctr c)
+           vd ^RealVector (view-vctr d)]
+       (fmap! va f vb vc vd))
+     (dotimes [i 3]
+       (let [va ^RealVector (.dia a (dec i))
+             vb ^RealVector (.dia b (dec i))
+             vc ^RealVector (.dia c (dec i))
+             vd ^RealVector (.dia d (dec i))]
+         (fmap! va f vb vc vd))))
+   a)
+  ([a f b c d es]
+   (throw (UnsupportedOperationException. "Matrix fmap! supports up to 4 matrices."))))
+
 (defn matrix-fold
   ([a]
    (sum (engine a) a))
@@ -242,6 +286,39 @@
    (matrix-reduce f init a b c))
   ([a f init b c d]
    (matrix-reduce f init a b c d))
+  ([a f init b c d es]
+   (throw (UnsupportedOperationException. "Matrix fold supports up to 4 matrices."))))
+
+(defn diagonal-fold
+  ([a]
+   (sum (engine a) a))
+  ([a f init]
+   (vector-reduce f init (view-vctr a)))
+  ([^Matrix a f init ^Matrix b]
+   (if (instance? DiagonalMatrix b)
+     (vector-reduce f init (view-vctr a) (view-vctr b))
+     (vector-reduce f
+                    (vector-reduce f
+                                   (vector-reduce f init (.dia a) (.dia b))
+                                   (.dia a 1) (.dia b 1))
+                    (.dia a -1) (.dia b -1))))
+  ([^Matrix a f init ^Matrix b ^Matrix c]
+   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c))
+     (vector-reduce f init (view-vctr a) (view-vctr b) (view-vctr c))
+     (vector-reduce f
+                    (vector-reduce f
+                                   (vector-reduce f init (.dia a) (.dia b) (.dia c))
+                                   (.dia a 1) (.dia b 1) (.dia c 1))
+                    (.dia a -1) (.dia b -1) (.dia c -1))))
+  ([^Matrix a f init ^Matrix b ^Matrix c ^Matrix d]
+   ([^Matrix a f init ^Matrix b ^Matrix c]
+    (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
+      (vector-reduce f init (view-vctr a) (view-vctr b) (view-vctr c) (view-vctr d))
+      (vector-reduce f
+                     (vector-reduce f
+                                    (vector-reduce f init (.dia a) (.dia b) (.dia c) (.dia d))
+                                    (.dia a 1) (.dia b 1) (.dia c 1) (.dia d 1))
+                     (.dia a -1) (.dia b -1) (.dia c -1) (.dia d -1)))))
   ([a f init b c d es]
    (throw (UnsupportedOperationException. "Matrix fold supports up to 4 matrices."))))
 
@@ -260,6 +337,39 @@
      (matrix-map-reduce f init g a b c d))
     ([a g f init b c d es]
      (throw (UnsupportedOperationException. "Matrix foldmap supports up to 4 matrices.")))))
+
+(defn diagonal-foldmap
+  ([a g]
+   (sum (engine a) a))
+  ([a g f init]
+   (vector-map-reduce f init g (view-vctr a)))
+  ([^Matrix a g f init ^Matrix b]
+   (if (instance? DiagonalMatrix b)
+     (vector-map-reduce f init g (view-vctr a) (view-vctr b))
+     (vector-map-reduce f
+                        (vector-map-reduce f
+                                           (vector-map-reduce f init g (.dia a) (.dia b))
+                                           g (.dia a 1) (.dia b 1))
+                        g (.dia a -1) (.dia b -1))))
+  ([^Matrix a g f init ^Matrix b ^Matrix c]
+   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c))
+     (vector-map-reduce f init g (view-vctr a) (view-vctr b) (view-vctr c))
+     (vector-map-reduce f
+                        (vector-map-reduce f
+                                           (vector-map-reduce f init g (.dia a) (.dia b) (.dia c))
+                                           g (.dia a 1) (.dia b 1) (.dia c 1))
+                        g (.dia a -1) (.dia b -1) (.dia c -1))))
+  ([^Matrix a g f init ^Matrix b ^Matrix c ^Matrix d]
+   ([^Matrix a f init ^Matrix b ^Matrix c]
+    (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
+      (vector-map-reduce f init g (view-vctr a) (view-vctr b) (view-vctr c) (view-vctr d))
+      (vector-map-reduce f
+                         (vector-map-reduce f
+                                            (vector-map-reduce f init g (.dia a) (.dia b) (.dia c) (.dia d))
+                                            g (.dia a 1) (.dia b 1) (.dia c 1) (.dia d 1))
+                         g (.dia a -1) (.dia b -1) (.dia c -1) (.dia d -1)))))
+  ([a g f init b c d es]
+   (throw (UnsupportedOperationException. "Matrix foldmap supports up to 4 matrices."))))
 
 ;; ============================ Primitive function extensions ==================
 
