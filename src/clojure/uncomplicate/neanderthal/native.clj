@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt pt]]
+  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 ;; ============ Creating real constructs  ==============
@@ -301,22 +301,22 @@
   ([source]
    (dt mkl-double source)))
 
-(defn fpt
-  "Creates a PT (symmetric positive definite tridiagonal) matrix using single precision
-  floating point native CPU engine (see [[uncomplicate.neanderthal.core/pt]])."
+(defn fst
+  "Creates a ST (symmetric positive definite tridiagonal) matrix using single precision
+  floating point native CPU engine (see [[uncomplicate.neanderthal.core/st]])."
   ([^long n source options]
-   (pt mkl-float n source options))
+   (st mkl-float n source options))
   ([^long n arg]
-   (pt mkl-float n arg))
+   (st mkl-float n arg))
   ([source]
-   (pt mkl-float source)))
+   (st mkl-float source)))
 
-(defn dpt
-  "Creates a PT (symmetric positive definite tridiagonal) matrix using double precision
-  floating point native CPU engine (see [[uncomplicate.neanderthal.core/pt]])."
+(defn dst
+  "Creates a ST (symmetric positive definite tridiagonal) matrix using double precision
+  floating point native CPU engine (see [[uncomplicate.neanderthal.core/st]])."
   ([^long n source options]
-   (pt mkl-double n source options))
+   (st mkl-double n source options))
   ([^long n arg]
-   (pt mkl-double n arg))
+   (st mkl-double n arg))
   ([source]
-   (pt mkl-double source)))
+   (st mkl-double source)))

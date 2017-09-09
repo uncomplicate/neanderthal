@@ -1075,3 +1075,25 @@
            ofst# (.offset ~a)]
        (Math/abs (.get da# buff# (+ ofst# (~method (.surface (region ~a)) buff# ofst# 1)))))
      0.0))
+
+(defmacro st-sum
+  ([method a]
+   `(let [n# (.ncols ~a)
+          buff# (.buffer ~a)
+          ofst# (.offset ~a)]
+      (+ (~method n# buff# ofst# 1) (* 2.0 (~method (dec n#) buff# (+ ofst# n#) 1)))))
+  ([method a b]
+   `(let [n# (.ncols ~a)
+          buff-a# (.buffer ~a)
+          ofst-a# (.offset ~a)
+          buff-b# (.buffer ~b)
+          ofst-b# (.offset ~b)]
+      (+ (~method n# buff-a# ofst-a# 1 buff-b# ofst-b# 1)
+         (* 2.0 (~method (dec n#) buff-a# (+ ofst-a# n#) 1  buff-b# (+ ofst-b# n#) 1))))))
+
+(defmacro st-nrm2 [method a]
+  `(let [n# (.ncols ~a)
+         buff# (.buffer ~a)
+         ofst# (.offset ~a)]
+     (Math/sqrt (+ (Math/pow (~method n# buff# ofst# 1) 2)
+                   (* 2.0 (Math/pow (~method (dec n#) buff# (+ ofst# n#) 1) 2))))))

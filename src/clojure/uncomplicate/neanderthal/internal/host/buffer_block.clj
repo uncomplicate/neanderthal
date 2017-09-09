@@ -1879,7 +1879,7 @@
   (isTriangular [_]
     false)
   (isSymmetric [_]
-    (= :pt matrix-type))
+    (= :st matrix-type))
   EngineProvider
   (engine [_]
     eng)
@@ -1998,7 +1998,7 @@
   (entry [a i j]
     (if (.accessible reg i j)
       (.get da buf (+ ofst (.index nav stor i j)))
-      0.0))
+      (.entry default nav stor da buf ofst i j)))
   (boxedEntry [a i j]
     (.entry a i j))
   (row [a i]
@@ -2044,7 +2044,7 @@
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
      (real-diagonal-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
   ([fact ^long n matrix-type]
-   (let [kl (case matrix-type :pt 0 :gd 0 :gt 1 :dt 1 1)
+   (let [kl (case matrix-type :st 0 :gd 0 :gt 1 :dt 1 1)
          ku (if (= :gd matrix-type) 0 1)]
      (real-diagonal-matrix fact n diagonal-navigator (diagonal-storage n matrix-type)
                            (band-region n n kl ku) matrix-type (real-default matrix-type)
@@ -2052,7 +2052,7 @@
                              :gd (gd-engine fact)
                              :gt (gt-engine fact)
                              :dt (dt-engine fact)
-                             :pt (pt-engine fact)
+                             :st (st-engine fact)
                              (dragan-says-ex (format "%s is not a valid (tri)diagonal matrix type."
                                                      matrix-type)))))))
 

@@ -127,7 +127,7 @@
   (gd-engine [this])
   (gt-engine [this])
   (dt-engine [this])
-  (pt-engine [this]))
+  (st-engine [this]))
 
 (defprotocol EngineProvider
   (engine [this]))

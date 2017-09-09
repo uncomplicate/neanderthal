@@ -447,7 +447,7 @@
   (isGapless [_]
     true)
   (capacity [_]
-    (- (* 3 n) 2)))
+    (max 0 (- (* 3 n) 2))))
 
 (deftype BidiagonalStorage [^long n]
   Info
@@ -474,7 +474,7 @@
 
 (defn diagonal-storage [^long n matrix-type]
   (case matrix-type
-    :pt (BidiagonalStorage. n)
+    :st (BidiagonalStorage. n)
     :gd (BidiagonalStorage. n)
     :gt (TridiagonalStorage. n)
     :dt (TridiagonalStorage. n)
@@ -495,11 +495,11 @@
         (.get ^RealBufferAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^BandStorage stor j i)))
         0.0))))
 
-(deftype PTDefault []
+(deftype STDefault []
   RealDefault
   (entry [_ nav stor da buf ofst i j]
     (if (< -2 (- i j) 2)
-      (.get ^RealBufferAccessor da buf (+ ofst (.index ^BandStorage stor i (Math/abs j))))
+      (.get ^RealBufferAccessor da buf (+ ofst (.index ^DenseStorage stor j (Math/abs (- i j)))))
       0.0)))
 
 (deftype ZeroDefault []
@@ -514,7 +514,7 @@
 
 (def sy-default (SYDefault.))
 (def sb-default (SBDefault.))
-(def pt-default (PTDefault.))
+(def st-default (STDefault.))
 (def zero-default (ZeroDefault.))
 (def unit-default (UnitDefault.))
 
@@ -530,7 +530,7 @@
      :gt zero-default
      :gd zero-default
      :dt zero-default
-     :pt pt-default
+     :st st-default
      (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report."
                      {:type type})))
   ([type]
@@ -545,7 +545,7 @@
      :gt zero-default
      :gd zero-default
      :dt zero-default
-     :pt pt-default
+     :st st-default
      (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report."
                      {:type type}))))
 

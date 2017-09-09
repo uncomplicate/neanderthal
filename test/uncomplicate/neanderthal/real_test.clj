@@ -252,7 +252,7 @@
            => (vctr factory [12 24 36]))
 
          (axpby! 2 (vctr factory 1 2 3) 2 (vctr factory 1 2 3)
-                (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7))
+                 (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7))
          => (vctr factory 26 35 44)
 
          (axpby! 2 (vctr factory 1 2 3) 2 (vctr factory 1 2 3) (vctr factory 2 3 4) 4.0)
@@ -267,7 +267,7 @@
 
          (with-release [y (vctr factory [1 2 3])]
            (axpby! 2 (vctr factory 1 2 3) 2.0 y
-                  (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
+                   (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
 
   (facts "BLAS1 vector axpy"
          (with-release [y (vctr factory [1 2 3])]
@@ -348,20 +348,20 @@
 
 (defn test-ge-dot [factory]
   (facts "BLAS 1 GE dot"
-         (let [a (ge factory 2 3 (range -3 3))
-               b (ge factory 2 3 [1 2 3 4 5 6])
-               zero-point (ge factory 0 0 [])]
+         (with-release [a (ge factory 2 3 (range -3 3))
+                        b (ge factory 2 3 [1 2 3 4 5 6])
+                        zero-point (ge factory 0 0 [])]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => (dot (view-vctr a) (view-vctr b))
            (dot zero-point zero-point) => 0.0)))
 
 (defn test-ge-dot-strided [factory]
   (facts "BLAS 1 GE dot"
-         (let [a (ge factory 2 3 (range -3 3))
-               b (ge factory 2 3 [1 2 3 4 5 6])
-               c (ge factory 3 4 (repeat 1))
-               d (ge factory 2 3 {:layout :row})
-               zero-point (ge factory 0 0 [])]
+         (with-release [a (ge factory 2 3 (range -3 3))
+                        b (ge factory 2 3 [1 2 3 4 5 6])
+                        c (ge factory 3 4 (repeat 1))
+                        d (ge factory 2 3 {:layout :row})
+                        zero-point (ge factory 0 0 [])]
            (dot a (copy! b (submatrix c 1 1 2 3))) => (dot a b)
            (dot a (copy! b d)) => (dot a b))))
 
@@ -514,7 +514,7 @@
          => true
 
          (rk! (vctr factory 3 2 1 4) (vctr factory 1 2 3)
-                (ge factory 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
+              (ge factory 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
          => (ge factory 4 3 [4 4 4 8 8 6 4 10 12 10 5 13])
 
          (rk! (vctr factory 1 2) (vctr factory 1 2 3) (ge factory 2 2 [1 2 3 5]))
@@ -631,10 +631,10 @@
 
 (defn test-tr-dot [factory tr]
   (facts "BLAS 1 Triangular dot"
-         (let [a (tr factory 3 (range -3 3))
-               b (tr factory 3 [1 2 3 4 5 6])
-               d (tr factory 3 {:layout :row})
-               zero-point (tr factory 0 [])]
+         (with-release [a (tr factory 3 (range -3 3))
+                        b (tr factory 3 [1 2 3 4 5 6])
+                        d (tr factory 3 {:layout :row})
+                        zero-point (tr factory 0 [])]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => 7.0
            (dot a (copy! b d)) => (dot a b)
@@ -874,10 +874,10 @@
 
 (defn test-sy-dot [factory]
   (facts "BLAS 1 SY dot"
-         (let [a (sy factory 3 (range -3 3))
-               b (sy factory 3 [1 2 3 4 5 6])
-               d (sy factory 3 {:layout :row})
-               zero-point (sy factory 0 [])]
+         (with-release [a (sy factory 3 (range -3 3))
+                        b (sy factory 3 [1 2 3 4 5 6])
+                        d (sy factory 3 {:layout :row})
+                        zero-point (sy factory 0 [])]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => 5.0
            (dot a (copy! b d)) => (dot a b)
@@ -1098,10 +1098,10 @@
 
 (defn test-gb-dot [factory]
   (facts "BLAS 1 GB dot"
-         (let [a (gb factory 5 2 1 1 (range -10 100))
-               b (gb factory 5 2 1 1 (range 1 100))
-               d (gb factory 5 2 1 1 {:layout :row})
-               zero-point (gb factory 5 2 1 1)]
+         (with-release [a (gb factory 5 2 1 1 (range -10 100))
+                        b (gb factory 5 2 1 1 (range 1 100))
+                        d (gb factory 5 2 1 1 {:layout :row})
+                        zero-point (gb factory 5 2 1 1)]
            (sqrt (dot a a)) => (roughly (nrm2 a) 0.000001)
            (dot a b) => -110.0
            (dot a (copy! b d)) => (dot a b)
@@ -1307,9 +1307,9 @@
 
 (defn test-tp-dot [factory]
   (facts "BLAS 1 TP dot"
-         (let [a (tp factory 3 (range -3 3))
-               b (tp factory 3 [1 2 3 4 5 6])
-               zero-point (tp factory 0 [])]
+         (with-release [a (tp factory 3 (range -3 3))
+                        b (tp factory 3 [1 2 3 4 5 6])
+                        zero-point (tp factory 0 [])]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => 7.0
            (dot zero-point zero-point) => 0.0)))
@@ -1337,9 +1337,9 @@
 
 (defn test-sp-dot [factory]
   (facts "BLAS 1 SP dot"
-         (let [a (sp factory 3 (range -3 3))
-               b (sp factory 3 [1 2 3 4 5 6])
-               zero-point (sp factory 0 [])]
+         (with-release [a (sp factory 3 (range -3 3))
+                        b (sp factory 3 [1 2 3 4 5 6])
+                        zero-point (sp factory 0 [])]
            (sqrt (dot a a)) => (roughly (nrm2 a))
            (dot a b) => 5.0
            (dot zero-point zero-point) => 0.0)))
@@ -1436,7 +1436,7 @@
          => (mm! 2.0 (tb factory 5 0 (range 1 100)) (ge factory 5 2 (range 1 13)))
 
          ;;(with-release [c (ge factory 6 2)];; TODO implement out-of-place mm
-           ;;(identical? (mm! 2.0 (gd factory 6 [1 2 3 4 5 6]) (ge factory 6 2 (range 100)) 3.0 c) c))
+         ;;(identical? (mm! 2.0 (gd factory 6 [1 2 3 4 5 6]) (ge factory 6 2 (range 100)) 3.0 c) c))
          ;;=> true
          ))
 
@@ -1454,12 +1454,12 @@
 
 (defn test-gd-dot [factory]
   (facts "BLAS 1 GD dot"
-         (let [a (gd factory 5 (range -10 100))
-               a1 (gb factory 5 5 0 0 (range -10 100))
-               b (gd factory 5 (range 1 100))
-               b1 (gb factory 5 5 0 0 (range 1 100))
-               d (gd factory 5)
-               zero-point (gd factory 5)]
+         (with-release [a (gd factory 5 (range -10 100))
+                        a1 (gb factory 5 5 0 0 (range -10 100))
+                        b (gd factory 5 (range 1 100))
+                        b1 (gb factory 5 5 0 0 (range 1 100))
+                        d (gd factory 5)
+                        zero-point (gd factory 5)]
            (sqrt (dot a a)) => (roughly (nrm2 a) 0.000001)
            (dot a b) => (dot a1 b1)
            (dot a (copy! b d)) => (dot a b)
@@ -1483,6 +1483,150 @@
 (defn test-gd-sum [factory]
   (facts "BLAS 1 GD sum."
          (sum (gd factory 5 (range 1 100))) => (sum (gb factory 5 5 0 0 (range 1 100)))))
+
+(defn test-gt-constructor [factory gt]
+  (facts "Create a GT matrix."
+         (with-release [a (gt factory 4 (range 1 100))]
+           (gt factory 4 nil) => (zero a))))
+
+(defn test-gt [factory gt]
+  (facts "GT Matrix methods."
+         (with-release [d (gt factory 4 (range 1 100))]
+           (dia d -2) => (vctr factory 0)
+           (dia d) => (vctr factory [1 2 3 4])
+           (dia d 1) => (vctr factory [5 6 7])
+           (dia d -1) => (vctr factory [8 9 10]))))
+
+(defn test-gt-copy [factory gt]
+  (facts "BLAS 1 copy! GT matrix"
+         (with-release [a (gt factory 5 (range 1 20))
+                        a1 (gt factory 5)]
+           (identical? (copy! a a1) a1) => true
+           (copy! a a1) => (gt factory 5 (range 1 20))
+           (copy (gt factory 5 (range 1 20))) => a
+           (copy! a nil) => (throws ExceptionInfo)
+           (copy! a (gt factory 4)) => (throws ExceptionInfo))))
+
+(defn test-gt-swap [factory gt]
+  (facts
+   "BLAS 1 swap! GT matrix"
+   (with-release [a (gt factory 5 (range 1 20))]
+     (swp! a (gt factory 5)) => a
+     (swp! a (gt factory 5 (range 10 200 10))) => (gt factory 5 (range 10 200 10))
+
+     (swp! a nil) => (throws ExceptionInfo)
+     (identical? (swp! a (gt factory 5 (range 10 200 10))) a) => true
+     (swp! a (gt factory 4 (range 10 200 10))) => (throws ExceptionInfo))))
+
+(defn test-gt-scal [factory gt]
+  (facts "BLAS 1 scal! GT matrix"
+         (with-release [a (gt factory 5 (range 1 20))]
+           (identical? (scal! 3 a) a) => true)
+         (scal! 3 (gt factory 5 (range 1 20))) => (gt factory 5 (range 3 60 3))))
+
+(defn test-gt-axpy [factory gt]
+  (facts "BLAS 1 axpy! GT matrix"
+         (with-release [a (gt factory 6 (range 1 100))
+                        b (gt factory 6 (range 2 200 2))]
+           (axpy -1 a a) => (gt factory 6)
+           (identical? (axpy! 3.0 (gt factory 6 (range 60)) a) a) => true
+           (axpy! 2.0 (gt factory 5 (range 1 70)) a) => (throws ExceptionInfo))))
+
+(defn test-gt-entry! [factory gt]
+  (facts "GT matrix entry!."
+         (with-release [a (gt factory 5 (range 1 100))]
+           (entry a 1 2) => 7.0
+           (entry a 4 1) => 0.0
+           (entry (entry! a 2 1 88.0) 2 1) => 88.0
+           (entry! a 0 4 3.0) => (throws ExceptionInfo))))
+
+(defn test-gt-alter! [factory gt]
+  (facts "GT alter!."
+         (entry (alter! (gt factory 5 (range 100)) 2 3 val+) 2 3) => 8.0
+         (alter! (gt factory 4 (range 100)) val-ind+) => (throws ExceptionInfo)))
+
+(defn test-gt-dot [factory gt]
+  (facts "BLAS 1 GT dot"
+         (with-release [a (gt factory 5 (range -10 100))
+                        b (gt factory 5 (range 1 100))
+                        d (gt factory 5)
+                        zero-point (gt factory 5)]
+           (sqrt (dot a a)) => (roughly (nrm2 a) 0.000001)
+           (dot a b) => -182.0
+           (dot a (copy! b d)) => (dot a b)
+           (dot zero-point zero-point) => 0.0)))
+
+(defn test-gt-nrm2 [factory gt]
+  (facts "BLAS 1 GT nrm2."
+         (with-release [a (gt factory 5 (repeat 1.0))]
+           (nrm2 a) => (roughly (sqrt (dot a a)) 0.00001))
+         (nrm2 (gt factory 1 [])) => 0.0))
+
+(defn test-gt-amax [factory gt]
+  (facts "BLAS 1 GT amax."
+         (amax (gt factory 5 (range 1 100))) => 13.0
+         (amax (gt factory 0 [])) => 0.0))
+
+(defn test-gt-asum [factory gt]
+  (facts "BLAS 1 GT asum."
+         (asum (gt factory 5 (range 1 100))) => 91.0
+         (asum (gt factory 0 [])) => 0.0))
+
+(defn test-gt-sum [factory gt]
+  (facts "BLAS 1 GT sum."
+         (sum (gt factory 5 (range 1 100))) => 91.0))
+
+(defn test-st-constructor [factory]
+  (facts "Create a ST matrix."
+         (with-release [a (st factory 4 (range 1 100))]
+           (st factory 4 nil) => (zero a))))
+
+(defn test-st [factory]
+  (facts "ST Matrix methods."
+         (with-release [d (st factory 4 (range 1 100))]
+           (dia d -2) => (vctr factory 0)
+           (dia d) => (vctr factory [1 2 3 4])
+           (dia d 1) => (vctr factory [5 6 7])
+           (dia d -1) => (vctr factory 0))))
+
+(defn test-st-entry! [factory]
+  (facts "ST matrix entry!."
+         (with-release [a (st factory 5 (range 1 100))]
+           (entry a 1 2) => 7.0
+           (entry a 2 1) => 7.0
+           (entry a 4 1) => 0.0
+           (entry (entry! a 1 2 88.0) 2 1) => 88.0
+           (entry! a 0 4 3.0) => (throws ExceptionInfo))))
+
+(defn test-st-alter! [factory]
+  (facts "ST alter!."
+         (entry (alter! (st factory 5 (range 100)) 2 3 val+) 3 2) => 8.0
+         (alter! (st factory 4 (range 100)) val-ind+) => (throws ExceptionInfo)))
+
+(defn test-st-dot [factory]
+  (facts "BLAS 1 ST dot"
+         (with-release [a (st factory 5 (range -10 100))
+                        b (st factory 5 (range 1 100))
+                        d (st factory 5)
+                        zero-point (st factory 5)]
+           (sqrt (dot a a)) => (roughly (nrm2 a) 0.000001)
+           (dot a b) => -310.0
+           (dot a (copy! b d)) => (dot a b)
+           (dot zero-point zero-point) => 0.0)))
+
+(defn test-st-amax [factory]
+  (facts "BLAS 1 ST amax."
+         (amax (st factory 5 (range 1 100))) => 9.0
+         (amax (st factory 0 [])) => 0.0))
+
+(defn test-st-asum [factory]
+  (facts "BLAS 1 ST asum."
+         (asum (st factory 5 (range 1 100))) => 75.0
+         (asum (st factory 0 [])) => 0.0))
+
+(defn test-st-sum [factory]
+  (facts "BLAS 1 ST sum."
+         (sum (st factory 5 (range 1 100))) => 75.0))
 
 ;; ==================== LAPACK tests =======================================
 
@@ -2000,11 +2144,11 @@
                                       -0.29   0.46   0.41   0.24]
                          {:layout :row})
                   q (ge factory 6 4 [-0.08  -0.66  -0.12  -0.15
-                                      0.57   0.20   0.64  -0.27
-                                      0.43   0.43  -0.65   0.21
-                                      -0.48   0.47  -0.11  -0.70
-                                      -0.40   0.05   0.08   0.30
-                                      0.31  -0.34  -0.37  -0.52]
+                                     0.57   0.20   0.64  -0.27
+                                     0.43   0.43  -0.65   0.21
+                                     -0.48   0.47  -0.11  -0.70
+                                     -0.40   0.05   0.08   0.30
+                                     0.31  -0.34  -0.37  -0.52]
                         {:layout :row})
                   qr*c (ge factory 6 2 [-7.65   2.25
                                         13.53   4.63
@@ -2210,7 +2354,7 @@
                                          -0.43   0.24  -0.69   0.33   0.16
                                          -0.47  -0.35   0.39   0.16  -0.52
                                          0.29   0.58  -0.02   0.38  -0.65]
-                             {:layout :row})
+                            {:layout :row})
                   vt-res (ge factory 5 5 [-0.25  -0.40  -0.69  -0.37  -0.41
                                           0.81   0.36  -0.25  -0.37  -0.10
                                           -0.26   0.70  -0.22   0.39  -0.49
@@ -2470,3 +2614,54 @@
   (test-gd-asum factory)
   (test-gd-sum factory)
   (test-gd-amax factory))
+
+(defn test-blas-gt [factory]
+  (test-gt-constructor factory gt)
+  (test-gt factory gt)
+  (test-gt-copy factory gt)
+  (test-gt-swap factory gt)
+  (test-gt-scal factory gt)
+  (test-gt-axpy factory gt))
+
+(defn test-blas-gt-host [factory]
+  (test-gt-entry! factory gt)
+  (test-gt-alter! factory gt)
+  (test-gt-dot factory gt)
+  (test-gt-nrm2 factory gt)
+  (test-gt-asum factory gt)
+  (test-gt-sum factory gt)
+  (test-gt-amax factory gt))
+
+(defn test-blas-dt [factory]
+  (test-gt-constructor factory dt)
+  (test-gt factory dt)
+  (test-gt-copy factory dt)
+  (test-gt-swap factory dt)
+  (test-gt-scal factory dt)
+  (test-gt-axpy factory dt))
+
+(defn test-blas-dt-host [factory]
+  (test-gt-entry! factory dt)
+  (test-gt-alter! factory dt)
+  (test-gt-dot factory dt)
+  (test-gt-nrm2 factory dt)
+  (test-gt-asum factory dt)
+  (test-gt-sum factory dt)
+  (test-gt-amax factory dt))
+
+(defn test-blas-st [factory]
+  (test-st-constructor factory)
+  (test-st factory)
+  (test-gt-copy factory st)
+  (test-gt-swap factory st)
+  (test-gt-scal factory st)
+  (test-gt-axpy factory st))
+
+(defn test-blas-st-host [factory]
+  (test-st-entry! factory)
+  (test-st-alter! factory)
+  (test-st-dot factory)
+  (test-gt-nrm2 factory st)
+  (test-st-asum factory)
+  (test-st-sum factory)
+  (test-st-amax factory))

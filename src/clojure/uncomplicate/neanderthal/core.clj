@@ -562,21 +562,21 @@
      (dt factory arg nil nil)
      (dt factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
-(defn pt
+(defn st
   "TODO"
   ([factory ^long n source options]
    (if (< -1 n)
-     (let-release [res (api/create-diagonal factory n :pt (not (:raw options)))]
+     (let-release [res (api/create-diagonal factory n :st (not (:raw options)))]
        (if source (transfer! source res) res))
-     (dragan-says-ex "PT matrix cannot have a negative dimension." {:n n})))
+     (dragan-says-ex "ST matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
-     (pt factory n nil arg)
-     (pt factory n arg nil)))
+     (st factory n nil arg)
+     (st factory n arg nil)))
   ([factory arg]
    (if (number? arg)
-     (pt factory arg nil nil)
-     (pt factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
+     (st factory arg nil nil)
+     (st factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 ;; ================= Container  ================================================
 

@@ -1502,7 +1502,7 @@
     (dragan-says-ex "mm is not available for GT matrices."))
   BlasPlus
   (amax [_ a]
-    (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
+    (diagonal-amax CBLAS/isamax ^RealDiagonalMatrix a))
   (sum [_ a]
     (diagonal-method CBLAS/ssum ^RealDiagonalMatrix a))
   (set-all [_ alpha a]
@@ -1675,7 +1675,7 @@
     (diagonal-axpby MKL/saxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
   )
 
-(deftype DoublePTEngine []
+(deftype DoubleSTEngine []
   Blas
   (swap [_ a b]
     (diagonal-method CBLAS/dswap ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
@@ -1686,37 +1686,37 @@
   (scal [_ alpha a]
     (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
-    (diagonal-method CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+    (st-sum CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
   (nrm1 [_ a]
-    (dragan-says-ex "nrm1 is not available for PT matrices."))
+    (dragan-says-ex "nrm1 is not available for ST matrices."))
   (nrm2 [_ a]
-    (diagonal-method CBLAS/dnrm2 ^RealDiagonalMatrix a))
+    (st-nrm2 CBLAS/dnrm2 ^RealDiagonalMatrix a))
   (nrmi [_ a]
-    (dragan-says-ex "nrmi is not available for PT matrices."))
+    (dragan-says-ex "nrmi is not available for ST matrices."))
   (asum [_ a]
-    (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
+    (st-sum CBLAS/dasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
   (mv [this alpha a x beta y]
-    (dragan-says-ex "mv is not available for PT matrices."))
+    (dragan-says-ex "mv is not available for ST matrices."))
   (mv [_ a x]
-    (dragan-says-ex "mv is not available for PT matrices."))
+    (dragan-says-ex "mv is not available for ST matrices."))
   (mm [this alpha a b beta c left]
-    (dragan-says-ex "mm is not available for PT matrices."))
+    (dragan-says-ex "mm is not available for ST matrices."))
   (mm [_ _ a _ _]
-    (dragan-says-ex "mm is not available for PT matrices."))
+    (dragan-says-ex "mm is not available for ST matrices."))
   BlasPlus
   (amax [_ a]
     (diagonal-amax CBLAS/idamax ^RealDiagonalMatrix a))
   (sum [_ a]
-    (diagonal-method CBLAS/dsum ^RealDiagonalMatrix a))
+    (st-sum CBLAS/dsum ^RealDiagonalMatrix a))
   (set-all [_ alpha a]
     (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
   )
 
-(deftype FloatPTEngine []
+(deftype FloatSTEngine []
   Blas
   (swap [_ a b]
     (diagonal-method CBLAS/sswap ^RealDiagonalMatrix a ^RealDiagonalMatrix b)
@@ -1727,30 +1727,30 @@
   (scal [_ alpha a]
     (diagonal-scal CBLAS/sscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
-    (diagonal-method CBLAS/sdot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
+    (st-sum CBLAS/sdot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
   (nrm1 [_ a]
-    (dragan-says-ex "nrm1 is not available for PT matrices."))
+    (dragan-says-ex "nrm1 is not available for ST matrices."))
   (nrm2 [_ a]
-    (diagonal-method CBLAS/snrm2 ^RealDiagonalMatrix a))
+    (st-nrm2 CBLAS/snrm2 ^RealDiagonalMatrix a))
   (nrmi [_ a]
-    (dragan-says-ex "nrmi is not available for PT matrices."))
+    (dragan-says-ex "nrmi is not available for ST matrices."))
   (asum [_ a]
-    (diagonal-method CBLAS/sasum ^RealDiagonalMatrix a))
+    (st-sum CBLAS/sasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/saxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
   (mv [this alpha a x beta y]
-    (dragan-says-ex "mv is not available for PT matrices."))
+    (dragan-says-ex "mv is not available for ST matrices."))
   (mv [_ a x]
-    (dragan-says-ex "mv is not available for PT matrices."))
+    (dragan-says-ex "mv is not available for ST matrices."))
   (mm [this alpha a b beta c left]
-    (dragan-says-ex "mm is not available for PT matrices."))
+    (dragan-says-ex "mm is not available for ST matrices."))
   (mm [_ _ a _ _]
-    (dragan-says-ex "mm is not available for PT matrices."))
+    (dragan-says-ex "mm is not available for ST matrices."))
   BlasPlus
   (amax [_ a]
     (diagonal-amax CBLAS/isamax ^RealDiagonalMatrix a))
   (sum [_ a]
-    (diagonal-method CBLAS/ssum ^RealDiagonalMatrix a))
+    (st-sum CBLAS/ssum ^RealDiagonalMatrix a))
   (set-all [_ alpha a]
     (diagonal-laset LAPACK/slaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
@@ -1761,7 +1761,7 @@
 
 (deftype MKLRealFactory [index-fact ^DataAccessor da
                          vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng sp-eng tp-eng
-                         gd-eng gt-eng dt-eng pt-eng]
+                         gd-eng gt-eng dt-eng st-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1836,8 +1836,8 @@
     gt-eng)
   (dt-engine [_]
     dt-eng)
-  (pt-engine [_]
-    pt-eng))
+  (st-engine [_]
+    st-eng))
 
 (deftype MKLIntegerFactory [index-fact ^DataAccessor da vector-eng]
   DataAccessorProvider
@@ -1872,13 +1872,13 @@
                       (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
                       (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
                       (->FloatSPEngine) (->FloatTPEngine)
-                      (->FloatGDEngine) (->FloatGTEngine) (->FloatDTEngine) (->FloatPTEngine)))
+                      (->FloatGDEngine) (->FloatGTEngine) (->FloatDTEngine) (->FloatSTEngine)))
 
   (def mkl-double
     (->MKLRealFactory index-fact double-accessor
                       (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
                       (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
                       (->DoubleSPEngine) (->DoubleTPEngine)
-                      (->DoubleGDEngine) (->DoubleGTEngine) (->DoubleDTEngine) (->DoublePTEngine)))
+                      (->DoubleGDEngine) (->DoubleGTEngine) (->DoubleDTEngine) (->DoubleSTEngine)))
 
   (vreset! index-fact mkl-int))
