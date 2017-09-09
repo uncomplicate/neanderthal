@@ -277,7 +277,7 @@
 (defmacro diagonal-lasrt [method a increasing]
   `(do
      (with-lapack-check
-       (~method (int (if ~increasing \I \D)) (.capacity (storage ~a)) (.buffer ~a) (.offset ~a)))
+       (~method (int (if ~increasing \I \D)) (.surface (region ~a)) (.buffer ~a) (.offset ~a)))
      ~a))
 
 ;; =========== Drivers and Computational LAPACK Routines ===========================
