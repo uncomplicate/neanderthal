@@ -123,6 +123,30 @@
   ([a];;TODO quite possible to do!
    `(dragan-says-ex "Out-of-place mm! is not supported for GD matrices." {:a (info ~a)})))
 
+(defmacro gd-sv [vdiv-method sv-method a b]
+  `(let [n-a# (.ncols ~a)
+         n-b# (.ncols ~b)
+         nav-b# (navigator ~b)
+         stor-b# (storage ~b)
+         buff-a# (.buffer ~a)
+         ofst-a# (.offset ~a)
+         buff-b# (.buffer ~b)
+         ofst-b# (.offset ~b)
+         strd-b# (.stride ~b)]
+     (if (.isColumnMajor nav-b#)
+       (dotimes [j# n-b#]
+         (~vdiv-method n-a# buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) buff-a# ofst-a#
+          buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#))))
+       (dotimes [j# (.ncols ~b)]
+         (~sv-method CBLAS/ORDER_ROW_MAJOR CBLAS/UPLO_LOWER CBLAS/TRANSPOSE_NO_TRANS CBLAS/DIAG_NON_UNIT n-a# 0
+          buff-a# ofst-a# 1 buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) strd-b#)))
+     ~b))
+
+(defmacro gd-tri [method a]
+  `(do
+     (~method (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~a) (.offset ~a))
+     ~a))
+
 ;; ============ Integer Vector Engines ============================================
 
 (deftype LongVectorEngine []
@@ -379,7 +403,7 @@
     (ge-axpby MKL/domatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b))
   (mv [_ alpha a x beta y]
     (ge-mv CBLAS/dgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y))
-  (mv [this a x]
+  (mv [_ a _]
     (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk CBLAS/dger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a))
@@ -481,7 +505,7 @@
     (ge-axpby MKL/somatadd alpha ^RealGEMatrix a 1.0 ^RealGEMatrix b))
   (mv [_ alpha a x beta y]
     (ge-mv CBLAS/sgemv alpha ^RealGEMatrix a ^RealBlockVector x beta ^RealBlockVector y))
-  (mv [this a x]
+  (mv [_ a _]
     (ge-mv a))
   (rk [_ alpha x y a]
     (ge-rk CBLAS/sger alpha ^RealBlockVector x ^RealBlockVector y ^RealGEMatrix a))
@@ -583,16 +607,16 @@
     (tr-sum CBLAS/dasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
     (matrix-axpy CBLAS/daxpy alpha ^RealUploMatrix a ^RealUploMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ a _ _ _]
     (tr-mv a))
   (mv [_ a x]
     (tr-mv CBLAS/dtrmv ^RealUploMatrix a ^RealBlockVector x))
-  (mm [this alpha a b beta c _]
+  (mm [_ _ a _ _ _ _]
     (tr-mm a))
   (mm [_ alpha a b left]
     (tr-mm CBLAS/dtrmm alpha ^RealUploMatrix a ^RealGEMatrix b left))
   BlasPlus
-  (amax [this a]
+  (amax [_ a]
     (tr-lan LAPACK/dlantr (int \M) ^RealUploMatrix a))
   (sum [_ a]
     (tr-sum CBLAS/dsum ^RealUploMatrix a))
@@ -611,7 +635,7 @@
     (tr-tri LAPACK/dtrtri ^RealUploMatrix a))
   (trs [_ a b]
     (tr-trs LAPACK/dtrtrs ^RealUploMatrix a ^RealGEMatrix b))
-  (sv [this a b _]
+  (sv [_ a b _]
     (tr-sv CBLAS/dtrsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (tr-con LAPACK/dtrcon ^RealUploMatrix a nrm1?))
@@ -639,16 +663,16 @@
     (tr-sum CBLAS/sasum ^RealUploMatrix a))
   (axpy [_ alpha a b]
     (matrix-axpy CBLAS/saxpy alpha ^RealUploMatrix a ^RealUploMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ a _ _ _]
     (tr-mv a))
   (mv [_ a x]
     (tr-mv CBLAS/strmv ^RealUploMatrix a ^RealBlockVector x))
-  (mm [this alpha a b beta c _]
+  (mm [_ _ a _ _ _ _]
     (tr-mm a))
   (mm [_ alpha a b left]
     (tr-mm CBLAS/strmm alpha ^RealUploMatrix a ^RealGEMatrix b left))
   BlasPlus
-  (amax [this a]
+  (amax [_ a]
     (tr-lan LAPACK/slantr (int \M) ^RealUploMatrix a))
   (sum [_ a]
     (tr-sum  CBLAS/ssum ^RealUploMatrix a))
@@ -667,7 +691,7 @@
     (tr-tri LAPACK/strtri ^RealUploMatrix a))
   (trs [_ a b]
     (tr-trs LAPACK/strtrs ^RealUploMatrix a ^RealGEMatrix b))
-  (sv [this a b _]
+  (sv [_ a b _]
     (tr-sv CBLAS/strsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (tr-con LAPACK/strcon ^RealUploMatrix a nrm1?))
@@ -936,7 +960,7 @@
   (con [_ ldl ipiv nrm nrm1?]
     (gb-con LAPACK/sgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?))
   TRF
-  (create-trf [this a pure]
+  (create-trf [_ a pure]
     (matrix-create-trf matrix-lu ^RealBandedMatrix a pure))
   (create-ptrf [_ _]
     (dragan-says-ex "Cholesky factorization is not available for GB matrices.")))
@@ -1094,7 +1118,7 @@
     (tb-mv CBLAS/dtbmv ^RealBandedMatrix a ^RealBlockVector x))
   (mm [_ _ a _ _ _ _]
     (tb-mm a))
-  (mm [this alpha a b left]
+  (mm [_ alpha a b left]
     (tb-mm CBLAS/dtbmv alpha ^RealBandedMatrix a ^RealGEMatrix b left))
   BlasPlus
   (amax [_ a]
@@ -1151,7 +1175,7 @@
     (tb-mv CBLAS/stbmv ^RealBandedMatrix a ^RealBlockVector x))
   (mm [_ _ a _ _ _ _]
     (tb-mm a))
-  (mm [this alpha a b left]
+  (mm [_ alpha a b left]
     (tb-mm CBLAS/stbmv alpha ^RealBandedMatrix a ^RealGEMatrix b left))
   BlasPlus
   (amax [_ a]
@@ -1204,11 +1228,11 @@
     (tp-sum CBLAS/dasum Math/abs ^RealPackedMatrix a))
   (axpy [_ alpha a b]
     (packed-axpy CBLAS/daxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ a _ _ _]
     (tp-mv a))
   (mv [_ a x]
     (tp-mv CBLAS/dtpmv ^RealPackedMatrix a ^RealBlockVector x))
-  (mm [this _ a _ _ _ _]
+  (mm [_ _ a _ _ _ _]
     (tp-mm a))
   (mm [_ alpha a b left]
     (tp-mm CBLAS/dtpmv alpha ^RealPackedMatrix a ^RealGEMatrix b left))
@@ -1230,7 +1254,7 @@
     (tp-tri LAPACK/dtptri ^RealPackedMatrix a))
   (trs [_ a b]
     (tp-trs LAPACK/dtptrs ^RealPackedMatrix a ^RealGEMatrix b))
-  (sv [this a b _]
+  (sv [_ a b _]
     (tp-sv CBLAS/dtpsv ^RealPackedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (tp-con LAPACK/dtpcon ^RealPackedMatrix a nrm1?))
@@ -1259,11 +1283,11 @@
     (tp-sum CBLAS/sasum Math/abs ^RealPackedMatrix a))
   (axpy [_ alpha a b]
     (packed-axpy CBLAS/saxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ a _ _ _]
     (tp-mv a))
   (mv [_ a x]
     (tp-mv CBLAS/stpmv ^RealPackedMatrix a ^RealBlockVector x))
-  (mm [this _ a _ _ _ _]
+  (mm [_ _ a _ _ _ _]
     (tp-mm a))
   (mm [_ alpha a b left]
     (tp-mm CBLAS/stpmv alpha ^RealPackedMatrix a ^RealGEMatrix b left))
@@ -1285,7 +1309,7 @@
     (tp-tri LAPACK/stptri ^RealPackedMatrix a))
   (trs [_ a b]
     (tp-trs LAPACK/stptrs ^RealPackedMatrix a ^RealGEMatrix b))
-  (sv [this a b _]
+  (sv [_ a b _]
     (tp-sv CBLAS/stpsv ^RealPackedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (tp-con LAPACK/stpcon ^RealPackedMatrix a nrm1?))
@@ -1314,11 +1338,11 @@
     (sp-sum CBLAS/dasum Math/abs ^RealPackedMatrix a))
   (axpy [_ alpha a b]
     (packed-axpy CBLAS/daxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (sp-mv CBLAS/dspmv alpha ^RealPackedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sp-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (sp-mm CBLAS/dspmv alpha ^RealPackedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]
     (sp-mm a))
@@ -1381,11 +1405,11 @@
     (sp-sum CBLAS/sasum Math/abs ^RealPackedMatrix a))
   (axpy [_ alpha a b]
     (packed-axpy CBLAS/saxpy alpha ^RealPackedMatrix a ^RealPackedMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (sp-mv CBLAS/sspmv alpha ^RealPackedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sp-mv a))
-  (mm [this alpha a b beta c left]
+  (mm [_ alpha a b beta c left]
     (sp-mm CBLAS/sspmv alpha ^RealPackedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]
     (sp-mm a))
@@ -1441,21 +1465,21 @@
     (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
     (diagonal-method CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (nrm1 [_ a]
+  (nrm1 [_ _]
     (dragan-says-ex "nrm1 is not available for GT matrices."))
   (nrm2 [_ a]
     (diagonal-method CBLAS/dnrm2 ^RealDiagonalMatrix a))
-  (nrmi [_ a]
+  (nrmi [_ _]
     (dragan-says-ex "nrmi is not available for GT matrices."))
   (asum [_ a]
     (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ _ _ _ _]
     (dragan-says-ex "mv is not available for GT matrices."))
   (mv [_ a x]
     (dragan-says-ex "mv is not available for GT matrices."))
-  (mm [this alpha a b beta c left]
+  (mm [_ _ _ _ _ _ _]
     (dragan-says-ex "mm is not available for GT matrices."))
   (mm [_ _ a _ _]
     (dragan-says-ex "mm is not available for GT matrices."))
@@ -1482,23 +1506,23 @@
     (diagonal-scal CBLAS/sscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
     (diagonal-method CBLAS/sdot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (nrm1 [_ a]
+  (nrm1 [_ _]
     (dragan-says-ex "nrm1 is not available for GT matrices."))
   (nrm2 [_ a]
     (diagonal-method CBLAS/snrm2 ^RealDiagonalMatrix a))
-  (nrmi [_ a]
+  (nrmi [_ _]
     (dragan-says-ex "nrmi is not available for GT matrices."))
   (asum [_ a]
     (diagonal-method CBLAS/sasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/saxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ _ _ _ _]
     (dragan-says-ex "mv is not available for GT matrices."))
-  (mv [_ a x]
+  (mv [_ _ _]
     (dragan-says-ex "mv is not available for GT matrices."))
-  (mm [this alpha a b beta c left]
+  (mm [_ _ _ _ _ _ _]
     (dragan-says-ex "mm is not available for GT matrices."))
-  (mm [_ _ a _ _]
+  (mm [_ _ _ _ _]
     (dragan-says-ex "mm is not available for GT matrices."))
   BlasPlus
   (amax [_ a]
@@ -1533,11 +1557,11 @@
     (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (gd-mv CBLAS/dsbmv alpha ^RealDiagonalMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (gd-mv MKL/vdmul CBLAS/dtbmv ^RealDiagonalMatrix a ^RealBlockVector x))
-  (mm [this _ a _ _ _ _]
+  (mm [_ _ a _ _ _ _]
     (gd-mm a))
   (mm [_ alpha a b left]
     (gd-mm MKL/vdmul CBLAS/dscal (double alpha) ^RealDiagonalMatrix a ^RealNativeMatrix b left))
@@ -1550,7 +1574,20 @@
     (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/dlasrt ^RealDiagonalMatrix a increasing))
+  (tri [_ a]
+    (gd-tri MKL/vdinv ^RealDiagonalMatrix a))
+  (trs [_ a b]
+    (gd-trs LAPACK/dtbtrs ^RealDiagonalMatrix a ^RealGEMatrix b))
+  (sv [_ a b _]
+    (gd-sv MKL/vddiv CBLAS/dtbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
+  (con [_ a nrm1?]
+    (gd-con LAPACK/dtbcon ^RealDiagonalMatrix a nrm1?))
+  TRF
+  (create-trf [_ a _]
+    a))
 
 (deftype FloatGDEngine []
   Blas
@@ -1574,11 +1611,11 @@
     (diagonal-method CBLAS/sasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/saxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ alpha a x beta y]
     (gd-mv CBLAS/ssbmv alpha ^RealDiagonalMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (gd-mv MKL/vdmul CBLAS/stbmv ^RealDiagonalMatrix a ^RealBlockVector x))
-  (mm [this _ a _ _ _ _]
+  (mm [_ _ a _ _ _ _]
     (gd-mm a))
   (mm [_ alpha a b left]
     (gd-mm MKL/vdmul CBLAS/sscal (double alpha) ^RealDiagonalMatrix a ^RealNativeMatrix b left))
@@ -1591,7 +1628,20 @@
     (diagonal-laset LAPACK/slaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/saxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/slasrt ^RealDiagonalMatrix a increasing))
+  (tri [_ a]
+    (gd-tri MKL/vsinv ^RealDiagonalMatrix a))
+  (trs [_ a b]
+    (gd-trs LAPACK/stbtrs ^RealDiagonalMatrix a ^RealGEMatrix b))
+  (sv [_ a b _]
+    (gd-sv MKL/vsdiv CBLAS/stbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
+  (con [_ a nrm1?]
+    (gd-con LAPACK/stbcon ^RealDiagonalMatrix a nrm1?))
+  TRF
+  (create-trf [_ a _]
+    a))
 
 (deftype DoubleDTEngine []
   Blas
@@ -1605,23 +1655,23 @@
     (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
     (diagonal-method CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (nrm1 [_ a]
+  (nrm1 [_ _]
     (dragan-says-ex "nrm1 is not available for DT matrices."))
   (nrm2 [_ a]
     (diagonal-method CBLAS/dnrm2 ^RealDiagonalMatrix a))
-  (nrmi [_ a]
+  (nrmi [_ _]
     (dragan-says-ex "nrmi is not available for DT matrices."))
   (asum [_ a]
     (diagonal-method CBLAS/dasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ _ _ _ _]
     (dragan-says-ex "mv is not available for DT matrices."))
-  (mv [_ a x]
+  (mv [_ _ _]
     (dragan-says-ex "mv is not available for DT matrices."))
-  (mm [this alpha a b beta c left]
+  (mm [_ _ _ _ _ _ _]
     (dragan-says-ex "mm is not available for DT matrices."))
-  (mm [_ _ a _ _]
+  (mm [_ _ _ _ _]
     (dragan-says-ex "mm is not available for DT matrices."))
   BlasPlus
   (amax [_ a]
@@ -1646,23 +1696,23 @@
     (diagonal-scal CBLAS/sscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
     (diagonal-method CBLAS/sdot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (nrm1 [_ a]
+  (nrm1 [_ _]
     (dragan-says-ex "nrm1 is not available for DT matrices."))
   (nrm2 [_ a]
     (diagonal-method CBLAS/snrm2 ^RealDiagonalMatrix a))
-  (nrmi [_ a]
+  (nrmi [_ _]
     (dragan-says-ex "nrmi is not available for DT matrices."))
   (asum [_ a]
     (diagonal-method CBLAS/sasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/saxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ _ _ _ _]
     (dragan-says-ex "mv is not available for DT matrices."))
-  (mv [_ a x]
+  (mv [_ _ _]
     (dragan-says-ex "mv is not available for DT matrices."))
-  (mm [this alpha a b beta c left]
+  (mm [_ _ _ _ _ _ _]
     (dragan-says-ex "mm is not available for DT matrices."))
-  (mm [_ _ a _ _]
+  (mm [_ _ _ _ _]
     (dragan-says-ex "mm is not available for DT matrices."))
   BlasPlus
   (amax [_ a]
@@ -1687,21 +1737,21 @@
     (diagonal-scal CBLAS/dscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
     (st-sum CBLAS/ddot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (nrm1 [_ a]
+  (nrm1 [_ _]
     (dragan-says-ex "nrm1 is not available for ST matrices."))
   (nrm2 [_ a]
     (st-nrm2 CBLAS/dnrm2 ^RealDiagonalMatrix a))
-  (nrmi [_ a]
+  (nrmi [_ _]
     (dragan-says-ex "nrmi is not available for ST matrices."))
   (asum [_ a]
     (st-sum CBLAS/dasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/daxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ _ _ _ _]
     (dragan-says-ex "mv is not available for ST matrices."))
-  (mv [_ a x]
+  (mv [_ _ _]
     (dragan-says-ex "mv is not available for ST matrices."))
-  (mm [this alpha a b beta c left]
+  (mm [_ _ _ _ _ _ _]
     (dragan-says-ex "mm is not available for ST matrices."))
   (mm [_ _ a _ _]
     (dragan-says-ex "mm is not available for ST matrices."))
@@ -1728,21 +1778,21 @@
     (diagonal-scal CBLAS/sscal alpha ^RealDiagonalMatrix a))
   (dot [_ a b]
     (st-sum CBLAS/sdot ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (nrm1 [_ a]
+  (nrm1 [_ _]
     (dragan-says-ex "nrm1 is not available for ST matrices."))
   (nrm2 [_ a]
     (st-nrm2 CBLAS/snrm2 ^RealDiagonalMatrix a))
-  (nrmi [_ a]
+  (nrmi [_ _]
     (dragan-says-ex "nrmi is not available for ST matrices."))
   (asum [_ a]
     (st-sum CBLAS/sasum ^RealDiagonalMatrix a))
   (axpy [_ alpha a b]
     (diagonal-axpy CBLAS/saxpy alpha ^RealDiagonalMatrix a ^RealDiagonalMatrix b))
-  (mv [this alpha a x beta y]
+  (mv [_ _ _ _ _ _]
     (dragan-says-ex "mv is not available for ST matrices."))
-  (mv [_ a x]
+  (mv [_ _ _]
     (dragan-says-ex "mv is not available for ST matrices."))
-  (mm [this alpha a b beta c left]
+  (mm [_ _ _ _ _ _ _]
     (dragan-says-ex "mm is not available for ST matrices."))
   (mm [_ _ a _ _]
     (dragan-says-ex "mm is not available for ST matrices."))

@@ -73,8 +73,10 @@
 
 (defn band-region
   ([^long m ^long n ^long kl ^long ku]
-   (BandRegion. m n kl ku (cond (< 0 kl) 122 (< 0 ku) 121 :default 0)
-                (if (or (= -1 kl) (= -1 ku)) 132 131)))
+   (let [kl (min (max 0 (dec m)) kl)
+         ku (min (max 0 (dec n)) ku)]
+     (BandRegion. m n kl ku (cond (< 0 kl) 122 (< 0 ku) 121 :default 122)
+                  (if (or (= -1 kl) (= -1 ku)) 132 131))))
   ([^long n lower? diag-unit?]
    (let [diag-pad (if diag-unit? -1 0)]
      (if lower?
@@ -449,7 +451,7 @@
   (capacity [_]
     (max 0 (- (* 3 n) 2))))
 
-(deftype BidiagonalStorage [^long n]
+(deftype BidiagonalStorage [^long n ^long d]
   Info
   (info [s]
     {:storage-type :bidiagonal
@@ -470,14 +472,14 @@
   (isGapless [_]
     true)
   (capacity [_]
-    (+ n (max 0 (dec n)))))
+    (+ n (max 0 (* (dec n) d)))))
 
 (defn diagonal-storage [^long n matrix-type]
   (case matrix-type
-    :st (BidiagonalStorage. n)
-    :gd (BidiagonalStorage. n)
+    :gd (BidiagonalStorage. n 0)
     :gt (TridiagonalStorage. n)
     :dt (TridiagonalStorage. n)
+    :st (BidiagonalStorage. n 1)
     (dragan-says-ex "Unknown (tri)diagonal matrix type." {:type type})))
 
 ;; ========================= Default value ===============================

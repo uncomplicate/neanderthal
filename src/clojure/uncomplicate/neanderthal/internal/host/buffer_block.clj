@@ -1216,7 +1216,7 @@
     (if (= :tr matrix-type)
       (let-release [res (raw b)]
         (copy (engine b) b res)
-        (trs eng a b))
+        (trs eng a res))
       (require-trf)))
   (trtrs! [a b]
     (if (= :tr matrix-type)
@@ -1513,7 +1513,7 @@
     (if (= :tb matrix-type)
       (let-release [res (raw b)]
         (copy (engine b) b res)
-        (trs eng a b))
+        (trs eng a res))
       (require-trf)))
   (trtrs! [a b]
     (if (= :tb matrix-type)
@@ -2021,7 +2021,39 @@
     (dragan-says-ex "You cannot create a submatrix of a (tri)diagonal matrix."
                     {:a (info a)}))
   (transpose [a]
-    (dragan-says-ex "You cannot transpose a (tri)diagonal matrix.")))
+    (dragan-says-ex "You cannot transpose a (tri)diagonal matrix."))
+  TRF
+  (trtrs [a b]
+    (if (= :gd matrix-type)
+      (let-release [res (raw b)]
+        (copy (engine b) b res)
+        (trs eng a res))
+      (require-trf)))
+  (trtrs! [a b]
+    (if (= :gd matrix-type)
+      (trs eng a b)
+      (require-trf)))
+  (trtri! [a]
+    (if (= :gd matrix-type)
+      (tri eng a)
+      (require-trf)))
+  (trtri [a]
+    (if (= :gd matrix-type)
+      (let-release [res (raw a)]
+        (tri eng (copy eng a res)))
+      (require-trf)))
+  (trcon [a _ nrm1?]
+    (if (= :gd matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trcon [a nrm1?]
+    (if (= :gd matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trdet [a]
+    (if (= :gd matrix-type)
+      (if (.isDiagUnit reg) 1.0 (fold (.dia a) f* 1.0))
+      (require-trf))))
 
 (extend RealDiagonalMatrix
   Functor

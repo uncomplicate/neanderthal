@@ -274,6 +274,12 @@
         ~alpha ~alpha (.buffer ~a) (.offset ~a) 1))
      ~a))
 
+(defmacro diagonal-lasrt [method a increasing]
+  `(do
+     (with-lapack-check
+       (~method (int (if ~increasing \I \D)) (.capacity (storage ~a)) (.buffer ~a) (.offset ~a)))
+     ~a))
+
 ;; =========== Drivers and Computational LAPACK Routines ===========================
 
 ;; ------------- Singular Value Decomposition LAPACK -------------------------------
@@ -452,6 +458,13 @@
         (.mrows ~b) (max (.kl reg#) (.ku reg#)) (.ncols ~b)
         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
+(defmacro gd-trs [method a b]
+  `(let [nav-b# (navigator ~b)
+         reg# (region ~a)]
+     (with-sv-check ~b
+       (~method CBLAS/ORDER_COLUMN_MAJOR (int \L) (int \N) (int \N) (.mrows ~b) 0 (.ncols ~b)
+        (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) (.stride ~b)))))
+
 (defmacro tr-trs [method a b]
   `(let [reg-a# (region ~a)
          nav-b# (navigator ~b)]
@@ -559,6 +572,14 @@
        (~method (.layout (navigator ~a)) (int (if ~nrm1? \O \I))
         (int (if (.isLower reg#) \L \U)) (int (if (.isDiagUnit reg#) \U \N))
         (.ncols ~a) (max (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a) res#))))
+
+(defmacro gd-con [method a nrm1?]
+  `(let [da# (real-accessor ~a)
+         reg# (region ~a)
+         res# (.createDataSource da# 1)]
+     (with-sv-check (.get da# res# 0)
+       (~method CBLAS/ORDER_COLUMN_MAJOR (int (if ~nrm1? \O \I)) (int \L) (int \N)
+        (.ncols ~a) 0 (.buffer ~a) (.offset ~a) 1 res#))))
 
 (defmacro tr-con [method a nrm1?]
   `(with-release [da# (real-accessor ~a)

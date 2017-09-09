@@ -1674,6 +1674,39 @@
      (sort+! a1) => a2
      (sort-! a1) => a3)))
 
+(defn test-gb-srt [factory]
+  (facts
+   "LAPACK GB srt!"
+   (with-release [a0 (gb factory 2 2 0 0)
+                  a1 (gb factory 2 3 1 1 [3 0 -1 1 2])
+                  a2 (gb factory 2 3 1 1 [0 3 -1 1 2])
+                  a3 (gb factory 2 3 1 1 [3 0 1 -1 2])]
+     (sort+! a0) => a0
+     (sort+! a1) => a2
+     (sort-! a1) => a3)))
+
+(defn test-banded-uplo-srt [factory uplo]
+  (facts
+   "LAPACK banded uplo srt!"
+   (with-release [a0 (uplo factory 0)
+                  a1 (uplo factory 3 [0 -1 1 2 3 3])
+                  a2 (uplo factory 3 [-1 0 1 2 3 3])
+                  a3 (uplo factory 3 [1 0 -1 3 2 3])]
+     (sort+! a0) => a0
+     (sort+! a1) => a2
+     (sort-! a1) => a3)))
+
+(defn test-gd-srt [factory]
+  (facts
+   "LAPACK GD srt!"
+   (with-release [a0 (gd factory 0)
+                  a1 (gd factory 3 [0 -1 1])
+                  a2 (tb factory 3 0 [-1 0 1])
+                  a3 (tb factory 3 0 [1 0 -1])]
+     (sort+! a0) => a0
+     (dia (sort+! a1)) => (dia a2)
+     (dia (sort-! a1)) => (dia a3))))
+
 (defn test-ge-trf [factory]
   (facts
    "LAPACK GE trf!"
@@ -1931,6 +1964,20 @@
                                      -1.56,  4.00, -8.67,  1.75,  2.86,
                                      9.81, -4.09, -4.57, -8.61,  8.99])]
      (nrm2 (axpy! -1 (trs a b) (trs t b))) => (roughly 0.0 0.0001)
+     (con a) => (roughly (con t) 0.0000001))))
+
+(defn test-gd-trx [factory]
+  (facts
+   "LAPACK diagonal linear system solver."
+
+   (with-release [a (gd factory 5 [1 2 3 4 5])
+                  b (ge factory 5 2 [1 2 3 4 5 1 1 1 1 1])
+                  t (tb factory 5 0 [1 2 3 4 5])
+                  b-row (ge factory 5 2 [1 1 2 1 3 1 4 1 5 1] {:layout :row})
+                  b-solution (ge factory 5 2 [1 1 1 1 1 1 1/2 1/3 1/4 1/5])]
+     (nrm2 (axpy! -1 b-solution (trs a b) )) => (roughly 0.0 0.0001)
+     (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0.0 0.0001)
+     (nrm2 (axpy! -1 b-solution (sv a b-row) )) => (roughly 0.0 0.0001)
      (con a) => (roughly (con t) 0.0000001))))
 
 (defn test-ge-trs [factory]
@@ -2442,6 +2489,10 @@
   (test-uplo-srt factory sy)
   (test-uplo-srt factory sp)
   (test-uplo-srt factory tp)
+  (test-gb-srt factory)
+  (test-banded-uplo-srt factory tb)
+  (test-banded-uplo-srt factory sb)
+  (test-gd-srt factory)
   (test-ge-trf factory)
   (test-ge-trs factory)
   (test-tr-trs factory tr)
@@ -2464,6 +2515,7 @@
   (test-tb-trx factory)
   (test-sy-trx factory sp)
   (test-sp-potrx factory)
+  (test-gd-trx factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)
