@@ -484,8 +484,8 @@
     (vector-sum-nrm2 ctx queue Double/BYTES enq-read-double CLBlast/CLBlastDasum ^CLBlockVector x))
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiDamax ^CLBlockVector x))
-  (iamin [_ _]
-    (not-available))
+  (iamin [_ x]
+    (vector-ipeak ctx queue CLBlast/CLBlastiDamin ^CLBlockVector x))
   (rot [_ _ _ _ _]
     (not-available))
   (rotg [_ _]
@@ -537,7 +537,7 @@
   (iamax [_ x]
     (vector-ipeak ctx queue CLBlast/CLBlastiSamax ^CLBlockVector x))
   (iamin [_ x]
-    (not-available))
+    (vector-ipeak ctx queue CLBlast/CLBlastiSamin ^CLBlockVector x))
   (rot [_ _ y c s]
     (not-available))
   (rotg [_ _]
