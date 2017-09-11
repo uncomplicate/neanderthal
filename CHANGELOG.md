@@ -2,9 +2,20 @@
 
 ## 0.16.0
 
+### New features
+
+* Diagonal matrices (GD)
+* Tridiagonal matrices (GT)
+* Diagonally dominant tridiagonal matrices (DT)
+* Symmetric tridiagonal matrices (ST)
+
 ### Enhancements
 
 * Updated JOCLBlast dependency to 1.0.1.
+
+### Bugfixes
+
+* Fixed TR and SY mm and mv when k=0.
 
 ## 0.15.0
 

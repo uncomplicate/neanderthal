@@ -65,6 +65,7 @@
   (con [this lu ipiv nrm nrm1?] [this gg nrm nrm1?] [this a nrm1?])
   (det [this lu ipiv] [this a])
   (sv [this a b pure] [this a b])
+  (svd [this a s superb] [this a s u vt superb])
   (qrf [this a tau])
   (qrfp [this a tau])
   (gqr [this a tau])
@@ -79,8 +80,7 @@
   (gql [this a tau])
   (mql [this a tau c left])
   (ls [this a b])
-  (ev [this a w vl vr])
-  (svd [this a s superb] [this a s u vt superb]))
+  (ev [this a w vl vr]))
 
 (defprotocol TRF
   (create-trf [this a pure])

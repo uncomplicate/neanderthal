@@ -32,12 +32,12 @@
   - Other LAPACK documentation, as needed.
   "
   (:require [uncomplicate.commons
-             [core :refer [let-release with-release]]
+             [core :refer [let-release with-release release]]
              [utils :refer [cond-into]]]
-            [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy]]
+            [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy gd raw]]
             [uncomplicate.neanderthal.internal
              [api :as api]
-             [common :refer [dragan-says-ex]]])
+             [common :refer [dragan-says-ex ->SVDecomposition]]])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 
 ;; ============================= LAPACK =======================================================
@@ -585,8 +585,8 @@
   "Computes the singular value decomposition of a matrix `a`.
 
   On exit, `a`'s contents is destroyed, or, if `u` or `vt` are `nil`, overwritten with U or transposed V
-  singular vectors of `a`. `s` is a diagonal banded matrix populated with sorted singular values.
-  If the factorization does not converge, a diagonal banded matrix `superb` is populated with
+  singular vectors of `a`. `s` is a diagonal matrix populated with sorted singular values.
+  If the factorization does not converge, a diagonal matrix `superb` is populated with
   the unconverged superdiagonal elements (see LAPACK documentation). If called without `u` and `vt`,
   U and transposed V are not computed.
 
@@ -606,16 +606,16 @@
               (or (nil? vt) (and (or (= n (.mrows vt) (.ncols vt))
                                      (and (= min-mn (.mrows vt)) (= n (.ncols vt))))
                                  (api/compatible? a vt) (api/fits-navigation? a vt)))
-              (= m (.mrows sigma) (.mrows superb)) (= n (.ncols sigma) (.ncols superb)))
+              (= min-mn (.mrows sigma) (.mrows superb) (.ncols sigma) (.ncols superb)))
        (api/svd (api/engine a) a sigma u vt superb)
        (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
                        {:a (api/info a) :s (api/info sigma) :u (api/info u) :vt (api/info vt) :superb (api/info superb)
                         :errors
                         (cond-into []
-                                   (not (= m (.mrows sigma))) "mrows of sigma is not m"
-                                   (not (= n (.ncols sigma))) "ncols of sigma is not n"
-                                   (not (= m (.mrows superb))) "mrows of superb is not m"
-                                   (not (= n (.ncols superb))) "ncols of superb is not n"
+                                   (not (= min-mn (.mrows sigma))) "mrows of sigma is not (min m n)"
+                                   (not (= min-mn (.ncols sigma))) "ncols of sigma is not (min m n)"
+                                   (not (= min-mn (.mrows superb))) "mrows of superb is not (min m n)"
+                                   (not (= min-mn (.ncols superb))) "ncols of superb is not (min m n)"
                                    (not (or (nil? u) (= m (.mrows u) (.ncols u)))) "u is not a mxm matrix"
                                    (not (or (nil? u) (= min-mn (.ncols u)))) "ncols of u is not equals (min m n)"
                                    (not (or (nil? u) (= n (.mrows u)))) "mrows of vt is not equals n"
@@ -625,13 +625,38 @@
                                    (not (or (nil? vt) (= min-mn (.mrows vt)))) "mrows of vt is not equals (min m n)"
                                    (not (or (nil? vt) (= n (.ncols vt)))) "ncols of vt is not equals n")})))))
   ([^Matrix a ^Matrix sigma ^Matrix superb]
-   (if (and (= (.mrows a) (.mrows sigma) (.mrows superb)) (= (.ncols a) (.ncols sigma) (.ncols superb))
-            (api/compatible? a sigma) (api/compatible? a superb))
-     (api/svd (api/engine a) a sigma superb)
-     (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
-                     {:a (api/info a) :s (api/info sigma) :superb (api/info superb) :errors
-                      (cond-into []
-                                 (not (= (.mrows a) (.mrows sigma))) "mrows of sigma is not m"
-                                 (not (= (.ncols a) (.ncols sigma))) "ncols of sigma is not n"
-                                 (not (= (.mrows a) (.mrows superb))) "mrows of superb is not m"
-                                 (not (= (.ncols a) (.ncols superb))) "ncols of superb is not n")})))))
+   (let [min-mn (min (.mrows a) (.ncols a))]
+     (if (and (= min-mn (.mrows sigma) (.ncols sigma) (.mrows superb) (.ncols superb))
+              (api/compatible? a sigma) (api/compatible? a superb))
+       (api/svd (api/engine a) a sigma superb)
+       (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
+                       {:a (api/info a) :s (api/info sigma) :superb (api/info superb) :errors
+                        (cond-into []
+                                   (not (= min-mn (.mrows sigma))) "mrows of sigma is not m"
+                                   (not (= min-mn (.ncols sigma))) "ncols of sigma is not n"
+                                   (not (= min-mn (.mrows superb))) "mrows of superb is not m"
+                                   (not (= min-mn (.ncols superb))) "ncols of superb is not n")}))))))
+
+(defn svd
+  "Computes the singular value decomposition of a matrix `a`, and returns a SVD record containing
+  `:sigma` (the singular values), `u` (if `u?` is true) and `vt` (if `vt?` is true).
+
+  If the reduction to bidiagonal form failed to converge, throws ExceptionInfo, with the information
+  on the number of converged superdiagonals.
+  If some value in the native call is illegal, throws ExceptionInfo.
+
+  See related info about [[svd!]]
+  "
+  ([^Matrix a ^Boolean u? ^Boolean vt?]
+   (let [fact (api/factory a)
+         min-mn (min (.mrows a) (.ncols a))]
+     (let-release [u (if u? (ge fact (.mrows a) min-mn) nil)
+                   vt (if vt? (ge fact min-mn (.ncols a)) nil)
+                   sigma (gd fact min-mn)]
+       (with-release [a-copy (copy a)
+                      superb (raw sigma)]
+         (api/svd (api/engine a-copy) a-copy sigma u vt superb)
+         (release superb)
+         (->SVDecomposition sigma u vt true)))))
+  ([a]
+   (svd a false false)))

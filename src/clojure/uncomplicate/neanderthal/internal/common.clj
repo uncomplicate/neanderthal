@@ -11,7 +11,7 @@
             [uncomplicate.commons.core :refer [Releaseable release let-release double-fn]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor
-            MatrixImplementation LayoutNavigator Block]))
+            MatrixImplementation LayoutNavigator Block DiagonalMatrix]))
 
 (defn dragan-says-ex
   ([message data]
@@ -54,7 +54,7 @@
 (def ^:private falsify (constantly false))
 
 (defn ^:private stale-factorization []
-  (throw (ex-info "Cannot compute with stale LU factorization." {})))
+  (throw (ex-info "Cannot compute with a stale factorization. Decompose the original matrix again." {})))
 
 (defn ^:private nrm-needed-for-con []
   (throw (ex-info "Cannot compute condition number without nrm." {})))
@@ -181,3 +181,13 @@
     (fits? lu b))
   (fits-navigation? [_ b]
     (fits-navigation? lu b)))
+
+(defrecord SVDecomposition [^DiagonalMatrix sigma ^Matrix u ^Matrix vt ^Boolean master]
+  Releaseable
+  (release [_]
+    (release sigma)
+    (release u)
+    (release vt))
+  Info
+  (info [this]
+    this))

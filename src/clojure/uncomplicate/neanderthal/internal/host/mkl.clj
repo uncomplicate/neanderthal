@@ -474,11 +474,11 @@
   (svd [_ a sigma u vt superb]
     (let [u (or u zero-matrix)
           vt (or vt zero-matrix)]
-      (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBandedMatrix sigma ^RealGEMatrix u ^RealGEMatrix vt
-              ^RealBandedMatrix superb)))
+      (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
+              ^RealGEMatrix u ^RealGEMatrix vt ^RealDiagonalMatrix superb)))
   (svd [_ a sigma superb]
-    (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealBandedMatrix sigma
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBandedMatrix superb))
+    (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
   TRF
   (create-trf [_ a pure]
     (matrix-create-trf matrix-lu a pure)))
@@ -576,11 +576,11 @@
   (svd [_ a sigma u vt superb]
     (let [u (or u zero-matrix)
           vt (or vt zero-matrix)]
-      (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBandedMatrix sigma ^RealGEMatrix u ^RealGEMatrix vt
-              ^RealBandedMatrix superb)))
+      (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
+              ^RealGEMatrix u ^RealGEMatrix vt ^RealDiagonalMatrix superb)))
   (svd [_ a sigma superb]
-    (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealBandedMatrix sigma
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealBandedMatrix superb))
+    (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
   TRF
   (create-trf [_ a master]
     (matrix-create-trf matrix-lu a master)))
