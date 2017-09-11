@@ -15,7 +15,8 @@
              [api :refer [factory index-factory engine data-accessor info raw
                           create-vector create-ge create-gb create-sb create-sy fits-navigation?
                           nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage]]
-             [common :refer [check-stride real-accessor dragan-says-ex ->LUFactorization ->CholeskyFactorization]]
+             [common :refer [check-stride real-accessor dragan-says-ex
+                             ->LUFactorization ->PivotlessLUFactorization]]
              [navigation :refer [dostripe-layout full-storage]]]
             [uncomplicate.neanderthal.internal.host.cblas
              :refer [band-storage-reduce band-storage-map full-storage-map]])
@@ -307,9 +308,9 @@
     (trf (engine a) a ipiv)
     (->LUFactorization a ipiv master (atom true))))
 
-(defn matrix-cholesky [^Matrix a master]
+(defn matrix-pivotless-lu [^Matrix a master]
   (trf (engine a) a)
-  (->CholeskyFactorization a master (atom true)))
+  (->PivotlessLUFactorization a master (atom true)))
 
 (defn matrix-create-trf [create-fn a pure]
   (if pure
@@ -343,7 +344,7 @@
        (let [info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
                     (.ncols ~a) (buffer a-copy#) (offset a-copy#) (stride a-copy#))]
          (cond
-           (= 0 info#) (->CholeskyFactorization a-copy# true (atom true))
+           (= 0 info#) (->PivotlessLUFactorization a-copy# true (atom true))
            (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
                                        {:arg-index (- info#)}))
            :else (do
@@ -358,7 +359,7 @@
        (let [info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
                     (.ncols ~a) (buffer a-copy#) (offset a-copy#))]
          (cond
-           (= 0 info#) (->CholeskyFactorization a-copy# true (atom true))
+           (= 0 info#) (->PivotlessLUFactorization a-copy# true (atom true))
            (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
                                        {:arg-index (- info#)}))
            :else (do
@@ -388,6 +389,14 @@
       (with-sv-check ~a
         (~method CBLAS/ORDER_COLUMN_MAJOR (int \L)
          (.ncols ~a) (max (.kl reg#) (.ku reg#)) (.buffer ~a) (.offset ~a) (.stride ~a))))))
+
+(defmacro diagonal-trf
+  ([method a ipiv]
+   `(with-sv-check (check-stride ~ipiv)
+      (~method (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~ipiv) (.offset ~ipiv))))
+  ([method a]
+   `(with-sv-check ~a
+      (~method (.ncols ~a) (.buffer ~a) (.offset ~a)))))
 
 (defmacro ge-tri [method a ipiv]
   `(let [stor# (full-storage ~a)]
@@ -536,6 +545,23 @@
          (.mrows ~b) (.ncols ~b) (.buffer ~gg) (.offset ~gg) (.stride ~gg)
          (.buffer ~b) (.offset ~b) (.stride ~b))))))
 
+(defmacro gt-trs [method lu b ipiv]
+  `(let [nav-b# (navigator ~b)]
+     (check-stride ~ipiv)
+     (with-sv-check ~b
+       (~method (.layout nav-b#) (int (if (.isColumnMajor nav-b#) \N \T)) (.ncols ~lu) (.ncols ~b)
+        (.buffer ~lu) (.offset ~lu) (.buffer ~ipiv) (.offset ~ipiv) (.buffer ~b) (.offset ~b) (.stride ~b)))))
+
+(defmacro dt-trs [method lu b]
+  `(with-sv-check ~b
+     (~method (int (if (.isColumnMajor (navigator ~b)) \N \T)) (.ncols ~lu) (.ncols ~b)
+      (.buffer ~lu) (.offset ~lu) (.buffer ~b) (.offset ~b) (.stride ~b))))
+
+(defmacro st-trs [method lu b]
+  `(with-sv-check ~b
+     (~method (.layout (navigator ~b)) (.ncols ~lu) (.ncols ~b)
+      (.buffer ~lu) (.offset ~lu) (.buffer ~b) (.offset ~b) (.stride ~b))))
+
 (defmacro ge-con [method lu nrm nrm1?]
   `(with-release [da# (real-accessor ~lu)
                   res# (.createDataSource da# 1)]
@@ -626,6 +652,18 @@
       (with-sv-check (.get da# res# 0)
         (~method (.layout (navigator ~gg)) (int (if (.isLower (region ~gg)) \L \U)) (.ncols ~gg)
          (.buffer ~gg) (.offset ~gg) ~nrm res#)))))
+
+(defmacro gt-con [method lu ipiv nrm nrm1?]
+  `(with-release [da# (real-accessor ~lu)
+                  res# (.createDataSource da# 1)]
+     (with-sv-check (.get da# res# 0)
+       (~method (int (if ~nrm1? \O \I)) (.ncols ~lu)
+        (.buffer ~lu) (.offset ~lu) (.buffer ~ipiv) (.offset ~ipiv) ~nrm res#))))
+
+(defmacro st-con [method lu nrm]
+  `(with-release [da# (real-accessor ~lu)
+                  res# (.createDataSource da# 1)]
+     (with-sv-check (.get da# res# 0) (~method  (.ncols ~lu) (.buffer ~lu) (.offset ~lu) ~nrm res#))))
 
 (defmacro ge-sv
   ([method a b pure]
@@ -745,6 +783,32 @@
       (with-sv-check ~b
         (~method (.layout nav-b#) uplo#
          (.mrows ~b) (.ncols ~b) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.stride ~b))))))
+
+(defmacro gt-sv [method a b pure]
+  `(if ~pure
+     (with-release [a# (raw ~a)]
+       (copy (engine ~a) ~a a#)
+       (sv (engine a#) a# ~b false))
+     (with-sv-check ~b
+       (~method (.layout (navigator ~b)) (.ncols ~a) (.ncols ~b)
+        (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
+
+(defmacro dt-sv [method a b pure]
+  `(if ~pure
+     (with-release [a# (raw ~a)]
+       (copy (engine ~a) ~a a#)
+       (sv (engine a#) a# ~b false))
+     (with-sv-check ~b
+       (~method (.ncols ~a) (.ncols ~b) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
+
+(defmacro st-sv [method a b pure]
+  `(if ~pure
+     (with-release [a# (raw ~a)]
+       (copy (engine ~a) ~a a#)
+       (sv (engine a#) a# ~b false))
+     (with-sv-check ~b
+       (~method (int (if (.isColumnMajor (navigator ~b)) \N \T)) (.ncols ~a) (.ncols ~b)
+        (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.stride ~b)))))
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 

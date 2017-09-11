@@ -118,10 +118,10 @@
   (fits-navigation? [_ b]
     (fits-navigation? lu b)))
 
-(defrecord CholeskyFactorization [^Matrix gg ^Boolean master fresh]
+(defrecord PivotlessLUFactorization [^Matrix lu ^Boolean master fresh]
   Releaseable
   (release [_]
-    (if master (release gg) true))
+    (if master (release lu) true))
   Info
   (info [this]
     this)
@@ -133,51 +133,51 @@
   (trtrs [_ b]
     (if @fresh
       (let-release [res (create-ge (factory b) (.mrows ^Matrix b) (.ncols ^Matrix b)
-                                   (if (= :sb (.matrixType ^MatrixImplementation gg))
+                                   (if (= :sb (.matrixType ^MatrixImplementation lu))
                                      true
                                      (.isColumnMajor (navigator b)))
                                    false)]
         (copy (engine b) b res)
-        (trs (engine gg) gg res))
+        (trs (engine lu) lu res))
       (stale-factorization)))
   (trtrs! [_ b]
     (if @fresh
-      (trs (engine gg) gg b)
+      (trs (engine lu) lu b)
       (stale-factorization)))
   (trtri! [_]
     (if (compare-and-set! fresh true false)
-      (tri (engine gg) gg)
+      (tri (engine lu) lu)
       (stale-factorization)))
   (trtri [_]
     (if @fresh
-      (let-release [res (raw gg)]
-        (let [eng (engine gg)]
-          (tri eng (copy eng gg res)))
+      (let-release [res (raw lu)]
+        (let [eng (engine lu)]
+          (tri eng (copy eng lu res)))
         res)
       (stale-factorization)))
   (trcon [_ nrm nrm1?]
     (if @fresh
-      (con (engine gg) gg nrm nrm1?)
+      (con (engine lu) lu nrm nrm1?)
       (stale-factorization)))
   (trcon [_ nrm1?]
     (nrm-needed-for-con))
   (trdet [_]
     (if @fresh
-      (let [dia-gg (.dia gg)
-            res (double (fold f* 1.0 dia-gg))]
-        (if (even? (.dim dia-gg))
+      (let [dia-lu (.dia lu)
+            res (double (fold f* 1.0 dia-lu))]
+        (if (even? (.dim dia-lu))
           res
           (- res)))
       (stale-factorization)))
   Matrix
   (mrows [_]
-    (.mrows gg))
+    (.mrows lu))
   (ncols [_]
-    (.ncols gg))
+    (.ncols lu))
   MemoryContext
   (compatible? [_ b]
-    (compatible? gg b))
+    (compatible? lu b))
   (fits? [_ b]
-    (fits? gg b))
+    (fits? lu b))
   (fits-navigation? [_ b]
-    (fits-navigation? gg b)))
+    (fits-navigation? lu b)))

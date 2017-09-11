@@ -1696,6 +1696,17 @@
      (sort+! a1) => a2
      (sort-! a1) => a3)))
 
+(defn test-gt-srt [factory gt]
+  (facts
+   "LAPACK GT srt!"
+   (with-release [a0 (gt factory 0)
+                  a1 (gt factory 3 [0 -1 1 -5 -6 -7 -8])
+                  a2 (gt factory 3 [-8 -7 -6 -5 -1 0 1])
+                  a3 (gt factory 3 [1 0 -1 -5 -6 -7 -8])]
+     (sort+! a0) => a0
+     (sort+! a1) => a2
+     (sort-! a1) => (sort-! a3))))
+
 (defn test-gd-srt [factory]
   (facts
    "LAPACK GD srt!"
@@ -1706,6 +1717,17 @@
      (sort+! a0) => a0
      (dia (sort+! a1)) => (dia a2)
      (dia (sort-! a1)) => (dia a3))))
+
+(defn test-st-srt [factory gt]
+  (facts
+   "LAPACK ST srt!"
+   (with-release [a0 (st factory 0)
+                  a1 (st factory 3 [0 -1 1 -5 -6])
+                  a2 (st factory 3 [-6 -5 -1 0 1])
+                  a3 (st factory 3 [1 0 -1 -5 -6])]
+     (sort+! a0) => a0
+     (sort+! a1) => a2
+     (sort-! a1) => (sort-! a3))))
 
 (defn test-ge-trf [factory]
   (facts
@@ -1979,6 +2001,65 @@
      (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0.0 0.0001)
      (nrm2 (axpy! -1 b-solution (sv a b-row) )) => (roughly 0.0 0.0001)
      (con a) => (roughly (con t) 0.0000001))))
+
+(defn test-gt-trx [factory]
+  (facts
+   "LAPACK GT linear system solver."
+
+   (with-release [a (let [res (gt factory 9)]
+                      (entry! (dia res) 1)
+                      (entry! (dia res 1) 4)
+                      (entry! (dia res -1) 3)
+                      res)
+                  lu-d (vctr factory [3.000,  3.666, 3.000,  3.303, 3.532,  3.000, 4.799,  3.000,  4.332])
+                  lu-du (vctr factory [1.000, -1.333, 1.000, -2.787, 4.000,  1.000, 3.196,  1.000])
+                  lu-dl (vctr factory [0.333,  0.818, 0.696,  0.908, 0.849, -0.799, 0.625, -0.332])
+                  ipiv (vctr (index-factory factory) [2 2 4 4 5 7 7 9 9])
+                  b (ge factory 9 3 [1 1 1 1 1 1 1 1 1
+                                     1 -1 1 -1 1 -1 1 -1 1
+                                     1 2 3 4 5 6 7 8 9])
+                  b-solution (ge factory 9 3 [0.609   0.478   4.597
+                                              0.098   0.130  -0.899
+                                              -0.231  -0.641  -2.723
+                                              0.234   0.312   2.105
+                                              0.364   0.153   2.516
+                                              -0.017  -0.023  -0.958
+                                              -0.019  -0.359  -0.147
+                                              0.267   0.357   2.505
+                                              0.198  -0.070   1.484]
+                                 {:layout :row})
+                  lu (trf a)]
+
+     (:ipiv lu) => ipiv
+     (nrm2 (axpy! -1 (dia (:lu lu)) lu-d)) => (roughly 0 0.002)
+     (nrm2 (axpy! -1 (dia (:lu lu) -1) lu-dl)) => (roughly 0 0.002)
+     (nrm2 (axpy! -1 (dia (:lu lu) 1) lu-du)) => (roughly 0 0.002)
+     (con lu 8) => (roughly 0.03667)
+     (nrm2 (axpy! -1 b-solution (trs! lu b))) => (roughly 0 0.002))))
+
+(defn test-dt-trx [factory]
+  (facts
+   "LAPACK DT linear system solver."
+
+   (with-release [a (let [res (dt factory 9)]
+                      (entry! (dia res) 1)
+                      (entry! (dia res 1) 4)
+                      (entry! (dia res -1) 3)
+                      res)
+                  ldl (trf a)]
+     (:lu ldl) => truthy)))
+
+(defn test-st-trx [factory]
+  (facts
+   "LAPACK PT linear system solver."
+
+   (with-release [a (let [res (dt factory 9)]
+                      (entry! (dia res) 1)
+                      (entry! (dia res 1) 4)
+                      res)
+                  ldl (trf a)]
+
+     (:lu ldl) => truthy)))
 
 (defn test-ge-trs [factory]
   (facts
@@ -2492,6 +2573,8 @@
   (test-gb-srt factory)
   (test-banded-uplo-srt factory tb)
   (test-banded-uplo-srt factory sb)
+  (test-gt-srt factory gt)
+  (test-gt-srt factory dt)
   (test-gd-srt factory)
   (test-ge-trf factory)
   (test-ge-trs factory)
@@ -2514,8 +2597,12 @@
   (test-sb-trx factory)
   (test-tb-trx factory)
   (test-sy-trx factory sp)
+  (test-gt-trx factory)
   (test-sp-potrx factory)
   (test-gd-trx factory)
+  (test-gt-trx factory)
+  (test-dt-trx factory)
+  (test-st-trx factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
   (test-ge-lq factory)

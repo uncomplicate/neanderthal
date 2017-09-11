@@ -767,7 +767,7 @@
   (create-trf [_ a pure]
     (sy-cholesky-lu LAPACK/dpotrf ^RealUploMatrix a pure))
   (create-ptrf [_ a]
-    (matrix-create-trf matrix-cholesky ^RealBandedMatrix a false)))
+    (matrix-create-trf matrix-pivotless-lu a false)))
 
 (deftype FloatSYEngine []
   Blas
@@ -835,7 +835,7 @@
   (create-trf [_ a pure]
     (sy-cholesky-lu LAPACK/spotrf ^RealUploMatrix a pure))
   (create-ptrf [_ a]
-    (matrix-create-trf matrix-cholesky ^RealBandedMatrix a false)))
+    (matrix-create-trf matrix-pivotless-lu a false)))
 
 ;; =============== Banded Matrix Engines ===================================
 
@@ -898,7 +898,7 @@
     (gb-con LAPACK/dgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?))
   TRF
   (create-trf [_ a pure]
-    (matrix-create-trf matrix-lu ^RealBandedMatrix a pure))
+    (matrix-create-trf matrix-lu a pure))
   (create-ptrf [_ _]
     (dragan-says-ex "Cholesky factorization is not available for GB matrices.")))
 
@@ -961,7 +961,7 @@
     (gb-con LAPACK/sgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?))
   TRF
   (create-trf [_ a pure]
-    (matrix-create-trf matrix-lu ^RealBandedMatrix a pure))
+    (matrix-create-trf matrix-lu a pure))
   (create-ptrf [_ _]
     (dragan-says-ex "Cholesky factorization is not available for GB matrices.")))
 
@@ -1024,9 +1024,9 @@
     (sb-con LAPACK/dpbcon ^RealBandedMatrix gg nrm))
   TRF
   (create-trf [_ a pure]
-    (matrix-create-trf matrix-cholesky ^RealBandedMatrix a pure))
+    (matrix-create-trf matrix-pivotless-lu a pure))
   (create-ptrf [_ a]
-    (matrix-create-trf matrix-cholesky ^RealBandedMatrix a false)))
+    (matrix-create-trf matrix-pivotless-lu a false)))
 
 (deftype FloatSBEngine []
   Blas
@@ -1087,9 +1087,9 @@
     (sb-con LAPACK/spbcon ^RealBandedMatrix gg nrm))
   TRF
   (create-trf [_ a pure]
-    (matrix-create-trf matrix-cholesky ^RealBandedMatrix a pure))
+    (matrix-create-trf matrix-pivotless-lu a pure))
   (create-ptrf [_ a]
-    (matrix-create-trf matrix-cholesky ^RealBandedMatrix a false)))
+    (matrix-create-trf matrix-pivotless-lu ^RealBandedMatrix a false)))
 
 (deftype DoubleTBEngine []
   Blas
@@ -1382,7 +1382,7 @@
   (create-trf [_ a pure]
     (sp-cholesky-lu LAPACK/dpptrf ^RealPackedMatrix a pure))
   (create-ptrf [_ a]
-    (matrix-create-trf matrix-cholesky ^RealPackedMatrix a false)))
+    (matrix-create-trf matrix-pivotless-lu a false)))
 
 (deftype FloatSPEngine []
   Blas
@@ -1449,7 +1449,7 @@
   (create-trf [_ a pure]
     (sp-cholesky-lu LAPACK/spptrf ^RealPackedMatrix a pure))
   (create-ptrf [_ a]
-    (matrix-create-trf matrix-cholesky ^RealPackedMatrix a false)))
+    (matrix-create-trf matrix-pivotless-lu a false)))
 
 ;; =============== Tridiagonal Matrix Engines =================================
 
@@ -1492,7 +1492,26 @@
     (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/dlasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
+  (trf [_ a ipiv]
+    (diagonal-trf LAPACK/dgttrf ^RealDiagonalMatrix a ^IntegerBlockVector ipiv))
+  (trf [_ _]
+    (dragan-says-ex "Pivotless factorization is not available for GT matrices."))
+  (tri [_ _ _]
+    (dragan-says-ex "Inverse is not available for GT matrices."))
+  (trs [_ lu b ipiv]
+    (gt-trs LAPACK/dgttrs ^RealDiagonalMatrix lu ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (sv [_ a b pure]
+    (gt-sv LAPACK/dgtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
+  (con [_ lu ipiv nrm nrm1?]
+    (gt-con LAPACK/dgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?))
+  TRF
+  (create-trf [_ a pure]
+    (matrix-create-trf matrix-lu a pure)))
 
 (deftype FloatGTEngine []
   Blas
@@ -1533,7 +1552,26 @@
     (diagonal-laset LAPACK/slaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/saxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/slasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
+  (trf [_ a ipiv]
+    (diagonal-trf LAPACK/sgttrf ^RealDiagonalMatrix a ^IntegerBlockVector ipiv))
+  (trf [_ _]
+    (dragan-says-ex "Pivotless factorization is not available for GT matrices."))
+  (tri [_ _ _]
+    (dragan-says-ex "Inverse is not available for GT matrices."))
+  (trs [_ lu b ipiv]
+    (gt-trs LAPACK/sgttrs ^RealDiagonalMatrix lu ^RealGEMatrix b ^IntegerBlockVector ipiv))
+  (sv [_ a b pure]
+    (gt-sv LAPACK/sgtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
+  (con [_ lu ipiv nrm nrm1?]
+    (gt-con LAPACK/sgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?))
+  TRF
+  (create-trf [_ a pure]
+    (matrix-create-trf matrix-lu a pure)))
 
 (deftype DoubleGDEngine []
   Blas
@@ -1577,6 +1615,8 @@
   Lapack
   (srt [_ a increasing]
     (diagonal-lasrt LAPACK/dlasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
   (tri [_ a]
     (gd-tri MKL/vdinv ^RealDiagonalMatrix a))
   (trs [_ a b]
@@ -1631,6 +1671,8 @@
   Lapack
   (srt [_ a increasing]
     (diagonal-lasrt LAPACK/slasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
   (tri [_ a]
     (gd-tri MKL/vsinv ^RealDiagonalMatrix a))
   (trs [_ a b]
@@ -1682,7 +1724,24 @@
     (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/dlasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
+  (trf [_ a]
+    (diagonal-trf LAPACK/ddttrfb ^RealDiagonalMatrix a))
+  (tri [_ _]
+    (dragan-says-ex "Inverse is not available for DT matrices."))
+  (trs [_ lu b]
+    (dt-trs LAPACK/ddttrsb ^RealDiagonalMatrix lu ^RealGEMatrix b))
+  (sv [_ a b pure]
+    (dt-sv LAPACK/ddtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
+  (con [_ lu ipiv nrm nrm1?]
+    (dragan-says-ex "Condition number is not available for DT matrices."))
+  TRF
+  (create-trf [_ a pure]
+    (matrix-create-trf matrix-pivotless-lu a pure)))
 
 (deftype FloatDTEngine []
   Blas
@@ -1723,7 +1782,24 @@
     (diagonal-laset LAPACK/slaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/saxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/slasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
+  (trf [_ a]
+    (diagonal-trf LAPACK/sdttrfb ^RealDiagonalMatrix a))
+  (tri [_ _]
+    (dragan-says-ex "Inverse is not available for DT matrices."))
+  (trs [_ lu b]
+    (dt-trs LAPACK/sdttrsb ^RealDiagonalMatrix lu ^RealGEMatrix b))
+  (sv [_ a b pure]
+    (dt-sv LAPACK/sdtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
+  (con [_ lu ipiv nrm nrm1?]
+    (dragan-says-ex "Condition number is not available for DT matrices."))
+  TRF
+  (create-trf [_ a pure]
+    (matrix-create-trf matrix-pivotless-lu a pure)))
 
 (deftype DoubleSTEngine []
   Blas
@@ -1764,7 +1840,26 @@
     (diagonal-laset LAPACK/dlaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/daxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/dlasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
+  (trf [_ a]
+    (diagonal-trf LAPACK/dpttrf ^RealDiagonalMatrix a))
+  (tri [_ _]
+    (dragan-says-ex "Inverse is not available for ST matrices."))
+  (trs [_ lu b]
+    (st-trs LAPACK/dpttrs ^RealDiagonalMatrix lu ^RealGEMatrix b))
+  (sv [_ a b pure]
+    (st-sv LAPACK/dptsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
+  (con [_ lu ipiv nrm nrm1?]
+    (dragan-says-ex "Condition number is not available for ST matrices."))
+  TRF
+  (create-trf [_ a pure]
+    (matrix-create-trf matrix-pivotless-lu a pure))
+  (create-ptrf [_ a]
+    (matrix-create-trf matrix-pivotless-lu a false)))
 
 (deftype FloatSTEngine []
   Blas
@@ -1805,7 +1900,26 @@
     (diagonal-laset LAPACK/slaset alpha ^RealDiagonalMatrix a))
   (axpby [_ alpha a beta b]
     (diagonal-axpby MKL/saxpby alpha ^RealDiagonalMatrix a beta ^RealDiagonalMatrix b))
-  )
+  Lapack
+  (srt [_ a increasing]
+    (diagonal-lasrt LAPACK/slasrt ^RealDiagonalMatrix a increasing))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
+  (trf [_ a]
+    (diagonal-trf LAPACK/spttrf ^RealDiagonalMatrix a))
+  (tri [_ _]
+    (dragan-says-ex "Inverse is not available for ST matrices."))
+  (trs [_ lu b]
+    (st-trs LAPACK/spttrs ^RealDiagonalMatrix lu ^RealGEMatrix b))
+  (sv [_ a b pure]
+    (st-sv LAPACK/sptsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
+  (con [_ lu ipiv nrm nrm1?]
+    (dragan-says-ex "Condition number is not available for ST matrices."))
+  TRF
+  (create-trf [_ a pure]
+    (matrix-create-trf matrix-pivotless-lu a pure))
+  (create-ptrf [_ a]
+    (matrix-create-trf matrix-pivotless-lu a false)))
 
 ;; =============== Factories ==================================================
 

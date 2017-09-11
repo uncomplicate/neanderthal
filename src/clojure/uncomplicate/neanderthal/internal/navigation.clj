@@ -425,7 +425,7 @@
 
 ;; ========================= Diagonal Storage ============================
 
-(deftype TridiagonalStorage [^long n]
+(deftype TridiagonalStorage [^long n ^long cap]
   Info
   (info [s]
     {:storage-type :tridiagonal
@@ -449,9 +449,9 @@
   (isGapless [_]
     true)
   (capacity [_]
-    (max 0 (- (* 3 n) 2))))
+    cap))
 
-(deftype BidiagonalStorage [^long n ^long d]
+(deftype BidiagonalStorage [^long n ^long cap]
   Info
   (info [s]
     {:storage-type :bidiagonal
@@ -472,14 +472,14 @@
   (isGapless [_]
     true)
   (capacity [_]
-    (+ n (max 0 (* (dec n) d)))))
+    cap))
 
 (defn diagonal-storage [^long n matrix-type]
   (case matrix-type
-    :gd (BidiagonalStorage. n 0)
-    :gt (TridiagonalStorage. n)
-    :dt (TridiagonalStorage. n)
-    :st (BidiagonalStorage. n 1)
+    :gd (BidiagonalStorage. n n)
+    :gt (TridiagonalStorage. n (+ n (* 2 (max 0 (dec n))) (max 0 (- n 2))))
+    :dt (TridiagonalStorage. n (+ n (* 2 (max 0 (dec n)))))
+    :st (BidiagonalStorage. n (+ n (max 0 (dec n))))
     (dragan-says-ex "Unknown (tri)diagonal matrix type." {:type type})))
 
 ;; ========================= Default value ===============================
