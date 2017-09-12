@@ -303,22 +303,6 @@
        (~method (.layout (navigator ~a)) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
         ~k1 ~k2 (.buffer ~ipiv) (.offset ~ipiv) (.stride ~ipiv)))))
 
-(defn matrix-lu [^Matrix a master]
-  (let-release [ipiv (create-vector (index-factory a) (min (.mrows a) (.ncols a)) false)]
-    (trf (engine a) a ipiv)
-    (->LUFactorization a ipiv master (atom true))))
-
-(defn matrix-pivotless-lu [^Matrix a master]
-  (trf (engine a) a)
-  (->PivotlessLUFactorization a master (atom true)))
-
-(defn matrix-create-trf [create-fn a pure]
-  (if pure
-    (let-release [a-copy (raw a)]
-      (copy (engine a) a a-copy)
-      (create-fn a-copy true))
-    (create-fn a false)))
-
 (defmacro ge-trf [method a ipiv]
   `(with-sv-check (check-stride ~ipiv)
      (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
@@ -337,35 +321,21 @@
         (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U)) (.ncols ~a)
          (.buffer ~a) (.offset ~a) (.ld stor#))))))
 
-(defmacro sy-cholesky-lu [method a pure]
-  `(if ~pure
-     (let-release [a-copy# (raw ~a)]
-       (copy (engine ~a) ~a a-copy#)
-       (let [info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
-                    (.ncols ~a) (buffer a-copy#) (offset a-copy#) (stride a-copy#))]
-         (cond
-           (= 0 info#) (->PivotlessLUFactorization a-copy# true (atom true))
-           (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
-                                       {:arg-index (- info#)}))
-           :else (do
-                   (copy (engine ~a) ~a a-copy#)
-                   (matrix-create-trf matrix-lu a-copy# true)))))
-     (matrix-create-trf matrix-lu ~a false)))
+(defmacro sy-trfx [method a]
+  `(let [info# (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U))
+                (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a))]
+     (if (<= 0 info#)
+       info#
+       (throw (ex-info "There has been an illegal argument in the native function call."
+                       {:arg-index (- info#)})))))
 
-(defmacro sp-cholesky-lu [method a pure]
-  `(if ~pure
-     (let-release [a-copy# (raw ~a)]
-       (copy (engine ~a) ~a a-copy#)
-       (let [info# (~method (.layout (navigator a-copy#)) (int (if (.isLower (region a-copy#)) \L \U))
-                    (.ncols ~a) (buffer a-copy#) (offset a-copy#))]
-         (cond
-           (= 0 info#) (->PivotlessLUFactorization a-copy# true (atom true))
-           (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
-                                       {:arg-index (- info#)}))
-           :else (do
-                   (copy (engine ~a) ~a a-copy#)
-                   (matrix-create-trf matrix-lu a-copy# true)))))
-     (matrix-create-trf matrix-lu ~a false)))
+(defmacro sp-trfx [method a]
+  `(let [info# (~method (.layout (navigator ~a)) (int (if (.isLower (region ~a)) \L \U))
+                (.ncols ~a) (.buffer ~a) (.offset ~a))]
+     (if (<= 0 info#)
+       info#
+       (throw (ex-info "There has been an illegal argument in the native function call."
+                       {:arg-index (- info#)})))))
 
 (defn check-gb-submatrix [a]
   (let [reg (region a)
@@ -812,31 +782,35 @@
 
 ;; ------------- Orthogonal Factorization (L, Q, R) LAPACK -------------------------------
 
-(defmacro with-lqr-check [tau res expr]
-  `(if (= 1 (.stride ~tau))
-     (let [info# ~expr]
-       (if (= 0 info#)
-         ~res
-         (throw (ex-info "There has been an illegal argument in the native function call."
-                         {:arg-index (- info#)}))))
-     (throw (ex-info "You cannot use tau with stride different than 1." {:stride (.stride ~tau)}))))
+(defmacro with-lqr-check [res expr]
+  `(let [info# ~expr]
+     (if (= 0 info#)
+       ~res
+       (throw (ex-info "There has been an illegal argument in the native function call."
+                       {:arg-index (- info#)})))))
 
 (defmacro ge-lqrf [method a tau]
-  `(with-lqr-check ~tau ~tau
-     (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
-      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.offset ~tau))))
+  `(do
+     (check-stride ~tau)
+     (with-lqr-check ~a
+       (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
+        (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.offset ~tau)))))
 
 (defmacro or-glqr [method a tau]
-  `(with-lqr-check ~tau ~a
-     (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a) (.dim ~tau)
-      (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.offset ~tau))))
+  `(do
+     (check-stride ~tau)
+     (with-lqr-check ~a
+       (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a) (.dim ~tau)
+        (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.offset ~tau)))))
 
 (defmacro or-mlqr [method a tau c left]
-  `(with-lqr-check ~tau ~c
-     (~method (.layout (navigator ~c)) (int (if ~left \L \R))
-      (int (if (= (navigator ~a) (navigator ~c)) \N \T)) (.mrows ~c) (.ncols ~c) (.dim ~tau)
-      (.buffer ~a) (.offset ~a) (.stride ~a)
-      (.buffer ~tau) (.offset ~tau) (.buffer ~c) (.offset ~c) (.stride ~c))))
+  `(do
+     (check-stride ~tau)
+     (with-lqr-check ~c
+       (~method (.layout (navigator ~c)) (int (if ~left \L \R))
+        (int (if (= (navigator ~a) (navigator ~c)) \N \T)) (.mrows ~c) (.ncols ~c) (.dim ~tau)
+        (.buffer ~a) (.offset ~a) (.stride ~a)
+        (.buffer ~tau) (.offset ~tau) (.buffer ~c) (.offset ~c) (.stride ~c)))))
 
 ;; ------------- Linear Least Squares Routines LAPACK -------------------------------
 

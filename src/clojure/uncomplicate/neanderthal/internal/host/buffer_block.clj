@@ -23,6 +23,7 @@
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [common :refer [dense-rows dense-cols dense-dias region-dias region-cols region-rows
+                             lu-factorization pivotless-lu-factorization dual-lu-factorization
                              dragan-says-ex real-accessor]]
              [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
              [navigation :refer :all]]
@@ -963,6 +964,11 @@
                     nav (full-storage (.isColumnMajor nav) k l (.ld stor)) (ge-region k l)))
   (transpose [a]
     (real-ge-matrix fact false buf n m ofst (flip nav) stor (flip reg)))
+  Triangularizable
+  (create-trf [a pure]
+    (lu-factorization a pure))
+  (create-ptrf [a]
+    (dragan-says-ex "Pivotless factorization is not available for GE matrices."))
   TRF
   (trtrs! [_ _]
     (require-trf))
@@ -1211,6 +1217,15 @@
                       {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
     (real-uplo-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
+  Triangularizable
+  (create-trf [a pure]
+    (if (= :sy matrix-type)
+      (dual-lu-factorization a pure)
+      a))
+  (create-ptrf [a]
+    (if (= :sy matrix-type)
+      (pivotless-lu-factorization a false)
+      a))
   TRF
   (trtrs [a b]
     (if (= :tr matrix-type)
@@ -1508,6 +1523,20 @@
                             nav sub-stor (band-region m n kl ku) matrix-type default eng))
       (dragan-says-ex "You cannot create a subband outside available region. No way around that."
                       {:a (info a) :kl kl :ku ku})))
+  Triangularizable
+  (create-trf [a pure]
+    (case matrix-type
+      :tb a
+      :sb (pivotless-lu-factorization a pure)
+      :gb (lu-factorization a pure)
+      (dragan-says-ex "Triangular factorization is not available for this matrix type"
+                      {:matrix-type matrix-type})))
+  (create-ptrf [a]
+    (case matrix-type
+      :tb a
+      :sb (pivotless-lu-factorization a false)
+      (dragan-says-ex "Pivotless factorization is not available for this matrix type"
+                      {:matrix-type matrix-type})))
   TRF
   (trtrs [a b]
     (if (= :tb matrix-type)
@@ -1773,6 +1802,15 @@
     (dragan-says-ex "You have to unpack a packed matrix to access its submatrices." {:a a}))
   (transpose [a]
     (real-packed-matrix fact false buf n ofst (.isRowMajor nav) (.isUpper reg) (.isDiagUnit reg) matrix-type))
+  Triangularizable
+  (create-trf [a pure]
+    (if (= :sp matrix-type)
+      (dual-lu-factorization a pure)
+      a))
+  (create-ptrf [a]
+    (if (= :sp matrix-type)
+      (pivotless-lu-factorization a false)
+      a))
   TRF
   (trtrs [a b]
     (if (= :tp matrix-type)
@@ -2022,6 +2060,20 @@
                     {:a (info a)}))
   (transpose [a]
     (dragan-says-ex "You cannot transpose a (tri)diagonal matrix."))
+  Triangularizable
+  (create-trf [a pure]
+    (case matrix-type
+      :gd a
+      :gt (lu-factorization a pure)
+      :dt (pivotless-lu-factorization a pure)
+      :st (pivotless-lu-factorization a pure)
+      (dragan-says-ex "Triangular factorization is not available for this matrix type"
+                      {:matrix-type matrix-type})))
+  (create-ptrf [a]
+    (if (= :sp matrix-type)
+      (pivotless-lu-factorization a false)
+      (dragan-says-ex "Pivotless factorization is not available for this matrix type"
+                      {:matrix-type matrix-type})))
   TRF
   (trtrs [a b]
     (if (= :gd matrix-type)

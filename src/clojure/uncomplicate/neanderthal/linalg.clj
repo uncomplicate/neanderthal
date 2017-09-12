@@ -37,7 +37,8 @@
             [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy gd raw]]
             [uncomplicate.neanderthal.internal
              [api :as api]
-             [common :refer [dragan-says-ex ->SVDecomposition]]])
+             [common :refer [dragan-says-ex ->SVDecomposition
+                             qr-factorization rq-factorization ql-factorization lq-factorization]]])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 
 ;; ============================= LAPACK =======================================================
@@ -58,7 +59,7 @@
   See related info about [lapacke_?getrf](https://software.intel.com/en-us/mkl-developer-reference-c-getrf).
   "
   [^Matrix a]
-  (api/create-trf (api/engine a) a false))
+  (api/create-trf a false))
 
 (defn ptrf!
   "Triangularizes a positive definite symmetric matrix `a`. Destructively computes
@@ -73,7 +74,7 @@
   See related info about [lapacke_?potrf](https://software.intel.com/en-us/mkl-developer-reference-c-potrf).
   "
   [^Matrix a]
-  (api/create-ptrf (api/engine a) a))
+  (api/create-ptrf a))
 
 (defn trf
   "Triangularizes a non-TR matrix `a`. Computes the LU (or LDLt, or UDUt)
@@ -89,7 +90,7 @@
   See related info about [[trf!]] and [[ptrf!]].
   "
   [^Matrix a]
-  (api/create-trf (api/engine a) a true))
+  (api/create-trf a true))
 
 (defn tri!
   "Destructively computes the inverse of a triangularized matrix `a`.
@@ -253,259 +254,133 @@
 
 ;; =============== Orthogonal Factorization (L, Q, R) LAPACK =======================================
 
-(defn ^:private min-mn ^long [^Matrix a]
-  (max 1 (min (.mrows a) (.ncols a))))
-
-(defmacro ^:private with-lqrf-check [a tau expr]
-  `(if (and (= (.dim ~tau) (min-mn ~a)) (api/compatible? ~a ~tau))
-     ~expr
-     (throw (ex-info "Dimension of tau is not equals to (min ncols mrows) of a."
-                     {:m (.mrows ~a) :n (.ncols ~a) :dim (.dim ~tau)}))))
-
-(defmacro ^:private with-gq*-check [a tau expr]
-  `(if (and (<= 1 (.dim ~tau) (.ncols ~a) (.mrows ~a)) (api/compatible? ~a ~tau))
-     ~expr
-     (throw (ex-info "Dimensions of a and tau do not fit requirements for computing Q."
-                     {:m (.mrows ~a) :n (.ncols ~a) :dim (.dim ~tau) :errors
-                      (cond-into []
-                                 (not (<= (.dim ~tau) (.ncols ~a))) "(not (<= (dim tau) (ncols a)))"
-                                 (not (<= (.ncols ~a) (.mrows ~a))) "(not (<= (ncols ~a) (mrows a)))")}))))
-
-(defmacro ^:private with-g*q-check [a tau expr]
-  `(if (and (<= (.dim ~tau) (.mrows ~a) (.ncols ~a)) (api/compatible? ~a ~tau))
-     ~expr
-     (throw (ex-info "Dimensions of a and tau do not fit requirements for computing Q."
-                     {:m (.mrows ~a) :n (.ncols ~a) :dim (.dim ~tau) :errors
-                      (cond-into []
-                                 (not (<= (.dim ~tau) (.mrows ~a))) "(not (<= (dim tau) (mrows a)))"
-                                 (not (<= (.mrows ~a) (.ncols ~a))) "(not (<= (mrows a) (ncols a)))")}))))
-
-(defmacro ^:private with-mq*-check [a tau c left expr]
-  `(let [r# (long (if ~left (.mrows ~c) (.ncols ~c)))]
-     (if (and (<= (.dim ~tau) r#) (= r# (.mrows ~a)) (= (.ncols ~a) (.dim ~tau))
-              (api/compatible? ~a ~tau))
-       ~expr
-       (throw (ex-info "Dimensions of a, tau, and c do not fit matrix multiplication."
-                       {:a (api/info ~a) :c (api/info ~c) :tau (api/info ~tau) :errors
-                        (cond-into []
-                                   (not (<= (.dim ~tau) r#))
-                                   (format "(not (<= (dim tau) %s))" (if ~left "(mrows c)" "(ncols c)"))
-                                   (not (= r# (.mrows ~a)))
-                                   (format "(not (= %s (mrows a)))" (if ~left "(mrows c)" "(ncols c)"))
-                                   (not (= (.ncols ~a) (.dim ~tau))) "(not (= (ncols a) (dim tau)))")})))))
-
-(defmacro ^:private with-m*q-check [a tau c left expr]
-  `(let [r# (long (if ~left (.mrows ~c) (.ncols ~c)))]
-     (if (and (<= (.dim ~tau) r#) (= (.mrows ~c) (.ncols ~a)) (= (.mrows ~a) (.dim ~tau))
-              (api/compatible? ~a ~tau))
-       ~expr
-       (throw (ex-info "Dimensions of a, tau, and c do not fit matrix multiplication."
-                       {:a (api/info ~a) :c (api/info ~c) :tau (api/info ~tau) :errors
-                        (cond-into []
-                                   (not (<= (.dim ~tau) r#))
-                                   (format "(not (<= (dim tau) %s))" (if ~left "(mrows c)" "(ncols c)"))
-                                   (not (= (.dim ~tau) (.mrows ~a))) "(not (= (dim tau) (mrows a)))"
-                                   (not (= (.mrows ~c) (.ncols ~a))) "(not (= (mrows c) (ncols a)))")})))))
-
 (defn qrf!
-  "Computes the QR factorization of a GE `m x n` matrix.
+  "Destructively computes the QR factorization of a GE `m x n` matrix and places it in record
+  that contains `:or` and `:tau`.
 
   The input is a GE matrix `a`. The output overwrites the contents of `a`. Output QR is laid out
   in `a` in the following way: The elements in the upper triangle (or trapezoid) contain the
   `(min m n) x n` upper triangular (or trapezoidal) matrix R. The elements in the lower triangle
   (or trapezoid) **below the diagonal**, with the vector `tau` contain Q as a product of `(min m n)`
   elementary reflectors. **Other routines work with Q in this representation**. If you need
-  to compute q, call [[gqr!]].
-
-  If the stride of `tau` is not `1`, or some value is illegal, throws ExceptionInfo.
+  to compute q, call [[org!]] or [[org]].
 
   See related info about [lapacke_?geqrf](https://software.intel.com/en-us/node/521004).
   "
-  ([^Matrix a ^Vector tau]
-   (with-lqrf-check a tau (api/qrf (api/engine a) a tau)))
-  ([a]
-   (let-release [tau (vctr (api/factory a) (min-mn a))]
-     (qrf! a tau))))
+  [a]
+  (qr-factorization a false api/qrf))
+
+(defn qrf
+  "Purely computes  the QR factorization of a GE `m x n` matrix and places it in record
+  that contains `:or` and `:tau`.
+
+  See [[qrf!]]"
+  [^Matrix a]
+  (let-release [a-copy (copy a)]
+    (qr-factorization a-copy true api/qrf)))
 
 (defn qrfp!
   "Computes the QR factorization of a GE `m x n` matrix, with non-negative diagonal elements.
 
   See [[qrf!]].
-
   See related info about [lapacke_?geqrfp](https://software.intel.com/en-us/node/468946).
   "
-  ([^Matrix a ^Vector tau]
-   (with-lqrf-check a tau (api/qrfp (api/engine a) a tau)))
-  ([a]
-   (let-release [tau (vctr (api/factory a) (min-mn a))]
-     (qrfp! a tau))))
+  [a]
+  (qr-factorization a false api/qrfp))
 
-(defn gqr!
-  "Generates the real orthogonal matrix Q of the QR factorization formed by [[qrf!]] or [[qrfp!]].
-
-  The input is a GE matrix `a` and vector `tau` that were previously processed by [[qrf!]]. The matrix
-  Q is square, `m x m` dimensional, but if the dimension of factorization is `m x n`, only the leading
-  `n` columns of Q are computed. The output overwrites `a` with the leading `n` columns of Q which
-  form an orthonormal basis in the space spanned by columns of `a`.
-
-  If the condition `(<= (dim tau) (ncols a) (mrows a))` is not satisfied, throws ExceptionInfo.''
-  If the stride of `tau` is not `1`, or some value is illegal, throws ExceptionInfo.
-
-  See related info about [lapacke_?orgqr](https://software.intel.com/en-us/node/468956).
-  "
-  [^Matrix a ^Vector tau]
-  (with-gq*-check a tau (api/gqr (api/engine a) a tau)))
-
-(defn mqr!
-  "Multiplies a real matrix by the orthogonal matrix Q formed by [[qrf!]] or [[qrfp!]].
-
-  The input is a GE matrix `a` and vector `tau` that were previously processed by [[qrf!]],
-  and a matrix C. The side of the multiplication (CQ or QC) is determined by the position of the vector
-  (also the output of [[qrf!]]), which, by convenience, is after Q: the input `x y z` is either
-  C Q tau, or Q tau C. The output overwrites C with the product.
-
-  The dimensions of C, Q, and tau must satisfy the following conditions, or ExceptionInfo is thrown:
-
-  * `(= (ncols a) (dim tau))`
-  * for Q tau C (multiplication from the left):
-      - `(<= (dim tau) (mrows c))`
-      - `(= (mrows C) (mrows a))`
-  * for C Q tau (multiplication from the right):
-       `(<= (dim tau) (ncols c))`
-      - `(= (ncols C) (mrows a))`
-
-  If the stride of `tau` is not `1`, or some value is illegal, throws ExceptionInfo.
-
-  See related info about [lapacke_?ormqr](https://software.intel.com/en-us/node/468958).
-  "
-  [x y z]
-  (if (vctr? y)
-    (with-mq*-check ^Matrix x ^Vector y ^Matrix z true (api/mqr (api/engine x) x y z true))
-    (with-mq*-check ^Matrix y ^Vector z ^Matrix x false (api/mqr (api/engine y) y z x false))))
+(defn qrfp
+  "TODO"
+  [^Matrix a]
+  (let-release [a-copy (copy a)]
+    (qr-factorization a-copy true api/qrfp)))
 
 (defn rqf!
-  "Computes the RQ factorization of a GE `m x n` matrix.
+  "Destructively computes the RQ factorization of a GE `m x n`.
 
   See [[qrf!]].
 
   See related info about [lapacke_?gerqf](https://software.intel.com/en-us/node/521024).
   "
-  ([^Matrix a ^Vector tau]
-   (with-lqrf-check a tau (api/rqf (api/engine a) a tau)))
-  ([a]
-   (let-release [tau (vctr (api/factory a) (min-mn a))]
-     (rqf! a tau))))
+  [a]
+  (rq-factorization a false))
 
-(defn grq!
-  "Generates the real orthogonal matrix Q of the RQ factorization formed by [[rqf!]].
+(defn rqf
+  "Computes the RQ factorization of a GE `m x n`.
 
-  The input is a GE matrix `a` and vector `tau` that were previously processed by [[rqf!]]. The matrix
-  Q is square, `m x m` dimensional, but if the dimension of factorization is `m x n`, only the last
-  `m` rows of Q are computed. The output overwrites `a` with the last `m` rows of Q which
-  form an orthonormal basis in the space spanned by rows of `a`.
+  See [[qrf!]].
 
-  If the condition `(<= (dim tau) (mrows a) (ncols a))` is not satisfied, throws ExceptionInfo.''
-  If the stride of `tau` is not `1`, or some value is illegal, throws ExceptionInfo.
-
-  See related info about [lapacke_?orgrq](https://software.intel.com/en-us/node/468986).
+  See related info about [lapacke_?gerqf](https://software.intel.com/en-us/node/521024).
   "
-  [^Matrix a ^Vector tau]
-  (with-g*q-check a tau (api/grq (api/engine a) a tau)))
-
-(defn mrq!
-  "Multiplies a real matrix by the orthogonal matrix Q formed by [[rqf!]].
-
-  The input is a GE matrix `a` and vector `tau` that were previously processed by [[rqf!]],
-  and a matrix C. The side of the multiplication (CQ or QC) is determined by the position of the vector
-  (also the output of [[rqf!]]), which, by convenience, is after Q: the input `x y z` is either
-  C Q tau, or Q tau C. The output overwrites C with the product.
-
-  The dimensions of C, Q, and tau must satisfy the following conditions, or ExceptionInfo is thrown:
-  * `(= (mrows C) (ncols a))`
-  * `(= (mrows a) (dim tau))`
-  * for Q tau C (multiplication from the left):
-      - `(<= (dim tau) (mrows c))`
-  * for C Q tau (multiplication from the right):
-      - `(<= (dim tau) (ncols c))`
-
-  If the stride of `tau` is not `1`, or some value is illegal, throws ExceptionInfo.
-
-  See related info about [lapacke_?ormrq](https://software.intel.com/en-us/node/468990).
-  "
-  [x y z]
-  (if (vctr? y)
-    (with-m*q-check ^Matrix x ^Vector y ^Matrix z true (api/mrq (api/engine x) x y z true))
-    (with-m*q-check ^Matrix y ^Vector z ^Matrix x false (api/mrq (api/engine y) y z x false))))
+  [^Matrix a]
+  (let-release [a-copy (copy a)]
+    (rq-factorization a-copy true)))
 
 (defn qlf!
+  "Destructively computes the QL factorization of a GE `m x n` matrix.
+
+  See [[qrf!]].
+
+  See related info about [lapacke_?geqlf](https://software.intel.com/en-us/node/521019).
+  "
+  [a]
+  (ql-factorization a false))
+
+(defn qlf
   "Computes the QL factorization of a GE `m x n` matrix.
 
   See [[qrf!]].
 
   See related info about [lapacke_?geqlf](https://software.intel.com/en-us/node/521019).
   "
-  ([^Matrix a ^Vector tau]
-   (with-lqrf-check a tau (api/qlf (api/engine a) a tau)))
-  ([a]
-   (let-release [tau (vctr (api/factory a) (min-mn a))]
-     (qlf! a tau))))
-
-(defn gql!
-  "Generates the real orthogonal matrix Q of the QL factorization formed by [[qlf!]].
-
-  See [[gqr!]].
-
-  See related info about [lapacke_?orgql](https://software.intel.com/en-us/node/468976).
-  "
-  [^Matrix a ^Vector tau]
-  (with-gq*-check a tau (api/gql (api/engine a) a tau)))
-
-(defn mql!
-  "Multiplies a real matrix by the orthogonal matrix Q formed by [[qlf!]].
-
-  See [[mqr!]].
-
-  See related info about [lapacke_?ormql](https://software.intel.com/en-us/node/468980).
-  "
-  [x y z]
-  (if (vctr? y)
-    (with-mq*-check ^Matrix x ^Vector y ^Matrix z true (api/mql (api/engine x) x y z true))
-    (with-mq*-check ^Matrix y ^Vector z ^Matrix x false (api/mql (api/engine y) y z x false))))
+  [^Matrix a]
+  (let-release [a-copy (copy a)]
+    (ql-factorization a-copy true)))
 
 (defn lqf!
+  "Destructively computes the LQ factorization of a GE `m x n` matrix.
+
+  See [[qrf!]].
+
+  See related info about [lapacke_?gelqf](https://software.intel.com/en-us/node/521014).
+  "
+  [a]
+  (lq-factorization a false))
+
+(defn lqf
   "Computes the LQ factorization of a GE `m x n` matrix.
 
   See [[qrf!]].
 
   See related info about [lapacke_?gelqf](https://software.intel.com/en-us/node/521014).
   "
-  ([^Matrix a ^Vector tau]
-   (with-lqrf-check a tau (api/lqf (api/engine a) a tau)))
-  ([a]
-   (let-release [tau (vctr (api/factory a) (min-mn a))]
-     (lqf! a tau))))
+  [^Matrix a]
+  (let-release [a-copy (copy a)]
+    (lq-factorization a-copy true)))
 
-(defn glq!
-  "Generates the real orthogonal matrix Q of the LQ factorization formed by [[lqf!]].
+(defn org!
+  "Destructively generates the real orthogonal matrix Q of the QR, RQ, QL or LQ factorization formed by
+  [[qrf!]] or [[qrfp!]] (or [[rqf!]] etc.).
 
-  See [[grq!]].
+  The input is a structure containing orthogonalized matrix `:lu` and vector `:tau` that were
+  previously processed by [[qrf!]] (and friends). Overwrites the input with the appropriate
+  portion of the resulting matrix Q.
 
-  See related info about [lapacke_?orglq](https://software.intel.com/en-us/node/468966).
+  See related info about [lapacke_?orgqr](https://software.intel.com/en-us/node/468956).
   "
-  [^Matrix a ^Vector tau]
-  (with-g*q-check a tau (api/glq (api/engine a) a tau)))
+  [or]
+  (api/org! or))
 
-(defn mlq!
-  "Multiplies a real matrix by the orthogonal matrix Q formed by [[lqf!]].
+(defn org
+  "Generates the real orthogonal matrix Q of the QR, RQ, QL or LQ factorization formed by
+  [[qrf!]] or [[qrfp!]] (or [[rqf!]] etc.).
 
-  See [[mrq!]].
+  The input is a structure containing orthogonalized matrix `:lu` and vector `:tau` that were
+  previously processed by [[qrf!]] (and friends).
 
-  See related info about [lapacke_?ormlq](https://software.intel.com/en-us/node/468968).
+  See related info about [lapacke_?orgqr](https://software.intel.com/en-us/node/468956).
   "
-  [^Matrix x y z]
-  (if (vctr? y)
-    (with-m*q-check ^Matrix x ^Vector y ^Matrix z true (api/mlq (api/engine x) x y z true))
-    (with-m*q-check ^Matrix y ^Vector z ^Matrix x false (api/mlq (api/engine y) y z x false))))
+  [or]
+  (api/org or))
 
 (defn ls!
   "Solves an overdetermined or underdetermined linear system `AX = B` with full rank matrix using

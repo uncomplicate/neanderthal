@@ -60,6 +60,7 @@
   (srt [this x increasing])
   (laswp [this a x k1 k2])
   (trf [this a ipiv] [this a])
+  (trfx [this a])
   (tri [this lu ipiv] [this a])
   (trs [this lu b ipiv] [this a b])
   (con [this lu ipiv nrm nrm1?] [this gg nrm nrm1?] [this a nrm1?])
@@ -82,15 +83,27 @@
   (ls [this a b])
   (ev [this a w vl vr]))
 
+(defprotocol Triangularizable
+  (create-trf [a pure])
+  (create-ptrf [a]))
+
 (defprotocol TRF
-  (create-trf [this a pure])
-  (create-ptrf [this a])
   (trtrs! [a b])
   (trtrs [a b])
   (trtri! [a])
   (trtri [a])
   (trcon [a nrm nrm1?] [a nrm1?])
   (trdet [a]))
+
+(defprotocol Orthogonalizable
+  (create-qrf [a pure])
+  (create-rqf [a pure])
+  (create-qlf [a pure])
+  (create-lqf [a pure]))
+
+(defprotocol ORF
+  (org! [or])
+  (org [or]))
 
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))

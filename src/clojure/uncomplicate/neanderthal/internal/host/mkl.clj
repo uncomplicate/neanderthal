@@ -478,10 +478,7 @@
               ^RealGEMatrix u ^RealGEMatrix vt ^RealDiagonalMatrix superb)))
   (svd [_ a sigma superb]
     (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-lu a pure)))
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb)))
 
 (deftype FloatGEEngine []
   Blas
@@ -580,10 +577,7 @@
               ^RealGEMatrix u ^RealGEMatrix vt ^RealDiagonalMatrix superb)))
   (svd [_ a sigma superb]
     (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
-  TRF
-  (create-trf [_ a master]
-    (matrix-create-trf matrix-lu a master)))
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb)))
 
 ;; ================= Triangular Matrix Engines =================================
 
@@ -638,10 +632,7 @@
   (sv [_ a b _]
     (tr-sv CBLAS/dtrsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tr-con LAPACK/dtrcon ^RealUploMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (tr-con LAPACK/dtrcon ^RealUploMatrix a nrm1?)))
 
 (deftype FloatTREngine []
   Blas
@@ -694,10 +685,7 @@
   (sv [_ a b _]
     (tr-sv CBLAS/strsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tr-con LAPACK/strcon ^RealUploMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (tr-con LAPACK/strcon ^RealUploMatrix a nrm1?)))
 
 ;; =============== Symmetric Matrix Engines ===================================
 
@@ -747,6 +735,8 @@
     (sy-trx LAPACK/dsytrf ^RealUploMatrix a ^IntegerBlockVector ipiv))
   (trf [_ a]
     (sy-trx LAPACK/dpotrf ^RealUploMatrix a))
+  (trfx [_ a]
+    (sy-trfx LAPACK/dpotrf ^RealUploMatrix a))
   (tri [_ ldl ipiv]
     (sy-trx LAPACK/dsytri ^RealUploMatrix ldl ^IntegerBlockVector ipiv))
   (tri [_ gg]
@@ -762,12 +752,7 @@
   (con [_ ldl ipiv nrm _]
     (sy-con LAPACK/dsycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sy-con LAPACK/dpocon ^RealUploMatrix gg nrm))
-  TRF
-  (create-trf [_ a pure]
-    (sy-cholesky-lu LAPACK/dpotrf ^RealUploMatrix a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu a false)))
+    (sy-con LAPACK/dpocon ^RealUploMatrix gg nrm)))
 
 (deftype FloatSYEngine []
   Blas
@@ -815,6 +800,8 @@
     (sy-trx LAPACK/ssytrf ^RealUploMatrix a ^IntegerBlockVector ipiv))
   (trf [_ a]
     (sy-trx LAPACK/spotrf ^RealUploMatrix a))
+  (trfx [_ a]
+    (sy-trfx LAPACK/spotrf ^RealUploMatrix a))
   (tri [_ ldl ipiv]
     (sy-trx LAPACK/ssytri ^RealUploMatrix ldl ^IntegerBlockVector ipiv))
   (tri [_ gg]
@@ -830,12 +817,7 @@
   (con [_ ldl ipiv nrm _]
     (sy-con LAPACK/ssycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sy-con LAPACK/spocon ^RealUploMatrix gg nrm))
-  TRF
-  (create-trf [_ a pure]
-    (sy-cholesky-lu LAPACK/spotrf ^RealUploMatrix a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu a false)))
+    (sy-con LAPACK/spocon ^RealUploMatrix gg nrm)))
 
 ;; =============== Banded Matrix Engines ===================================
 
@@ -895,12 +877,7 @@
   (sv [_ a b pure]
     (gb-sv LAPACK/dgbsv ^RealBandedMatrix a ^RealGEMatrix b pure))
   (con [_ ldl ipiv nrm nrm1?]
-    (gb-con LAPACK/dgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-lu a pure))
-  (create-ptrf [_ _]
-    (dragan-says-ex "Cholesky factorization is not available for GB matrices.")))
+    (gb-con LAPACK/dgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?)))
 
 (deftype FloatGBEngine []
   Blas
@@ -958,12 +935,7 @@
   (sv [_ a b pure]
     (gb-sv LAPACK/sgbsv ^RealBandedMatrix a ^RealGEMatrix b pure))
   (con [_ ldl ipiv nrm nrm1?]
-    (gb-con LAPACK/sgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-lu a pure))
-  (create-ptrf [_ _]
-    (dragan-says-ex "Cholesky factorization is not available for GB matrices.")))
+    (gb-con LAPACK/sgbcon ^RealBandedMatrix ldl ^IntegerBlockVector ipiv nrm nrm1?)))
 
 (deftype DoubleSBEngine []
   Blas
@@ -1021,12 +993,7 @@
   (sv [_ a b]
     (sb-sv LAPACK/dpbsv ^RealBandedMatrix a ^RealGEMatrix b false))
   (con [_ gg nrm _]
-    (sb-con LAPACK/dpbcon ^RealBandedMatrix gg nrm))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-pivotless-lu a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu a false)))
+    (sb-con LAPACK/dpbcon ^RealBandedMatrix gg nrm)))
 
 (deftype FloatSBEngine []
   Blas
@@ -1084,12 +1051,7 @@
   (sv [_ a b]
     (sb-sv LAPACK/spbsv ^RealBandedMatrix a ^RealGEMatrix b false))
   (con [_ gg nrm _]
-    (sb-con LAPACK/spbcon ^RealBandedMatrix gg nrm))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-pivotless-lu a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu ^RealBandedMatrix a false)))
+    (sb-con LAPACK/spbcon ^RealBandedMatrix gg nrm)))
 
 (deftype DoubleTBEngine []
   Blas
@@ -1143,10 +1105,7 @@
   (sv [_ a b _]
     (tb-sv CBLAS/dtbsv ^RealBandedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tb-con LAPACK/dtbcon ^RealBandedMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (tb-con LAPACK/dtbcon ^RealBandedMatrix a nrm1?)))
 
 (deftype FloatTBEngine []
   Blas
@@ -1200,10 +1159,7 @@
   (sv [_ a b _]
     (tb-sv CBLAS/stbsv ^RealBandedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tb-con LAPACK/stbcon ^RealBandedMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (tb-con LAPACK/stbcon ^RealBandedMatrix a nrm1?)))
 
 ;; =============== Packed Matrix Engines ===================================
 
@@ -1257,10 +1213,7 @@
   (sv [_ a b _]
     (tp-sv CBLAS/dtpsv ^RealPackedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tp-con LAPACK/dtpcon ^RealPackedMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (tp-con LAPACK/dtpcon ^RealPackedMatrix a nrm1?)))
 
 (deftype FloatTPEngine []
   Blas
@@ -1312,10 +1265,7 @@
   (sv [_ a b _]
     (tp-sv CBLAS/stpsv ^RealPackedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tp-con LAPACK/stpcon ^RealPackedMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (tp-con LAPACK/stpcon ^RealPackedMatrix a nrm1?)))
 
 (deftype DoubleSPEngine []
   Blas
@@ -1362,6 +1312,8 @@
     (sp-trx LAPACK/dsptrf ^RealPackedMatrix a ^IntegerBlockVector ipiv))
   (trf [_ a]
     (sp-trx LAPACK/dpptrf ^RealPackedMatrix a))
+  (trfx [_ a]
+    (sp-trfx LAPACK/dpptrf ^RealPackedMatrix a))
   (tri [_ ldl ipiv]
     (sp-trx LAPACK/dsptri ^RealPackedMatrix ldl ^IntegerBlockVector ipiv))
   (tri [_ gg]
@@ -1377,12 +1329,7 @@
   (con [_ ldl ipiv nrm _]
     (sp-con LAPACK/dspcon ^RealPackedMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sp-con LAPACK/dppcon ^RealPackedMatrix gg nrm))
-  TRF
-  (create-trf [_ a pure]
-    (sp-cholesky-lu LAPACK/dpptrf ^RealPackedMatrix a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu a false)))
+    (sp-con LAPACK/dppcon ^RealPackedMatrix gg nrm)))
 
 (deftype FloatSPEngine []
   Blas
@@ -1429,6 +1376,8 @@
     (sp-trx LAPACK/ssptrf ^RealPackedMatrix a ^IntegerBlockVector ipiv))
   (trf [_ a]
     (sp-trx LAPACK/spptrf ^RealPackedMatrix a))
+  (trfx [_ a]
+    (sp-trfx LAPACK/spptrf ^RealPackedMatrix a))
   (tri [_ ldl ipiv]
     (sp-trx LAPACK/ssptri ^RealPackedMatrix ldl ^IntegerBlockVector ipiv))
   (tri [_ gg]
@@ -1444,12 +1393,7 @@
   (con [_ ldl ipiv nrm _]
     (sp-con LAPACK/sspcon ^RealPackedMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sp-con LAPACK/sppcon ^RealPackedMatrix gg nrm))
-  TRF
-  (create-trf [_ a pure]
-    (sp-cholesky-lu LAPACK/spptrf ^RealPackedMatrix a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu a false)))
+    (sp-con LAPACK/sppcon ^RealPackedMatrix gg nrm)))
 
 ;; =============== Tridiagonal Matrix Engines =================================
 
@@ -1508,10 +1452,7 @@
   (sv [_ a b pure]
     (gt-sv LAPACK/dgtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (gt-con LAPACK/dgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-lu a pure)))
+    (gt-con LAPACK/dgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?)))
 
 (deftype FloatGTEngine []
   Blas
@@ -1568,10 +1509,7 @@
   (sv [_ a b pure]
     (gt-sv LAPACK/sgtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (gt-con LAPACK/sgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-lu a pure)))
+    (gt-con LAPACK/sgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?)))
 
 (deftype DoubleGDEngine []
   Blas
@@ -1624,10 +1562,7 @@
   (sv [_ a b _]
     (gd-sv MKL/vddiv CBLAS/dtbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (gd-con LAPACK/dtbcon ^RealDiagonalMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (gd-con LAPACK/dtbcon ^RealDiagonalMatrix a nrm1?)))
 
 (deftype FloatGDEngine []
   Blas
@@ -1680,10 +1615,7 @@
   (sv [_ a b _]
     (gd-sv MKL/vsdiv CBLAS/stbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (gd-con LAPACK/stbcon ^RealDiagonalMatrix a nrm1?))
-  TRF
-  (create-trf [_ a _]
-    a))
+    (gd-con LAPACK/stbcon ^RealDiagonalMatrix a nrm1?)))
 
 (deftype DoubleDTEngine []
   Blas
@@ -1738,10 +1670,7 @@
   (sv [_ a b pure]
     (dt-sv LAPACK/ddtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for DT matrices."))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-pivotless-lu a pure)))
+    (dragan-says-ex "Condition number is not available for DT matrices.")))
 
 (deftype FloatDTEngine []
   Blas
@@ -1796,10 +1725,7 @@
   (sv [_ a b pure]
     (dt-sv LAPACK/sdtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for DT matrices."))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-pivotless-lu a pure)))
+    (dragan-says-ex "Condition number is not available for DT matrices.")))
 
 (deftype DoubleSTEngine []
   Blas
@@ -1854,12 +1780,7 @@
   (sv [_ a b pure]
     (st-sv LAPACK/dptsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for ST matrices."))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-pivotless-lu a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu a false)))
+    (dragan-says-ex "Condition number is not available for ST matrices.")))
 
 (deftype FloatSTEngine []
   Blas
@@ -1914,12 +1835,7 @@
   (sv [_ a b pure]
     (st-sv LAPACK/sptsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for ST matrices."))
-  TRF
-  (create-trf [_ a pure]
-    (matrix-create-trf matrix-pivotless-lu a pure))
-  (create-ptrf [_ a]
-    (matrix-create-trf matrix-pivotless-lu a false)))
+    (dragan-says-ex "Condition number is not available for ST matrices.")))
 
 ;; =============== Factories ==================================================
 

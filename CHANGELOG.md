@@ -12,6 +12,11 @@
 ### Enhancements
 
 * Updated JOCLBlast dependency to 1.0.1.
+* Orthogonal factorizations greatly simplified
+
+### Breaking changes
+
+* New simplified orthogonal factorization related functions replace the old api in linalg.
 
 ### Bugfixes
 

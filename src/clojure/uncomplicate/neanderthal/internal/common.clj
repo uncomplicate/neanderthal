@@ -9,6 +9,7 @@
 (ns uncomplicate.neanderthal.internal.common
   (:require [uncomplicate.fluokitten.core :refer [fold]]
             [uncomplicate.commons.core :refer [Releaseable release let-release double-fn]]
+            [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor
             MatrixImplementation LayoutNavigator Block DiagonalMatrix]))
@@ -53,7 +54,7 @@
 (def ^:private f* (double-fn *))
 (def ^:private falsify (constantly false))
 
-(defn ^:private stale-factorization []
+(defn ^:private stale-factorization [& args]
   (throw (ex-info "Cannot compute with a stale factorization. Decompose the original matrix again." {})))
 
 (defn ^:private nrm-needed-for-con []
@@ -68,8 +69,6 @@
   (info [this]
     this)
   TRF
-  (create-trf [this _ _]
-    this)
   (trtrs [_ b]
     (if @fresh
       (let-release [res (raw b)]
@@ -118,6 +117,18 @@
   (fits-navigation? [_ b]
     (fits-navigation? lu b)))
 
+(defn lu-factorization [^Matrix a pure]
+  (let [eng (engine a)]
+    (let-release [ipiv (create-vector (index-factory a) (min (.mrows a) (.ncols a)) false)]
+      (if pure
+        (let-release [a-copy (raw a)]
+          (copy eng a a-copy)
+          (trf eng a-copy ipiv)
+          (->LUFactorization a-copy ipiv true (atom true)))
+        (do
+          (trf eng a ipiv)
+          (->LUFactorization a ipiv false (atom true)))))))
+
 (defrecord PivotlessLUFactorization [^Matrix lu ^Boolean master fresh]
   Releaseable
   (release [_]
@@ -126,10 +137,6 @@
   (info [this]
     this)
   TRF
-  (create-trf [this _ _]
-    this)
-  (create-ptrf [this _]
-    this)
   (trtrs [_ b]
     (if @fresh
       (let-release [res (create-ge (factory b) (.mrows ^Matrix b) (.ncols ^Matrix b)
@@ -182,6 +189,30 @@
   (fits-navigation? [_ b]
     (fits-navigation? lu b)))
 
+(defn pivotless-lu-factorization [a pure]
+  (let [eng (engine a)]
+    (if pure
+      (let-release [a-copy (raw a)]
+        (copy eng a a-copy)
+        (trf eng a-copy)
+        (->PivotlessLUFactorization a-copy true (atom true)))
+      (do
+        (trf eng a)
+        (->PivotlessLUFactorization a false (atom true))))))
+
+(defn dual-lu-factorization [^Matrix a pure]
+  (if pure
+    (let [eng (engine a)]
+      (let-release [a-copy (raw a)]
+        (copy eng a a-copy)
+        (if (= 0 (trfx eng a-copy))
+          (->PivotlessLUFactorization a-copy true (atom true))
+          (let-release [ipiv (create-vector (index-factory a) (min (.mrows a) (.ncols a)) false)]
+            (copy eng a a-copy)
+            (trf eng a-copy ipiv)
+            (->LUFactorization a-copy ipiv true (atom true))))))
+    (lu-factorization a false)))
+
 (defrecord SVDecomposition [^DiagonalMatrix sigma ^Matrix u ^Matrix vt ^Boolean master]
   Releaseable
   (release [_]
@@ -191,3 +222,79 @@
   Info
   (info [this]
     this))
+
+(defrecord OrthogonalFactorization [eng ^Matrix or ^Vector tau ^Boolean master fresh
+                                    ^long m ^long n or-type api-orm api-org]
+  Releaseable
+  (release [_]
+    (when master (release or))
+    (release tau))
+  Info
+  (info [this]
+    {:or-type or-type
+     :or (info or)
+     :tau (info tau)
+     :master master
+     :fresh @fresh})
+  EngineProvider
+  (engine [this]
+    this)
+  Blas
+  (mm [_ alpha a b left]
+    (if @fresh
+      (do
+        (api-orm eng or tau b left)
+        (when-not (f= 1.0 alpha)
+          (scal (engine b) alpha b))
+        b)
+      (stale-factorization)))
+  ORF
+  (org! [_]
+    (if (compare-and-set! fresh true false)
+      (api-org eng or tau)
+      (stale-factorization)))
+  (org [_]
+    (if @fresh
+      (let-release [res (raw or)]
+        (copy eng or res)
+        (api-org eng res tau))
+      (stale-factorization)))
+  Matrix
+  (mrows [_]
+    m)
+  (ncols [_]
+    n)
+  MemoryContext
+  (compatible? [_ b]
+    (compatible? or b))
+  (fits? [_ b]
+    (fits? or b))
+  (fits-navigation? [_ b]
+    (fits-navigation? or b)))
+
+(defn ^:private min-mn ^long [^Matrix a]
+  (max 1 (min (.mrows a) (.ncols a))))
+
+(defn qr-factorization [^Matrix a master qrf-fn]
+  (let [eng (engine a)]
+    (let-release [tau (create-vector (factory a) (min-mn a) false)]
+      (qrf eng a tau)
+      (OrthogonalFactorization. eng a tau master (atom true) (.mrows a) (.mrows a) :qr mqr gqr))))
+
+(defn rq-factorization [^Matrix a master]
+  (let [eng (engine a)]
+    (let-release [tau (create-vector (factory a) (min-mn a) false)]
+      (rqf eng a tau)
+      (OrthogonalFactorization. eng a tau master (atom true) (.ncols a) (.ncols a) :rq mrq grq))))
+
+(defn ql-factorization [^Matrix a master]
+  (let [eng (engine a)]
+    (let-release [tau (create-vector (factory a) (min-mn a) false)]
+      (qlf eng a tau)
+      (OrthogonalFactorization. eng a tau master (atom true) (.mrows a) (.ncols a) :ql mql gql))))
+
+(defn lq-factorization [^Matrix a master]
+  (let [eng (engine a)]
+    (let-release [tau (create-vector (factory a) (min-mn a) false)]
+      (lqf eng a tau)
+      (OrthogonalFactorization. eng a tau master (atom true) (.ncols a) (.ncols a) :lq mlq glq))))
