@@ -2359,7 +2359,7 @@
 
 (defn test-ge-ql [factory]
   (facts
-   "LAPACK GE ql!"
+   "LAPACK GE qlf"
 
    (with-release [a (ge factory 4 4 [2 3 -1 0
                                      -6 -5 0 2
@@ -2389,7 +2389,7 @@
 
      (nrm2 (axpy! -1 (:or ql) ql-solution)) => (roughly 0 0.015)
      (nrm2 (axpy! -1 (org ql) q-solution)) => (roughly 0 0.014)
-     (nrm2 (axpy! -1 (mm! ql c) orm-result)) => (roughly 0 0.014))))
+     (nrm2 (axpy! -1 (mm! ql c) orm-result)) => (roughly 0 0.14))))
 
 (defn test-ge-ls [factory]
   (facts
@@ -2601,8 +2601,8 @@
   (test-st-trx factory)
   (test-ge-qr factory)
   (test-ge-rq factory)
-  #_(test-ge-lq factory)
-  #_(test-ge-ql factory)
+  (test-ge-lq factory)
+  (test-ge-ql factory)
   (test-ge-ls factory)
   (test-ge-ev factory)
   (test-ge-svd factory))
