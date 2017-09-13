@@ -264,6 +264,9 @@
     m)
   (ncols [_]
     n)
+  DataAccessorProvider
+  (data-accessor [_]
+    (data-accessor or))
   MemoryContext
   (compatible? [_ b]
     (compatible? or b))

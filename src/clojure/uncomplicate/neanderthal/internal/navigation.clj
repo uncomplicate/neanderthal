@@ -77,7 +77,7 @@
          ku (min (max 0 (dec n)) ku)]
      (BandRegion. m n kl ku (cond (< 0 kl) 122 (< 0 ku) 121 :default 122)
                   (if (or (= -1 kl) (= -1 ku)) 132 131))))
-  ([^long n lower? diag-unit?]
+  ([^long n ^Boolean lower? ^Boolean diag-unit?]
    (let [diag-pad (if diag-unit? -1 0)]
      (if lower?
        (band-region n n (max 0 (dec n)) diag-pad)
@@ -246,7 +246,7 @@
 (reset! real-row-navigator (RealRowNavigator.))
 (def diagonal-navigator (RealDiagonalNavigator.))
 
-(defn layout-navigator [column?]
+(defn layout-navigator [^Boolean column?]
   (if column? @real-column-navigator @real-row-navigator))
 
 (defn real-navigator ^RealLayoutNavigator [a]
@@ -288,11 +288,11 @@
     (* ld fd)))
 
 (defn full-storage
-  ([column? ^long m ^long n ^long ld]
+  ([^Boolean column? ^long m ^long n ^long ld]
    (if column?
      (StripeFullStorage. m n (max m ld))
      (StripeFullStorage. n m (max n ld))))
-  ([column? ^long m ^long n]
+  ([^Boolean column? ^long m ^long n]
    (if column?
      (StripeFullStorage. m n m)
      (StripeFullStorage. n m n)))
@@ -340,7 +340,7 @@
     (* ld w)))
 
 (defn band-storage
-  ([column? m n ld kl ku]
+  ([^Boolean column? m n ld kl ku]
    (let [m (long m)
          n (long n)
          kl (max 0 (long kl))
@@ -350,10 +350,10 @@
      (if column?
        (BandStorage. h (min n (+ (min m n) ku)) ld kl ku)
        (BandStorage. h (min m (+ (min m n) kl)) ld ku kl))))
-  ([column? m n kl ku]
+  ([^Boolean column? m n kl ku]
    (band-storage column? m n (inc (+ (long kl) (long ku))) kl ku)))
 
-(defn uplo-storage [column? ^long n ^long k lower?]
+(defn uplo-storage [^Boolean column? ^long n ^long k lower?]
   (if lower?
     (band-storage column? n n (min k (dec n)) 0)
     (band-storage column? n n 0 (min k (dec n)))))
@@ -414,7 +414,7 @@
   (capacity [_]
     (unchecked-divide-int (* n (inc n)) 2)))
 
-(defn packed-storage [column? lower? ^long n]
+(defn packed-storage [^Boolean column? ^Boolean lower? ^long n]
   (if column?
     (if lower?
       (BottomPackedStorage. n)
