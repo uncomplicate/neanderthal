@@ -264,6 +264,8 @@
     m)
   (ncols [_]
     n)
+  (transpose [_]
+    (->OrthogonalFactorization eng (.transpose or) tau false (atom true) n m or-type api-orm api-org))
   DataAccessorProvider
   (data-accessor [_]
     (data-accessor or))

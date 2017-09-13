@@ -395,7 +395,7 @@
                     (ge-region m n))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
-      (cl-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld stor))
+      (cl-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld stor))
                       (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?)
                       (tr-engine fact))))
   MemoryContext

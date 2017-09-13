@@ -363,7 +363,7 @@
      :m m
      :n n
      :offset ofst
-     :stride (.ld ^FullStorage stor)
+     :stride (.ld stor)
      :master master
      :layout (:layout (info nav))
      :storage (info stor)
@@ -428,11 +428,11 @@
           column-major (.isColumnMajor nav)
           [m n] (if column-major [m shrinked] [shrinked n])]
       (cu-ge-matrix fact false buf m n ofst nav
-                      (full-storage column-major m n (* (long stride-mult) (.ld ^FullStorage stor)))
+                      (full-storage column-major m n (* (long stride-mult) (.ld stor)))
                       (ge-region m n))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
-      (cu-uplo-matrix fact false buf n ofst nav (full-storage n n (.ld ^FullStorage stor))
+      (cu-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld  stor))
                       (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?)
                       (tr-engine fact))))
   MemoryContext
@@ -480,7 +480,7 @@
   (offset [_]
     ofst)
   (stride [_]
-    (.ld ^FullStorage stor))
+    (.ld stor))
   (dim [_]
     (* m n))
   (mrows [_]

@@ -1187,31 +1187,29 @@
   (row [a i]
     (let [start (.rowStart reg i)]
       (real-block-vector fact false buf (- (.rowEnd reg i) start) (+ ofst (.index nav stor i start))
-                         (if (.isRowMajor nav) 1 (.ld ^FullStorage stor)))))
+                         (if (.isRowMajor nav) 1 (.ld stor)))))
   (rows [a]
     (dense-rows a))
   (col [a j]
     (let [start (.colStart reg j)]
       (real-block-vector fact false buf (- (.colEnd reg j) start) (+ ofst (.index nav stor start j))
-                         (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor)))))
+                         (if (.isColumnMajor nav) 1 (.ld stor)))))
   (cols [a]
     (dense-cols a))
   (dia [a]
-    (real-block-vector fact false buf n ofst (inc (.ld ^FullStorage stor))))
+    (real-block-vector fact false buf n ofst (inc (.ld stor))))
   (dia [a k]
     (if (<= (- (.kl reg)) k (.ku reg))
       (if (< 0 k)
-        (real-block-vector fact false buf (- n k) (+ ofst (.index nav stor 0 k))
-                           (inc (.ld ^FullStorage stor)))
-        (real-block-vector fact false buf (+ n k) (+ ofst (.index nav stor (- k) 0))
-                           (inc (.ld ^FullStorage stor))))
+        (real-block-vector fact false buf (- n k) (+ ofst (.index nav stor 0 k)) (inc (.ld  stor)))
+        (real-block-vector fact false buf (+ n k) (+ ofst (.index nav stor (- k) 0)) (inc (.ld stor))))
       (real-block-vector fact false buf 0 ofst 1)))
   (dias [a]
     (region-dias a))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
       (real-uplo-matrix fact false buf k (+ ofst (.index nav stor i j)) nav
-                        (full-storage (.isColumnMajor nav) k k (.ld ^FullStorage stor))
+                        (full-storage (.isColumnMajor nav) k k (.ld stor))
                         (band-region k (.isLower reg) (.isDiagUnit reg)) matrix-type default eng)
       (dragan-says-ex "You cannot create a non-uplo submatrix of a uplo (TR or SY) matrix. Take a view-ge."
                       {:a (info a) :i i :j j :k k :l l})))
@@ -1301,7 +1299,7 @@
 
 ;; ================= Banded Matrix ==============================================================
 
-(deftype RealBandedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
+(deftype RealBandedMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
                            fact ^RealBufferAccessor da eng matrix-type
                            ^Boolean master ^ByteBuffer buf ^long m ^long n ^long ofst]
   Object
@@ -1323,7 +1321,7 @@
      :m m
      :n n
      :offset ofst
-     :stride (.ld ^FullStorage stor)
+     :stride (.ld stor)
      :master master
      :layout (:layout (info nav))
      :storage (info stor)
@@ -1379,10 +1377,10 @@
   (view-vctr [a stride-mult]
     (view-vctr (view-ge a) stride-mult))
   (view-ge [_]
-    (let [m (if (.isColumnMajor nav) (.sd ^FullStorage stor) (.fd stor))
-          n (if (.isColumnMajor nav) (.fd stor) (.sd ^FullStorage stor))]
+    (let [m (if (.isColumnMajor nav) (.sd stor) (.fd stor))
+          n (if (.isColumnMajor nav) (.fd stor) (.sd stor))]
       (real-ge-matrix fact false buf m n ofst nav
-                      (full-storage (.isColumnMajor nav) m n (.ld ^FullStorage stor))
+                      (full-storage (.isColumnMajor nav) m n (.ld stor))
                       (ge-region m n))))
   (view-tr [_ _ diag-unit?]
     (if-not (= :gb matrix-type)
@@ -1468,7 +1466,7 @@
   (offset [_]
     ofst)
   (stride [_]
-    (.ld ^FullStorage stor))
+    (.ld stor))
   (dim [_]
     (* m n))
   (mrows [_]
@@ -1484,13 +1482,13 @@
   (row [a i]
     (let [start (.rowStart reg i)]
       (real-block-vector fact false buf (- (.rowEnd reg i) start) (+ ofst (.index nav stor i start))
-                         (if (.isRowMajor nav) 1 (dec (.ld ^FullStorage stor))))))
+                         (if (.isRowMajor nav) 1 (dec (.ld stor))))))
   (rows [a]
     (region-rows a))
   (col [a j]
     (let [start (.colStart reg j)]
       (real-block-vector fact false buf (- (.colEnd reg j) start) (+ ofst (.index nav stor start j))
-                         (if (.isColumnMajor nav) 1 (dec (.ld ^FullStorage stor))))))
+                         (if (.isColumnMajor nav) 1 (dec (.ld stor))))))
   (cols [a]
     (region-cols a))
   (dia [a]
@@ -1498,8 +1496,8 @@
   (dia [a k]
     (if (<= (- (.kl reg)) k (.ku reg))
       (if (< 0 k)
-        (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor 0 k)) (.ld ^FullStorage stor))
-        (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor (- k) 0)) (.ld ^FullStorage stor)))
+        (real-block-vector fact false buf (min m (- n k)) (+ ofst (.index nav stor 0 k)) (.ld stor))
+        (real-block-vector fact false buf (min (+ m k) n) (+ ofst (.index nav stor (- k) 0)) (.ld stor)))
       (real-block-vector fact false buf 0 ofst 1)))
   (dias [a]
     (region-dias a))
@@ -1508,7 +1506,7 @@
       (let [kl (min (.kl reg) (dec k))
             ku (min (.ku reg) (dec l))]
         (real-banded-matrix fact false buf k l (- (+ ofst (.index nav stor i j)) (inc kl))
-                            nav (band-storage (.isColumnMajor nav) k l (.ld ^FullStorage stor) kl ku)
+                            nav (band-storage (.isColumnMajor nav) k l (.ld stor) kl ku)
                             (band-region k l kl ku) matrix-type default eng))
       (dragan-says-ex "You cannot create a submatrix of a banded (GB, TB, or SB) matrix outside its region. No way around that."
                       {:a (info a) :i i :j j :k k :l l})))
@@ -1517,7 +1515,7 @@
   Subband
   (subband [a kl ku]
     (if (and (<= 0 (long kl) (.kl reg)) (<= 0 (long ku) (.ku reg)))
-      (let [sub-stor (band-storage (.isColumnMajor nav) m n (.ld ^FullStorage stor) kl ku)]
+      (let [sub-stor (band-storage (.isColumnMajor nav) m n (.ld stor) kl ku)]
         (real-banded-matrix fact false buf m n
                             (+ ofst (- (.index stor 0 0) (.index ^DenseStorage sub-stor 0 0)))
                             nav sub-stor (band-region m n kl ku) matrix-type default eng))
@@ -1762,8 +1760,6 @@
     buf)
   (offset [_]
     ofst)
-  (stride [_]
-    (.ld ^FullStorage stor))
   (dim [_]
     (* n n))
   (mrows [_]
