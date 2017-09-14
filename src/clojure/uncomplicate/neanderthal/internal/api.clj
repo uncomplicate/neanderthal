@@ -81,6 +81,7 @@
   (gql [this a tau])
   (mql [this a tau c left])
   (ls [this a b])
+  (lse [this a b c d x])
   (ev [this a w vl vr]))
 
 (defprotocol Triangularizable

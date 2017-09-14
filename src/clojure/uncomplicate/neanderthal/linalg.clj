@@ -41,9 +41,7 @@
                              qr-factorization rq-factorization ql-factorization lq-factorization]]])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 
-;; ============================= LAPACK =======================================================
-
-;; ============= Linear Systems LAPACK ============================================
+;; ===================================== Linear Systems ============================================
 
 (defn trf!
   "Triangularizes a non-triangular matrix `a`. Destructively computes the LU (or LDLt, or UDUt, or GGt)
@@ -203,11 +201,7 @@
 
 (defn sv
   "Solves a system of linear equations with a square coefficient matrix `a`,
-  and multiple right  hand sides matrix `b`. Returns the results in a new matrix instance.
-
-  Overwrites `a` with L and U, and `b` with the solution.
-  L is stored as a lower unit triangle, and U as an upper triangle. Pivot is not retained.
-  If you need to reuse LU, use [[trf]], and [[trs]], or their destructive versions.
+  and multiple right  hand sides matrix `b`. Returns the solution in a new matrix instance.
 
   If `a` is symmetric, tries to do Cholesky factorization first, and only does LDLt if
   it turns out not to be positive definite.
@@ -218,10 +212,23 @@
   See related info about [[sv!]].
   "
   [a ^Matrix b]
-  (let-release [res (ge (api/factory b) (.mrows b) (.ncols b))]
-    (api/copy (api/engine b) b res)
-    (api/sv (api/engine a) a res true)
-    res))
+  (let-release [b-copy (api/create-ge (api/factory b) (.mrows b) (.ncols b) true false)]
+    (api/copy (api/engine b) b b-copy)
+    (api/sv (api/engine a) a b-copy true)))
+
+(defn psv
+  "Solves a system of linear equations with a positive definite symmetric coefficient
+  matrix `a`, and multiple right sides matrix `b`. Returns the solution matrix in a new instance.
+
+  If G is exactly singular (it can't be used for solving a system of linear equations),
+  throws ExceptionInfo.
+
+  See related info about [[psv!]].
+  "
+  [a ^Matrix b]
+  (let-release [b-copy (api/create-ge (api/factory b) (.mrows b) (.ncols b) true false)]
+    (api/copy (api/engine b) b b-copy)
+    (psv! a b-copy)))
 
 (defn con
   "Computes the reciprocal of the condition number of a triangularized matrix `lu`.
@@ -252,7 +259,7 @@
     (dragan-says-ex "Determinant computation requires a square matrix."
                     {:mrows (.mrows a) :ncols (.ncols a)})))
 
-;; =============== Orthogonal Factorization (L, Q, R) LAPACK =======================================
+;; ================================== Least Squares  =============================================
 
 (defn qrf!
   "Destructively computes the QR factorization of a GE `m x n` matrix and places it in record
@@ -402,14 +409,66 @@
   See related info about [lapacke_?gels](https://software.intel.com/en-us/node/521112).
   "
   [^Matrix a ^Matrix b]
-  (if (and (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)) (api/fits-navigation? a b))
+  (if (and (<= (max 1 (.mrows a) (.ncols a)) (.mrows b))
+           (api/compatible? a b) (api/fits-navigation? a b))
     (api/ls (api/engine a) a b)
     (throw (ex-info "You cannot solve linear system described by incompatible or ill-fitting matrices."
                     {:a (api/info a) :b (api/info b) :errors
                      (cond-into []
                                 (not (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)))
                                 "dimensions of a and b do not fit"
+                                (not (api/compatible? a b)) "a and b do are not compatible"
                                 (not (api/fits-navigation? a b)) "a and b do not have the same orientation")}))))
+
+(defn ls
+  "Solves an overdetermined or underdetermined linear system `AX = B` with full rank matrix using
+  QR or LQ factorization.
+
+  Uses a temporary copy of`a` for the factorization data:
+  - QR if `m >= n`;
+  - LQ if `m < n`.
+
+  Returns a new instance containing:
+  - the least squares solution vectors if `m >= n`
+  - minimum norm solution vectors if `m < n`.
+
+  If `a` and `b` do not have the same order (column or row oriented), throws ExceptionInfo.
+  If the `i`-th element of the triangular factor of a is zero, so that `a` does not have full rank,
+  the least squares cannot be computed, and the function throws ExceptionInfo.
+  If some value in the native call is illegal, throws ExceptionInfo.
+
+  See [[ls!]].
+  See related info about [lapacke_?gels](https://software.intel.com/en-us/node/521112).
+  "
+  [^Matrix a ^Matrix b]
+  (with-release [a-copy (copy a)]
+    (let-release [b-copy (copy b)]
+      (ls! a-copy b-copy))))
+
+(defn lse!
+  "TODO"
+  [^Matrix a ^Matrix b ^Vector c ^Vector d ^Vector x]
+  (let [m (.mrows a)
+        n (.ncols a)
+        p (.mrows b)]
+    (if (and (<= 0 p n m (+ m p)) (= n (.ncols b)) (<= m (.dim c)) (<= p (.dim d)) (<= n (.dim x))
+             (api/compatible? a b) (api/compatible? a c) (api/compatible? a d) (api/compatible? a x)
+             (api/fits-navigation? a b))
+      (api/lse (api/engine a) a b c d x)
+      (throw (ex-info "You cannot solve generalized linear system described by incompatible or ill-fitting structures."
+                      {:a (api/info a) :b (api/info b) :c (api/info c) :d (api/info d) :errors
+                       (cond-into []
+                                  (not (<= 0 p n m (+ m p))) "dimensions of a and b do not fit"
+                                  (not (= n (.ncols b))) "a and be should have the same number of columns"
+                                  (not (<= m (.dim c))) "dimension of c should be at least number of rows of a"
+                                  (not (<= p (.dim d))) "dimension of d should be at least number of rows of b"
+                                  (not (api/compatible? a b)) "a and b are not compatible"
+                                  (not (api/compatible? a c)) "a and c are not compatible"
+                                  (not (api/compatible? a d)) "a and d are not compatible"
+                                  (not (api/compatible? a x)) "a and x are not compatible"
+                                  (not (api/fits-navigation? a b)) "a and b do not have the same orientation")})))))
+
+  ;; =============================== Eigenproblems =================================================
 
 (defn ev!
   "Computes the eigenvalues and left and right eigenvectors of a matrix `a`.

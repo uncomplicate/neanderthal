@@ -467,6 +467,9 @@
     (or-mlqr LAPACK/dormql ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (ls [_ a b]
     (ge-ls LAPACK/dgels ^RealGEMatrix a ^RealGEMatrix b))
+  (lse [_ a b c d x]
+    (ge-lse LAPACK/dgglse ^RealGEMatrix a ^RealGEMatrix b
+            ^RealBlockVector c ^RealBlockVector d ^RealBlockVector x))
   (ev [_ a w vl vr]
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
@@ -566,6 +569,9 @@
     (or-mlqr LAPACK/sormql ^RealGEMatrix a ^RealBlockVector tau ^RealGEMatrix c left))
   (ls [_ a b]
     (ge-ls LAPACK/sgels ^RealGEMatrix a ^RealGEMatrix b))
+  (lse [_ a b c d x]
+    (ge-lse LAPACK/sgglse ^RealGEMatrix a ^RealGEMatrix b
+            ^RealBlockVector c ^RealBlockVector d ^RealBlockVector x))
   (ev [_ a w vl vr]
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]

@@ -826,6 +826,23 @@
        :else (throw (ex-info "The i-th diagonal element of a is zero, so the matrix does not have full rank."
                              {:arg-index info#})))))
 
+(defmacro ge-lse [method a b c d x]
+  `(do
+     (check-stride ~c)
+     (check-stride ~d)
+     (check-stride ~x)
+     (let [nav# (navigator ~a)
+           info# (~method (.layout nav#)
+                  (.mrows ~a) (.ncols ~a) (.mrows ~b)
+                  (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)
+                  (.buffer ~c) (.offset ~c) (.buffer ~d) (.offset ~d) (.buffer ~x) (.offset ~x))]
+       (cond
+         (= 0 info#) ~x
+         (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                     {:arg-index (- info#)}))
+         :else (throw (ex-info "The i-th diagonal element of a is zero, so the matrix does not have full rank."
+                               {:arg-index info#}))))))
+
 ;; ------------- Non-Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
 
 (defmacro ge-ev [method a w vl vr]

@@ -2419,6 +2419,27 @@
      (nrm2 (axpy! -1 solution (submatrix b 0 0 4 2))) 0.007 => (roughly 0.007)
      (nrm2 (axpy! -1 qr a)) => (roughly 0.0129))))
 
+(defn test-ge-lse [factory]
+  (facts
+   "LAPACK GE lse!"
+
+   (with-release [a (ge factory 6 4 [-0.57 -1.28 -0.39 0.25
+                                     -1.93 1.08 -0.31 -2.14
+                                     2.30 0.24 0.40 -0.35
+                                     -1.93 0.64 -0.66 0.08
+                                     0.15 0.30 0.15 -2.13
+                                     -0.02 1.03 -1.43 0.50]
+                        {:layout :row})
+                  b (ge factory 2 4 [1 0 -1 0
+                                     0 1 0 -1]
+                        {:layout :row})
+                  c (vctr factory [-1.50 -2.14 1.23 -0.54 -1.68 0.82])
+                  d (vctr factory [0 0])
+                  x (vctr factory 4)
+                  solution (vctr factory [0.4890 0.9975 0.4890 0.9975])
+                  residual 0.0251]
+     (nrm2 (axpy! -1 (lse! a b c d x) solution)) => (roughly 0.0 0.0001))))
+
 (defn test-ge-ev [factory]
   (facts
    "LAPACK GE ev!"
@@ -2604,6 +2625,7 @@
   (test-ge-lq factory)
   (test-ge-ql factory)
   (test-ge-ls factory)
+  (test-ge-lse factory)
   (test-ge-ev factory)
   (test-ge-svd factory))
 
