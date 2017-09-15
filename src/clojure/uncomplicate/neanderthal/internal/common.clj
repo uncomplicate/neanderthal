@@ -223,16 +223,18 @@
   (info [this]
     this))
 
-(defrecord OrthogonalFactorization [eng ^Matrix or ^Vector tau ^Boolean master fresh
+(defrecord OrthogonalFactorization [eng ^Matrix or jpiv ^Vector tau ^Boolean master fresh
                                     ^long m ^long n or-type api-orm api-org]
   Releaseable
   (release [_]
     (when master (release or))
+    (when jpiv (release jpiv))
     (release tau))
   Info
   (info [this]
     {:or-type or-type
      :or (info or)
+     :jpiv (if jpiv (info jpiv) :pivotless)
      :tau (info tau)
      :master master
      :fresh @fresh})
@@ -283,23 +285,30 @@
 (defn qr-factorization [^Matrix a master qrf-fn]
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
-      (qrf eng a tau)
-      (OrthogonalFactorization. eng a tau master (atom true) (.mrows a) (.mrows a) :qr mqr gqr))))
+      (qrf-fn eng a tau)
+      (OrthogonalFactorization. eng a nil tau master (atom true) (.mrows a) (.mrows a) :qr mqr gqr))))
+
+(defn qp-factorization [^Matrix a master]
+  (let [eng (engine a)]
+    (let-release [jpiv (create-vector (index-factory a) (.ncols a) true)
+                  tau (create-vector (factory a) (min-mn a) false)]
+      (qp3 eng a jpiv tau)
+      (OrthogonalFactorization. eng a jpiv tau master (atom true) (.mrows a) (.mrows a) :qp mqr gqr))))
 
 (defn rq-factorization [^Matrix a master]
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
       (rqf eng a tau)
-      (OrthogonalFactorization. eng a tau master (atom true) (.ncols a) (.ncols a) :rq mrq grq))))
+      (OrthogonalFactorization. eng a nil tau master (atom true) (.ncols a) (.ncols a) :rq mrq grq))))
 
 (defn ql-factorization [^Matrix a master]
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
       (qlf eng a tau)
-      (OrthogonalFactorization. eng a tau master (atom true) (.mrows a) (.ncols a) :ql mql gql))))
+      (OrthogonalFactorization. eng a nil tau master (atom true) (.mrows a) (.ncols a) :ql mql gql))))
 
 (defn lq-factorization [^Matrix a master]
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
       (lqf eng a tau)
-      (OrthogonalFactorization. eng a tau master (atom true) (.ncols a) (.ncols a) :lq mlq glq))))
+      (OrthogonalFactorization. eng a nil tau master (atom true) (.ncols a) (.ncols a) :lq mlq glq))))

@@ -16,11 +16,15 @@
   ### Cheat Sheet
 
   - Sorting:  [[sort!]], [[sort+!]], [[sort-!]].
+  - Interchanges: [[swap-rows!]], [[swap-rows]], [[swap-cols!]], [[swap-cols]].
+  - Permutations: [[permute-rows!]], [[permute-rows]], [[permute-cols!]], [[permute-cols]].
   "
-  (:require [uncomplicate.neanderthal.internal
+  (:require [uncomplicate.commons.core :refer [let-release]]
+            [uncomplicate.neanderthal.core :refer [copy]]
+            [uncomplicate.neanderthal.internal
              [api :as api]
              [common :refer [dragan-says-ex]]])
-  (:import uncomplicate.neanderthal.internal.api.IntegerVector))
+  (:import [uncomplicate.neanderthal.internal.api IntegerVector Matrix]))
 
 (defn sort!
   "Sorts input vector or all matrix slices (columns or rows, according to layout).
@@ -43,8 +47,8 @@
   [x]
   (sort! x false))
 
-(defn laswp!
-  "Performs a series of row interchanges on a general rectangular matrix.
+(defn swap-rows!
+  "Performs a series of destructive row interchanges on a general rectangular matrix.
 
   If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
   ([a ^IntegerVector ipiv ^long k1 ^long k2]
@@ -53,4 +57,73 @@
      (dragan-says-ex "There is not enough indices in ipiv. Check the ipiv and k1 and k2."
                      {:a (api/info a) :ipiv (api/info ipiv)})))
   ([a ^IntegerVector ipiv]
-   (laswp! a ipiv 1 (.dim ipiv))))
+   (swap-rows! a ipiv 1 (.dim ipiv))))
+
+(defn swap-rows
+  "Performs a series of destructive row interchanges on a general rectangular matrix.
+
+  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  ([a ipiv ^long k1 ^long k2]
+   (let-release [a-copy (copy a)]
+     (swap-rows! a-copy ipiv k1 k2)))
+  ([a ^IntegerVector ipiv]
+   (swap-rows a ipiv 1 (.dim ipiv))))
+
+(defn swap-cols!
+  "Performs a series of destructive column interchanges on a general rectangular matrix.
+
+  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  ([^Matrix a ^IntegerVector jpiv ^long k1 ^long k2]
+   (.transpose ^Matrix (swap-rows! (.transpose a) jpiv k1 k2)))
+  ([a ^IntegerVector jpiv]
+   (swap-cols! a jpiv 1 (.dim jpiv))))
+
+(defn swap-cols
+  "Performs a series of column interchanges on a general rectangular matrix.
+
+  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  ([a ipiv ^long k1 ^long k2]
+   (let-release [a-copy (copy a)]
+     (swap-cols! a-copy ipiv k1 k2)))
+  ([a ^IntegerVector ipiv]
+   (swap-cols a ipiv 1 (.dim ipiv))))
+
+(defn permute-rows!
+  "Destructively rearranges rows of a given matrix as specified by a permutation vector `ipiv`
+  forward or backward."
+  ([^Matrix a ^IntegerVector ipiv ^Boolean forward]
+   (if (and (= (.mrows a) (.dim ipiv)))
+     (api/lapmr (api/engine a) a ipiv forward)
+     (dragan-says-ex "Ipiv dimension must be mrows of a."
+                     {:a (api/info a) :ipiv (api/info ipiv)})))
+  ([a ipiv]
+   (permute-rows! a ipiv true)))
+
+(defn permute-rows
+  "Rearranges rows of a given matrix as specified by a permutation vector `ipiv`
+  forward or backward."
+  ([a ipiv forward]
+   (let-release [a-copy (copy a)]
+     (permute-rows! a-copy ipiv forward)))
+  ([a ^IntegerVector ipiv]
+   (permute-rows a ipiv true)))
+
+(defn permute-cols!
+  "Destructively rearranges columns of a given matrix as specified by a permutation vector `jpiv`
+  forward or backward."
+  ([^Matrix a ^IntegerVector jpiv ^Boolean forward]
+   (if (and (= (.ncols a) (.dim jpiv)))
+     (api/lapmt (api/engine a) a jpiv forward)
+     (dragan-says-ex "Jpiv dimension must be ncols of a."
+                     {:a (api/info a) :jpiv (api/info jpiv)})))
+  ([a jpiv]
+   (permute-cols! a jpiv true)))
+
+(defn permute-cols
+  "Rearranges columnss of a given matrix as specified by a permutation vector `jpiv`
+  forward or backward."
+  ([a jpiv forward]
+   (let-release [a-copy (copy a)]
+     (permute-cols! a-copy jpiv forward)))
+  ([a ^IntegerVector jpiv]
+   (permute-cols a jpiv true)))

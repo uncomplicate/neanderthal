@@ -37,8 +37,8 @@
             [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy gd raw]]
             [uncomplicate.neanderthal.internal
              [api :as api]
-             [common :refer [dragan-says-ex ->SVDecomposition
-                             qr-factorization rq-factorization ql-factorization lq-factorization]]])
+             [common :refer [dragan-says-ex ->SVDecomposition qr-factorization qp-factorization
+                             rq-factorization ql-factorization lq-factorization]]])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 
 ;; ===================================== Linear Systems ============================================
@@ -262,10 +262,10 @@
 ;; ================================== Least Squares  =============================================
 
 (defn qrf!
-  "Destructively computes the QR factorization of a GE `m x n` matrix and places it in record
+  "Destructively computes the QR factorization of a `m x n` matrix and places it in record
   that contains `:or` and `:tau`.
 
-  The input is a GE matrix `a`. The output overwrites the contents of `a`. Output QR is laid out
+  The input is a matrix `a`. The output overwrites the contents of `a`. Output QR is laid out
   in `a` in the following way: The elements in the upper triangle (or trapezoid) contain the
   `(min m n) x n` upper triangular (or trapezoidal) matrix R. The elements in the lower triangle
   (or trapezoid) **below the diagonal**, with the vector `tau` contain Q as a product of `(min m n)`
@@ -278,7 +278,7 @@
   (qr-factorization a false api/qrf))
 
 (defn qrf
-  "Purely computes  the QR factorization of a GE `m x n` matrix and places it in record
+  "Purely computes the QR factorization of a GE `m x n` matrix and places it in record
   that contains `:or` and `:tau`.
 
   See [[qrf!]]"
@@ -286,8 +286,32 @@
   (let-release [a-copy (copy a)]
     (qr-factorization a-copy true api/qrf)))
 
+(defn qpf!
+  "Destructively computes the QR factorization with pivoting of a `m x n` matrix and places it in record
+  that contains `:or` and `:tau`.
+
+  It is similar to [[qrf!]] and can replace it, with the caveat that the results have swapped columns
+  (because of pivoting) so the solutions based on it have to be permuted back.
+
+  See related info about [lapacke_?geqrf](https://software.intel.com/en-us/node/521004).
+  "
+  [a]
+  (qp-factorization a false))
+
+(defn qpf
+  "Purely computes the QR factorization of a GE `m x n` matrix and places it in record
+  that contains `:or` and `:tau`.
+
+  It is similar to [[qrf!]] and can replace it, with the caveat that the results have swapped columns
+  (because of pivoting) so the solutions based on it have to be permuted back.
+
+  See [[qrf!]]"
+  [^Matrix a]
+  (let-release [a-copy (copy a)]
+    (qp-factorization a-copy true)))
+
 (defn qrfp!
-  "Computes the QR factorization of a GE `m x n` matrix, with non-negative diagonal elements.
+  "Destructively computes the QR factorization of a GE `m x n` matrix, with non-negative diagonal elements.
 
   See [[qrf!]].
   See related info about [lapacke_?geqrfp](https://software.intel.com/en-us/node/468946).
@@ -296,7 +320,11 @@
   (qr-factorization a false api/qrfp))
 
 (defn qrfp
-  "TODO"
+  "Purely computes the QR factorization of a GE `m x n` matrix, with non-negative diagonal elements.
+
+  See [[qrf!]].
+  See related info about [lapacke_?geqrfp](https://software.intel.com/en-us/node/468946).
+  "
   [^Matrix a]
   (let-release [a-copy (copy a)]
     (qr-factorization a-copy true api/qrfp)))
@@ -412,7 +440,7 @@
   (if (and (<= (max 1 (.mrows a) (.ncols a)) (.mrows b))
            (api/compatible? a b) (api/fits-navigation? a b))
     (api/ls (api/engine a) a b)
-    (throw (ex-info "You cannot solve linear system described by incompatible or ill-fitting matrices."
+    (throw (ex-info "You cannot solve least squares described by incompatible or ill-fitting matrices."
                     {:a (api/info a) :b (api/info b) :errors
                      (cond-into []
                                 (not (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)))
@@ -455,7 +483,7 @@
              (api/compatible? a b) (api/compatible? a c) (api/compatible? a d) (api/compatible? a x)
              (api/fits-navigation? a b))
       (api/lse (api/engine a) a b c d x)
-      (throw (ex-info "You cannot solve generalized linear system described by incompatible or ill-fitting structures."
+      (throw (ex-info "You cannot solve least squares with equality constraints described by incompatible or ill-fitting structures."
                       {:a (api/info a) :b (api/info b) :c (api/info c) :d (api/info d) :errors
                        (cond-into []
                                   (not (<= 0 p n m (+ m p))) "dimensions of a and b do not fit"
@@ -468,7 +496,53 @@
                                   (not (api/compatible? a x)) "a and x are not compatible"
                                   (not (api/fits-navigation? a b)) "a and b do not have the same orientation")})))))
 
-  ;; =============================== Eigenproblems =================================================
+(defn lse
+  "TODO"
+  [^Matrix a b c d]
+  (with-release [a-copy (copy a)
+                 b-copy (copy b)
+                 c-copy (copy c)
+                 d-copy (copy d)]
+    (let-release [x (api/create-vector (api/factory a) (.ncols a) false)]
+      (lse! a-copy b-copy c-copy d-copy x))))
+
+(defn gls!
+  "TODO"
+  [^Matrix a ^Matrix b ^Vector d ^Vector x ^Vector y]
+  (let [m (.mrows a)
+        n (.ncols a)
+        p (.ncols b)]
+    (if (and (<= 0 (- m n) p (+ m p))(= m (.mrows b)) (<= m (.dim d)) (<= n (.dim x)) (<= p (.dim y))
+             (api/compatible? a b) (api/compatible? a d) (api/compatible? a x) (api/compatible? a y)
+             (api/fits-navigation? a b))
+      (do
+        (api/gls (api/engine a) a b d x y)
+        [x y])
+      (throw (ex-info "You cannot solve generalized least squares described by incompatible or ill-fitting structures."
+                      {:a (api/info a) :b (api/info b) :d (api/info d) :x (api/info x) :y (api/info y) :errors
+                       (cond-into []
+                                  (not (<= 0 (- m n) p (+ m p))) "dimensions of a and b do not fit"
+                                  (not (= m (.mrows b))) "a and be should have the same number of rows"
+                                  (not (<= m (.dim d))) "dimension of d should be at least number of rows of a"
+                                  (not (<= n (.dim x))) "dimension of x should be at least number of columns of a"
+                                  (not (<= p (.dim y))) "dimension of y should be at least number of columns of b"
+                                  (not (api/compatible? a b)) "a and b are not compatible"
+                                  (not (api/compatible? a d)) "a and d are not compatible"
+                                  (not (api/compatible? a x)) "a and x are not compatible"
+                                  (not (api/compatible? a y)) "a and y are not compatible"
+                                  (not (api/fits-navigation? a b)) "a and b do not have the same orientation")})))))
+
+(defn gls
+  "TODO"
+  [^Matrix a ^Matrix b d]
+  (with-release [a-copy (copy a)
+                 b-copy (copy b)
+                 d-copy (copy d)]
+    (let-release [x (api/create-vector (api/factory a) (.ncols a) false)
+                  y (api/create-vector (api/factory a) (.ncols b) false)]
+      (gls! a-copy b-copy d-copy x y))))
+
+;; =============================== Eigenproblems =================================================
 
 (defn ev!
   "Computes the eigenvalues and left and right eigenvectors of a matrix `a`.

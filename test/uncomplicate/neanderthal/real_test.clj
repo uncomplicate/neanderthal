@@ -1655,13 +1655,13 @@
      (sort+! a1) => a2
      (sort-! a1) => a3)))
 
-(defn test-ge-laswp [factory]
+(defn test-ge-swap-rows [factory]
   (facts
    "LAPACK ge laswp!"
    (with-release [a (ge factory 2 3 [0 -1 1 2 3 4])
                   b (ge factory 2 3 [-1 0 2 1 4 3])
                   ipiv (vctr (index-factory factory) 2 1)]
-     (laswp! a ipiv 1 1) => b)))
+     (swap-rows! a ipiv 1 1) => b)))
 
 (defn test-uplo-srt [factory uplo]
   (facts
@@ -2288,6 +2288,27 @@
      (nrm2 (axpy! -1 (org qr) q-solution)) => (roughly 0 0.014)
      (nrm2 (axpy! -1 (mm! qr c) orm-result)) => (roughly 0 0.012))))
 
+(defn test-ge-qp [factory]
+  (facts
+   "LAPACK GE qpf"
+
+   (with-release [a (ge factory 6 4 [ 1.44, -9.96, -7.55,  8.34,  7.08, -5.45,
+                                     -7.84, -0.28,  3.24,  8.09,  2.52, -5.70,
+                                     -4.39, -3.24,  6.27,  5.28,  0.74, -1.19,
+                                     4.53,  3.83, -6.64,  2.06, -2.47,  4.70])
+                  c (ge factory 6 2 [8.58,  8.26,  8.48, -5.28, 2.3 2.2
+                                     9.35, -4.43, -0.70, -0.26 2.1 0.44])
+                  qr-solution (ge factory 6 4 [-17.540 -4.7556 0.422672 -1.9595
+                                               -0.52475 12.3982 -5.8428 7.87891
+                                               -0.39778 -0.14081 8.79755 -2.6836
+                                               0.439403 -0.66066 -0.66481 -5.0799
+                                               0.373018 -0.25674 0.079529 -0.27499
+                                               -0.28714 0.460641 -0.03549 0.547166]
+                                  {:layout :row})
+                  qr (qpf a)]
+
+     (nrm2 (axpy! -1 (:or qr) qr-solution)) => (roughly 0 0.015))))
+
 (defn test-ge-rq [factory]
   (facts
    "LAPACK GE rqf"
@@ -2440,6 +2461,24 @@
                   residual 0.0251]
      (nrm2 (axpy! -1 (lse! a b c d x) solution)) => (roughly 0.0 0.0001))))
 
+(defn test-ge-gls [factory]
+  (facts
+   "LAPACK GE gls!"
+
+   (with-release [a (ge factory 4 3 [-0.57 -1.28 -0.39
+                                     -1.93 1.08 -0.31
+                                     2.30 0.24 -0.40
+                                     -0.02 1.03 -1.43]
+                        {:layout :row})
+                  b (ge factory 4 4 [0.5 0 0 0
+                                     0 1 0 0
+                                     0 0 2 0
+                                     0 0 0 5]
+                        {:layout :row})
+                  d (vctr factory [1.32 -4 5.52 3.24])
+                  x-solution (vctr factory [1.98887 -1.0058 -2.9911])]
+     (nrm2 (axpy! -1 (get (gls a b d) 0) x-solution)) => (roughly 0.0 0.0001))))
+
 (defn test-ge-ev [factory]
   (facts
    "LAPACK GE ev!"
@@ -2582,7 +2621,7 @@
 (defn test-lapack [factory]
   (test-vctr-srt factory)
   (test-ge-srt factory)
-  (test-ge-laswp factory)
+  (test-ge-swap factory)
   (test-uplo-srt factory tr)
   (test-uplo-srt factory sy)
   (test-uplo-srt factory sp)
@@ -2621,11 +2660,13 @@
   (test-dt-trx factory)
   (test-st-trx factory)
   (test-ge-qr factory)
+  (test-ge-qp factory)
   (test-ge-rq factory)
   (test-ge-lq factory)
   (test-ge-ql factory)
   (test-ge-ls factory)
   (test-ge-lse factory)
+  (test-ge-gls factory)
   (test-ge-ev factory)
   (test-ge-svd factory))
 

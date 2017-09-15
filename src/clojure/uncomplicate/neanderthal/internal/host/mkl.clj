@@ -427,6 +427,10 @@
     (matrix-lasrt LAPACK/dlasrt ^RealGEMatrix a increasing))
   (laswp [_ a ipiv k1 k2]
     (ge-laswp LAPACK/dlaswp ^RealGEMatrix a ^IntegerBlockVector ipiv k1 k2))
+  (lapmr [_ a k forward]
+    (ge-lapm LAPACK/dlapmr ^RealGEMatrix a ^IntegerBlockVector k ^Boolean forward))
+  (lapmt [_ a k forward]
+    (ge-lapm LAPACK/dlapmt ^RealGEMatrix a ^IntegerBlockVector k ^Boolean forward))
   (trf [_ a ipiv]
     (ge-trf LAPACK/dgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trf [_ _]
@@ -443,6 +447,8 @@
     (ge-lqrf LAPACK/dgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
     (ge-lqrf LAPACK/dgeqrfp ^RealGEMatrix a ^RealBlockVector tau))
+  (qp3 [_ a jpiv tau]
+    (ge-qp3 LAPACK/dgeqp3 ^RealGEMatrix a ^IntegerBlockVector jpiv ^RealBlockVector tau))
   (gqr [_ a tau]
     (or-glqr LAPACK/dorgqr ^RealGEMatrix a ^RealBlockVector tau))
   (mqr [_ a tau c left]
@@ -470,6 +476,9 @@
   (lse [_ a b c d x]
     (ge-lse LAPACK/dgglse ^RealGEMatrix a ^RealGEMatrix b
             ^RealBlockVector c ^RealBlockVector d ^RealBlockVector x))
+  (gls [_ a b d x y]
+    (ge-gls LAPACK/dggglm ^RealGEMatrix a ^RealGEMatrix b
+            ^RealBlockVector d ^RealBlockVector x ^RealBlockVector y))
   (ev [_ a w vl vr]
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
@@ -529,6 +538,10 @@
     (matrix-lasrt LAPACK/slasrt ^RealGEMatrix a increasing))
   (laswp [_ a ipiv k1 k2]
     (ge-laswp LAPACK/slaswp ^RealGEMatrix a ^IntegerBlockVector ipiv k1 k2))
+  (lapmr [_ a k forward]
+    (ge-lapm LAPACK/slapmr ^RealGEMatrix a ^IntegerBlockVector k ^Boolean forward))
+  (lapmt [_ a k forward]
+    (ge-lapm LAPACK/slapmt ^RealGEMatrix a ^IntegerBlockVector k ^Boolean forward))
   (trf [_ a ipiv]
     (ge-trf LAPACK/sgetrf ^RealGEMatrix a ^IntegerBlockVector ipiv))
   (trf [_ _]
@@ -545,6 +558,8 @@
     (ge-lqrf LAPACK/sgeqrf ^RealGEMatrix a ^RealBlockVector tau))
   (qrfp [_ a tau]
     (ge-lqrf LAPACK/sgeqrfp ^RealGEMatrix a ^RealBlockVector tau))
+  (qp3 [_ a jpiv tau]
+    (ge-qp3 LAPACK/sgeqp3 ^RealGEMatrix a ^IntegerBlockVector jpiv ^RealBlockVector tau))
   (gqr [_ a tau]
     (or-glqr LAPACK/sorgqr ^RealGEMatrix a ^RealBlockVector tau))
   (mqr [_ a tau c left]
@@ -572,6 +587,9 @@
   (lse [_ a b c d x]
     (ge-lse LAPACK/sgglse ^RealGEMatrix a ^RealGEMatrix b
             ^RealBlockVector c ^RealBlockVector d ^RealBlockVector x))
+  (gls [_ a b d x y]
+    (ge-gls LAPACK/sggglm ^RealGEMatrix a ^RealGEMatrix b
+            ^RealBlockVector d ^RealBlockVector x ^RealBlockVector y))
   (ev [_ a w vl vr]
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]

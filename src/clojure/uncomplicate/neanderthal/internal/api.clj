@@ -59,6 +59,8 @@
 (defprotocol Lapack
   (srt [this x increasing])
   (laswp [this a x k1 k2])
+  (lapmr [this a k forward])
+  (lapmt [this a k forward])
   (trf [this a ipiv] [this a])
   (trfx [this a])
   (tri [this lu ipiv] [this a])
@@ -69,6 +71,7 @@
   (svd [this a s superb] [this a s u vt superb])
   (qrf [this a tau])
   (qrfp [this a tau])
+  (qp3 [this a jpiv tau])
   (gqr [this a tau])
   (mqr [this a tau c left])
   (rqf [this a tau])
@@ -82,6 +85,7 @@
   (mql [this a tau c left])
   (ls [this a b])
   (lse [this a b c d x])
+  (gls [this a b d x y])
   (ev [this a w vl vr]))
 
 (defprotocol Triangularizable

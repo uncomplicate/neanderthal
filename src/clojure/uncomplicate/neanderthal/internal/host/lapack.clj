@@ -303,6 +303,13 @@
        (~method (.layout (navigator ~a)) (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
         ~k1 ~k2 (.buffer ~ipiv) (.offset ~ipiv) (.stride ~ipiv)))))
 
+(defmacro ge-lapm [method a k forward]
+  `(do
+     (check-stride ~k)
+     (with-sv-check ~a
+       (~method (.layout (navigator ~a)) ~forward (.mrows ~a) (.ncols ~a)
+        (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~k) (.offset ~k)))))
+
 (defmacro ge-trf [method a ipiv]
   `(with-sv-check (check-stride ~ipiv)
      (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
@@ -796,6 +803,15 @@
        (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
         (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~tau) (.offset ~tau)))))
 
+(defmacro ge-qp3 [method a jpiv tau]
+  `(do
+     (check-stride ~jpiv)
+     (check-stride ~tau)
+     (with-lqr-check ~a
+       (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
+        (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~jpiv)
+        (.offset ~jpiv) (.buffer ~tau) (.offset ~tau)))))
+
 (defmacro or-glqr [method a tau]
   `(do
      (check-stride ~tau)
@@ -838,9 +854,34 @@
                   (.buffer ~c) (.offset ~c) (.buffer ~d) (.offset ~d) (.buffer ~x) (.offset ~x))]
        (cond
          (= 0 info#) ~x
+         (= 1 info#) (throw (ex-info "rank(b) < p; the least squares solution could not be computed."
+                                     {:arg-index info#}))
+         (= 2 info#) (throw (ex-info "rank(a|b) < n; the least squares solution could not be computed."
+                                     {:arg-index info#}))
          (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
                                      {:arg-index (- info#)}))
-         :else (throw (ex-info "The i-th diagonal element of a is zero, so the matrix does not have full rank."
+         :else (throw (ex-info "This info# should not happen. Please report the issue."
+                               {:arg-index info#}))))))
+
+(defmacro ge-gls [method a b d x y]
+  `(do
+     (check-stride ~d)
+     (check-stride ~x)
+     (check-stride ~y)
+     (let [nav# (navigator ~a)
+           info# (~method (.layout nav#)
+                  (.mrows ~a) (.ncols ~a) (.ncols ~b)
+                  (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b)
+                  (.buffer ~d) (.offset ~d) (.buffer ~x) (.offset ~x) (.buffer ~y) (.offset ~y))]
+       (cond
+         (= 0 info#) ~y
+         (= 1 info#) (throw (ex-info "rank(a) < n; the least squares solution could not be computed."
+                                     {:arg-index info#}))
+         (= 2 info#) (throw (ex-info "rank(ab) < m; the least squares solution could not be computed."
+                                     {:arg-index info#}))
+         (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                     {:arg-index (- info#)}))
+         :else (throw (ex-info "This info# should not happen. Please report the issue."
                                {:arg-index info#}))))))
 
 ;; ------------- Non-Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
