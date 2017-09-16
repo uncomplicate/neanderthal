@@ -1511,7 +1511,7 @@
       (dragan-says-ex "You cannot create a submatrix of a banded (GB, TB, or SB) matrix outside its region. No way around that."
                       {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
-    (real-banded-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
+    (real-banded-matrix fact false buf n m ofst (flip nav) stor (flip reg) matrix-type default eng))
   Subband
   (subband [a kl ku]
     (if (and (<= 0 (long kl) (.kl reg)) (<= 0 (long ku) (.ku reg)))
@@ -1797,7 +1797,7 @@
   (submatrix [a i j k l]
     (dragan-says-ex "You have to unpack a packed matrix to access its submatrices." {:a a}))
   (transpose [a]
-    (real-packed-matrix fact false buf n ofst (.isRowMajor nav) (.isUpper reg) (.isDiagUnit reg) matrix-type))
+    (real-packed-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
   Triangularizable
   (create-trf [a pure]
     (if (= :sp matrix-type)
@@ -2055,7 +2055,9 @@
     (dragan-says-ex "You cannot create a submatrix of a (tri)diagonal matrix."
                     {:a (info a)}))
   (transpose [a]
-    (dragan-says-ex "You cannot transpose a (tri)diagonal matrix."))
+    (if (or (= :gd matrix-type) (= :st matrix-type))
+      a
+      (dragan-says-ex "You cannot transpose a (tri)diagonal matrix.")))
   Triangularizable
   (create-trf [a pure]
     (case matrix-type

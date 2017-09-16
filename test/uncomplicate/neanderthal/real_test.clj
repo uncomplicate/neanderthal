@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.real-test
   (:require [midje.sweet :refer [facts throws => roughly truthy]]
-            [uncomplicate.commons.core :refer [release with-release]]
+            [uncomplicate.commons.core :refer [release with-release let-release]]
             [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.neanderthal
              [core :refer :all]
@@ -324,6 +324,7 @@
          (submatrix (ge factory 3 4 (range 12)) 1 1 3 3) => (throws ExceptionInfo)
 
          (trans (ge factory 2 3 (range 6))) => (ge factory 3 2 (range 6) {:layout :row})))
+
 (defn test-ge-entry [factory]
   (facts "GE matrix entry."
          (entry (ge factory 2 3 [1 2 3 4 5 6]) 0 1) => 3.0
@@ -592,7 +593,9 @@
            (row a-lower 2) => (vctr factory [2 4 5])
            (col a-lower 0) => (vctr factory [0 1 2])
            (col a-lower 2) => (vctr factory [5])
-           (dia a-upper) => (vctr factory 0 2 5))))
+           (dia a-upper) => (vctr factory 0 2 5)
+           (trans (trans a-upper)) => a-upper
+           (trans (trans a-lower)) => a-lower)))
 
 (defn test-tr-entry [factory tr]
   (facts "Triangular Matrix entry."
@@ -782,7 +785,8 @@
                         b (ge factory 3 3 [1 2 3 2 4 5 3 5 6])]
            (view-sy b) => a
            (view-ge (view-sy b)) => b
-           (sy factory 3 nil) => (zero a))))
+           (sy factory 3 nil) => (zero a)
+           (trans (trans a)) => a)))
 
 (defn test-sy [factory]
   (facts "SY Matrix methods."
@@ -797,7 +801,9 @@
            (row a-lower 2) => (vctr factory [2 4 5])
            (col a-lower 0) => (vctr factory [0 1 2])
            (col a-lower 2) => (vctr factory [5])
-           (dia a-upper) => (vctr factory 0 2 5))))
+           (dia a-upper) => (vctr factory 0 2 5)
+           (trans (trans a-upper)) => a-upper
+           (trans (trans a-lower)) => a-lower)))
 
 (defn test-sy-mv [factory mv]
   (facts "BLAS 2 SY mv!"
@@ -1148,7 +1154,9 @@
            (col a-lower 0) => (vctr factory [0 1 2])
            (col a-lower 2) => (vctr factory [6 7])
            (dia a-upper) => (vctr factory 0 3 6 8)
-           (uplo factory 4 2 (range 15) {:uplo :upper}) => (throws ExceptionInfo))))
+           (uplo factory 4 2 (range 15) {:uplo :upper}) => (throws ExceptionInfo)
+           (trans (trans a-upper)) => a-upper
+           (trans (trans a-lower)) => a-lower)))
 
 (defn test-sb-entry [factory]
   (facts "SB Matrix entry."
@@ -1247,7 +1255,7 @@
               3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws ExceptionInfo)
 
          (with-release [c (ge factory 2 2 [1 2 3 4])]
-           (identical? (mm! 2.0 (tb factory 2 [1 2 3 4]) c) c)) => true
+           (identical? (mm! 2.0 (tb factory 2 [1 2 3 4]) c) c))=> true
 
          (mm! 2.0 (ge factory 2 3 (range 6)) (tb factory 3 (range 6)))
          => (mm! 2.0 (ge factory 2 3 (range 6)) (ge factory 3 3 [0 1 2 0 3 4 0 0 5]) 0.0 (ge factory 2 3))
@@ -1303,7 +1311,11 @@
            (col a-lower 2) => (vctr factory [5])
            (row a-upper 0) => (throws ExceptionInfo)
            (col b-upper 0) => (throws ExceptionInfo)
-           (dia a-upper) => (throws ExceptionInfo))))
+           (dia a-upper) => (throws ExceptionInfo)
+           (trans (trans a-upper)) => a-upper
+           (trans (trans a-lower)) => a-lower
+           (trans (trans b-upper)) => b-upper
+           (trans (trans b-lower)) => b-lower)))
 
 (defn test-tp-dot [factory]
   (facts "BLAS 1 TP dot"
@@ -1317,7 +1329,7 @@
 (defn test-tp-mm [factory]
   (facts "BLAS 3 TP mm!"
          (mm! 2.0 (tp factory 3 [1 2 3 4 5 6]) (tp factory 3 [1 2 3 4 5 6])
-              3.0 (tp factory 3 [1 2 3 4 5 6]))=> (throws ExceptionInfo)
+              3.0 (tp factory 3 [1 2 3 4 5 6])) => (throws ExceptionInfo)
 
          (mm! 2.0 (tp factory 3 [1 2 3 4 5 6]) (ge factory 3 2 [1 2 3 4 5 6])
               3.0 (ge factory 3 2 [1 2 3 4 5 6])) => (throws ExceptionInfo)
@@ -1325,12 +1337,14 @@
          (with-release [c (ge factory 2 2 [1 2 3 4])]
            (identical? (mm! 2.0 (tp factory 2 [1 2 3 4]) c) c)) => true
 
-         (mm! 2.0 (ge factory 2 3 (range 6)) (tp factory 3 (range 6))) => (throws ExceptionInfo)
+         (mm! 2.0 (ge factory 2 3 (range 6)) (tp factory 3 (range 6)))
+         => (mm! 2.0 (ge factory 2 3 (range 6)) (tr factory 3 (range 6)))
 
          (mm (tp factory 3 (range 6)) (ge factory 3 2 (range 6)))
          => (ge factory 3 2 [0 3 14 0 15 47])
 
-         (mm (ge factory 2 3 (range 6)) (tp factory 3 (range 6))) => (throws ExceptionInfo)
+         (mm (ge factory 2 3 (range 6)) (tp factory 3 (range 6)))
+         => (mm (ge factory 2 3 (range 6)) (tr factory 3 (range 6)))
 
          (mm 2.0 (tp factory 3 [1 2 3 4 5 6]) (tp factory 3 [1 2 3 4 5 6])
              3.0 (tp factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
@@ -1356,13 +1370,13 @@
            (identical? (mm! 2.0 (sp factory 2 [1 2 3 4]) c 0.0 c) c)) => true
 
          (mm! 2.0 (ge factory 2 3 (range 6)) (sp factory 3 (range 6)) 0.0 (ge factory 2 3))
-         => (throws ExceptionInfo)
+         => (mm! 2.0 (ge factory 2 3 (range 6)) (sy factory 3 (range 6)) 0.0 (ge factory 2 3))
 
          (mm (sy factory 3 (range 6)) (ge factory 3 2 (range 6)))
          => (ge factory 3 2 [5 11 14 14 35 47])
 
          (mm (ge factory 2 3 (range 6)) (sp factory 3 (range 6)))
-         => (throws ExceptionInfo)
+         => (mm (ge factory 2 3 (range 6)) (sy factory 3 (range 6)))
 
          (mm 2.0 (sp factory 3 [1 2 3 4 5 6]) (sp factory 3 [1 2 3 4 5 6])
              3.0 (sp factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
@@ -1379,7 +1393,8 @@
          (with-release [d (gd factory 4 (range 1 100))
                         b (gb factory 4 4 0 0 (range 1 100))]
            (dia d -2) => (vctr factory 0)
-           (dia d) => (dia b))))
+           (dia d) => (dia b)
+           (trans (trans d)) => d)))
 
 (defn test-gd-copy [factory]
   (facts "BLAS 1 copy! GD matrix"
@@ -1421,24 +1436,33 @@
 (defn test-gd-mv [factory]
   (facts "BLAS 2 GD mv!"
          (mv! 2.0 (gd factory 5 (range 1 100))
-              (vctr factory 1 2 3 4 5) 3 (vctr factory [1 2 3 4])) => (throws ExceptionInfo)
+              (vctr factory 1 2 3 4 5) 3 (vctr factory [1 2 3 4]))=> (throws ExceptionInfo)
 
          (with-release [y (vctr factory [1 2 3 4 5])]
            (identical? (mv! 2 (gd factory 5 (range 1 100)) (vctr factory 1 2 3 4 5) 3 y) y))
          => true
+
+         (with-release [y1 (vctr factory [1 2 3 4 5])
+                        y2 (copy y1)
+                        d (gd factory 5 (range 1 100))
+                        g (let-release [res (ge factory 5 5)] (copy! y1 (dia res)) res)]
+           (mv! 2 g (vctr factory 1 2 3 4 5) 3 y1) => (mv! 2 d (vctr factory 1 2 3 4 5) 3 y2)
+           (mv! d y1) => (mv g y2))
 
          (mv! (gd factory 5 (range 1 100)) (vctr factory 1 2 3 4 5) (vctr factory 5))
          => (vctr factory [1 4 9 16 25])))
 
 (defn test-gd-mm [factory]
   (facts "BLAS 3 GD mm!"
-         (mm! 2.0 (gd factory 5 (range 1 100)) (ge factory 5 2 (range 1 13)))
-         => (mm! 2.0 (tb factory 5 0 (range 1 100)) (ge factory 5 2 (range 1 13)))
+         (mm! 2.0 (gd factory 5 (range 1 100)) (ge factory 5 3 (range 1 16)))
+         => (mm! 2.0 (tb factory 5 0 (range 1 100)) (ge factory 5 3 (range 1 16)))
 
-         ;;(with-release [c (ge factory 6 2)];; TODO implement out-of-place mm
-         ;;(identical? (mm! 2.0 (gd factory 6 [1 2 3 4 5 6]) (ge factory 6 2 (range 100)) 3.0 c) c))
-         ;;=> true
-         ))
+         (mm! 2.0 (trans (ge factory 5 3 (range 1 16))) (trans (gd factory 5 (range 1 100))))
+         => (trans (mm! 2.0 (tb factory 5 0 (range 1 100)) (ge factory 5 3 (range 1 16))))
+
+         (with-release [c (ge factory 6 2 (range 1 13))]
+           (mm! 2.0 (gd factory 6 [1 2 3 4 5 6]) (ge factory 6 2 (range 100)) 3.0 c)
+           => (mm! 2.0 (sb factory 6 0 [1 2 3 4 5 6]) (ge factory 6 2 (range 100)) 3.0 c))))
 
 (defn test-gd-entry! [factory]
   (facts "GD matrix entry!."
@@ -1495,7 +1519,8 @@
            (dia d -2) => (vctr factory 0)
            (dia d) => (vctr factory [1 2 3 4])
            (dia d 1) => (vctr factory [5 6 7])
-           (dia d -1) => (vctr factory [8 9 10]))))
+           (dia d -1) => (vctr factory [8 9 10])
+           (trans (trans d)) => (throws ExceptionInfo))))
 
 (defn test-gt-copy [factory gt]
   (facts "BLAS 1 copy! GT matrix"
@@ -1531,6 +1556,44 @@
            (axpy -1 a a) => (gt factory 6)
            (identical? (axpy! 3.0 (gt factory 6 (range 60)) a) a) => true
            (axpy! 2.0 (gt factory 5 (range 1 70)) a) => (throws ExceptionInfo))))
+
+(defn test-gt-mv [factory gt]
+  (facts "BLAS 2 GT mv!"
+         (mv! 2.0 (gt factory 6 (range 1 100))
+              (vctr factory 1 2 3 4 5) 3 (vctr factory [1 2 3 4])) => (throws ExceptionInfo)
+
+         (with-release [y (vctr factory [1 2 3 4 5])]
+           (identical? (mv! 1.0 (gt factory 5 (range 1 100)) (vctr factory 1 2 3 4 5) 3 y) y))
+         => true
+
+         (with-release [y1 (vctr factory [1 2 3 4 5])
+                        y2 (copy y1)
+                        t (gt factory 5 (range 1 100))
+                        g (let-release [res (ge factory 5 5)]
+                            (copy! (dia t) (dia res))
+                            (copy! (dia t 1) (dia res 1))
+                            (copy! (dia t -1) (dia res -1))
+                            res)]
+           (mv! 1.0 t (vctr factory 1 2 3 4 5) 1.0 y2) => (mv! 1.0 g (vctr factory 1 2 3 4 5) 1.0 y1)
+           (mv! t y1) => (throws ExceptionInfo))))
+
+(defn test-gt-mm [factory gt]
+  (facts "BLAS 3 GT mm!"
+         (with-release [t (gt factory 5 (range 1 100))
+                        g (let-release [res (ge factory 5 5)]
+                            (copy! (dia t) (dia res))
+                            (copy! (dia t 1) (dia res 1))
+                            (copy! (dia t -1) (dia res -1))
+                            res)]
+           (mm! 2.0 t (ge factory 5 3 (range 1 16)))
+           => (throws ExceptionInfo)
+
+           (mm! 2.0 (trans t) (trans (gt factory 5 (range 1 100))))
+           => (throws ExceptionInfo)
+
+           (with-release [c (ge factory 5 2 (range 1 13))]
+             (mm! 1.0 t (ge factory 5 2 (range 100)) 1.0 c)
+             => (mm! 1.0 t (ge factory 5 2 (range 100)) 1.0 c)))))
 
 (defn test-gt-entry! [factory gt]
   (facts "GT matrix entry!."
@@ -1576,6 +1639,44 @@
   (facts "BLAS 1 GT sum."
          (sum (gt factory 5 (range 1 100))) => 91.0))
 
+(defn test-st-mv [factory]
+  (facts "BLAS 2 ST mv!"
+         (mv! 2.0 (st factory 5 (range 1 100))
+              (vctr factory 1 2 3 4 5) 3 (vctr factory [1 2 3 4]))=> (throws ExceptionInfo)
+
+         (with-release [y (vctr factory [1 2 3 4 5])]
+           (identical? (mv! 1.0 (st factory 5 (range 1 100)) (vctr factory 1 2 3 4 5) 1.0 y) y))
+         => true
+
+         (with-release [y1 (vctr factory [1 2 3 4 5])
+                        y2 (copy y1)
+                        t (st factory 5 (range 1 100))
+                        g (let-release [res (ge factory 5 5)]
+                            (copy! (dia t) (dia res))
+                            (copy! (dia t 1) (dia res 1))
+                            (copy! (dia t 1) (dia res -1))
+                            res)]
+           (mv! 1.0 t (vctr factory 1 2 3 4 5) 1.0 y2) => (mv! 1.0 g (vctr factory 1 2 3 4 5) 1.0 y1)
+           (mv! t y1) => (throws ExceptionInfo))))
+
+(defn test-st-mm [factory]
+  (facts "BLAS 3 ST mm!"
+         (with-release [t (st factory 5 (range 1 100))
+                        g (let-release [res (ge factory 5 5)]
+                            (copy! (dia t) (dia res))
+                            (copy! (dia t 1) (dia res 1))
+                            (copy! (dia t 1) (dia res -1))
+                            res)]
+           (mm! 2.0 t (ge factory 5 3 (range 1 16)))
+           => (throws ExceptionInfo)
+
+           (mm! 2.0 (trans t) (trans (st factory 5 (range 1 100))))
+           => (throws ExceptionInfo)
+
+           (with-release [c (ge factory 5 2 (range 1 13))]
+             (mm! 1.0 t (ge factory 5 2 (range 100)) 1.0 c)
+             => (mm! 1.0 t (ge factory 5 2 (range 100)) 1.0 c)))))
+
 (defn test-st-constructor [factory]
   (facts "Create a ST matrix."
          (with-release [a (st factory 4 (range 1 100))]
@@ -1587,7 +1688,8 @@
            (dia d -2) => (vctr factory 0)
            (dia d) => (vctr factory [1 2 3 4])
            (dia d 1) => (vctr factory [5 6 7])
-           (dia d -1) => (vctr factory 0))))
+           (dia d -1) => (vctr factory 0)
+           (trans (trans d)) => d)))
 
 (defn test-st-entry! [factory]
   (facts "ST matrix entry!."
@@ -2739,7 +2841,7 @@
   (test-uplo-scal factory tb)
   (test-uplo-axpy factory tb)
   (test-tb-mv factory)
-  #_(test-tb-mm factory))
+  (test-tb-mm factory))
 
 (defn test-blas-tb-host [factory]
   (test-tb-entry factory)
@@ -2819,7 +2921,9 @@
   (test-gt-copy factory gt)
   (test-gt-swap factory gt)
   (test-gt-scal factory gt)
-  (test-gt-axpy factory gt))
+  (test-gt-axpy factory gt)
+  (test-gt-mv factory gt)
+  (test-gt-mm factory gt))
 
 (defn test-blas-gt-host [factory]
   (test-gt-entry! factory gt)
@@ -2836,7 +2940,9 @@
   (test-gt-copy factory dt)
   (test-gt-swap factory dt)
   (test-gt-scal factory dt)
-  (test-gt-axpy factory dt))
+  (test-gt-axpy factory dt)
+  (test-gt-mv factory dt)
+  (test-gt-mm factory dt))
 
 (defn test-blas-dt-host [factory]
   (test-gt-entry! factory dt)
@@ -2853,7 +2959,9 @@
   (test-gt-copy factory st)
   (test-gt-swap factory st)
   (test-gt-scal factory st)
-  (test-gt-axpy factory st))
+  (test-gt-axpy factory st)
+  (test-st-mv factory)
+  (test-st-mm factory))
 
 (defn test-blas-st-host [factory]
   (test-st-entry! factory)

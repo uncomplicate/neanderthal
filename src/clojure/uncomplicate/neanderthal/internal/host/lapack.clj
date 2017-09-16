@@ -10,9 +10,9 @@
   (:require [uncomplicate.commons.core :refer [with-release let-release]]
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride]]
-             [math :refer [pow sqrt abs]]]
+             [math :refer [pow sqrt abs f=]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [factory index-factory engine data-accessor info raw
+             [api :refer [factory index-factory engine data-accessor info raw mm scal flip
                           create-vector create-ge create-gb create-sb create-sy fits-navigation?
                           nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage]]
              [common :refer [check-stride real-accessor dragan-says-ex
@@ -22,7 +22,8 @@
              :refer [band-storage-reduce band-storage-map full-storage-map]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
            [uncomplicate.neanderthal.internal.api Region LayoutNavigator Matrix]
-           uncomplicate.neanderthal.internal.navigation.BandStorage))
+           uncomplicate.neanderthal.internal.navigation.BandStorage
+           [uncomplicate.neanderthal.internal.host.buffer_block RealDiagonalMatrix]))
 
 (defmacro with-lapack-check [expr]
   ` (let [err# ~expr]
@@ -280,6 +281,115 @@
      (with-lapack-check
        (~method (int (if ~increasing \I \D)) (.surface (region ~a)) (.buffer ~a) (.offset ~a)))
      ~a))
+
+(defmacro tridiagonal-lan [method norm a]
+  `(if (< 0 (.dim ~a))
+     (~method ~norm (.mrows ~a) (.buffer ~a) (.offset ~a))
+     0.0))
+
+(defmacro tridiagonal-mv
+  ([method alpha a x beta y]
+   `(if (or (= 0.0 ~alpha) (= 1.0 ~alpha) (= -1.0 ~alpha))
+      (let [beta# (if (f= 0.0 ~beta) 0.0 1.0)]
+        (when-not (f= 1.0 ~beta)
+          (scal (engine ~y) ~beta ~y))
+        (~method (int \N) (.ncols ~a) 1 ~alpha (.buffer ~a) (.offset ~a)
+         (.buffer ~x) (.offset ~x) (.stride ~x) beta# (.buffer ~y) (.offset ~y) (.stride ~y))
+        ~y)
+      (dragan-says-ex "GT mv! supports only 0.0, 1.0, or -1.0 for alpha." {:alpha (info ~alpha)})))
+  ([a]
+   `(dragan-says-ex "In-place mv! is not supported for GT matrices." {:a (info ~a)})))
+
+(defmacro tridiagonal-mm
+  ([method alpha a b beta c left]
+   `(let [nav-b# (navigator ~b)]
+      (if (or (= 0.0 ~alpha) (= 1.0 ~alpha) (= -1.0 ~alpha))
+        (if (= nav-b# (navigator ~c))
+          (let [beta# (if (f= 0.0 ~beta) 0.0 1.0)]
+            (when-not (f= 1.0 ~beta)
+              (scal (engine ~c) ~beta ~c))
+            (if ~left
+              (~method (int \N) (.mrows ~a) (.ncols ~b) ~alpha (.buffer ~a) (.offset ~a)
+               (.buffer ~b) (.offset ~b) (.stride ~b)
+               beta# (.buffer ~c) (.offset ~c) (.stride ~c))
+              (let [b-t# (.transpose ~b)
+                    c-t# (.transpose ~c)]
+                (~method (int \T) (.mrows ~a) (.ncols b-t#) ~alpha (.buffer ~a) (.offset ~a)
+                 (.buffer ~b) (.offset ~b) (stride b-t#)
+                 beta# (.buffer ~c) (.offset ~c) (stride c-t#)))))
+          (dragan-says-ex "GT mm! supports only b and c with the same layout." {:b (info ~b) :c (info ~c)}))
+        (dragan-says-ex "GT mm! supports only 0.0, 1.0, or -1.0 for alpha." {:alpha (info ~alpha)}))
+      ~c))
+  ([a]
+   `(dragan-says-ex "In-place mm! is not supported for GT matrices." {:a (info ~a)})))
+
+(defmacro gd-mm
+  ([gd-method tb-method alpha a b left]
+   `(let [nav-b# (navigator ~b)
+          reg-b# (region ~b)
+          stor-b# (full-storage ~b)
+          buff-a# (.buffer ~a)
+          ofst-a# (.offset ~a)
+          buff-b# (.buffer ~b)
+          ofst-b# (.offset ~b)
+          ld-b# (.stride ~b)
+          m-a# (.mrows ~a)
+          m-b# (.mrows ~a)
+          n-b# (.ncols ~b)]
+      (if (instance? RealDiagonalMatrix ~b)
+        (do
+          (if (= 0 (+ (.kl reg-b#) (.ku reg-b#)))
+            (~gd-method m-a# 1 buff-a# ofst-a# buff-b# ofst-b# (inc ld-b#))
+            (dragan-says-ex "In-place mm! is not supported for GD with GT or PT matrices." {:b (info ~b)}))
+          (when-not (f= 1.0 ~alpha)
+            (scal (engine ~b) ~alpha ~b)))
+        (if ~left
+          (do
+            (if (.isColumnMajor nav-b#)
+              (~gd-method m-a# n-b# buff-a# ofst-a# buff-b# ofst-b# ld-b#)
+              (dotimes [j# n-b#]
+                (~tb-method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER CBLAS/TRANSPOSE_NO_TRANS
+                 CBLAS/DIAG_NON_UNIT m-a# 0 buff-a# ofst-a# 1
+                 buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) ld-b#)))
+            (when-not (f= 1.0 ~alpha)
+              (scal (engine ~b) ~alpha ~b)))
+          (mm (engine ~a) ~alpha (.transpose ~a) (.transpose ~b) true)))
+      ~b))
+  ([method alpha a b beta c left]
+   `(do
+      (if ~left
+        (let [nav-b# (navigator ~b)
+              nav-c# (navigator ~c)
+              stor-b# (storage ~b)
+              stor-c# (storage ~c)
+              n-a# (.ncols ~a)
+              buff-a# (.buffer ~a)
+              ofst-a# (.offset ~a)
+              buff-b# (.buffer ~b)
+              ofst-b# (.offset ~b)
+              buff-c# (.buffer ~c)
+              ofst-c# (.offset ~c)
+              stride-col-b# (if (.isColumnMajor nav-b#) 1 (.stride ~b))
+              stride-col-c# (if (.isColumnMajor nav-c#) 1 (.stride ~c))]
+          (dotimes [j# (.ncols ~b)]
+            (~method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER n-a# 0
+             ~alpha buff-a# ofst-a# 1 buff-b# (+ ofst-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#
+             ~beta buff-c# (+ ofst-c# (.index nav-c# stor-c# 0 j#)) stride-col-c#))
+          ~c)
+        (mm (engine ~a) ~alpha (.transpose ~a) (.transpose ~b) ~beta (.transpose ~c) true))
+      ~c)))
+
+(defmacro gd-mv
+  ([method a x]
+   `(do
+      (~method (.mrows ~a) 1 (.buffer ~a) (.offset ~a) (.buffer ~x) (.offset ~x) (.stride ~x))
+      ~x))
+  ([method alpha a x beta y]
+   `(do
+      (~method CBLAS/ORDER_COLUMN_MAJOR CBLAS/UPLO_LOWER (.ncols ~a) 0
+       ~alpha (.buffer ~a) (.offset ~a) 1
+       (.buffer ~x) (.offset ~x) (.stride ~x) ~beta (.buffer ~y) (.offset ~y) (.stride ~y))
+      ~y)))
 
 ;; =========== Drivers and Computational LAPACK Routines ===========================
 

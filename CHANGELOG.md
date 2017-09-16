@@ -13,6 +13,7 @@
 
 * Updated JOCLBlast dependency to 1.0.1.
 * Orthogonal factorizations greatly simplified
+* Symmetric and triangular mm support more layout and a/b position variations.
 
 ### Breaking changes
 
@@ -21,6 +22,7 @@
 ### Bugfixes
 
 * Fixed TR and SY mm and mv when k=0.
+* Fixed transpose implementations in various non-GE matrices.
 
 ## 0.15.0
 
