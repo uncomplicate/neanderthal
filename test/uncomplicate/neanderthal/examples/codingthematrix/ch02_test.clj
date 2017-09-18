@@ -115,4 +115,4 @@
    (dot (xpy u v) w) => (+ (dot u w) (dot v w))))
 
 (facts "2.10.4 Printing vectors"
-       (pr-str (dv 2 3 4)) => "#RealBlockVector[double, n:3, offset: 0, stride:1]\n[    2.0     3.0     4.0 ]\n")
+       (pr-str (dv 2 3 4)) => "#RealBlockVector[double, n:3, offset: 0, stride:1]\n[   2.00    3.00    4.00 ]\n")

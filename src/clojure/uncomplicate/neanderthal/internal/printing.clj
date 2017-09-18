@@ -19,7 +19,7 @@
 (def ^:private compile-format #'clojure.pprint/compile-format)
 
 (def format-g (compile-format "~6,2,,1G"))
-(def format-f (compile-format "~7F"))
+(def format-f (compile-format "~7,2F"))
 (def format-a (compile-format "~4@A~8T"))
 (def format-a7 (compile-format "~4@A~7T"))
 (def format-a8 (compile-format "~4@A~8T"))

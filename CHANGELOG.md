@@ -1,5 +1,11 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.16.1
+
+### Bugfixes
+
+* Fixed call with wrong number of arguments for the transpose of OrthogonalFactorization.
+
 ## 0.16.0
 
 ### New features
@@ -14,7 +20,7 @@
 * Updated JOCLBlast dependency to 1.0.1.
 * Orthogonal factorizations greatly simplified
 * Symmetric and triangular mm support more layout and a/b position variations.
-* Upgraded Intel MKL to 2018 (it should work with earlier versions, but YMMV).
+* Upgraded Intel MKL to 2018 (it should work with earlier versions, but YMMV).o
 
 ### Breaking changes
 
