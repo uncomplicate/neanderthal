@@ -89,7 +89,7 @@ Neanderthal's data structures are written in Clojure, so many functions work eve
 
 * While old versions had different installation guides for each OS, from version 0.9.0, installation on all OSes is more or less the same.
 
-Neanderthal **uses the native Intel MKL library and expects that you make it available on your system, typically as shared xyz.so, xyz.dll, or xyz.dylib files**. Intel MKL is highly optimized for various architectures; its installation comes with many optimized binaries for all supported architectures, that are then selected during runtime according to the hardware at hand. Neanderthal has been built and tested with **Intel MKL 2017**; please make sure that you use a compatible MKL version.
+Neanderthal **uses the native Intel MKL library and expects that you make it available on your system, typically as shared xyz.so, xyz.dll, or xyz.dylib files**. Intel MKL is highly optimized for various architectures; its installation comes with many optimized binaries for all supported architectures, that are then selected during runtime according to the hardware at hand. Neanderthal has been built and tested with **Intel MKL 2018**; please make sure that you use a compatible MKL version.
 
 **You do not need to compile or tune anything yourself.**
 
