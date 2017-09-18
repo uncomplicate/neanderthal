@@ -14,12 +14,13 @@
 
   ### Cheat Sheet
 
-  - Linear equations and LU factorization: [[trf!]], [[trs!]], [[sv!]].
-  - Orthogonal factorizations: [[qrf!]], [[qrfp!]], [[gqr!]], [[mqr!]], [[rqf!]], [[grq!]], [[mrq!]],
-   [[qlf!]], [[gql!]], [[mql!]], [[lqf!]], [[glq!]], [[mlq!]].
-  - Linear solver: [[ls!]].
+  - Linear equations and LU factorization: [[trf!]], [[trf]], [[ptrf!]], [[tri!]], [[tri]], [[trs!]],
+  [[trs]], [[sv!]], [[sv]], [[psv!]], [[psv]], [[con]], [[det]],.
+  - Orthogonal factorizations: [[qrf!]], [[qrf]], [[qrfp!]], [[qrfp]], [[qpf!]], [[qpf]], [[qrfp!]],
+  [[qrfp]], [[rqf!]], [[rqf]], [[qlf!]], [[qlf]], [[lqf!]], [[qlf!]], [[qlf]], [[org!]], [[org]],
+  - Linear least squares: [[ls!]], [[ls]], [[lse!]], [[lse]], [[gls!]], [[gls]].
   - Eigen decomposition: [[ev!]].
-  - Singular value decomposition (SVD): [[svd!]].
+  - Singular value decomposition (SVD): [[svd!]], [[svd]].
 
   ### Also see:
 
@@ -418,8 +419,8 @@
   (api/org or))
 
 (defn ls!
-  "Solves an overdetermined or underdetermined linear system `AX = B` with full rank matrix using
-  QR or LQ factorization.
+  "Destructively solves an overdetermined or underdetermined linear system `AX = B` with full rank
+  matrix using QR or LQ factorization.
 
   Overwrites `a` with the factorization data:
   - QR if `m >= n`;
@@ -429,9 +430,8 @@
   - the least squares solution vectors if `m >= n`
   - minimum norm solution vectors if `m < n`.
 
-  If `a` and `b` do not have the same order (column or row oriented), throws ExceptionInfo.
-  If the `i`-th element of the triangular factor of a is zero, so that `a` does not have full rank,
-  the least squares cannot be computed, and the function throws ExceptionInfo.
+  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
+  If the least squares cannot be computed the function throws ExceptionInfo.
   If some value in the native call is illegal, throws ExceptionInfo.
 
   See related info about [lapacke_?gels](https://software.intel.com/en-us/node/521112).
@@ -446,10 +446,10 @@
                                 (not (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)))
                                 "dimensions of a and b do not fit"
                                 (not (api/compatible? a b)) "a and b do are not compatible"
-                                (not (api/fits-navigation? a b)) "a and b do not have the same orientation")}))))
+                                (not (api/fits-navigation? a b)) "a and b do not have the same layout")}))))
 
 (defn ls
-  "Solves an overdetermined or underdetermined linear system `AX = B` with full rank matrix using
+  "Solves an overdetermined or underdetermined linear system `ax=b` with full rank matrix using
   QR or LQ factorization.
 
   Uses a temporary copy of`a` for the factorization data:
@@ -460,9 +460,8 @@
   - the least squares solution vectors if `m >= n`
   - minimum norm solution vectors if `m < n`.
 
-  If `a` and `b` do not have the same order (column or row oriented), throws ExceptionInfo.
-  If the `i`-th element of the triangular factor of a is zero, so that `a` does not have full rank,
-  the least squares cannot be computed, and the function throws ExceptionInfo.
+  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
+  If the least squares cannot be computed the function throws ExceptionInfo.
   If some value in the native call is illegal, throws ExceptionInfo.
 
   See [[ls!]].
@@ -474,7 +473,20 @@
       (ls! a-copy b-copy))))
 
 (defn lse!
-  "TODO"
+  "Destructively solves the generalized linear least squares problem with equality constraints using RQ factorization.
+
+  Minimizes the 2-norm `||ax-c||` subject to constraints `bx=d`.
+
+  Overwrites `a` with the T ([[rqf]]), `x` with the solution, b with R ([[rqf]]), d with garbage,
+  c with the residual sum of squares.
+
+  If the dimensions of arguments do not fit, throws ExceptionInfo.
+  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
+  If the least squares cannot be computed the function throws ExceptionInfo.
+  If some value in the native call is illegal, throws ExceptionInfo.
+
+  See related info at [lapacke_?gglse](https://software.intel.com/en-us/mkl-developer-reference-c-gglse).
+  "
   [^Matrix a ^Matrix b ^Vector c ^Vector d ^Vector x]
   (let [m (.mrows a)
         n (.ncols a)
@@ -494,10 +506,12 @@
                                   (not (api/compatible? a c)) "a and c are not compatible"
                                   (not (api/compatible? a d)) "a and d are not compatible"
                                   (not (api/compatible? a x)) "a and x are not compatible"
-                                  (not (api/fits-navigation? a b)) "a and b do not have the same orientation")})))))
+                                  (not (api/fits-navigation? a b)) "a and b do not have the same layout")})))))
 
 (defn lse
-  "TODO"
+  "Solves the generalized linear least squares problem with equality constraints using RQ factorization.
+
+  See [[lse!]]"
   [^Matrix a b c d]
   (with-release [a-copy (copy a)
                  b-copy (copy b)
@@ -507,7 +521,20 @@
       (lse! a-copy b-copy c-copy d-copy x))))
 
 (defn gls!
-  "TODO"
+  "Destructively solves the generalized linear least squares problem using a generalized QR factorization.
+
+   Minimizes the 2-norm `||y||` subject to constraints `d=ax+by`.
+
+  Overwrites `a` with the R ([[rqf]]), `x` with the solution, b with T ([[rqf]]), d with garbage,
+  x ad y with solution to the GLS problem.
+
+  If the dimensions of arguments do not fit, throws ExceptionInfo.
+  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
+  If the least squares cannot be computed the function throws ExceptionInfo.
+  If some value in the native call is illegal, throws ExceptionInfo.
+
+  See related info at [lapacke_?gglse](https://software.intel.com/en-us/mkl-developer-reference-c-ggglm).
+  "
   [^Matrix a ^Matrix b ^Vector d ^Vector x ^Vector y]
   (let [m (.mrows a)
         n (.ncols a)
@@ -530,10 +557,15 @@
                                   (not (api/compatible? a d)) "a and d are not compatible"
                                   (not (api/compatible? a x)) "a and x are not compatible"
                                   (not (api/compatible? a y)) "a and y are not compatible"
-                                  (not (api/fits-navigation? a b)) "a and b do not have the same orientation")})))))
+                                  (not (api/fits-navigation? a b)) "a and b do not have the same layout")})))))
 
 (defn gls
-  "TODO"
+  "Solves the generalized linear least squares problem using a generalized QR factorization.
+
+   Minimizes the 2-norm `||y||` subject to constraints `d=ax+by`.
+
+  See [[gls!]].
+  "
   [^Matrix a ^Matrix b d]
   (with-release [a-copy (copy a)
                  b-copy (copy b)
@@ -577,8 +609,8 @@
                                  "a and vl dimensions do not fit"
                                  (not (or (nil? vr) (= (.mrows a) (.mrows vr) (.ncols vr))))
                                  "a and vr dimensions do not fit"
-                                 (and vl (not (api/fits-navigation? a vl))) "a and vl do not have the same orientation"
-                                 (and vr (not (api/fits-navigation? a vr))) "a and vr do not have the same orientation")}))))
+                                 (and vl (not (api/fits-navigation? a vl))) "a and vl do not have the same layout"
+                                 (and vr (not (api/fits-navigation? a vr))) "a and vr do not have the same layout")}))))
   ([a w]
    (ev! a w nil nil))
   ([^Matrix a vl vr]
@@ -627,8 +659,8 @@
                                    (not (or (nil? u) (= m (.mrows u) (.ncols u)))) "u is not a mxm matrix"
                                    (not (or (nil? u) (= min-mn (.ncols u)))) "ncols of u is not equals (min m n)"
                                    (not (or (nil? u) (= n (.mrows u)))) "mrows of vt is not equals n"
-                                   (not (or (nil? u) (api/fits-navigation? a u))) "a and u do not have the same orientation"
-                                   (not (or (nil? vt) (api/fits-navigation? a vt))) "a and vt do not have the same orientation"
+                                   (not (or (nil? u) (api/fits-navigation? a u))) "a and u do not have the same layout"
+                                   (not (or (nil? vt) (api/fits-navigation? a vt))) "a and vt do not have the same layout"
                                    (not (or (nil? vt) (= n (.mrows vt) (.ncols vt)))) "vt is not a nxn matrix"
                                    (not (or (nil? vt) (= min-mn (.mrows vt)))) "mrows of vt is not equals (min m n)"
                                    (not (or (nil? vt) (= n (.ncols vt)))) "ncols of vt is not equals n")})))))

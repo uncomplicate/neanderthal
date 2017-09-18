@@ -49,7 +49,8 @@
 
   [Naming conventions for BLAS routines](https://software.intel.com/en-us/node/468382).
 
-  * Create: [[vctr]], [[view-vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[raw]], [[zero]].
+  * Create: [[vctr]], [[view-vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[sy]], [[view-sy]],
+  [[gb]], [[tb]], [[sb]], [[tp]], [[sp]], [[gd]], [[gt]], [[dt]], [[st]], [[raw]], [[zero]].
 
   * Move data around: [[transfer!]], [[transfer]], [[native]], [[copy!]], [[copy]], [[swp!]].
 
@@ -57,16 +58,20 @@
 
   * Vector: [[vctr?]], [[dim]], [[subvector]], [[entry]], [[entry!]], [[alter!]].
 
-  * Matrix: [[matrix?]], [[ge?]], [[tr?]], [[mrows]], [[ncols]], [[row]], [[col]], [[dia]], [[cols]],
-  [[rows]], [[submatrix]], [[trans]], [[trans!]], [[entry]], [[entry!]], [[alter!]].
+  * Matrix: [[matrix?]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[sy]], [[view-sy]],
+  [[gb]], [[tb]], [[sb]], [[tp]], [[sp]], [[gd]], [[gt]], [[dt]], [[st]], [[mrows]], [[ncols]],
+  [[row]], [[col]], [[dia]], [[cols]], [[rows]], [[submatrix]], [[trans]], [[trans!]], [[entry]],
+  [[entry!]], [[alter!]], [[dim]], [[dia]], [[dias]], [[subband]].
 
   * Change: [[trans!]], [[entry!]], [[alter!]].
+
+  * Help: [[info]]
 
   * [Monadic functions](http://fluokitten.uncomplicate.org): `fmap!`, `fmap`, `fold`, `foldmap`,
   `pure`, `op`, `id`, from the `uncomplicate.fluokitten.core` namespace.
 
-  * [Compute level 1](https://software.intel.com/en-us/node/468390): [[dot]], [[nrm2]], [[asum]],
-  [[iamax]], [[iamin]], [[amax]], [[iamin]], [[imax]], [[imin]], [[swp!]], [[copy!]], [[copy!]], [[scal!]],
+  * [Compute level 1](https://software.intel.com/en-us/node/468390): [[dot]], [[nrm1]], [[nrm2]], [[nrmi]], [[asum]],
+  [[iamax]], [[iamin]], [[amax]], [[iamin]], [[imax]], [[imin]], [[swp!]], [[copy!]], [[copy]], [[scal!]],
   [[scal]], [[rot!]], [[rotg!]], [[rotm!]], [[rotmg!]], [[axpy!]], [[axpy]], [[ax]], [[xpy]],
   [[axpby!]], [[sum]].
 
@@ -86,7 +91,7 @@
             MatrixImplementation Region]))
 
 (defn info
-  "Displays details of any data structure internals."
+  "Displays the details of any data structure internals."
   [x]
   (api/info x))
 
@@ -515,7 +520,10 @@
      (sp factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 (defn gd
-  "TODO"
+  "Creates a diagonal matrix (GD) in the context of `factory`, with `n` rows and columns.
+
+  If the provided side is negative, throws ExceptionInfo.
+  "
   ([factory ^long n source options]
    (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :gd (not (:raw options)))]
@@ -531,7 +539,10 @@
      (gd factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 (defn gt
-  "TODO"
+  "Creates a tridiagonal matrix (GT) in the context of `factory`, with `n` rows and columns.
+
+  If the provided side is negative, throws ExceptionInfo.
+  "
   ([factory ^long n source options]
    (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :gt (not (:raw options)))]
@@ -547,7 +558,11 @@
      (gt factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 (defn dt
-  "TODO"
+  "Creates a diagonally dominant tridiagonal matrix (DT) in the context of `factory`,
+  with `n` rows and columns.
+
+  If the provided side is negative, throws ExceptionInfo.
+  "
   ([factory ^long n source options]
    (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :dt (not (:raw options)))]
@@ -563,7 +578,11 @@
      (dt factory (min (.mrows ^Matrix arg) (.ncols ^Matrix arg)) arg nil))))
 
 (defn st
-  "TODO"
+  "Creates a symmetric tridiagonal matrix (ST) in the context of `factory`,
+  with `n` rows and columns.
+
+  If the provided side is negative, throws ExceptionInfo.
+  "
   ([factory ^long n source options]
    (if (< -1 n)
      (let-release [res (api/create-diagonal factory n :st (not (:raw options)))]
