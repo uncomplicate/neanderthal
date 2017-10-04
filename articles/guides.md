@@ -40,6 +40,7 @@ book.
 * [Clojure Numerics, Part 1 - Use Matrices Efficiently](http://dragan.rocks/articles/17/Clojure-Numerics-1-Use-Matrices-Efficiently)
 * [Clojure Numerics, Part 2 - General Linear Systems and LU Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-2-General-Linear-Systems-and-LU-Factorization)
 * [Clojure Numerics, Part 3 - Special Linear Systems and Cholesky Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-3-Special-Linear-Systems-and-Cholesky-Factorization)
+* [Clojure Numerics, Part 4 - Singular Value Decomposition (SVD)](http://dragan.rocks/articles/17/Clojure-Numerics-4-Singular-Value-Decomposition-SVD)
 
 ## Internal details and edge cases
 
