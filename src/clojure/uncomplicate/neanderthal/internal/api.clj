@@ -86,7 +86,8 @@
   (ls [this a b])
   (lse [this a b c d x])
   (gls [this a b d x y])
-  (ev [this a w vl vr]))
+  (ev [this a w vl vr])
+  (es [this a w vs]))
 
 (defprotocol Triangularizable
   (create-trf [a pure])

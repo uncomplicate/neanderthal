@@ -996,23 +996,39 @@
 
 ;; ------------- Non-Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
 
+(defmacro with-eigen-check [res expr]
+  `(let [info# ~expr]
+     (cond
+       (= 0 info#) ~res
+       (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
+                                   {:arg-index (- info#)}))
+       :else (throw (ex-info "The QR algorithm failed to compute all the eigenvalues."
+                             {:first-converged (inc info#)})))))
+
 (defmacro ge-ev [method a w vl vr]
   `(if (.isColumnMajor (navigator ~w))
      (let [wr# (.col ~w 0)
-           wi# (.col ~w 1)
-           info# (~method (.layout (navigator  ~a))
-                  (int (if (< 0 (.mrows ~vl)) \V \N)) (int (if (< 0 (.mrows ~vr)) \V \N))
-                  (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
-                  (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
-                  (.buffer ~vl) (.offset ~vl) (.stride ~vl) (.buffer ~vr) (.offset ~vr) (.stride ~vr))]
-       (cond
-         (= 0 info#) ~w
-         (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
-                                     {:arg-index (- info#)}))
-         :else (throw (ex-info "The QR algorithm failed to compute all the eigenvalues."
-                               {:first-converged (inc info#)}))))
-     (throw (ex-info "You cannot use w that is not column-oriented and has less than 2 columns."
-                     {:column-major? (.isColumnMajor (navigator  ~w)) :ncols (.ncols ~w)}))))
+           wi# (.col ~w 1)]
+       (with-eigen-check ~w
+         (~method (.layout (navigator  ~a))
+          (int (if (< 0 (.dim ~vl)) \V \N)) (int (if (< 0 (.dim ~vr)) \V \N))
+          (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
+          (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
+          (.buffer ~vl) (.offset ~vl) (.stride ~vl) (.buffer ~vr) (.offset ~vr) (.stride ~vr))))
+     (throw (ex-info "You cannot use w that is not column-oriented"
+                     {:column-major? (.isColumnMajor (navigator  ~w))}))))
+
+(defmacro ge-es [method a w vs]
+  `(if (.isColumnMajor (navigator ~w))
+     (let [wr# (.col ~w 0)
+           wi# (.col ~w 1)]
+       (with-eigen-check ~w
+         (~method (.layout (navigator  ~a)) (int (if (< 0 (.dim ~vs)) \V \N))
+          (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
+          (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
+          (.buffer ~vs) (.offset ~vs) (.stride ~vs))))
+     (throw (ex-info "You cannot use w that is not column-oriented"
+                     {:column-major? (.isColumnMajor (navigator  ~w))}))))
 
 ;; ------------- Singular Value Decomposition Routines LAPACK -------------------------------
 

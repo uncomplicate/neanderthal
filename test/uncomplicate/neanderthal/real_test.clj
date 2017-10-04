@@ -2617,6 +2617,37 @@
      (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl))) => (roughly 0.01378)
      (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr))) => (roughly 0.010403))))
 
+(defn test-ge-es [factory]
+  (facts
+   "LAPACK GE es!"
+
+   (with-release [a0 (ge factory 4 4 [ 0.35   0.45  -0.14  -0.17
+                                      0.09   0.07  -0.54   0.35
+                                      -0.44  -0.33  -0.03   0.17
+                                      0.25  -0.32  -0.13   0.11]
+                         {:layout :row})
+                  a1 (copy a0)
+                  a2 (copy a0)
+                  vs (ge factory 4 4 {:layout :row})
+                  eigenvalues (ge factory 4 2 [2.86  10.76
+                                               2.86 -10.76
+                                               -0.69   4.70
+                                               -0.69  -4.70]
+                                  {:layout :row})
+                  t-res (ge factory 4 4 [0.7995 -0.0059 -0.0751 -0.0927
+                                         0.0000 -0.1007  0.3937  0.3569
+                                         0.0000  0.0000 -0.0994 -0.5128
+                                         0.0000  0.0000  0.3132 -0.0994]
+                            {:layout :row})
+                  vs-res (ge factory 4 4 [-0.6551 -0.1210 -0.5032  0.5504
+                                          -0.5236 -0.3286  0.7857  0.0229
+                                           0.5362 -0.5974  0.0904  0.5894
+                                          -0.0956 -0.7215 -0.3482 -0.5908]
+                             {:layout :row})]
+
+     (es! a0 vs) => (ev! a1)
+     (nrm2 (axpy! -1 (mm vs a0 (trans vs)) a2)) => (roughly 0.0 0.000001))))
+
 (defn test-ge-svd [factory]
   (facts
    "LAPACK GE svd!"
@@ -2770,6 +2801,7 @@
   (test-ge-lse factory)
   (test-ge-gls factory)
   (test-ge-ev factory)
+  (test-ge-es factory)
   (test-ge-svd factory))
 
 (defn test-blas-sy [factory]

@@ -327,7 +327,7 @@
     (vctr-lasrt LAPACK/slasrt ^RealBlockVector x increasing)))
 
 ;; ================= General Matrix Engines ====================================
-(let [zero-storage (full-storage true 0 0 1)]
+(let [zero-storage (full-storage true 0 0 Integer/MAX_VALUE)]
   (def ^:private zero-matrix ^RealGEMatrix
     (->RealGEMatrix nil zero-storage nil nil nil nil true (ByteBuffer/allocateDirect 0) 0 0 0)))
 
@@ -433,6 +433,9 @@
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
       (ge-ev LAPACK/dgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
+  (es [_ a w vs]
+    (let [vs (or vs zero-matrix)]
+      (ge-es LAPACK/dgees ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vs)))
   (svd [_ a sigma u vt superb]
     (let [u (or u zero-matrix)
           vt (or vt zero-matrix)]
@@ -544,6 +547,9 @@
     (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
       (ge-ev LAPACK/sgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
+  (es [_ a w vs]
+    (let [vs (or vs zero-matrix)]
+      (ge-es LAPACK/sgees ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vs)))
   (svd [_ a sigma u vt superb]
     (let [u (or u zero-matrix)
           vt (or vt zero-matrix)]

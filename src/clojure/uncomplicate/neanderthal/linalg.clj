@@ -585,7 +585,7 @@
 
   If the QR algorithm failed to compute all the eigenvalues, throws ExceptionInfo, with the information
   on the index of the first eigenvalue that converged.
-  If `w` is not column-oriented, or has less than 2 columns, throws ExceptionInfo.
+  If `w` is not column-oriented, or does not have 2 columns, throws ExceptionInfo.
   If `vl` or `vr` dimensions do not fit with `a`'s dimensions, throws ExceptionInfo.
   If some value in the native call is illegal, throws ExceptionInfo.
 
@@ -593,7 +593,7 @@
   "
   ([^Matrix a ^Matrix w ^Matrix vl ^Matrix vr]
    (if (and (= (.mrows a) (.ncols a))
-            (= (.mrows a) (.mrows w)) (< 1 (.ncols w))
+            (= (.mrows a) (.mrows w)) (= 2 (.ncols w))
             (or (nil? vl) (and (= (.mrows a) (.mrows vl) (.ncols vl))
                                (api/compatible? a vl) (api/fits-navigation? a vl)))
             (or (nil? vr) (and (= (.mrows a) (.mrows vr) (.ncols vr))
@@ -604,7 +604,7 @@
                       (cond-into []
                                  (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
                                  (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
-                                 (not (< 1 (.ncols w))) "w has less than 2 columns"
+                                 (not (< 1 (.ncols w))) "w does not have 2 columns"
                                  (not (or (nil? vl) (= (.mrows a) (.mrows vl) (.ncols vl))))
                                  "a and vl dimensions do not fit"
                                  (not (or (nil? vr) (= (.mrows a) (.mrows vr) (.ncols vr))))
@@ -614,10 +614,33 @@
   ([a w]
    (ev! a w nil nil))
   ([^Matrix a vl vr]
-   (let-release [w (ge (api/factory a) (.mrows a) 2)]
+   (let-release [w (ge (api/factory a) (.ncols a) 2)]
      (ev! a w vl vr)))
   ([^Matrix a]
    (ev! a nil nil)))
+
+(defn es!
+  "TODO"
+  ([^Matrix a ^Matrix w ^Matrix vs]
+   (if (and (= (.mrows a) (.ncols a))
+            (= (.mrows a) (.mrows w)) (= 2 (.ncols w))
+            (or (nil? vs) (and (= (.mrows a) (.mrows vs) (.ncols vs))
+                               (api/compatible? a vs) (api/fits-navigation? a vs))))
+     (api/es (api/engine a) a w vs)
+     (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
+                     {:a (api/info a) :w (api/info w) :vs (api/info vs) :errors
+                      (cond-into []
+                                 (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
+                                 (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
+                                 (not (< 1 (.ncols w))) "w does not have 2 columns"
+                                 (not (or (nil? vs) (= (.mrows a) (.mrows vs) (.ncols vs))))
+                                 "a and vs dimensions do not fit"
+                                 (and vs (not (api/fits-navigation? a vs))) "a and vs do not have the same layout")}))))
+  ([^Matrix a vs]
+   (let-release [w (ge (api/factory a) (.ncols a) 2)]
+     (es! a w vs)))
+  ([^Matrix a]
+   (es! a nil)))
 
 ;; ================= Singular Value Decomposition ================================================
 
