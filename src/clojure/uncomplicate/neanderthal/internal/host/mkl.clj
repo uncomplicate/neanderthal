@@ -31,7 +31,7 @@
 (def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
   "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")
 
-;; =========== MKL-spicific routines ====================================================
+;; =========== MKL-specific routines ====================================================
 
 (defmacro ge-copy [method a b]
   ` (if (< 0 (.dim ~a))
@@ -96,6 +96,33 @@
   `(do
      (~method (.ncols ~a) (.buffer ~a) (.offset ~a) (.buffer ~a) (.offset ~a))
      ~a))
+
+;; ------------ MKL specific vector functions -------------------------------------
+
+(defmacro vector-math
+  ([method a y]
+   `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~y)))
+      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
+      (dragan-says-ex "MKL vector functions accept only vectors without stride."
+                      {:stride-a (.stride ~a) :stride-y (.stride ~y)})))
+  ([method a b y]
+   `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~b)) (= 1 (.stride ~y)))
+      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.buffer ~y) (.offset ~y))
+      (dragan-says-ex "MKL vector functions accept only vectors without stride."
+                      {:stride-a (.stride ~a) :stride-b (.stride ~b) :stride-y (.stride ~y)}))))
+
+(defmacro vector-powx [method a b y]
+  `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~y)))
+     (~method (.dim ~a) (.buffer ~a) (.offset ~a) ~b (.buffer ~y) (.offset ~y))
+     (dragan-says-ex "MKL vector functions accept only vectors without stride."
+                     {:stride-a (.stride ~a) :stride-y (.stride ~y)})))
+
+(defmacro vector-linear-frac [method a b scalea scaleb shifta shiftb y]
+ `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~b)) (= 1 (.stride ~y)))
+    (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
+     ~scalea ~scaleb ~shifta ~shiftb (.buffer ~y) (.offset ~y))
+    (dragan-says-ex "MKL vector functions accept only vectors without stride."
+                    {:stride-a (.stride ~a) :stride-b (.stride ~b) :stride-y (.stride ~y)})))
 
 ;; ============ Integer Vector Engines ============================================
 
@@ -261,7 +288,105 @@
     y)
   Lapack
   (srt [_ x increasing]
-    (vctr-lasrt LAPACK/dlasrt ^RealBlockVector x increasing)))
+    (vctr-lasrt LAPACK/dlasrt ^RealBlockVector x increasing))
+  VectorMath
+  (sqr [_ a y]
+    (vector-math MKL/vdSqr ^RealBlockVector a ^RealBlockVector y))
+  (mul [_ a b y]
+    (vector-math MKL/vdMul ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (div [_ a b y]
+    (vector-math MKL/vdDiv ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (inv [_ a y]
+    (vector-math MKL/vdInv ^RealBlockVector a ^RealBlockVector y))
+  (abs [_ a y]
+    (vector-math MKL/vdAbs ^RealBlockVector a ^RealBlockVector y))
+  (linear-frac [_ a b scalea scaleb shifta shiftb y]
+    (vector-linear-frac MKL/vdLinearFrac ^RealBlockVector b ^RealBlockVector b
+                        scalea scaleb shifta shiftb ^RealBlockVector y))
+  (sqrt [_ a y]
+    (vector-math MKL/vdSqrt ^RealBlockVector a ^RealBlockVector y))
+  (inv-sqrt [_ a y]
+    (vector-math MKL/vdInvSqrt ^RealBlockVector a ^RealBlockVector y))
+  (cbrt [_ a y]
+    (vector-math MKL/vdCbrt ^RealBlockVector a ^RealBlockVector y))
+  (inv-cbrt [_ a y]
+    (vector-math MKL/vdInvCbrt ^RealBlockVector a ^RealBlockVector y))
+  (pow2o3 [_ a y]
+    (vector-math MKL/vdPow2o3 ^RealBlockVector a ^RealBlockVector y))
+  (pow3o2 [_ a y]
+    (vector-math MKL/vdPow3o2 ^RealBlockVector a ^RealBlockVector y))
+  (pow [_ a b y]
+    (vector-math MKL/vdPow ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (powx [_ a b y]
+    (vector-powx MKL/vdPowx ^RealBlockVector a b ^RealBlockVector y))
+  (hypot [_ a b y]
+    (vector-math MKL/vdHypot ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (exp [_ a y]
+    (vector-math MKL/vdExp ^RealBlockVector a ^RealBlockVector y))
+  (expm1 [_ a y]
+    (vector-math MKL/vdExpm1 ^RealBlockVector a ^RealBlockVector y))
+  (log [_ a y]
+    (vector-math MKL/vdLn ^RealBlockVector a ^RealBlockVector y))
+  (log10 [_ a y]
+    (vector-math MKL/vdLog10 ^RealBlockVector a ^RealBlockVector y))
+  (sin [_ a y]
+    (vector-math MKL/vdSin ^RealBlockVector a ^RealBlockVector y))
+  (cos [_ a y]
+    (vector-math MKL/vdCos ^RealBlockVector a ^RealBlockVector y))
+  (tan [_ a y]
+    (vector-math MKL/vdTan ^RealBlockVector a ^RealBlockVector y))
+  (sincos [_ a y z]
+    (vector-math MKL/vdSinCos ^RealBlockVector a ^RealBlockVector y ^RealBlockVector z))
+  (asin [_ a y]
+    (vector-math MKL/vdAsin ^RealBlockVector a ^RealBlockVector y))
+  (acos [_ a y]
+    (vector-math MKL/vdAcos ^RealBlockVector a ^RealBlockVector y))
+  (atan [_ a y]
+    (vector-math MKL/vdAtan ^RealBlockVector a ^RealBlockVector y))
+  (atan2 [_ a b y]
+    (vector-math MKL/vdAtan2 ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (sinh [_ a y]
+    (vector-math MKL/vdSinh ^RealBlockVector a ^RealBlockVector y))
+  (cosh [_ a y]
+    (vector-math MKL/vdCosh ^RealBlockVector a ^RealBlockVector y))
+  (tanh [_ a y]
+    (vector-math MKL/vdTanh ^RealBlockVector a ^RealBlockVector y))
+  (asinh [_ a y]
+    (vector-math MKL/vdAsinh ^RealBlockVector a ^RealBlockVector y))
+  (acosh [_ a y]
+    (vector-math MKL/vdAcosh ^RealBlockVector a ^RealBlockVector y))
+  (atanh [_ a y]
+    (vector-math MKL/vdAtanh ^RealBlockVector a ^RealBlockVector y))
+  (erf [_ a y]
+    (vector-math MKL/vdErf ^RealBlockVector a ^RealBlockVector y))
+  (erfc [_ a y]
+    (vector-math MKL/vdErfc ^RealBlockVector a ^RealBlockVector y))
+  (erf-inv [_ a y]
+    (vector-math MKL/vdErfInv ^RealBlockVector a ^RealBlockVector y))
+  (erfc-inv [_ a y]
+    (vector-math MKL/vdErfcInv ^RealBlockVector a ^RealBlockVector y))
+  (cdf-norm [_ a y]
+    (vector-math MKL/vdCdfNorm ^RealBlockVector a ^RealBlockVector y))
+  (cdf-norm-inv [_ a y]
+    (vector-math MKL/vdCdfNormInv ^RealBlockVector a ^RealBlockVector y))
+  (gamma [_ a y]
+    (vector-math MKL/vdGamma ^RealBlockVector a ^RealBlockVector y))
+  (lgamma [_ a y]
+    (vector-math MKL/vdLGamma ^RealBlockVector a ^RealBlockVector y))
+  (expint1 [_ a y]
+    (vector-math MKL/vdExpInt1 ^RealBlockVector a ^RealBlockVector y))
+  (floor [_ a y]
+    (vector-math MKL/vdFloor ^RealBlockVector a ^RealBlockVector y))
+  (vceil [_ a y]
+    (vector-math MKL/vdCeil ^RealBlockVector a ^RealBlockVector y))
+  (trunc [_ a y]
+    (vector-math MKL/vdTrunc ^RealBlockVector a ^RealBlockVector y))
+  (round [_ a y]
+    (vector-math MKL/vdRound ^RealBlockVector a ^RealBlockVector y))
+  (modf [_ a y z]
+    (vector-math MKL/vdModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector y))
+  (frac [_ a y]
+    (vector-math MKL/vdFrac ^RealBlockVector a ^RealBlockVector y)))
 
 (deftype FloatVectorEngine []
   Blas
@@ -324,9 +449,108 @@
     y)
   Lapack
   (srt [_ x increasing]
-    (vctr-lasrt LAPACK/slasrt ^RealBlockVector x increasing)))
+    (vctr-lasrt LAPACK/slasrt ^RealBlockVector x increasing))
+  VectorMath
+  (sqr [_ a y]
+    (vector-math MKL/vsSqr ^RealBlockVector a ^RealBlockVector y))
+  (mul [_ a b y]
+    (vector-math MKL/vsMul ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (div [_ a b y]
+    (vector-math MKL/vsDiv ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (inv [_ a y]
+    (vector-math MKL/vsInv ^RealBlockVector a ^RealBlockVector y))
+  (abs [_ a y]
+    (vector-math MKL/vsAbs ^RealBlockVector a ^RealBlockVector y))
+  (linear-frac [_ a b scalea scaleb shifta shiftb y]
+    (vector-linear-frac MKL/vsLinearFrac ^RealBlockVector b ^RealBlockVector b
+                        scalea scaleb shifta shiftb ^RealBlockVector y))
+  (sqrt [_ a y]
+    (vector-math MKL/vsSqrt ^RealBlockVector a ^RealBlockVector y))
+  (inv-sqrt [_ a y]
+    (vector-math MKL/vsInvSqrt ^RealBlockVector a ^RealBlockVector y))
+  (cbrt [_ a y]
+    (vector-math MKL/vsCbrt ^RealBlockVector a ^RealBlockVector y))
+  (inv-cbrt [_ a y]
+    (vector-math MKL/vsInvCbrt ^RealBlockVector a ^RealBlockVector y))
+  (pow2o3 [_ a y]
+    (vector-math MKL/vsPow2o3 ^RealBlockVector a ^RealBlockVector y))
+  (pow3o2 [_ a y]
+    (vector-math MKL/vsPow3o2 ^RealBlockVector a ^RealBlockVector y))
+  (pow [_ a b y]
+    (vector-math MKL/vsPow ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (powx [_ a b y]
+    (vector-powx MKL/vsPowx ^RealBlockVector a b ^RealBlockVector y))
+  (hypot [_ a b y]
+    (vector-math MKL/vsHypot ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (exp [_ a y]
+    (vector-math MKL/vsExp ^RealBlockVector a ^RealBlockVector y))
+  (expm1 [_ a y]
+    (vector-math MKL/vsExpm1 ^RealBlockVector a ^RealBlockVector y))
+  (log [_ a y]
+    (vector-math MKL/vsLn ^RealBlockVector a ^RealBlockVector y))
+  (log10 [_ a y]
+    (vector-math MKL/vsLog10 ^RealBlockVector a ^RealBlockVector y))
+  (sin [_ a y]
+    (vector-math MKL/vsSin ^RealBlockVector a ^RealBlockVector y))
+  (cos [_ a y]
+    (vector-math MKL/vsCos ^RealBlockVector a ^RealBlockVector y))
+  (tan [_ a y]
+    (vector-math MKL/vsTan ^RealBlockVector a ^RealBlockVector y))
+  (sincos [_ a y z]
+    (vector-math MKL/vsSinCos ^RealBlockVector a ^RealBlockVector y ^RealBlockVector z))
+  (asin [_ a y]
+    (vector-math MKL/vsAsin ^RealBlockVector a ^RealBlockVector y))
+  (acos [_ a y]
+    (vector-math MKL/vsAcos ^RealBlockVector a ^RealBlockVector y))
+  (atan [_ a y]
+    (vector-math MKL/vsAtan ^RealBlockVector a ^RealBlockVector y))
+  (atan2 [_ a b y]
+    (vector-math MKL/vsAtan2 ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (sinh [_ a y]
+    (vector-math MKL/vsSinh ^RealBlockVector a ^RealBlockVector y))
+  (cosh [_ a y]
+    (vector-math MKL/vsCosh ^RealBlockVector a ^RealBlockVector y))
+  (tanh [_ a y]
+    (vector-math MKL/vsTanh ^RealBlockVector a ^RealBlockVector y))
+  (asinh [_ a y]
+    (vector-math MKL/vsAsinh ^RealBlockVector a ^RealBlockVector y))
+  (acosh [_ a y]
+    (vector-math MKL/vsAcosh ^RealBlockVector a ^RealBlockVector y))
+  (atanh [_ a y]
+    (vector-math MKL/vsAtanh ^RealBlockVector a ^RealBlockVector y))
+  (erf [_ a y]
+    (vector-math MKL/vsErf ^RealBlockVector a ^RealBlockVector y))
+  (erfc [_ a y]
+    (vector-math MKL/vsErfc ^RealBlockVector a ^RealBlockVector y))
+  (erf-inv [_ a y]
+    (vector-math MKL/vsErfInv ^RealBlockVector a ^RealBlockVector y))
+  (erfc-inv [_ a y]
+    (vector-math MKL/vsErfcInv ^RealBlockVector a ^RealBlockVector y))
+  (cdf-norm [_ a y]
+    (vector-math MKL/vsCdfNorm ^RealBlockVector a ^RealBlockVector y))
+  (cdf-norm-inv [_ a y]
+    (vector-math MKL/vsCdfNormInv ^RealBlockVector a ^RealBlockVector y))
+  (gamma [_ a y]
+    (vector-math MKL/vsGamma ^RealBlockVector a ^RealBlockVector y))
+  (lgamma [_ a y]
+    (vector-math MKL/vsLGamma ^RealBlockVector a ^RealBlockVector y))
+  (expint1 [_ a y]
+    (vector-math MKL/vsExpInt1 ^RealBlockVector a ^RealBlockVector y))
+  (floor [_ a y]
+    (vector-math MKL/vdFloor ^RealBlockVector a ^RealBlockVector y))
+  (vceil [_ a y]
+    (vector-math MKL/vdCeil ^RealBlockVector a ^RealBlockVector y))
+  (trunc [_ a y]
+    (vector-math MKL/vdTrunc ^RealBlockVector a ^RealBlockVector y))
+  (round [_ a y]
+    (vector-math MKL/vdRound ^RealBlockVector a ^RealBlockVector y))
+  (modf [_ a y z]
+    (vector-math MKL/vdModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector y))
+  (frac [_ a y]
+    (vector-math MKL/vdFrac ^RealBlockVector a ^RealBlockVector y)))
 
 ;; ================= General Matrix Engines ====================================
+
 (let [zero-storage (full-storage true 0 0 Integer/MAX_VALUE)]
   (def ^:private zero-matrix ^RealGEMatrix
     (->RealGEMatrix nil zero-storage nil nil nil nil true (ByteBuffer/allocateDirect 0) 0 0 0)))
@@ -1536,11 +1760,11 @@
   (laswp [_ _ _ _ _]
     (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
   (tri [_ a]
-    (gd-tri MKL/vdinv ^RealDiagonalMatrix a))
+    (gd-tri MKL/vdInv ^RealDiagonalMatrix a))
   (trs [_ a b]
     (gd-trs LAPACK/dtbtrs ^RealDiagonalMatrix a ^RealGEMatrix b))
   (sv [_ a b _]
-    (gd-sv MKL/vddiv CBLAS/dtbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
+    (gd-sv MKL/vdDiv CBLAS/dtbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (gd-con LAPACK/dtbcon ^RealDiagonalMatrix a nrm1?)))
 
@@ -1589,11 +1813,11 @@
   (laswp [_ _ _ _ _]
     (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
   (tri [_ a]
-    (gd-tri MKL/vsinv ^RealDiagonalMatrix a))
+    (gd-tri MKL/vsInv ^RealDiagonalMatrix a))
   (trs [_ a b]
     (gd-trs LAPACK/stbtrs ^RealDiagonalMatrix a ^RealGEMatrix b))
   (sv [_ a b _]
-    (gd-sv MKL/vsdiv CBLAS/stbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
+    (gd-sv MKL/vsDiv CBLAS/stbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
     (gd-con LAPACK/stbcon ^RealDiagonalMatrix a nrm1?)))
 

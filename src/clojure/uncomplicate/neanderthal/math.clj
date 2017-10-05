@@ -7,7 +7,8 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.math
-  (:import [org.apache.commons.math3.util Precision]))
+  (:import [org.apache.commons.math3.util Precision FastMath]
+           [org.apache.commons.math3.special Gamma Erf]))
 
 (defn f=
   ([^double x ^double y ^double nepsilons]
@@ -42,23 +43,17 @@
 (defn pow-of-2? [^long n]
   (= 0 (bit-and n (- n 1))))
 
-(defn round ^double [^double x]
-  (Math/floor (+ 0.5 x)))
+(defn sqr ^double [^double x]
+  (* x x))
 
-(defn round?
-  ([^double x]
-   (f= x (Math/floor (+ 0.5 x))))
-  ([^double x ^double nepsilons]
-   (f= x (Math/floor (+ 0.5 x)) nepsilons)))
+(defn abs ^double [^double x]
+  (Math/abs x))
 
-(defn signum ^double [^double x]
-  (Math/signum x))
+(defn sqrt ^double [^double x]
+  (Math/sqrt x))
 
-(defn floor ^double [^double x]
-  (Math/floor x))
-
-(defn ceil ^double [^double x]
-  (Math/ceil x))
+(defn cbrt ^double [^double x]
+  (Math/cbrt x))
 
 (defn pow
   (^double [^double x ^double y]
@@ -67,11 +62,14 @@
    (fn ^double [^double x]
      (Math/pow x y))))
 
-(defn sqr ^double [^double x]
-  (* x x))
+(defn hypot ^double [^double x ^double y]
+  (Math/hypot x y))
 
 (defn exp ^double [^double x]
   (Math/exp x))
+
+(defn expm1 ^double [^double x]
+  (Math/expm1 x))
 
 (defn log ^double [^double x]
   (Math/log x))
@@ -82,23 +80,17 @@
 (defn log1p ^double [^double x]
   (Math/log1p x))
 
-(defn sqrt ^double [^double x]
-  (Math/sqrt x))
-
-(defn abs ^double [^double x]
-  (Math/abs x))
-
-(defn magnitude
-  (^double [^double range]
-   (pow 10 (floor (log10 (abs range)))))
-  (^double [^double lower ^double upper]
-   (magnitude (abs (- upper lower)))))
-
 (defn sin ^double [^double x]
   (Math/sin x))
 
 (defn sinh ^double [^double x]
   (Math/sinh x))
+
+(defn asin ^double [^double x]
+  (Math/asin x))
+
+(defn asinh ^double [^double x]
+  (FastMath/asinh x))
 
 (defn cos ^double [^double x]
   (Math/cos x))
@@ -106,10 +98,80 @@
 (defn cosh ^double [^double x]
   (Math/cosh x))
 
+(defn acos ^double [^double x]
+  (Math/acos x))
+
+(defn acosh ^double [^double x]
+  (FastMath/acosh x))
+
 (defn tan ^double [^double x]
   (Math/tan x))
 
 (defn tanh ^double [^double x]
   (Math/tanh x))
 
+(defn atan ^double [^double x]
+  (Math/atan x))
+
+(defn atanh ^double [^double x]
+  (FastMath/atanh x))
+
+(defn atan2 ^double [^double x ^double y]
+  (Math/atan2 x y))
+
 (def ^:const pi Math/PI)
+
+(defn signum ^double [^double x]
+  (Math/signum x))
+
+(defn floor ^double [^double x]
+  (Math/floor x))
+
+(defn ceil ^double [^double x]
+  (Math/ceil x))
+
+(defn round ^double [^double x]
+  (Math/floor (+ 0.5 x)))
+
+(defn round?
+  ([^double x]
+   (f= x (Math/floor (+ 0.5 x))))
+  ([^double x ^double nepsilons]
+   (f= x (Math/floor (+ 0.5 x)) nepsilons)))
+
+(defn magnitude
+  (^double [^double range]
+   (pow 10 (floor (log10 (abs range)))))
+  (^double [^double lower ^double upper]
+   (magnitude (abs (- upper lower)))))
+
+(defn erf
+  "Error function: erf(x) = 2/√π 0∫x e-t2dt"
+  ^double [^double x]
+  (Erf/erf x))
+
+(defn erfc
+  "The complementary error function: erfc(x) = 1 - erf(x)"
+  ^double [^double x]
+  (Erf/erfc x))
+
+(defn erf-inv
+  "Inverse error function"
+  ^double [^double x]
+  (Erf/erfInv x))
+
+(defn erfc-inv
+  "Inverse complementary error function"
+  ^double [^double x]
+  (Erf/erfcInv x))
+
+(defn gamma
+  "Gamma function: http://en.wikipedia.org/wiki/Gamma_function"
+  ^double [^double x]
+  (Gamma/gamma x))
+
+(defn lgamma
+  "Natural logarithm of the Gamma function:
+  http://en.wikipedia.org/wiki/Gamma_function#The_log-gamma_function"
+  ^double [^double x]
+  (Gamma/logGamma x))

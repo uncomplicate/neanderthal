@@ -33,6 +33,7 @@
                        uncomplicate.neanderthal.opencl
                        uncomplicate.neanderthal.cuda
                        uncomplicate.neanderthal.math
+                       uncomplicate.neanderthal.vect-math
                        uncomplicate.neanderthal.real
                        uncomplicate.neanderthal.aux]
           :output-path "docs/codox"}
