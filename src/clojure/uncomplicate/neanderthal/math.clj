@@ -7,6 +7,8 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.math
+  "Primitive floating point mathematical functions commonly found in Math, FastMath, and the likes.
+  Vectorized counterparts can be found in the [[vect-math]] namespace."
   (:import [org.apache.commons.math3.util Precision FastMath]
            [org.apache.commons.math3.special Gamma Erf]))
 
@@ -121,30 +123,6 @@
 
 (def ^:const pi Math/PI)
 
-(defn signum ^double [^double x]
-  (Math/signum x))
-
-(defn floor ^double [^double x]
-  (Math/floor x))
-
-(defn ceil ^double [^double x]
-  (Math/ceil x))
-
-(defn round ^double [^double x]
-  (Math/floor (+ 0.5 x)))
-
-(defn round?
-  ([^double x]
-   (f= x (Math/floor (+ 0.5 x))))
-  ([^double x ^double nepsilons]
-   (f= x (Math/floor (+ 0.5 x)) nepsilons)))
-
-(defn magnitude
-  (^double [^double range]
-   (pow 10 (floor (log10 (abs range)))))
-  (^double [^double lower ^double upper]
-   (magnitude (abs (- upper lower)))))
-
 (defn erf
   "Error function: erf(x) = 2/√π 0∫x e-t2dt"
   ^double [^double x]
@@ -165,6 +143,18 @@
   ^double [^double x]
   (Erf/erfcInv x))
 
+(let [sqrt2 (sqrt 2.0)]
+
+  (defn cdf-norm
+    "The CDF of Normal(0,1)"
+    ^double [^double x]
+    (* 0.5 (inc (Erf/erf (/ x sqrt2)))))
+
+  (defn cdf-norm-inv
+    "The inverse CDF of Normal(0,1)"
+    ^double [^double x]
+    (* sqrt2 (Erf/erfInv (dec (* 2.0 x))))))
+
 (defn gamma
   "Gamma function: http://en.wikipedia.org/wiki/Gamma_function"
   ^double [^double x]
@@ -175,3 +165,33 @@
   http://en.wikipedia.org/wiki/Gamma_function#The_log-gamma_function"
   ^double [^double x]
   (Gamma/logGamma x))
+
+(defn signum ^double [^double x]
+  (Math/signum x))
+
+(defn floor ^double [^double x]
+  (Math/floor x))
+
+(defn ceil ^double [^double x]
+  (Math/ceil x))
+
+(defn trunc ^double [^double x]
+  (if (< 0.0 x) (Math/floor x) (Math/ceil x)))
+
+(defn round ^double [^double x]
+  (Math/floor (+ 0.5 x)))
+
+(defn frac ^double [^double x]
+  (if (< 0.0 x) (- x (Math/floor x)) (- x (Math/ceil x))))
+
+(defn round?
+  ([^double x]
+   (f= x (Math/floor (+ 0.5 x))))
+  ([^double x ^double nepsilons]
+   (f= x (Math/floor (+ 0.5 x)) nepsilons)))
+
+(defn magnitude
+  (^double [^double range]
+   (pow 10 (floor (log10 (abs range)))))
+  (^double [^double lower ^double upper]
+   (magnitude (abs (- upper lower)))))

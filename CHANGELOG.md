@@ -1,5 +1,13 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.17.0
+
+### New features
+
+* Vectorized mathematical functions (cca 50 pieces in the vect-math namespace).
+* New functions in the math namespace to make it support the scalar equivalents of vect-math functions.
+* Schur decomposition!
+
 ## 0.16.1
 
 ### Bugfixes

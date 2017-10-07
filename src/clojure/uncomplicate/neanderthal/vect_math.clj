@@ -7,20 +7,30 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.vect-math
+  "Vectorized floating point mathematical functions commonly found in Math, FastMath, and the likes.
+  Primitive scalar counterparts can be found in the [[math]] namespace."
   (:require [uncomplicate.commons.core :refer [let-release]]
             [uncomplicate.neanderthal.internal.api :as api]))
 
 (defmacro ^:private defmath!
   ([fname apiname a y]
-   `(defn ~fname [~a ~y]
-      (if (and (api/fits? ~a ~y) (api/compatible? ~a ~y))
-        (~apiname (api/engine ~a) ~a ~y)
-        (throw (ex-info "Arguments are not compatible" {:a ~a :y ~y})))))
+   `(defn ~fname
+      ([~a ~y]
+       (if (and (api/fits? ~a ~y) (api/compatible? ~a ~y))
+         (~apiname (api/engine ~a) ~a ~y)
+         (throw (ex-info "Arguments are not compatible" {:a ~a :y ~y}))))
+      ([~a]
+       (~apiname (api/engine ~a) ~a ~a))))
   ([fname apiname a b y]
-   `(defn ~fname [~a ~b ~y]
-      (if (and (api/fits? ~a ~b) (api/compatible? ~a ~b) (api/fits? ~a ~y) (api/compatible? ~a ~y))
-        (~apiname (api/engine ~a) ~a ~b ~y)
-        (throw (ex-info "Arguments are not compatible" {:a ~a :b ~b :y ~y}))))))
+   `(defn ~fname
+      ([~a ~b ~y]
+       (if (and (api/fits? ~a ~b) (api/compatible? ~a ~b) (api/fits? ~a ~y) (api/compatible? ~a ~y))
+         (~apiname (api/engine ~a) ~a ~b ~y)
+         (throw (ex-info "Arguments are not compatible" {:a ~a :b ~b :y ~y}))))
+      ([~a ~b]
+       (if (and (api/fits? ~a ~b) (api/compatible? ~a ~b))
+         (~apiname (api/engine ~a) ~a ~b ~a)
+         (throw (ex-info "Arguments are not compatible" {:a ~a :b ~b})))))))
 
 (defmacro ^:private defmath
   ([fname apiname a]
@@ -51,10 +61,26 @@
 (defmath! abs! api/abs a y)
 (defmath abs api/abs a)
 
-(defn linear-frac! [scalea a shifta scaleb b shiftb y]
-  (if (and (api/fits? a b) (api/compatible? a b) (api/fits? a y) (api/compatible? a y))
-    (api/linear-frac (api/engine a) a b scalea shifta scaleb shiftb y)
-    (throw (ex-info "Arguments are not compatible" {:a a :b b :y y}))))
+(defn linear-frac!
+  ([scalea a shifta scaleb b shiftb y]
+   (if (and (api/fits? a b) (api/compatible? a b) (api/fits? a y) (api/compatible? a y))
+     (api/linear-frac (api/engine a) a b scalea shifta scaleb shiftb y)
+     (throw (ex-info "Arguments are not compatible" {:a a :b b :y y}))))
+  ([scalea a shifta y]
+   (linear-frac! scalea a shifta 0.0 a 1.0 y))
+  ([scalea a shifta]
+   (linear-frac! scalea a shifta 0.0 a 1.0 a))
+  ([a shifta]
+   (linear-frac! 1.0 a shifta 0.0 a 1.0 a)))
+
+(defn linear-frac
+  ([scalea a shifta scaleb b shiftb]
+   (let-release [y (api/raw a)]
+     (linear-frac! scalea a shifta scaleb b shiftb y)))
+  ([scalea a shifta]
+   (linear-frac scalea a shifta 0.0 a 1.0))
+  ([a shifta]
+   (linear-frac 1.0 a shifta 0.0 a 1.0)))
 
 (defmath! sqrt! api/sqrt a y)
 (defmath sqrt api/sqrt a)
@@ -115,7 +141,7 @@
     (api/sincos (api/engine a) a y z)
     (throw (ex-info "Arguments are not compatible" {:a a :b y :y z}))))
 
-(defn pow [a]
+(defn sincos [a]
   (let-release [y (api/raw a)
                 z (api/raw a)]
     (sincos! a y z)
@@ -141,6 +167,15 @@
 
 (defmath! tanh! api/tanh a y)
 (defmath tanh api/tanh a)
+
+(defmath! asinh! api/asinh a y)
+(defmath asinh api/asinh a)
+
+(defmath! acosh! api/acosh a y)
+(defmath acosh api/acosh a)
+
+(defmath! atanh! api/atanh a y)
+(defmath atanh api/atanh a)
 
 (defmath! erf! api/erf a y)
 (defmath erf api/erf a)
@@ -172,14 +207,22 @@
 (defmath! floor! api/floor a y)
 (defmath floor api/floor a)
 
+(defmath! ceil! api/vceil a y)
+(defmath ceil api/vceil a)
+
 (defmath! trunc! api/trunc a y)
 (defmath trunc api/trunc a)
 
 (defmath! round! api/round a y)
 (defmath round api/round a)
 
-(defmath! modf! api/modf a b y)
-(defmath modf api/modf a b)
+(defmath! modf! api/modf a y z)
+
+(defn modf [a]
+  (let-release [y (api/raw a)
+                z (api/raw a)]
+    (modf! a y z)
+    [y z]))
 
 (defmath! frac! api/frac a y)
 (defmath frac api/frac a)

@@ -7,8 +7,10 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.mkl-test
-  (:require [uncomplicate.neanderthal.block-test :as block-test]
-            [uncomplicate.neanderthal.real-test :as real-test]
+  (:require [uncomplicate.neanderthal
+             [block-test :as block-test]
+             [real-test :as real-test]
+             [math-test :as math-test]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double]]))
 
 (block-test/test-all mkl-double)
@@ -73,3 +75,6 @@
 (real-test/test-blas-st mkl-float)
 (real-test/test-blas-st-host mkl-double)
 (real-test/test-blas-st-host mkl-float)
+
+(math-test/test-all mkl-double)
+(math-test/test-all mkl-float)

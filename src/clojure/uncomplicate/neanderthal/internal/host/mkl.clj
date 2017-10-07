@@ -102,25 +102,33 @@
 (defmacro vector-math
   ([method a y]
    `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~y)))
-      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
+      (do
+        (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
+        ~y)
       (dragan-says-ex "MKL vector functions accept only vectors without stride."
                       {:stride-a (.stride ~a) :stride-y (.stride ~y)})))
   ([method a b y]
    `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~b)) (= 1 (.stride ~y)))
-      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.buffer ~y) (.offset ~y))
+      (do
+        (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.buffer ~y) (.offset ~y))
+        ~y)
       (dragan-says-ex "MKL vector functions accept only vectors without stride."
                       {:stride-a (.stride ~a) :stride-b (.stride ~b) :stride-y (.stride ~y)}))))
 
 (defmacro vector-powx [method a b y]
   `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~y)))
-     (~method (.dim ~a) (.buffer ~a) (.offset ~a) ~b (.buffer ~y) (.offset ~y))
+     (do
+       (~method (.dim ~a) (.buffer ~a) (.offset ~a) ~b (.buffer ~y) (.offset ~y))
+       ~y)
      (dragan-says-ex "MKL vector functions accept only vectors without stride."
                      {:stride-a (.stride ~a) :stride-y (.stride ~y)})))
 
-(defmacro vector-linear-frac [method a b scalea scaleb shifta shiftb y]
+(defmacro vector-linear-frac [method a b scalea shifta scaleb shiftb y]
  `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~b)) (= 1 (.stride ~y)))
-    (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
-     ~scalea ~scaleb ~shifta ~shiftb (.buffer ~y) (.offset ~y))
+    (do
+      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
+       ~scalea ~shifta ~scaleb ~shiftb (.buffer ~y) (.offset ~y))
+      ~y)
     (dragan-says-ex "MKL vector functions accept only vectors without stride."
                     {:stride-a (.stride ~a) :stride-b (.stride ~b) :stride-y (.stride ~y)})))
 
@@ -300,9 +308,9 @@
     (vector-math MKL/vdInv ^RealBlockVector a ^RealBlockVector y))
   (abs [_ a y]
     (vector-math MKL/vdAbs ^RealBlockVector a ^RealBlockVector y))
-  (linear-frac [_ a b scalea scaleb shifta shiftb y]
-    (vector-linear-frac MKL/vdLinearFrac ^RealBlockVector b ^RealBlockVector b
-                        scalea scaleb shifta shiftb ^RealBlockVector y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (vector-linear-frac MKL/vdLinearFrac ^RealBlockVector a ^RealBlockVector b
+                        scalea shifta scaleb shiftb ^RealBlockVector y))
   (sqrt [_ a y]
     (vector-math MKL/vdSqrt ^RealBlockVector a ^RealBlockVector y))
   (inv-sqrt [_ a y]
@@ -384,7 +392,7 @@
   (round [_ a y]
     (vector-math MKL/vdRound ^RealBlockVector a ^RealBlockVector y))
   (modf [_ a y z]
-    (vector-math MKL/vdModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector y))
+    (vector-math MKL/vdModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector z))
   (frac [_ a y]
     (vector-math MKL/vdFrac ^RealBlockVector a ^RealBlockVector y)))
 
@@ -461,9 +469,9 @@
     (vector-math MKL/vsInv ^RealBlockVector a ^RealBlockVector y))
   (abs [_ a y]
     (vector-math MKL/vsAbs ^RealBlockVector a ^RealBlockVector y))
-  (linear-frac [_ a b scalea scaleb shifta shiftb y]
-    (vector-linear-frac MKL/vsLinearFrac ^RealBlockVector b ^RealBlockVector b
-                        scalea scaleb shifta shiftb ^RealBlockVector y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (vector-linear-frac MKL/vsLinearFrac ^RealBlockVector a ^RealBlockVector b
+                        scalea shifta scaleb shiftb ^RealBlockVector y))
   (sqrt [_ a y]
     (vector-math MKL/vsSqrt ^RealBlockVector a ^RealBlockVector y))
   (inv-sqrt [_ a y]
@@ -537,17 +545,17 @@
   (expint1 [_ a y]
     (vector-math MKL/vsExpInt1 ^RealBlockVector a ^RealBlockVector y))
   (floor [_ a y]
-    (vector-math MKL/vdFloor ^RealBlockVector a ^RealBlockVector y))
+    (vector-math MKL/vsFloor ^RealBlockVector a ^RealBlockVector y))
   (vceil [_ a y]
-    (vector-math MKL/vdCeil ^RealBlockVector a ^RealBlockVector y))
+    (vector-math MKL/vsCeil ^RealBlockVector a ^RealBlockVector y))
   (trunc [_ a y]
-    (vector-math MKL/vdTrunc ^RealBlockVector a ^RealBlockVector y))
+    (vector-math MKL/vsTrunc ^RealBlockVector a ^RealBlockVector y))
   (round [_ a y]
-    (vector-math MKL/vdRound ^RealBlockVector a ^RealBlockVector y))
+    (vector-math MKL/vsRound ^RealBlockVector a ^RealBlockVector y))
   (modf [_ a y z]
-    (vector-math MKL/vdModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector y))
+    (vector-math MKL/vsModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector z))
   (frac [_ a y]
-    (vector-math MKL/vdFrac ^RealBlockVector a ^RealBlockVector y)))
+    (vector-math MKL/vsFrac ^RealBlockVector a ^RealBlockVector y)))
 
 ;; ================= General Matrix Engines ====================================
 

@@ -95,7 +95,7 @@
   (div [this a b y])
   (inv [this a y])
   (abs [this a y])
-  (linear-frac [this a b scalea scaleb shifta shiftb y])
+  (linear-frac [this a b scalea shifta scaleb shiftb y])
   (sqrt [this a y])
   (inv-sqrt [this a y])
   (cbrt [this a y])
