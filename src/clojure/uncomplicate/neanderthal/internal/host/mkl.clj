@@ -132,6 +132,96 @@
     (dragan-says-ex "MKL vector functions accept only vectors without stride."
                     {:stride-a (.stride ~a) :stride-b (.stride ~b) :stride-y (.stride ~y)})))
 
+(defmacro ^:private full-matching-map
+  ([a b len offset-a offset-b expr-direct expr]
+   `(let [nav-a# (navigator ~a)
+          nav-b# (navigator ~b)
+          reg# (region ~b)
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          fd-a# (.fd stor-a#)
+          offset-a# (.offset ~a)
+          offset-b# (.offset ~b)]
+      (if (= nav-a# nav-b#)
+        (if (and (.isGapless stor-a#) (.isGapless stor-b#))
+          ~expr-direct
+          (dotimes [j# fd-a#]
+            (let [start# (.start nav-a# reg# j#)
+                  ~len (- (.end nav-a# reg# j#) start#)
+                  ~offset-a (+ offset-a# (.index stor-a# start# j#))
+                  ~offset-b (+ offset-b# (.index stor-b# start# j#))]
+              ~expr)))
+        (dragan-says-ex "MKL vectorized matrix functions require equal layout."
+                        {:nav-a (info ~a) :nav-b (info ~b)}))))
+  ([a b c len offset-a offset-b offset-c expr-direct expr]
+   `(let [nav-a# (navigator ~a)
+          nav-b# (navigator ~b)
+          nav-c# (navigator ~c)
+          reg# (region ~b)
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          stor-c# (full-storage ~c)
+          fd-a# (.fd stor-a#)
+          offset-a# (.offset ~a)
+          offset-b# (.offset ~b)
+          offset-c# (.offset ~c)]
+      (if (= nav-a# nav-b# nav-c#)
+        (if (and (.isGapless stor-a#) (.isGapless stor-b#) (.isGapless stor-c#))
+          ~expr-direct
+          (dotimes [j# fd-a#]
+            (let [start# (.start nav-a# reg# j#)
+                  ~len (- (.end nav-a# reg# j#) start#)
+                  ~offset-a (+ offset-a# (.index stor-a# start# j#))
+                  ~offset-b (+ offset-b# (.index stor-b# start# j#))
+                  ~offset-c (+ offset-c# (.index stor-c# start# j#))]
+              ~expr)))
+        (dragan-says-ex "MKL vectorized matrix functions require equal layout."
+                        {:nav-a (info ~a) :nav-b (info ~b) :nav-c (info ~c)})))))
+
+(defmacro matrix-math
+  ([method a y]
+   `(do
+      (when (< 0 (.dim ~a))
+        (let [buff-a# (.buffer ~a)
+              buff-y# (.buffer ~y)]
+          (full-matching-map ~a ~y len# offset-a# offset-y#
+                             (~method (.dim ~a) buff-a# (.offset ~a) buff-y# (.offset ~y))
+                             (~method len# buff-a# offset-a# buff-y# offset-y#))))
+      ~y))
+  ([method a b y]
+   `(do
+      (when (< 0 (.dim ~a))
+        (let [buff-a# (.buffer ~a)
+              buff-b# (.buffer ~b)
+              buff-y# (.buffer ~y)]
+          (full-matching-map ~a ~b ~y len# offset-a# offset-b# offset-y#
+                             (~method (.dim ~a) buff-a# (.offset ~a) buff-b# (.offset ~b) buff-y# (.offset ~y))
+                             (~method len# buff-a# offset-a# buff-b# offset-b# buff-y# offset-y#))))
+      ~y)))
+
+(defmacro matrix-powx [method a b y]
+  `(do
+     (when (< 0 (.dim ~a))
+       (let [buff-a# (.buffer ~a)
+             buff-y# (.buffer ~y)]
+         (full-matching-map ~a ~y len# offset-a# offset-y#
+                            (~method (.dim ~a) buff-a# (.offset ~a) ~b  buff-y# (.offset ~y))
+                            (~method len# buff-a# offset-a# ~b buff-y# offset-y#))))
+     ~y))
+
+(defmacro matrix-linear-frac [method a b scalea shifta scaleb shiftb y]
+  `(do
+     (when (< 0 (.dim ~a))
+       (let [buff-a# (.buffer ~a)
+             buff-b# (.buffer ~b)
+             buff-y# (.buffer ~y)]
+         (full-matching-map ~a ~b ~y len# offset-a# offset-b# offset-y#
+                            (~method (.dim ~a) buff-a# (.offset ~a) buff-b# (.offset ~b)
+                             ~scalea ~shifta ~scaleb ~shiftb buff-y# (.offset ~y))
+                            (~method len# buff-a# offset-a# buff-b# offset-b#
+                             ~scalea ~shifta ~scaleb ~shiftb buff-y# offset-y#))))
+     ~y))
+
 ;; ============ Integer Vector Engines ============================================
 
 (deftype LongVectorEngine []
@@ -675,7 +765,105 @@
               ^RealGEMatrix u ^RealGEMatrix vt ^RealDiagonalMatrix superb)))
   (svd [_ a sigma superb]
     (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb)))
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
+  VectorMath
+  (sqr [_ a y]
+    (matrix-math MKL/vdSqr ^RealGEMatrix a ^RealGEMatrix y))
+  (mul [_ a b y]
+    (matrix-math MKL/vdMul ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (div [_ a b y]
+    (matrix-math MKL/vdDiv ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (inv [_ a y]
+    (matrix-math MKL/vdInv ^RealGEMatrix a ^RealGEMatrix y))
+  (abs [_ a y]
+    (matrix-math MKL/vdAbs ^RealGEMatrix a ^RealGEMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (matrix-linear-frac MKL/vdLinearFrac ^RealGEMatrix a ^RealGEMatrix b
+                        scalea shifta scaleb shiftb ^RealGEMatrix y))
+  (sqrt [_ a y]
+    (matrix-math MKL/vdSqrt ^RealGEMatrix a ^RealGEMatrix y))
+  (inv-sqrt [_ a y]
+    (matrix-math MKL/vdInvSqrt ^RealGEMatrix a ^RealGEMatrix y))
+  (cbrt [_ a y]
+    (matrix-math MKL/vdCbrt ^RealGEMatrix a ^RealGEMatrix y))
+  (inv-cbrt [_ a y]
+    (matrix-math MKL/vdInvCbrt ^RealGEMatrix a ^RealGEMatrix y))
+  (pow2o3 [_ a y]
+    (matrix-math MKL/vdPow2o3 ^RealGEMatrix a ^RealGEMatrix y))
+  (pow3o2 [_ a y]
+    (matrix-math MKL/vdPow3o2 ^RealGEMatrix a ^RealGEMatrix y))
+  (pow [_ a b y]
+    (matrix-math MKL/vdPow ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (powx [_ a b y]
+    (matrix-powx MKL/vdPowx ^RealGEMatrix a b ^RealGEMatrix y))
+  (hypot [_ a b y]
+    (matrix-math MKL/vdHypot ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (exp [_ a y]
+    (matrix-math MKL/vdExp ^RealGEMatrix a ^RealGEMatrix y))
+  (expm1 [_ a y]
+    (matrix-math MKL/vdExpm1 ^RealGEMatrix a ^RealGEMatrix y))
+  (log [_ a y]
+    (matrix-math MKL/vdLn ^RealGEMatrix a ^RealGEMatrix y))
+  (log10 [_ a y]
+    (matrix-math MKL/vdLog10 ^RealGEMatrix a ^RealGEMatrix y))
+  (sin [_ a y]
+    (matrix-math MKL/vdSin ^RealGEMatrix a ^RealGEMatrix y))
+  (cos [_ a y]
+    (matrix-math MKL/vdCos ^RealGEMatrix a ^RealGEMatrix y))
+  (tan [_ a y]
+    (matrix-math MKL/vdTan ^RealGEMatrix a ^RealGEMatrix y))
+  (sincos [_ a y z]
+    (matrix-math MKL/vdSinCos ^RealGEMatrix a ^RealGEMatrix y ^RealGEMatrix z))
+  (asin [_ a y]
+    (matrix-math MKL/vdAsin ^RealGEMatrix a ^RealGEMatrix y))
+  (acos [_ a y]
+    (matrix-math MKL/vdAcos ^RealGEMatrix a ^RealGEMatrix y))
+  (atan [_ a y]
+    (matrix-math MKL/vdAtan ^RealGEMatrix a ^RealGEMatrix y))
+  (atan2 [_ a b y]
+    (matrix-math MKL/vdAtan2 ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (sinh [_ a y]
+    (matrix-math MKL/vdSinh ^RealGEMatrix a ^RealGEMatrix y))
+  (cosh [_ a y]
+    (matrix-math MKL/vdCosh ^RealGEMatrix a ^RealGEMatrix y))
+  (tanh [_ a y]
+    (matrix-math MKL/vdTanh ^RealGEMatrix a ^RealGEMatrix y))
+  (asinh [_ a y]
+    (matrix-math MKL/vdAsinh ^RealGEMatrix a ^RealGEMatrix y))
+  (acosh [_ a y]
+    (matrix-math MKL/vdAcosh ^RealGEMatrix a ^RealGEMatrix y))
+  (atanh [_ a y]
+    (matrix-math MKL/vdAtanh ^RealGEMatrix a ^RealGEMatrix y))
+  (erf [_ a y]
+    (matrix-math MKL/vdErf ^RealGEMatrix a ^RealGEMatrix y))
+  (erfc [_ a y]
+    (matrix-math MKL/vdErfc ^RealGEMatrix a ^RealGEMatrix y))
+  (erf-inv [_ a y]
+    (matrix-math MKL/vdErfInv ^RealGEMatrix a ^RealGEMatrix y))
+  (erfc-inv [_ a y]
+    (matrix-math MKL/vdErfcInv ^RealGEMatrix a ^RealGEMatrix y))
+  (cdf-norm [_ a y]
+    (matrix-math MKL/vdCdfNorm ^RealGEMatrix a ^RealGEMatrix y))
+  (cdf-norm-inv [_ a y]
+    (matrix-math MKL/vdCdfNormInv ^RealGEMatrix a ^RealGEMatrix y))
+  (gamma [_ a y]
+    (matrix-math MKL/vdGamma ^RealGEMatrix a ^RealGEMatrix y))
+  (lgamma [_ a y]
+    (matrix-math MKL/vdLGamma ^RealGEMatrix a ^RealGEMatrix y))
+  (expint1 [_ a y]
+    (matrix-math MKL/vdExpInt1 ^RealGEMatrix a ^RealGEMatrix y))
+  (floor [_ a y]
+    (matrix-math MKL/vdFloor ^RealGEMatrix a ^RealGEMatrix y))
+  (vceil [_ a y]
+    (matrix-math MKL/vdCeil ^RealGEMatrix a ^RealGEMatrix y))
+  (trunc [_ a y]
+    (matrix-math MKL/vdTrunc ^RealGEMatrix a ^RealGEMatrix y))
+  (round [_ a y]
+    (matrix-math MKL/vdRound ^RealGEMatrix a ^RealGEMatrix y))
+  (modf [_ a y z]
+    (matrix-math MKL/vdModf ^RealGEMatrix a ^RealGEMatrix y ^RealGEMatrix z))
+  (frac [_ a y]
+    (matrix-math MKL/vdFrac ^RealGEMatrix a ^RealGEMatrix y)))
 
 (deftype FloatGEEngine []
   Blas
@@ -789,7 +977,105 @@
               ^RealGEMatrix u ^RealGEMatrix vt ^RealDiagonalMatrix superb)))
   (svd [_ a sigma superb]
     (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
-            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb)))
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
+  VectorMath
+  (sqr [_ a y]
+    (matrix-math MKL/vsSqr ^RealGEMatrix a ^RealGEMatrix y))
+  (mul [_ a b y]
+    (matrix-math MKL/vsMul ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (div [_ a b y]
+    (matrix-math MKL/vsDiv ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (inv [_ a y]
+    (matrix-math MKL/vsInv ^RealGEMatrix a ^RealGEMatrix y))
+  (abs [_ a y]
+    (matrix-math MKL/vsAbs ^RealGEMatrix a ^RealGEMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (matrix-linear-frac MKL/vsLinearFrac ^RealGEMatrix a ^RealGEMatrix b
+                        scalea shifta scaleb shiftb ^RealGEMatrix y))
+  (sqrt [_ a y]
+    (matrix-math MKL/vsSqrt ^RealGEMatrix a ^RealGEMatrix y))
+  (inv-sqrt [_ a y]
+    (matrix-math MKL/vsInvSqrt ^RealGEMatrix a ^RealGEMatrix y))
+  (cbrt [_ a y]
+    (matrix-math MKL/vsCbrt ^RealGEMatrix a ^RealGEMatrix y))
+  (inv-cbrt [_ a y]
+    (matrix-math MKL/vsInvCbrt ^RealGEMatrix a ^RealGEMatrix y))
+  (pow2o3 [_ a y]
+    (matrix-math MKL/vsPow2o3 ^RealGEMatrix a ^RealGEMatrix y))
+  (pow3o2 [_ a y]
+    (matrix-math MKL/vsPow3o2 ^RealGEMatrix a ^RealGEMatrix y))
+  (pow [_ a b y]
+    (matrix-math MKL/vsPow ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (powx [_ a b y]
+    (matrix-powx MKL/vsPowx ^RealGEMatrix a b ^RealGEMatrix y))
+  (hypot [_ a b y]
+    (matrix-math MKL/vsHypot ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (exp [_ a y]
+    (matrix-math MKL/vsExp ^RealGEMatrix a ^RealGEMatrix y))
+  (expm1 [_ a y]
+    (matrix-math MKL/vsExpm1 ^RealGEMatrix a ^RealGEMatrix y))
+  (log [_ a y]
+    (matrix-math MKL/vsLn ^RealGEMatrix a ^RealGEMatrix y))
+  (log10 [_ a y]
+    (matrix-math MKL/vsLog10 ^RealGEMatrix a ^RealGEMatrix y))
+  (sin [_ a y]
+    (matrix-math MKL/vsSin ^RealGEMatrix a ^RealGEMatrix y))
+  (cos [_ a y]
+    (matrix-math MKL/vsCos ^RealGEMatrix a ^RealGEMatrix y))
+  (tan [_ a y]
+    (matrix-math MKL/vsTan ^RealGEMatrix a ^RealGEMatrix y))
+  (sincos [_ a y z]
+    (matrix-math MKL/vsSinCos ^RealGEMatrix a ^RealGEMatrix y ^RealGEMatrix z))
+  (asin [_ a y]
+    (matrix-math MKL/vsAsin ^RealGEMatrix a ^RealGEMatrix y))
+  (acos [_ a y]
+    (matrix-math MKL/vsAcos ^RealGEMatrix a ^RealGEMatrix y))
+  (atan [_ a y]
+    (matrix-math MKL/vsAtan ^RealGEMatrix a ^RealGEMatrix y))
+  (atan2 [_ a b y]
+    (matrix-math MKL/vsAtan2 ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (sinh [_ a y]
+    (matrix-math MKL/vsSinh ^RealGEMatrix a ^RealGEMatrix y))
+  (cosh [_ a y]
+    (matrix-math MKL/vsCosh ^RealGEMatrix a ^RealGEMatrix y))
+  (tanh [_ a y]
+    (matrix-math MKL/vsTanh ^RealGEMatrix a ^RealGEMatrix y))
+  (asinh [_ a y]
+    (matrix-math MKL/vsAsinh ^RealGEMatrix a ^RealGEMatrix y))
+  (acosh [_ a y]
+    (matrix-math MKL/vsAcosh ^RealGEMatrix a ^RealGEMatrix y))
+  (atanh [_ a y]
+    (matrix-math MKL/vsAtanh ^RealGEMatrix a ^RealGEMatrix y))
+  (erf [_ a y]
+    (matrix-math MKL/vsErf ^RealGEMatrix a ^RealGEMatrix y))
+  (erfc [_ a y]
+    (matrix-math MKL/vsErfc ^RealGEMatrix a ^RealGEMatrix y))
+  (erf-inv [_ a y]
+    (matrix-math MKL/vsErfInv ^RealGEMatrix a ^RealGEMatrix y))
+  (erfc-inv [_ a y]
+    (matrix-math MKL/vsErfcInv ^RealGEMatrix a ^RealGEMatrix y))
+  (cdf-norm [_ a y]
+    (matrix-math MKL/vsCdfNorm ^RealGEMatrix a ^RealGEMatrix y))
+  (cdf-norm-inv [_ a y]
+    (matrix-math MKL/vsCdfNormInv ^RealGEMatrix a ^RealGEMatrix y))
+  (gamma [_ a y]
+    (matrix-math MKL/vsGamma ^RealGEMatrix a ^RealGEMatrix y))
+  (lgamma [_ a y]
+    (matrix-math MKL/vsLGamma ^RealGEMatrix a ^RealGEMatrix y))
+  (expint1 [_ a y]
+    (matrix-math MKL/vsExpInt1 ^RealGEMatrix a ^RealGEMatrix y))
+  (floor [_ a y]
+    (matrix-math MKL/vsFloor ^RealGEMatrix a ^RealGEMatrix y))
+  (vceil [_ a y]
+    (matrix-math MKL/vsCeil ^RealGEMatrix a ^RealGEMatrix y))
+  (trunc [_ a y]
+    (matrix-math MKL/vsTrunc ^RealGEMatrix a ^RealGEMatrix y))
+  (round [_ a y]
+    (matrix-math MKL/vsRound ^RealGEMatrix a ^RealGEMatrix y))
+  (modf [_ a y z]
+    (matrix-math MKL/vsModf ^RealGEMatrix a ^RealGEMatrix y ^RealGEMatrix z))
+  (frac [_ a y]
+    (matrix-math MKL/vsFrac ^RealGEMatrix a ^RealGEMatrix y)))
 
 ;; ================= Triangular Matrix Engines =================================
 
