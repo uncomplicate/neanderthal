@@ -96,6 +96,8 @@
   (inv [this a y])
   (abs [this a y])
   (linear-frac [this a b scalea shifta scaleb shiftb y])
+  (fmod [this a b y])
+  (frem [this a b y])
   (sqrt [this a y])
   (inv-sqrt [this a y])
   (cbrt [this a y])
@@ -137,7 +139,9 @@
   (trunc [this a y])
   (round [this a y])
   (modf [this a y z])
-  (frac [this a y]))
+  (frac [this a y])
+  (fmin [this a b y])
+  (fmax [this a b y]))
 
 (defprotocol Triangularizable
   (create-trf [a pure])

@@ -401,6 +401,10 @@
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (vector-linear-frac MKL/vdLinearFrac ^RealBlockVector a ^RealBlockVector b
                         scalea shifta scaleb shiftb ^RealBlockVector y))
+  (fmod [_ a b y]
+    (vector-math MKL/vdFmod ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (frem [_ a b y]
+    (vector-math MKL/vdRemainder ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
   (sqrt [_ a y]
     (vector-math MKL/vdSqrt ^RealBlockVector a ^RealBlockVector y))
   (inv-sqrt [_ a y]
@@ -484,7 +488,11 @@
   (modf [_ a y z]
     (vector-math MKL/vdModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector z))
   (frac [_ a y]
-    (vector-math MKL/vdFrac ^RealBlockVector a ^RealBlockVector y)))
+    (vector-math MKL/vdFrac ^RealBlockVector a ^RealBlockVector y))
+  (fmin [_ a b y]
+    (vector-math MKL/vdFmin ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (fmax [_ a b y]
+    (vector-math MKL/vdFmax ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y)))
 
 (deftype FloatVectorEngine []
   Blas
@@ -562,6 +570,10 @@
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (vector-linear-frac MKL/vsLinearFrac ^RealBlockVector a ^RealBlockVector b
                         scalea shifta scaleb shiftb ^RealBlockVector y))
+  (fmod [_ a b y]
+    (vector-math MKL/vsFmod ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (frem [_ a b y]
+    (vector-math MKL/vsRemainder ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
   (sqrt [_ a y]
     (vector-math MKL/vsSqrt ^RealBlockVector a ^RealBlockVector y))
   (inv-sqrt [_ a y]
@@ -645,7 +657,11 @@
   (modf [_ a y z]
     (vector-math MKL/vsModf ^RealBlockVector a ^RealBlockVector y ^RealBlockVector z))
   (frac [_ a y]
-    (vector-math MKL/vsFrac ^RealBlockVector a ^RealBlockVector y)))
+    (vector-math MKL/vsFrac ^RealBlockVector a ^RealBlockVector y))
+  (fmin [_ a b y]
+    (vector-math MKL/vsFmin ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (fmax [_ a b y]
+    (vector-math MKL/vsFmax ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y)))
 
 ;; ================= General Matrix Engines ====================================
 
@@ -780,6 +796,10 @@
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (matrix-linear-frac MKL/vdLinearFrac ^RealGEMatrix a ^RealGEMatrix b
                         scalea shifta scaleb shiftb ^RealGEMatrix y))
+  (fmod [_ a b y]
+    (matrix-math MKL/vdFmod ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (frem [_ a b y]
+    (matrix-math MKL/vdRemainder ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
   (sqrt [_ a y]
     (matrix-math MKL/vdSqrt ^RealGEMatrix a ^RealGEMatrix y))
   (inv-sqrt [_ a y]
@@ -863,7 +883,11 @@
   (modf [_ a y z]
     (matrix-math MKL/vdModf ^RealGEMatrix a ^RealGEMatrix y ^RealGEMatrix z))
   (frac [_ a y]
-    (matrix-math MKL/vdFrac ^RealGEMatrix a ^RealGEMatrix y)))
+    (matrix-math MKL/vdFrac ^RealGEMatrix a ^RealGEMatrix y))
+  (fmin [_ a b y]
+    (matrix-math MKL/vdFmin ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (fmax [_ a b y]
+    (matrix-math MKL/vdFmax ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y)))
 
 (deftype FloatGEEngine []
   Blas
@@ -992,6 +1016,10 @@
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (matrix-linear-frac MKL/vsLinearFrac ^RealGEMatrix a ^RealGEMatrix b
                         scalea shifta scaleb shiftb ^RealGEMatrix y))
+  (fmod [_ a b y]
+    (matrix-math MKL/vsFmod ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (frem [_ a b y]
+    (matrix-math MKL/vsRemainder ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
   (sqrt [_ a y]
     (matrix-math MKL/vsSqrt ^RealGEMatrix a ^RealGEMatrix y))
   (inv-sqrt [_ a y]
@@ -1075,7 +1103,11 @@
   (modf [_ a y z]
     (matrix-math MKL/vsModf ^RealGEMatrix a ^RealGEMatrix y ^RealGEMatrix z))
   (frac [_ a y]
-    (matrix-math MKL/vsFrac ^RealGEMatrix a ^RealGEMatrix y)))
+    (matrix-math MKL/vsFrac ^RealGEMatrix a ^RealGEMatrix y))
+  (fmin [_ a b y]
+    (matrix-math MKL/vsFmin ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (fmax [_ a b y]
+    (matrix-math MKL/vsFmax ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y)))
 
 ;; ================= Triangular Matrix Engines =================================
 

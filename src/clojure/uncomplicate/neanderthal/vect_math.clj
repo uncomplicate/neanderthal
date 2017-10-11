@@ -82,6 +82,12 @@
   ([a shifta]
    (linear-frac 1.0 a shifta 0.0 a 1.0)))
 
+(defmath! fmod! api/fmod a b y)
+(defmath fmod api/fmod a b)
+
+(defmath! frem! api/frem a b y)
+(defmath frem api/frem a b)
+
 (defmath! sqrt! api/sqrt a y)
 (defmath sqrt api/sqrt a)
 
@@ -226,3 +232,9 @@
 
 (defmath! frac! api/frac a y)
 (defmath frac api/frac a)
+
+(defmath! fmin! api/fmin a b y)
+(defmath fmin api/fmin a b)
+
+(defmath! fmax! api/fmax a b y)
+(defmath fmax api/fmax a b)
