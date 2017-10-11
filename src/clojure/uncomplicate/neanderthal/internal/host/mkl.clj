@@ -13,7 +13,7 @@
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage]]
-             [common :refer [dragan-says-ex check-stride real-accessor]]]
+             [common :refer [dragan-says-ex check-stride check-eq-navigators real-accessor]]]
             [uncomplicate.neanderthal.internal.host
              [buffer-block :refer :all]
              [cblas :refer :all]
@@ -101,36 +101,28 @@
 
 (defmacro vector-math
   ([method a y]
-   `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~y)))
-      (do
-        (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
-        ~y)
-      (dragan-says-ex "MKL vector functions accept only vectors without stride."
-                      {:stride-a (.stride ~a) :stride-y (.stride ~y)})))
+   ` (do
+       (check-stride ~a ~y)
+       (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
+       ~y))
   ([method a b y]
-   `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~b)) (= 1 (.stride ~y)))
-      (do
-        (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.buffer ~y) (.offset ~y))
-        ~y)
-      (dragan-says-ex "MKL vector functions accept only vectors without stride."
-                      {:stride-a (.stride ~a) :stride-b (.stride ~b) :stride-y (.stride ~y)}))))
+   `(do
+      (check-stride ~a ~b ~y)
+      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b) (.buffer ~y) (.offset ~y))
+      ~y)))
 
 (defmacro vector-powx [method a b y]
-  `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~y)))
-     (do
-       (~method (.dim ~a) (.buffer ~a) (.offset ~a) ~b (.buffer ~y) (.offset ~y))
-       ~y)
-     (dragan-says-ex "MKL vector functions accept only vectors without stride."
-                     {:stride-a (.stride ~a) :stride-y (.stride ~y)})))
+  `(do
+     (check-stride ~a ~y)
+     (~method (.dim ~a) (.buffer ~a) (.offset ~a) ~b (.buffer ~y) (.offset ~y))
+     ~y))
 
 (defmacro vector-linear-frac [method a b scalea shifta scaleb shiftb y]
- `(if (and (= 1 (.stride ~a)) (= 1 (.stride ~b)) (= 1 (.stride ~y)))
-    (do
-      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
-       ~scalea ~shifta ~scaleb ~shiftb (.buffer ~y) (.offset ~y))
-      ~y)
-    (dragan-says-ex "MKL vector functions accept only vectors without stride."
-                    {:stride-a (.stride ~a) :stride-b (.stride ~b) :stride-y (.stride ~y)})))
+  `(do
+     (check-stride ~a ~b ~y)
+     (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
+      ~scalea ~shifta ~scaleb ~shiftb (.buffer ~y) (.offset ~y))
+     ~y))
 
 (defmacro ^:private full-matching-map
   ([a b len offset-a offset-b expr-direct expr]
@@ -142,17 +134,15 @@
           fd-a# (.fd stor-a#)
           offset-a# (.offset ~a)
           offset-b# (.offset ~b)]
-      (if (= nav-a# nav-b#)
-        (if (and (.isGapless stor-a#) (.isGapless stor-b#))
-          ~expr-direct
-          (dotimes [j# fd-a#]
-            (let [start# (.start nav-a# reg# j#)
-                  ~len (- (.end nav-a# reg# j#) start#)
-                  ~offset-a (+ offset-a# (.index stor-a# start# j#))
-                  ~offset-b (+ offset-b# (.index stor-b# start# j#))]
-              ~expr)))
-        (dragan-says-ex "MKL vectorized matrix functions require equal layout."
-                        {:nav-a (info ~a) :nav-b (info ~b)}))))
+      (check-eq-navigators ~a ~b)
+      (if (and (.isGapless stor-a#) (.isGapless stor-b#))
+        ~expr-direct
+        (dotimes [j# fd-a#]
+          (let [start# (.start nav-a# reg# j#)
+                ~len (- (.end nav-a# reg# j#) start#)
+                ~offset-a (+ offset-a# (.index stor-a# start# j#))
+                ~offset-b (+ offset-b# (.index stor-b# start# j#))]
+            ~expr)))))
   ([a b c len offset-a offset-b offset-c expr-direct expr]
    `(let [nav-a# (navigator ~a)
           nav-b# (navigator ~b)
@@ -165,18 +155,16 @@
           offset-a# (.offset ~a)
           offset-b# (.offset ~b)
           offset-c# (.offset ~c)]
-      (if (= nav-a# nav-b# nav-c#)
-        (if (and (.isGapless stor-a#) (.isGapless stor-b#) (.isGapless stor-c#))
-          ~expr-direct
-          (dotimes [j# fd-a#]
-            (let [start# (.start nav-a# reg# j#)
-                  ~len (- (.end nav-a# reg# j#) start#)
-                  ~offset-a (+ offset-a# (.index stor-a# start# j#))
-                  ~offset-b (+ offset-b# (.index stor-b# start# j#))
-                  ~offset-c (+ offset-c# (.index stor-c# start# j#))]
-              ~expr)))
-        (dragan-says-ex "MKL vectorized matrix functions require equal layout."
-                        {:nav-a (info ~a) :nav-b (info ~b) :nav-c (info ~c)})))))
+      (check-eq-navigators ~a ~b ~c)
+      (if (and (.isGapless stor-a#) (.isGapless stor-b#) (.isGapless stor-c#))
+        ~expr-direct
+        (dotimes [j# fd-a#]
+          (let [start# (.start nav-a# reg# j#)
+                ~len (- (.end nav-a# reg# j#) start#)
+                ~offset-a (+ offset-a# (.index stor-a# start# j#))
+                ~offset-b (+ offset-b# (.index stor-b# start# j#))
+                ~offset-c (+ offset-c# (.index stor-c# start# j#))]
+            ~expr))))))
 
 (defmacro matrix-math
   ([method a y]
@@ -220,6 +208,31 @@
                              ~scalea ~shifta ~scaleb ~shiftb buff-y# (.offset ~y))
                             (~method len# buff-a# offset-a# buff-b# offset-b#
                              ~scalea ~shifta ~scaleb ~shiftb buff-y# offset-y#))))
+     ~y))
+
+(defmacro packed-math
+  ([method a y]
+   `(do
+      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
+      ~y))
+  ([method a b y]
+   `(do
+      (check-eq-navigators ~a ~b)
+      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
+       (.buffer ~y) (.offset ~y))
+      ~y)))
+
+(defmacro packed-powx [method a b y]
+  `(do
+     (check-eq-navigators ~a ~y)
+     (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) ~b (.buffer ~y) (.offset ~y))
+     ~y))
+
+(defmacro packed-linear-frac [method a b scalea shifta scaleb shiftb y]
+  `(do
+     (check-eq-navigators ~a ~b ~y)
+     (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
+      ~scalea ~shifta ~scaleb ~shiftb (.buffer ~y) (.offset ~y))
      ~y))
 
 ;; ============ Integer Vector Engines ============================================
@@ -2167,7 +2180,113 @@
   (sv [_ a b _]
     (tp-sv CBLAS/dtpsv ^RealPackedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tp-con LAPACK/dtpcon ^RealPackedMatrix a nrm1?)))
+    (tp-con LAPACK/dtpcon ^RealPackedMatrix a nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (packed-math MKL/vdSqr ^RealPackedMatrix a ^RealPackedMatrix y))
+  (mul [_ a b y]
+    (packed-math MKL/vdMul ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (div [_ a b y]
+    (packed-math MKL/vdDiv ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (inv [_ a y]
+    (packed-math MKL/vdInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (abs [_ a y]
+    (packed-math MKL/vdAbs ^RealPackedMatrix a ^RealPackedMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (packed-linear-frac MKL/vdLinearFrac ^RealPackedMatrix a ^RealPackedMatrix b
+                        scalea shifta scaleb shiftb ^RealPackedMatrix y))
+  (fmod [_ a b y]
+    (packed-math MKL/vdFmod ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (frem [_ a b y]
+    (packed-math MKL/vdRemainder ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sqrt [_ a y]
+    (packed-math MKL/vdSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-sqrt [_ a y]
+    (packed-math MKL/vdInvSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cbrt [_ a y]
+    (packed-math MKL/vdCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-cbrt [_ a y]
+    (packed-math MKL/vdInvCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow2o3 [_ a y]
+    (packed-math MKL/vdPow2o3 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow3o2 [_ a y]
+    (packed-math MKL/vdPow3o2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow [_ a b y]
+    (packed-math MKL/vdPow ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (powx [_ a b y]
+    (packed-powx MKL/vdPowx ^RealPackedMatrix a b ^RealPackedMatrix y))
+  (hypot [_ a b y]
+    (packed-math MKL/vdHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (exp [_ a y]
+    (packed-math MKL/vdExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expm1 [_ a y]
+    (packed-math MKL/vdExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log [_ a y]
+    (packed-math MKL/vdLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log10 [_ a y]
+    (packed-math MKL/vdLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sin [_ a y]
+    (packed-math MKL/vdSin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cos [_ a y]
+    (packed-math MKL/vdCos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tan [_ a y]
+    (packed-math MKL/vdTan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sincos [_ a y z]
+    (packed-math MKL/vdSinCos ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (asin [_ a y]
+    (packed-math MKL/vdAsin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acos [_ a y]
+    (packed-math MKL/vdAcos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan [_ a y]
+    (packed-math MKL/vdAtan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan2 [_ a b y]
+    (packed-math MKL/vdAtan2 ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sinh [_ a y]
+    (packed-math MKL/vdSinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cosh [_ a y]
+    (packed-math MKL/vdCosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tanh [_ a y]
+    (packed-math MKL/vdTanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (asinh [_ a y]
+    (packed-math MKL/vdAsinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acosh [_ a y]
+    (packed-math MKL/vdAcosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atanh [_ a y]
+    (packed-math MKL/vdAtanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf [_ a y]
+    (packed-math MKL/vdErf ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc [_ a y]
+    (packed-math MKL/vdErfc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf-inv [_ a y]
+    (packed-math MKL/vdErfInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc-inv [_ a y]
+    (packed-math MKL/vdErfcInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm [_ a y]
+    (packed-math MKL/vdCdfNorm ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm-inv [_ a y]
+    (packed-math MKL/vdCdfNormInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (gamma [_ a y]
+    (packed-math MKL/vdGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (lgamma [_ a y]
+    (packed-math MKL/vdLGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expint1 [_ a y]
+    (packed-math MKL/vdExpInt1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (floor [_ a y]
+    (packed-math MKL/vdFloor ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fceil [_ a y]
+    (packed-math MKL/vdCeil ^RealPackedMatrix a ^RealPackedMatrix y))
+  (trunc [_ a y]
+    (packed-math MKL/vdTrunc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (round [_ a y]
+    (packed-math MKL/vdRound ^RealPackedMatrix a ^RealPackedMatrix y))
+  (modf [_ a y z]
+    (packed-math MKL/vdModf ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (frac [_ a y]
+    (packed-math MKL/vdFrac ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fmin [_ a b y]
+    (packed-math MKL/vdFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (fmax [_ a b y]
+    (packed-math MKL/vdFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
 
 (deftype FloatTPEngine []
   Blas
@@ -2219,7 +2338,113 @@
   (sv [_ a b _]
     (tp-sv CBLAS/stpsv ^RealPackedMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tp-con LAPACK/stpcon ^RealPackedMatrix a nrm1?)))
+    (tp-con LAPACK/stpcon ^RealPackedMatrix a nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (packed-math MKL/vsSqr ^RealPackedMatrix a ^RealPackedMatrix y))
+  (mul [_ a b y]
+    (packed-math MKL/vsMul ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (div [_ a b y]
+    (packed-math MKL/vsDiv ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (inv [_ a y]
+    (packed-math MKL/vsInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (abs [_ a y]
+    (packed-math MKL/vsAbs ^RealPackedMatrix a ^RealPackedMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (packed-linear-frac MKL/vsLinearFrac ^RealPackedMatrix a ^RealPackedMatrix b
+                        scalea shifta scaleb shiftb ^RealPackedMatrix y))
+  (fmod [_ a b y]
+    (packed-math MKL/vsFmod ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (frem [_ a b y]
+    (packed-math MKL/vsRemainder ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sqrt [_ a y]
+    (packed-math MKL/vsSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-sqrt [_ a y]
+    (packed-math MKL/vsInvSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cbrt [_ a y]
+    (packed-math MKL/vsCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-cbrt [_ a y]
+    (packed-math MKL/vsInvCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow2o3 [_ a y]
+    (packed-math MKL/vsPow2o3 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow3o2 [_ a y]
+    (packed-math MKL/vsPow3o2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow [_ a b y]
+    (packed-math MKL/vsPow ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (powx [_ a b y]
+    (packed-powx MKL/vsPowx ^RealPackedMatrix a b ^RealPackedMatrix y))
+  (hypot [_ a b y]
+    (packed-math MKL/vsHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (exp [_ a y]
+    (packed-math MKL/vsExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expm1 [_ a y]
+    (packed-math MKL/vsExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log [_ a y]
+    (packed-math MKL/vsLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log10 [_ a y]
+    (packed-math MKL/vsLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sin [_ a y]
+    (packed-math MKL/vsSin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cos [_ a y]
+    (packed-math MKL/vsCos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tan [_ a y]
+    (packed-math MKL/vsTan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sincos [_ a y z]
+    (packed-math MKL/vsSinCos ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (asin [_ a y]
+    (packed-math MKL/vsAsin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acos [_ a y]
+    (packed-math MKL/vsAcos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan [_ a y]
+    (packed-math MKL/vsAtan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan2 [_ a b y]
+    (packed-math MKL/vsAtan2 ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sinh [_ a y]
+    (packed-math MKL/vsSinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cosh [_ a y]
+    (packed-math MKL/vsCosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tanh [_ a y]
+    (packed-math MKL/vsTanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (asinh [_ a y]
+    (packed-math MKL/vsAsinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acosh [_ a y]
+    (packed-math MKL/vsAcosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atanh [_ a y]
+    (packed-math MKL/vsAtanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf [_ a y]
+    (packed-math MKL/vsErf ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc [_ a y]
+    (packed-math MKL/vsErfc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf-inv [_ a y]
+    (packed-math MKL/vsErfInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc-inv [_ a y]
+    (packed-math MKL/vsErfcInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm [_ a y]
+    (packed-math MKL/vsCdfNorm ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm-inv [_ a y]
+    (packed-math MKL/vsCdfNormInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (gamma [_ a y]
+    (packed-math MKL/vsGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (lgamma [_ a y]
+    (packed-math MKL/vsLGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expint1 [_ a y]
+    (packed-math MKL/vsExpInt1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (floor [_ a y]
+    (packed-math MKL/vsFloor ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fceil [_ a y]
+    (packed-math MKL/vsCeil ^RealPackedMatrix a ^RealPackedMatrix y))
+  (trunc [_ a y]
+    (packed-math MKL/vsTrunc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (round [_ a y]
+    (packed-math MKL/vsRound ^RealPackedMatrix a ^RealPackedMatrix y))
+  (modf [_ a y z]
+    (packed-math MKL/vsModf ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (frac [_ a y]
+    (packed-math MKL/vsFrac ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fmin [_ a b y]
+    (packed-math MKL/vsFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (fmax [_ a b y]
+    (packed-math MKL/vsFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
 
 (deftype DoubleSPEngine []
   Blas
@@ -2283,7 +2508,113 @@
   (con [_ ldl ipiv nrm _]
     (sp-con LAPACK/dspcon ^RealPackedMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sp-con LAPACK/dppcon ^RealPackedMatrix gg nrm)))
+    (sp-con LAPACK/dppcon ^RealPackedMatrix gg nrm))
+  VectorMath
+  (sqr [_ a y]
+    (packed-math MKL/vdSqr ^RealPackedMatrix a ^RealPackedMatrix y))
+  (mul [_ a b y]
+    (packed-math MKL/vdMul ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (div [_ a b y]
+    (packed-math MKL/vdDiv ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (inv [_ a y]
+    (packed-math MKL/vdInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (abs [_ a y]
+    (packed-math MKL/vdAbs ^RealPackedMatrix a ^RealPackedMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (packed-linear-frac MKL/vdLinearFrac ^RealPackedMatrix a ^RealPackedMatrix b
+                        scalea shifta scaleb shiftb ^RealPackedMatrix y))
+  (fmod [_ a b y]
+    (packed-math MKL/vdFmod ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (frem [_ a b y]
+    (packed-math MKL/vdRemainder ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sqrt [_ a y]
+    (packed-math MKL/vdSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-sqrt [_ a y]
+    (packed-math MKL/vdInvSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cbrt [_ a y]
+    (packed-math MKL/vdCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-cbrt [_ a y]
+    (packed-math MKL/vdInvCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow2o3 [_ a y]
+    (packed-math MKL/vdPow2o3 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow3o2 [_ a y]
+    (packed-math MKL/vdPow3o2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow [_ a b y]
+    (packed-math MKL/vdPow ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (powx [_ a b y]
+    (packed-powx MKL/vdPowx ^RealPackedMatrix a b ^RealPackedMatrix y))
+  (hypot [_ a b y]
+    (packed-math MKL/vdHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (exp [_ a y]
+    (packed-math MKL/vdExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expm1 [_ a y]
+    (packed-math MKL/vdExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log [_ a y]
+    (packed-math MKL/vdLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log10 [_ a y]
+    (packed-math MKL/vdLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sin [_ a y]
+    (packed-math MKL/vdSin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cos [_ a y]
+    (packed-math MKL/vdCos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tan [_ a y]
+    (packed-math MKL/vdTan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sincos [_ a y z]
+    (packed-math MKL/vdSinCos ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (asin [_ a y]
+    (packed-math MKL/vdAsin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acos [_ a y]
+    (packed-math MKL/vdAcos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan [_ a y]
+    (packed-math MKL/vdAtan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan2 [_ a b y]
+    (packed-math MKL/vdAtan2 ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sinh [_ a y]
+    (packed-math MKL/vdSinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cosh [_ a y]
+    (packed-math MKL/vdCosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tanh [_ a y]
+    (packed-math MKL/vdTanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (asinh [_ a y]
+    (packed-math MKL/vdAsinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acosh [_ a y]
+    (packed-math MKL/vdAcosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atanh [_ a y]
+    (packed-math MKL/vdAtanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf [_ a y]
+    (packed-math MKL/vdErf ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc [_ a y]
+    (packed-math MKL/vdErfc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf-inv [_ a y]
+    (packed-math MKL/vdErfInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc-inv [_ a y]
+    (packed-math MKL/vdErfcInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm [_ a y]
+    (packed-math MKL/vdCdfNorm ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm-inv [_ a y]
+    (packed-math MKL/vdCdfNormInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (gamma [_ a y]
+    (packed-math MKL/vdGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (lgamma [_ a y]
+    (packed-math MKL/vdLGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expint1 [_ a y]
+    (packed-math MKL/vdExpInt1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (floor [_ a y]
+    (packed-math MKL/vdFloor ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fceil [_ a y]
+    (packed-math MKL/vdCeil ^RealPackedMatrix a ^RealPackedMatrix y))
+  (trunc [_ a y]
+    (packed-math MKL/vdTrunc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (round [_ a y]
+    (packed-math MKL/vdRound ^RealPackedMatrix a ^RealPackedMatrix y))
+  (modf [_ a y z]
+    (packed-math MKL/vdModf ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (frac [_ a y]
+    (packed-math MKL/vdFrac ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fmin [_ a b y]
+    (packed-math MKL/vdFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (fmax [_ a b y]
+    (packed-math MKL/vdFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
 
 (deftype FloatSPEngine []
   Blas
@@ -2347,7 +2678,113 @@
   (con [_ ldl ipiv nrm _]
     (sp-con LAPACK/sspcon ^RealPackedMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sp-con LAPACK/sppcon ^RealPackedMatrix gg nrm)))
+    (sp-con LAPACK/sppcon ^RealPackedMatrix gg nrm))
+    VectorMath
+  (sqr [_ a y]
+    (packed-math MKL/vsSqr ^RealPackedMatrix a ^RealPackedMatrix y))
+  (mul [_ a b y]
+    (packed-math MKL/vsMul ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (div [_ a b y]
+    (packed-math MKL/vsDiv ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (inv [_ a y]
+    (packed-math MKL/vsInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (abs [_ a y]
+    (packed-math MKL/vsAbs ^RealPackedMatrix a ^RealPackedMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (packed-linear-frac MKL/vsLinearFrac ^RealPackedMatrix a ^RealPackedMatrix b
+                        scalea shifta scaleb shiftb ^RealPackedMatrix y))
+  (fmod [_ a b y]
+    (packed-math MKL/vsFmod ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (frem [_ a b y]
+    (packed-math MKL/vsRemainder ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sqrt [_ a y]
+    (packed-math MKL/vsSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-sqrt [_ a y]
+    (packed-math MKL/vsInvSqrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cbrt [_ a y]
+    (packed-math MKL/vsCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (inv-cbrt [_ a y]
+    (packed-math MKL/vsInvCbrt ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow2o3 [_ a y]
+    (packed-math MKL/vsPow2o3 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow3o2 [_ a y]
+    (packed-math MKL/vsPow3o2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (pow [_ a b y]
+    (packed-math MKL/vsPow ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (powx [_ a b y]
+    (packed-powx MKL/vsPowx ^RealPackedMatrix a b ^RealPackedMatrix y))
+  (hypot [_ a b y]
+    (packed-math MKL/vsHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (exp [_ a y]
+    (packed-math MKL/vsExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expm1 [_ a y]
+    (packed-math MKL/vsExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log [_ a y]
+    (packed-math MKL/vsLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log10 [_ a y]
+    (packed-math MKL/vsLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sin [_ a y]
+    (packed-math MKL/vsSin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cos [_ a y]
+    (packed-math MKL/vsCos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tan [_ a y]
+    (packed-math MKL/vsTan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (sincos [_ a y z]
+    (packed-math MKL/vsSinCos ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (asin [_ a y]
+    (packed-math MKL/vsAsin ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acos [_ a y]
+    (packed-math MKL/vsAcos ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan [_ a y]
+    (packed-math MKL/vsAtan ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atan2 [_ a b y]
+    (packed-math MKL/vsAtan2 ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sinh [_ a y]
+    (packed-math MKL/vsSinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cosh [_ a y]
+    (packed-math MKL/vsCosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (tanh [_ a y]
+    (packed-math MKL/vsTanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (asinh [_ a y]
+    (packed-math MKL/vsAsinh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (acosh [_ a y]
+    (packed-math MKL/vsAcosh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (atanh [_ a y]
+    (packed-math MKL/vsAtanh ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf [_ a y]
+    (packed-math MKL/vsErf ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc [_ a y]
+    (packed-math MKL/vsErfc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erf-inv [_ a y]
+    (packed-math MKL/vsErfInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (erfc-inv [_ a y]
+    (packed-math MKL/vsErfcInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm [_ a y]
+    (packed-math MKL/vsCdfNorm ^RealPackedMatrix a ^RealPackedMatrix y))
+  (cdf-norm-inv [_ a y]
+    (packed-math MKL/vsCdfNormInv ^RealPackedMatrix a ^RealPackedMatrix y))
+  (gamma [_ a y]
+    (packed-math MKL/vsGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (lgamma [_ a y]
+    (packed-math MKL/vsLGamma ^RealPackedMatrix a ^RealPackedMatrix y))
+  (expint1 [_ a y]
+    (packed-math MKL/vsExpInt1 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (floor [_ a y]
+    (packed-math MKL/vsFloor ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fceil [_ a y]
+    (packed-math MKL/vsCeil ^RealPackedMatrix a ^RealPackedMatrix y))
+  (trunc [_ a y]
+    (packed-math MKL/vsTrunc ^RealPackedMatrix a ^RealPackedMatrix y))
+  (round [_ a y]
+    (packed-math MKL/vsRound ^RealPackedMatrix a ^RealPackedMatrix y))
+  (modf [_ a y z]
+    (packed-math MKL/vsModf ^RealPackedMatrix a ^RealPackedMatrix y ^RealPackedMatrix z))
+  (frac [_ a y]
+    (packed-math MKL/vsFrac ^RealPackedMatrix a ^RealPackedMatrix y))
+  (fmin [_ a b y]
+    (packed-math MKL/vsFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (fmax [_ a b y]
+    (packed-math MKL/vsFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
 
 ;; =============== Tridiagonal Matrix Engines =================================
 

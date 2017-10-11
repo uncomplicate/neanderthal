@@ -11,7 +11,7 @@
             [uncomplicate.commons.core :refer [release with-release let-release double-fn]]
             [uncomplicate.fluokitten.core :refer [fmap]]
             [uncomplicate.neanderthal
-             [core :refer [vctr ge sy tr copy axpy! nrm2 scal]]
+             [core :refer [vctr ge sy tr tp sp copy axpy! nrm2 scal]]
              [math :as m]
              [vect-math :as vm]])
   (:import clojure.lang.ExceptionInfo))
@@ -194,6 +194,8 @@
   (test-math factory diff-ge-1 diff-ge-2)
   (test-math factory (partial diff-uplo-1 tr) (partial diff-uplo-2 tr))
   (test-math factory (partial diff-uplo-1 sy) (partial diff-uplo-2 sy))
+  (test-math factory (partial diff-uplo-1 tp) (partial diff-uplo-2 tp))
+  (test-math factory (partial diff-uplo-1 sp) (partial diff-uplo-2 sp))
   (test-vctr-linear-frac factory)
   (test-ge-linear-frac factory)
   (test-tr-linear-frac factory)

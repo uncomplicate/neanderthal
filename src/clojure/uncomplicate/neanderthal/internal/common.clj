@@ -20,10 +20,31 @@
   ([message]
    (dragan-says-ex message {})))
 
-(defn check-stride ^Block [^Block x]
-  (if (= 1 (.stride x))
-    x
-    (dragan-says-ex "You cannot use vector with stride different than 1." {:stride (.stride x)})))
+(defn check-stride
+  (^Block [^Block x]
+   (if (= 1 (.stride x))
+     x
+     (dragan-says-ex "You cannot use vector with stride different than 1." {:stride (.stride x)})))
+  (^Block [^Block x ^Block y]
+   (if (= 1 (.stride x) (.stride y))
+     y
+     (dragan-says-ex "You cannot use vector with stride different than 1."
+                     {:stride-x (.stride x) :stride-y (.stride y)})))
+  (^Block [^Block x ^Block y ^Block z]
+   (if (= 1 (.stride x) (.stride y) (.stride z))
+     z
+     (dragan-says-ex "You cannot use vector with stride different than 1."
+                     {:stride-x (.stride x) :stride-y (.stride y) :stride-z (.stride z)}))))
+
+(defn check-eq-navigators
+  ([a b]
+   (or (= (navigator a) (navigator b))
+       (dragan-says-ex "This operation requires matching navigators."
+                       {:nav-a (info (navigator a)) :nav-b (info (navigator b))})))
+  ([a b c]
+   (or (= (navigator a) (navigator b) (navigator c))
+       (dragan-says-ex "This operation requires matching navigators."
+                       {:nav-a (info (navigator a)) :nav-b (info (navigator b)) :nav-c (info (navigator c))}))))
 
 ;; ================= Core Functions ===================================
 

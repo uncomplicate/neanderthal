@@ -10,7 +10,7 @@
   (:require [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal
              [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage info]]
-             [common :refer [dragan-says-ex real-accessor]]
+             [common :refer [dragan-says-ex real-accessor check-eq-navigators]]
              [navigation :refer [accu-layout full-storage]]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
            [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))
@@ -853,21 +853,16 @@
 
 ;; ===================== Packed Matrix ==============================
 
-(defmacro check-layout [a b & expr]
-  `(if (= (navigator ~a) (navigator ~b))
-     (do ~@expr)
-     (dragan-says-ex "This operation on packed matrices is not efficient if the layouts do not match. Copy to a matching layout."
-                     {:a (info ~a) :b (info ~b)})))
-
 (defmacro packed-map
   ([method a]
    `(do
       (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1)
       ~a))
   ([method a b]
-   `(check-layout ~a ~b
-                  (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
-                  ~b)))
+   `(do
+      (check-eq-navigators ~a ~b)
+      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
+      ~b)))
 
 (defmacro packed-scal [method alpha a]
   `(do
@@ -875,16 +870,16 @@
      ~a))
 
 (defmacro packed-axpy [method alpha a b]
-  `(check-layout
-    ~a ~b
-    (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
-    ~b))
+  `(do
+     (check-eq-navigators ~a ~b)
+     (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 (.buffer ~b) (.offset ~b) 1)
+     ~b))
 
 (defmacro packed-axpby [method alpha a beta b]
-  `(check-layout
-    ~a ~b
-    (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
-    ~b))
+  `(do
+     (check-eq-navigators ~a ~b)
+     (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
+     ~b))
 
 (defmacro tp-sum [method transform a]
   `(if (< 0 (.dim ~a))
@@ -902,25 +897,25 @@
      0.0))
 
 (defmacro tp-dot [method a b]
-  `(check-layout
-    ~a ~b
-    (if (< 0 (.dim ~a))
-      (let [da# (real-accessor ~a)
-            n# (.ncols ~a)
-            buff-a# (.buffer ~a)
-            ofst-a# (.offset ~a)
-            buff-b# (.buffer ~b)
-            ofst-b# (.offset ~b)
-            stor# (storage ~a)
-            dot# (~method (.surface (region ~a)) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
-        (if-not (.isDiagUnit (region ~a))
-          dot#
-          (loop [i# 0 acc# (+ n# dot#)]
-               (if (< i# n#)
-                 (recur (inc i#) (- acc# (* (.get da# buff-a# (+ ofst-a# (.index stor# i# i#)))
-                                            (.get da# buff-b# (+ ofst-b# (.index stor# i# i#))))))
-                 acc#))))
-      0.0)))
+  `(do
+     (check-eq-navigators ~a ~b)
+     (if (< 0 (.dim ~a))
+       (let [da# (real-accessor ~a)
+             n# (.ncols ~a)
+             buff-a# (.buffer ~a)
+             ofst-a# (.offset ~a)
+             buff-b# (.buffer ~b)
+             ofst-b# (.offset ~b)
+             stor# (storage ~a)
+             dot# (~method (.surface (region ~a)) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
+         (if-not (.isDiagUnit (region ~a))
+           dot#
+           (loop [i# 0 acc# (+ n# dot#)]
+             (if (< i# n#)
+               (recur (inc i#) (- acc# (* (.get da# buff-a# (+ ofst-a# (.index stor# i# i#)))
+                                          (.get da# buff-b# (+ ofst-b# (.index stor# i# i#))))))
+               acc#))))
+       0.0)))
 
 (defmacro tp-mv
   ([method a x]
@@ -991,25 +986,25 @@
      0.0))
 
 (defmacro sp-dot [method a b]
-  `(check-layout
-    ~a ~b
-    (if (< 0 (.dim ~a))
-      (let [da# (real-accessor ~a)
-            n# (.ncols ~a)
-            buff-a# (.buffer ~a)
-            ofst-a# (.offset ~a)
-            buff-b# (.buffer ~b)
-            ofst-b# (.offset ~b)
-            stor# (storage ~a)
-            dot# (~method (.surface (region ~a)) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
-        (loop [i# 0 acc# (* 2.0 dot#)]
-          (if (< i# n#)
-            (recur (inc i#)
-                   (- acc#
-                      (* (.get da# buff-a# (+ ofst-a# (.index stor# i# i#)))
-                         (.get da# buff-b# (+ ofst-b# (.index stor# i# i#))))))
-            acc#)))
-      0.0)))
+  `(do
+     (check-eq-navigators ~a ~b)
+     (if (< 0 (.dim ~a))
+       (let [da# (real-accessor ~a)
+             n# (.ncols ~a)
+             buff-a# (.buffer ~a)
+             ofst-a# (.offset ~a)
+             buff-b# (.buffer ~b)
+             ofst-b# (.offset ~b)
+             stor# (storage ~a)
+             dot# (~method (.surface (region ~a)) buff-a# ofst-a# 1 buff-b# ofst-b# 1)]
+         (loop [i# 0 acc# (* 2.0 dot#)]
+           (if (< i# n#)
+             (recur (inc i#)
+                    (- acc#
+                       (* (.get da# buff-a# (+ ofst-a# (.index stor# i# i#)))
+                          (.get da# buff-b# (+ ofst-b# (.index stor# i# i#))))))
+             acc#)))
+       0.0)))
 
 (defmacro sp-mv
   ([method alpha a x beta y]
