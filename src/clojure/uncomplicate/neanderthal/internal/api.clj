@@ -135,7 +135,7 @@
   (lgamma [this a y])
   (expint1 [this a y])
   (floor [this a y])
-  (vceil [this a y])
+  (fceil [this a y])
   (trunc [this a y])
   (round [this a y])
   (modf [this a y z])

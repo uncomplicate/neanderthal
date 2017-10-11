@@ -479,7 +479,7 @@
     (vector-math MKL/vdExpInt1 ^RealBlockVector a ^RealBlockVector y))
   (floor [_ a y]
     (vector-math MKL/vdFloor ^RealBlockVector a ^RealBlockVector y))
-  (vceil [_ a y]
+  (fceil [_ a y]
     (vector-math MKL/vdCeil ^RealBlockVector a ^RealBlockVector y))
   (trunc [_ a y]
     (vector-math MKL/vdTrunc ^RealBlockVector a ^RealBlockVector y))
@@ -648,7 +648,7 @@
     (vector-math MKL/vsExpInt1 ^RealBlockVector a ^RealBlockVector y))
   (floor [_ a y]
     (vector-math MKL/vsFloor ^RealBlockVector a ^RealBlockVector y))
-  (vceil [_ a y]
+  (fceil [_ a y]
     (vector-math MKL/vsCeil ^RealBlockVector a ^RealBlockVector y))
   (trunc [_ a y]
     (vector-math MKL/vsTrunc ^RealBlockVector a ^RealBlockVector y))
@@ -874,7 +874,7 @@
     (matrix-math MKL/vdExpInt1 ^RealGEMatrix a ^RealGEMatrix y))
   (floor [_ a y]
     (matrix-math MKL/vdFloor ^RealGEMatrix a ^RealGEMatrix y))
-  (vceil [_ a y]
+  (fceil [_ a y]
     (matrix-math MKL/vdCeil ^RealGEMatrix a ^RealGEMatrix y))
   (trunc [_ a y]
     (matrix-math MKL/vdTrunc ^RealGEMatrix a ^RealGEMatrix y))
@@ -1094,7 +1094,7 @@
     (matrix-math MKL/vsExpInt1 ^RealGEMatrix a ^RealGEMatrix y))
   (floor [_ a y]
     (matrix-math MKL/vsFloor ^RealGEMatrix a ^RealGEMatrix y))
-  (vceil [_ a y]
+  (fceil [_ a y]
     (matrix-math MKL/vsCeil ^RealGEMatrix a ^RealGEMatrix y))
   (trunc [_ a y]
     (matrix-math MKL/vsTrunc ^RealGEMatrix a ^RealGEMatrix y))
@@ -1162,7 +1162,113 @@
   (sv [_ a b _]
     (tr-sv CBLAS/dtrsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tr-con LAPACK/dtrcon ^RealUploMatrix a nrm1?)))
+    (tr-con LAPACK/dtrcon ^RealUploMatrix a nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (matrix-math MKL/vdSqr ^RealUploMatrix a ^RealUploMatrix y))
+  (mul [_ a b y]
+    (matrix-math MKL/vdMul ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (div [_ a b y]
+    (matrix-math MKL/vdDiv ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (inv [_ a y]
+    (matrix-math MKL/vdInv ^RealUploMatrix a ^RealUploMatrix y))
+  (abs [_ a y]
+    (matrix-math MKL/vdAbs ^RealUploMatrix a ^RealUploMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (matrix-linear-frac MKL/vdLinearFrac ^RealUploMatrix a ^RealUploMatrix b
+                        scalea shifta scaleb shiftb ^RealUploMatrix y))
+  (fmod [_ a b y]
+    (matrix-math MKL/vdFmod ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (frem [_ a b y]
+    (matrix-math MKL/vdRemainder ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sqrt [_ a y]
+    (matrix-math MKL/vdSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-sqrt [_ a y]
+    (matrix-math MKL/vdInvSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (cbrt [_ a y]
+    (matrix-math MKL/vdCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-cbrt [_ a y]
+    (matrix-math MKL/vdInvCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (pow2o3 [_ a y]
+    (matrix-math MKL/vdPow2o3 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow3o2 [_ a y]
+    (matrix-math MKL/vdPow3o2 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow [_ a b y]
+    (matrix-math MKL/vdPow ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (powx [_ a b y]
+    (matrix-powx MKL/vdPowx ^RealUploMatrix a b ^RealUploMatrix y))
+  (hypot [_ a b y]
+    (matrix-math MKL/vdHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (exp [_ a y]
+    (matrix-math MKL/vdExp ^RealUploMatrix a ^RealUploMatrix y))
+  (expm1 [_ a y]
+    (matrix-math MKL/vdExpm1 ^RealUploMatrix a ^RealUploMatrix y))
+  (log [_ a y]
+    (matrix-math MKL/vdLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log10 [_ a y]
+    (matrix-math MKL/vdLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (sin [_ a y]
+    (matrix-math MKL/vdSin ^RealUploMatrix a ^RealUploMatrix y))
+  (cos [_ a y]
+    (matrix-math MKL/vdCos ^RealUploMatrix a ^RealUploMatrix y))
+  (tan [_ a y]
+    (matrix-math MKL/vdTan ^RealUploMatrix a ^RealUploMatrix y))
+  (sincos [_ a y z]
+    (matrix-math MKL/vdSinCos ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (asin [_ a y]
+    (matrix-math MKL/vdAsin ^RealUploMatrix a ^RealUploMatrix y))
+  (acos [_ a y]
+    (matrix-math MKL/vdAcos ^RealUploMatrix a ^RealUploMatrix y))
+  (atan [_ a y]
+    (matrix-math MKL/vdAtan ^RealUploMatrix a ^RealUploMatrix y))
+  (atan2 [_ a b y]
+    (matrix-math MKL/vdAtan2 ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sinh [_ a y]
+    (matrix-math MKL/vdSinh ^RealUploMatrix a ^RealUploMatrix y))
+  (cosh [_ a y]
+    (matrix-math MKL/vdCosh ^RealUploMatrix a ^RealUploMatrix y))
+  (tanh [_ a y]
+    (matrix-math MKL/vdTanh ^RealUploMatrix a ^RealUploMatrix y))
+  (asinh [_ a y]
+    (matrix-math MKL/vdAsinh ^RealUploMatrix a ^RealUploMatrix y))
+  (acosh [_ a y]
+    (matrix-math MKL/vdAcosh ^RealUploMatrix a ^RealUploMatrix y))
+  (atanh [_ a y]
+    (matrix-math MKL/vdAtanh ^RealUploMatrix a ^RealUploMatrix y))
+  (erf [_ a y]
+    (matrix-math MKL/vdErf ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc [_ a y]
+    (matrix-math MKL/vdErfc ^RealUploMatrix a ^RealUploMatrix y))
+  (erf-inv [_ a y]
+    (matrix-math MKL/vdErfInv ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc-inv [_ a y]
+    (matrix-math MKL/vdErfcInv ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm [_ a y]
+    (matrix-math MKL/vdCdfNorm ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm-inv [_ a y]
+    (matrix-math MKL/vdCdfNormInv ^RealUploMatrix a ^RealUploMatrix y))
+  (gamma [_ a y]
+    (matrix-math MKL/vdGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (lgamma [_ a y]
+    (matrix-math MKL/vdLGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (expint1 [_ a y]
+    (matrix-math MKL/vdExpInt1 ^RealUploMatrix a ^RealUploMatrix y))
+  (floor [_ a y]
+    (matrix-math MKL/vdFloor ^RealUploMatrix a ^RealUploMatrix y))
+  (fceil [_ a y]
+    (matrix-math MKL/vdCeil ^RealUploMatrix a ^RealUploMatrix y))
+  (trunc [_ a y]
+    (matrix-math MKL/vdTrunc ^RealUploMatrix a ^RealUploMatrix y))
+  (round [_ a y]
+    (matrix-math MKL/vdRound ^RealUploMatrix a ^RealUploMatrix y))
+  (modf [_ a y z]
+    (matrix-math MKL/vdModf ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (frac [_ a y]
+    (matrix-math MKL/vdFrac ^RealUploMatrix a ^RealUploMatrix y))
+  (fmin [_ a b y]
+    (matrix-math MKL/vdFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (fmax [_ a b y]
+    (matrix-math MKL/vdFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
 
 (deftype FloatTREngine []
   Blas
@@ -1215,7 +1321,113 @@
   (sv [_ a b _]
     (tr-sv CBLAS/strsm ^RealUploMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (tr-con LAPACK/strcon ^RealUploMatrix a nrm1?)))
+    (tr-con LAPACK/strcon ^RealUploMatrix a nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (matrix-math MKL/vsSqr ^RealUploMatrix a ^RealUploMatrix y))
+  (mul [_ a b y]
+    (matrix-math MKL/vsMul ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (div [_ a b y]
+    (matrix-math MKL/vsDiv ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (inv [_ a y]
+    (matrix-math MKL/vsInv ^RealUploMatrix a ^RealUploMatrix y))
+  (abs [_ a y]
+    (matrix-math MKL/vsAbs ^RealUploMatrix a ^RealUploMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (matrix-linear-frac MKL/vsLinearFrac ^RealUploMatrix a ^RealUploMatrix b
+                        scalea shifta scaleb shiftb ^RealUploMatrix y))
+  (fmod [_ a b y]
+    (matrix-math MKL/vsFmod ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (frem [_ a b y]
+    (matrix-math MKL/vsRemainder ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sqrt [_ a y]
+    (matrix-math MKL/vsSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-sqrt [_ a y]
+    (matrix-math MKL/vsInvSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (cbrt [_ a y]
+    (matrix-math MKL/vsCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-cbrt [_ a y]
+    (matrix-math MKL/vsInvCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (pow2o3 [_ a y]
+    (matrix-math MKL/vsPow2o3 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow3o2 [_ a y]
+    (matrix-math MKL/vsPow3o2 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow [_ a b y]
+    (matrix-math MKL/vsPow ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (powx [_ a b y]
+    (matrix-powx MKL/vsPowx ^RealUploMatrix a b ^RealUploMatrix y))
+  (hypot [_ a b y]
+    (matrix-math MKL/vsHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (exp [_ a y]
+    (matrix-math MKL/vsExp ^RealUploMatrix a ^RealUploMatrix y))
+  (expm1 [_ a y]
+    (matrix-math MKL/vsExpm1 ^RealUploMatrix a ^RealUploMatrix y))
+  (log [_ a y]
+    (matrix-math MKL/vsLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log10 [_ a y]
+    (matrix-math MKL/vsLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (sin [_ a y]
+    (matrix-math MKL/vsSin ^RealUploMatrix a ^RealUploMatrix y))
+  (cos [_ a y]
+    (matrix-math MKL/vsCos ^RealUploMatrix a ^RealUploMatrix y))
+  (tan [_ a y]
+    (matrix-math MKL/vsTan ^RealUploMatrix a ^RealUploMatrix y))
+  (sincos [_ a y z]
+    (matrix-math MKL/vsSinCos ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (asin [_ a y]
+    (matrix-math MKL/vsAsin ^RealUploMatrix a ^RealUploMatrix y))
+  (acos [_ a y]
+    (matrix-math MKL/vsAcos ^RealUploMatrix a ^RealUploMatrix y))
+  (atan [_ a y]
+    (matrix-math MKL/vsAtan ^RealUploMatrix a ^RealUploMatrix y))
+  (atan2 [_ a b y]
+    (matrix-math MKL/vsAtan2 ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sinh [_ a y]
+    (matrix-math MKL/vsSinh ^RealUploMatrix a ^RealUploMatrix y))
+  (cosh [_ a y]
+    (matrix-math MKL/vsCosh ^RealUploMatrix a ^RealUploMatrix y))
+  (tanh [_ a y]
+    (matrix-math MKL/vsTanh ^RealUploMatrix a ^RealUploMatrix y))
+  (asinh [_ a y]
+    (matrix-math MKL/vsAsinh ^RealUploMatrix a ^RealUploMatrix y))
+  (acosh [_ a y]
+    (matrix-math MKL/vsAcosh ^RealUploMatrix a ^RealUploMatrix y))
+  (atanh [_ a y]
+    (matrix-math MKL/vsAtanh ^RealUploMatrix a ^RealUploMatrix y))
+  (erf [_ a y]
+    (matrix-math MKL/vsErf ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc [_ a y]
+    (matrix-math MKL/vsErfc ^RealUploMatrix a ^RealUploMatrix y))
+  (erf-inv [_ a y]
+    (matrix-math MKL/vsErfInv ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc-inv [_ a y]
+    (matrix-math MKL/vsErfcInv ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm [_ a y]
+    (matrix-math MKL/vsCdfNorm ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm-inv [_ a y]
+    (matrix-math MKL/vsCdfNormInv ^RealUploMatrix a ^RealUploMatrix y))
+  (gamma [_ a y]
+    (matrix-math MKL/vsGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (lgamma [_ a y]
+    (matrix-math MKL/vsLGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (expint1 [_ a y]
+    (matrix-math MKL/vsExpInt1 ^RealUploMatrix a ^RealUploMatrix y))
+  (floor [_ a y]
+    (matrix-math MKL/vsFloor ^RealUploMatrix a ^RealUploMatrix y))
+  (fceil [_ a y]
+    (matrix-math MKL/vsCeil ^RealUploMatrix a ^RealUploMatrix y))
+  (trunc [_ a y]
+    (matrix-math MKL/vsTrunc ^RealUploMatrix a ^RealUploMatrix y))
+  (round [_ a y]
+    (matrix-math MKL/vsRound ^RealUploMatrix a ^RealUploMatrix y))
+  (modf [_ a y z]
+    (matrix-math MKL/vsModf ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (frac [_ a y]
+    (matrix-math MKL/vsFrac ^RealUploMatrix a ^RealUploMatrix y))
+  (fmin [_ a b y]
+    (matrix-math MKL/vsFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (fmax [_ a b y]
+    (matrix-math MKL/vsFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
 
 ;; =============== Symmetric Matrix Engines ===================================
 
@@ -1282,7 +1494,113 @@
   (con [_ ldl ipiv nrm _]
     (sy-con LAPACK/dsycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sy-con LAPACK/dpocon ^RealUploMatrix gg nrm)))
+    (sy-con LAPACK/dpocon ^RealUploMatrix gg nrm))
+  VectorMath
+  (sqr [_ a y]
+    (matrix-math MKL/vdSqr ^RealUploMatrix a ^RealUploMatrix y))
+  (mul [_ a b y]
+    (matrix-math MKL/vdMul ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (div [_ a b y]
+    (matrix-math MKL/vdDiv ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (inv [_ a y]
+    (matrix-math MKL/vdInv ^RealUploMatrix a ^RealUploMatrix y))
+  (abs [_ a y]
+    (matrix-math MKL/vdAbs ^RealUploMatrix a ^RealUploMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (matrix-linear-frac MKL/vdLinearFrac ^RealUploMatrix a ^RealUploMatrix b
+                        scalea shifta scaleb shiftb ^RealUploMatrix y))
+  (fmod [_ a b y]
+    (matrix-math MKL/vdFmod ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (frem [_ a b y]
+    (matrix-math MKL/vdRemainder ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sqrt [_ a y]
+    (matrix-math MKL/vdSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-sqrt [_ a y]
+    (matrix-math MKL/vdInvSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (cbrt [_ a y]
+    (matrix-math MKL/vdCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-cbrt [_ a y]
+    (matrix-math MKL/vdInvCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (pow2o3 [_ a y]
+    (matrix-math MKL/vdPow2o3 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow3o2 [_ a y]
+    (matrix-math MKL/vdPow3o2 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow [_ a b y]
+    (matrix-math MKL/vdPow ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (powx [_ a b y]
+    (matrix-powx MKL/vdPowx ^RealUploMatrix a b ^RealUploMatrix y))
+  (hypot [_ a b y]
+    (matrix-math MKL/vdHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (exp [_ a y]
+    (matrix-math MKL/vdExp ^RealUploMatrix a ^RealUploMatrix y))
+  (expm1 [_ a y]
+    (matrix-math MKL/vdExpm1 ^RealUploMatrix a ^RealUploMatrix y))
+  (log [_ a y]
+    (matrix-math MKL/vdLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log10 [_ a y]
+    (matrix-math MKL/vdLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (sin [_ a y]
+    (matrix-math MKL/vdSin ^RealUploMatrix a ^RealUploMatrix y))
+  (cos [_ a y]
+    (matrix-math MKL/vdCos ^RealUploMatrix a ^RealUploMatrix y))
+  (tan [_ a y]
+    (matrix-math MKL/vdTan ^RealUploMatrix a ^RealUploMatrix y))
+  (sincos [_ a y z]
+    (matrix-math MKL/vdSinCos ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (asin [_ a y]
+    (matrix-math MKL/vdAsin ^RealUploMatrix a ^RealUploMatrix y))
+  (acos [_ a y]
+    (matrix-math MKL/vdAcos ^RealUploMatrix a ^RealUploMatrix y))
+  (atan [_ a y]
+    (matrix-math MKL/vdAtan ^RealUploMatrix a ^RealUploMatrix y))
+  (atan2 [_ a b y]
+    (matrix-math MKL/vdAtan2 ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sinh [_ a y]
+    (matrix-math MKL/vdSinh ^RealUploMatrix a ^RealUploMatrix y))
+  (cosh [_ a y]
+    (matrix-math MKL/vdCosh ^RealUploMatrix a ^RealUploMatrix y))
+  (tanh [_ a y]
+    (matrix-math MKL/vdTanh ^RealUploMatrix a ^RealUploMatrix y))
+  (asinh [_ a y]
+    (matrix-math MKL/vdAsinh ^RealUploMatrix a ^RealUploMatrix y))
+  (acosh [_ a y]
+    (matrix-math MKL/vdAcosh ^RealUploMatrix a ^RealUploMatrix y))
+  (atanh [_ a y]
+    (matrix-math MKL/vdAtanh ^RealUploMatrix a ^RealUploMatrix y))
+  (erf [_ a y]
+    (matrix-math MKL/vdErf ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc [_ a y]
+    (matrix-math MKL/vdErfc ^RealUploMatrix a ^RealUploMatrix y))
+  (erf-inv [_ a y]
+    (matrix-math MKL/vdErfInv ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc-inv [_ a y]
+    (matrix-math MKL/vdErfcInv ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm [_ a y]
+    (matrix-math MKL/vdCdfNorm ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm-inv [_ a y]
+    (matrix-math MKL/vdCdfNormInv ^RealUploMatrix a ^RealUploMatrix y))
+  (gamma [_ a y]
+    (matrix-math MKL/vdGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (lgamma [_ a y]
+    (matrix-math MKL/vdLGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (expint1 [_ a y]
+    (matrix-math MKL/vdExpInt1 ^RealUploMatrix a ^RealUploMatrix y))
+  (floor [_ a y]
+    (matrix-math MKL/vdFloor ^RealUploMatrix a ^RealUploMatrix y))
+  (fceil [_ a y]
+    (matrix-math MKL/vdCeil ^RealUploMatrix a ^RealUploMatrix y))
+  (trunc [_ a y]
+    (matrix-math MKL/vdTrunc ^RealUploMatrix a ^RealUploMatrix y))
+  (round [_ a y]
+    (matrix-math MKL/vdRound ^RealUploMatrix a ^RealUploMatrix y))
+  (modf [_ a y z]
+    (matrix-math MKL/vdModf ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (frac [_ a y]
+    (matrix-math MKL/vdFrac ^RealUploMatrix a ^RealUploMatrix y))
+  (fmin [_ a b y]
+    (matrix-math MKL/vdFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (fmax [_ a b y]
+    (matrix-math MKL/vdFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
 
 (deftype FloatSYEngine []
   Blas
@@ -1347,7 +1665,113 @@
   (con [_ ldl ipiv nrm _]
     (sy-con LAPACK/ssycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
-    (sy-con LAPACK/spocon ^RealUploMatrix gg nrm)))
+    (sy-con LAPACK/spocon ^RealUploMatrix gg nrm))
+  VectorMath
+  (sqr [_ a y]
+    (matrix-math MKL/vsSqr ^RealUploMatrix a ^RealUploMatrix y))
+  (mul [_ a b y]
+    (matrix-math MKL/vsMul ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (div [_ a b y]
+    (matrix-math MKL/vsDiv ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (inv [_ a y]
+    (matrix-math MKL/vsInv ^RealUploMatrix a ^RealUploMatrix y))
+  (abs [_ a y]
+    (matrix-math MKL/vsAbs ^RealUploMatrix a ^RealUploMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (matrix-linear-frac MKL/vsLinearFrac ^RealUploMatrix a ^RealUploMatrix b
+                        scalea shifta scaleb shiftb ^RealUploMatrix y))
+  (fmod [_ a b y]
+    (matrix-math MKL/vsFmod ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (frem [_ a b y]
+    (matrix-math MKL/vsRemainder ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sqrt [_ a y]
+    (matrix-math MKL/vsSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-sqrt [_ a y]
+    (matrix-math MKL/vsInvSqrt ^RealUploMatrix a ^RealUploMatrix y))
+  (cbrt [_ a y]
+    (matrix-math MKL/vsCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (inv-cbrt [_ a y]
+    (matrix-math MKL/vsInvCbrt ^RealUploMatrix a ^RealUploMatrix y))
+  (pow2o3 [_ a y]
+    (matrix-math MKL/vsPow2o3 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow3o2 [_ a y]
+    (matrix-math MKL/vsPow3o2 ^RealUploMatrix a ^RealUploMatrix y))
+  (pow [_ a b y]
+    (matrix-math MKL/vsPow ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (powx [_ a b y]
+    (matrix-powx MKL/vsPowx ^RealUploMatrix a b ^RealUploMatrix y))
+  (hypot [_ a b y]
+    (matrix-math MKL/vsHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (exp [_ a y]
+    (matrix-math MKL/vsExp ^RealUploMatrix a ^RealUploMatrix y))
+  (expm1 [_ a y]
+    (matrix-math MKL/vsExpm1 ^RealUploMatrix a ^RealUploMatrix y))
+  (log [_ a y]
+    (matrix-math MKL/vsLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log10 [_ a y]
+    (matrix-math MKL/vsLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (sin [_ a y]
+    (matrix-math MKL/vsSin ^RealUploMatrix a ^RealUploMatrix y))
+  (cos [_ a y]
+    (matrix-math MKL/vsCos ^RealUploMatrix a ^RealUploMatrix y))
+  (tan [_ a y]
+    (matrix-math MKL/vsTan ^RealUploMatrix a ^RealUploMatrix y))
+  (sincos [_ a y z]
+    (matrix-math MKL/vsSinCos ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (asin [_ a y]
+    (matrix-math MKL/vsAsin ^RealUploMatrix a ^RealUploMatrix y))
+  (acos [_ a y]
+    (matrix-math MKL/vsAcos ^RealUploMatrix a ^RealUploMatrix y))
+  (atan [_ a y]
+    (matrix-math MKL/vsAtan ^RealUploMatrix a ^RealUploMatrix y))
+  (atan2 [_ a b y]
+    (matrix-math MKL/vsAtan2 ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sinh [_ a y]
+    (matrix-math MKL/vsSinh ^RealUploMatrix a ^RealUploMatrix y))
+  (cosh [_ a y]
+    (matrix-math MKL/vsCosh ^RealUploMatrix a ^RealUploMatrix y))
+  (tanh [_ a y]
+    (matrix-math MKL/vsTanh ^RealUploMatrix a ^RealUploMatrix y))
+  (asinh [_ a y]
+    (matrix-math MKL/vsAsinh ^RealUploMatrix a ^RealUploMatrix y))
+  (acosh [_ a y]
+    (matrix-math MKL/vsAcosh ^RealUploMatrix a ^RealUploMatrix y))
+  (atanh [_ a y]
+    (matrix-math MKL/vsAtanh ^RealUploMatrix a ^RealUploMatrix y))
+  (erf [_ a y]
+    (matrix-math MKL/vsErf ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc [_ a y]
+    (matrix-math MKL/vsErfc ^RealUploMatrix a ^RealUploMatrix y))
+  (erf-inv [_ a y]
+    (matrix-math MKL/vsErfInv ^RealUploMatrix a ^RealUploMatrix y))
+  (erfc-inv [_ a y]
+    (matrix-math MKL/vsErfcInv ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm [_ a y]
+    (matrix-math MKL/vsCdfNorm ^RealUploMatrix a ^RealUploMatrix y))
+  (cdf-norm-inv [_ a y]
+    (matrix-math MKL/vsCdfNormInv ^RealUploMatrix a ^RealUploMatrix y))
+  (gamma [_ a y]
+    (matrix-math MKL/vsGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (lgamma [_ a y]
+    (matrix-math MKL/vsLGamma ^RealUploMatrix a ^RealUploMatrix y))
+  (expint1 [_ a y]
+    (matrix-math MKL/vsExpInt1 ^RealUploMatrix a ^RealUploMatrix y))
+  (floor [_ a y]
+    (matrix-math MKL/vsFloor ^RealUploMatrix a ^RealUploMatrix y))
+  (fceil [_ a y]
+    (matrix-math MKL/vsCeil ^RealUploMatrix a ^RealUploMatrix y))
+  (trunc [_ a y]
+    (matrix-math MKL/vsTrunc ^RealUploMatrix a ^RealUploMatrix y))
+  (round [_ a y]
+    (matrix-math MKL/vsRound ^RealUploMatrix a ^RealUploMatrix y))
+  (modf [_ a y z]
+    (matrix-math MKL/vsModf ^RealUploMatrix a ^RealUploMatrix y ^RealUploMatrix z))
+  (frac [_ a y]
+    (matrix-math MKL/vsFrac ^RealUploMatrix a ^RealUploMatrix y))
+  (fmin [_ a b y]
+    (matrix-math MKL/vsFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (fmax [_ a b y]
+    (matrix-math MKL/vsFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
 
 ;; =============== Banded Matrix Engines ===================================
 

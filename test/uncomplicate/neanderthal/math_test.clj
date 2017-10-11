@@ -11,7 +11,7 @@
             [uncomplicate.commons.core :refer [release with-release let-release double-fn]]
             [uncomplicate.fluokitten.core :refer [fmap]]
             [uncomplicate.neanderthal
-             [core :refer [vctr ge copy axpy! nrm2 scal]]
+             [core :refer [vctr ge sy tr copy axpy! nrm2 scal]]
              [math :as m]
              [vect-math :as vm]])
   (:import clojure.lang.ExceptionInfo))
@@ -64,7 +64,33 @@
   ([factory scalarf vectorf]
    (diff-ge-2 factory scalarf vectorf -1 1 0.13))
   ([factory scalarf1 scalarf2 vectorf start end by]
-   (with-release [a (vctr factory (range start end by))
+   (with-release [a (ge factory 5 3(range start end by))
+                  result (vectorf a)
+                  expected1 (fmap scalarf1 a)
+                  expected2 (fmap scalarf2 a)]
+     [(nrm2 (axpy! -1 (result 0) expected1))
+      (nrm2 (axpy! -1 (result 1) expected2))])))
+
+(defn diff-uplo-1
+  ([uplo factory scalarf vectorf start end by]
+   (with-release [a (uplo factory 4 (range start end by))
+                  result (vectorf a)
+                  expected (fmap scalarf a)]
+     (nrm2 (axpy! -1 result expected))))
+  ([uplo factory scalarf vectorf]
+   (diff-uplo-1 uplo factory scalarf vectorf -1 1 0.13)))
+
+(defn diff-uplo-2
+  ([uplo factory scalarf vectorf start end by]
+   (with-release [a (uplo factory 4 (range start end by))
+                  b (scal 0.9 a)
+                  result (vectorf a b)
+                  expected (fmap scalarf a b)]
+     (nrm2 (axpy! -1 result expected))))
+  ([uplo factory scalarf vectorf]
+   (diff-uplo-2 uplo factory scalarf vectorf -1 1 0.13))
+  ([uplo factory scalarf1 scalarf2 vectorf start end by]
+   (with-release [a (uplo factory 4 (range start end by))
                   result (vectorf a)
                   expected1 (fmap scalarf1 a)
                   expected2 (fmap scalarf2 a)]
@@ -143,13 +169,32 @@
   (facts "ge-linear-frac"
          (with-release [a (ge factory 3 2 [1 2 3 1 2 3])
                         b (ge factory 3 2 [2 3 4 2 3 4])
-                        expected (ge factory 3 2 [5/13 7/17 9/21
-                                                  5/13 7/17 9/21])
+                        expected (ge factory 3 2 [5/13 7/17 9/21 5/13 7/17 9/21])
+                        result (vm/linear-frac 2 a 3 4 b 5)]
+           (nrm2 (axpy! -1 result expected)) => (zero))))
+
+(defn test-tr-linear-frac [factory]
+  (facts "tr-linear-frac"
+         (with-release [a (tr factory 3 [1 2 3 1 2 3])
+                        b (tr factory 3 [2 3 4 2 3 4])
+                        expected (tr factory 3 [5/13 7/17 9/21 5/13 7/17 9/21])
+                        result (vm/linear-frac 2 a 3 4 b 5)]
+           (nrm2 (axpy! -1 result expected)) => (zero))))
+
+(defn test-sy-linear-frac [factory]
+  (facts "sy-linear-frac"
+         (with-release [a (sy factory 3 [1 2 3 1 2 3])
+                        b (sy factory 3 [2 3 4 2 3 4])
+                        expected (sy factory 3 [5/13 7/17 9/21 5/13 7/17 9/21])
                         result (vm/linear-frac 2 a 3 4 b 5)]
            (nrm2 (axpy! -1 result expected)) => (zero))))
 
 (defn test-all [factory]
   (test-math factory diff-vctr-1 diff-vctr-2)
   (test-math factory diff-ge-1 diff-ge-2)
+  (test-math factory (partial diff-uplo-1 tr) (partial diff-uplo-2 tr))
+  (test-math factory (partial diff-uplo-1 sy) (partial diff-uplo-2 sy))
   (test-vctr-linear-frac factory)
-  (test-ge-linear-frac factory))
+  (test-ge-linear-frac factory)
+  (test-tr-linear-frac factory)
+  (test-sy-linear-frac factory))

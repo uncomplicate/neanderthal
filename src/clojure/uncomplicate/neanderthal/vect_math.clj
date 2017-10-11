@@ -213,8 +213,8 @@
 (defmath! floor! api/floor a y)
 (defmath floor api/floor a)
 
-(defmath! ceil! api/vceil a y)
-(defmath ceil api/vceil a)
+(defmath! ceil! api/fceil a y)
+(defmath ceil api/fceil a)
 
 (defmath! trunc! api/trunc a y)
 (defmath trunc api/trunc a)
