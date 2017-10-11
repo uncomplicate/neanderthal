@@ -11,7 +11,7 @@
             [uncomplicate.commons.core :refer [release with-release let-release double-fn]]
             [uncomplicate.fluokitten.core :refer [fmap]]
             [uncomplicate.neanderthal
-             [core :refer [vctr ge sy tr tp sp copy axpy! nrm2 scal]]
+             [core :refer [vctr ge sy tr tp sp gd gt dt st copy axpy! nrm2 scal]]
              [math :as m]
              [vect-math :as vm]])
   (:import clojure.lang.ExceptionInfo))
@@ -71,26 +71,26 @@
      [(nrm2 (axpy! -1 (result 0) expected1))
       (nrm2 (axpy! -1 (result 1) expected2))])))
 
-(defn diff-uplo-1
-  ([uplo factory scalarf vectorf start end by]
-   (with-release [a (uplo factory 4 (range start end by))
+(defn diff-square-1
+  ([create factory scalarf vectorf start end by]
+   (with-release [a (create factory 4 (range start end by))
                   result (vectorf a)
                   expected (fmap scalarf a)]
      (nrm2 (axpy! -1 result expected))))
-  ([uplo factory scalarf vectorf]
-   (diff-uplo-1 uplo factory scalarf vectorf -1 1 0.13)))
+  ([create factory scalarf vectorf]
+   (diff-square-1 create factory scalarf vectorf -1 1 0.13)))
 
-(defn diff-uplo-2
-  ([uplo factory scalarf vectorf start end by]
-   (with-release [a (uplo factory 4 (range start end by))
+(defn diff-square-2
+  ([create factory scalarf vectorf start end by]
+   (with-release [a (create factory 4 (range start end by))
                   b (scal 0.9 a)
                   result (vectorf a b)
                   expected (fmap scalarf a b)]
      (nrm2 (axpy! -1 result expected))))
-  ([uplo factory scalarf vectorf]
-   (diff-uplo-2 uplo factory scalarf vectorf -1 1 0.13))
-  ([uplo factory scalarf1 scalarf2 vectorf start end by]
-   (with-release [a (uplo factory 4 (range start end by))
+  ([create factory scalarf vectorf]
+   (diff-square-2 create factory scalarf vectorf -1 1 0.13))
+  ([create factory scalarf1 scalarf2 vectorf start end by]
+   (with-release [a (create factory 4 (range start end by))
                   result (vectorf a)
                   expected1 (fmap scalarf1 a)
                   expected2 (fmap scalarf2 a)]
@@ -192,10 +192,14 @@
 (defn test-all [factory]
   (test-math factory diff-vctr-1 diff-vctr-2)
   (test-math factory diff-ge-1 diff-ge-2)
-  (test-math factory (partial diff-uplo-1 tr) (partial diff-uplo-2 tr))
-  (test-math factory (partial diff-uplo-1 sy) (partial diff-uplo-2 sy))
-  (test-math factory (partial diff-uplo-1 tp) (partial diff-uplo-2 tp))
-  (test-math factory (partial diff-uplo-1 sp) (partial diff-uplo-2 sp))
+  (test-math factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  (test-math factory (partial diff-square-1 sy) (partial diff-square-2 sy))
+  (test-math factory (partial diff-square-1 tp) (partial diff-square-2 tp))
+  (test-math factory (partial diff-square-1 sp) (partial diff-square-2 sp))
+  (test-math factory (partial diff-square-1 gd) (partial diff-square-2 gd))
+  (test-math factory (partial diff-square-1 gt) (partial diff-square-2 gt))
+  (test-math factory (partial diff-square-1 dt) (partial diff-square-2 dt))
+  (test-math factory (partial diff-square-1 st) (partial diff-square-2 st))
   (test-vctr-linear-frac factory)
   (test-ge-linear-frac factory)
   (test-tr-linear-frac factory)

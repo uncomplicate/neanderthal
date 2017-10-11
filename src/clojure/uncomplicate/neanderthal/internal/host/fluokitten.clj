@@ -235,7 +235,8 @@
 (defn diagonal-fmap!
   ([a ^IFn$DD f]
    (let [va ^RealVector (view-vctr a)]
-     (fmap! va f)))
+     (fmap! va f)
+     a))
   ([^Matrix a ^IFn$DDD f ^Matrix b]
    (if (instance? DiagonalMatrix b)
      (let [va ^RealVector (view-vctr a)

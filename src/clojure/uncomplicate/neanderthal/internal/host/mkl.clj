@@ -235,6 +235,28 @@
       ~scalea ~shifta ~scaleb ~shiftb (.buffer ~y) (.offset ~y))
      ~y))
 
+(defmacro diagonal-math
+  ([method a y]
+   `(do
+      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
+      ~y))
+  ([method a b y]
+   `(do
+      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
+       (.buffer ~y) (.offset ~y))
+      ~y)))
+
+(defmacro diagonal-powx [method a b y]
+  `(do
+     (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) ~b (.buffer ~y) (.offset ~y))
+     ~y))
+
+(defmacro diagonal-linear-frac [method a b scalea shifta scaleb shiftb y]
+  `(do
+     (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
+      ~scalea ~shifta ~scaleb ~shiftb (.buffer ~y) (.offset ~y))
+     ~y))
+
 ;; ============ Integer Vector Engines ============================================
 
 (deftype LongVectorEngine []
@@ -2843,7 +2865,113 @@
   (sv [_ a b pure]
     (gt-sv LAPACK/dgtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (gt-con LAPACK/dgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?)))
+    (gt-con LAPACK/dgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vdSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vdMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vdDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vdInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vdRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vdSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vdInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vdCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vdInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vdPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vdPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vdPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vdPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vdCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vdTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vdSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vdAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vdAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vdAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vdAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vdSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vdCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vdTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vdAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vdAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vdAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vdErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vdErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vdErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vdErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vdCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vdCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vdGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vdLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vdExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vdFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vdCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vdTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vdRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vdModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vdFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 (deftype FloatGTEngine []
   Blas
@@ -2900,7 +3028,113 @@
   (sv [_ a b pure]
     (gt-sv LAPACK/sgtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (gt-con LAPACK/sgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?)))
+    (gt-con LAPACK/sgtcon ^RealDiagonalMatrix lu ^IntegerBlockVector ipiv nrm nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vsSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vsMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vsDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vsInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vsRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vsSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vsInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vsCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vsInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vsPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vsPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vsPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vsPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vsCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vsTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vsSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vsAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vsAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vsAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vsAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vsSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vsCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vsTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vsAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vsAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vsAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vsErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vsErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vsErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vsErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vsCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vsCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vsGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vsLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vsExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vsFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vsCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vsTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vsRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vsModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vsFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 (deftype DoubleGDEngine []
   Blas
@@ -2953,7 +3187,113 @@
   (sv [_ a b _]
     (gd-sv MKL/vdDiv CBLAS/dtbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (gd-con LAPACK/dtbcon ^RealDiagonalMatrix a nrm1?)))
+    (gd-con LAPACK/dtbcon ^RealDiagonalMatrix a nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vdSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vdMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vdDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vdInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vdRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vdSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vdInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vdCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vdInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vdPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vdPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vdPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vdPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vdCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vdTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vdSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vdAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vdAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vdAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vdAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vdSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vdCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vdTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vdAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vdAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vdAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vdErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vdErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vdErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vdErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vdCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vdCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vdGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vdLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vdExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vdFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vdCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vdTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vdRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vdModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vdFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 (deftype FloatGDEngine []
   Blas
@@ -3006,7 +3346,113 @@
   (sv [_ a b _]
     (gd-sv MKL/vsDiv CBLAS/stbsv ^RealDiagonalMatrix a ^RealGEMatrix b))
   (con [_ a nrm1?]
-    (gd-con LAPACK/stbcon ^RealDiagonalMatrix a nrm1?)))
+    (gd-con LAPACK/stbcon ^RealDiagonalMatrix a nrm1?))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vsSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vsMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vsDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vsInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vsRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vsSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vsInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vsCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vsInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vsPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vsPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vsPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vsPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vsCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vsTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vsSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vsAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vsAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vsAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vsAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vsSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vsCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vsTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vsAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vsAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vsAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vsErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vsErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vsErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vsErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vsCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vsCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vsGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vsLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vsExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vsFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vsCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vsTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vsRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vsModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vsFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 (deftype DoubleDTEngine []
   Blas
@@ -3061,7 +3507,113 @@
   (sv [_ a b pure]
     (dt-sv LAPACK/ddtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for DT matrices.")))
+    (dragan-says-ex "Condition number is not available for DT matrices."))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vdSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vdMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vdDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vdInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vdRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vdSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vdInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vdCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vdInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vdPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vdPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vdPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vdPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vdCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vdTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vdSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vdAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vdAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vdAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vdAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vdSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vdCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vdTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vdAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vdAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vdAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vdErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vdErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vdErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vdErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vdCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vdCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vdGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vdLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vdExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vdFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vdCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vdTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vdRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vdModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vdFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 (deftype FloatDTEngine []
   Blas
@@ -3116,7 +3668,113 @@
   (sv [_ a b pure]
     (dt-sv LAPACK/sdtsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for DT matrices.")))
+    (dragan-says-ex "Condition number is not available for DT matrices."))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vsSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vsMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vsDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vsInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vsRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vsSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vsInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vsCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vsInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vsPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vsPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vsPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vsPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vsCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vsTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vsSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vsAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vsAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vsAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vsAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vsSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vsCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vsTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vsAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vsAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vsAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vsErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vsErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vsErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vsErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vsCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vsCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vsGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vsLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vsExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vsFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vsCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vsTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vsRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vsModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vsFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 (deftype DoubleSTEngine []
   Blas
@@ -3171,7 +3829,113 @@
   (sv [_ a b pure]
     (st-sv LAPACK/dptsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for ST matrices.")))
+    (dragan-says-ex "Condition number is not available for ST matrices."))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vdSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vdMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vdDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vdInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vdRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vdSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vdInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vdCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vdInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vdPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vdPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vdPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vdPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vdCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vdTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vdSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vdAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vdAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vdAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vdAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vdSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vdCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vdTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vdAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vdAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vdAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vdErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vdErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vdErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vdErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vdCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vdCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vdGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vdLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vdExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vdFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vdCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vdTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vdRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vdModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vdFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 (deftype FloatSTEngine []
   Blas
@@ -3226,7 +3990,113 @@
   (sv [_ a b pure]
     (st-sv LAPACK/sptsv ^RealDiagonalMatrix a ^RealGEMatrix b pure))
   (con [_ lu ipiv nrm nrm1?]
-    (dragan-says-ex "Condition number is not available for ST matrices.")))
+    (dragan-says-ex "Condition number is not available for ST matrices."))
+  VectorMath
+  (sqr [_ a y]
+    (diagonal-math MKL/vsSqr ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (mul [_ a b y]
+    (diagonal-math MKL/vsMul ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (div [_ a b y]
+    (diagonal-math MKL/vsDiv ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (inv [_ a y]
+    (diagonal-math MKL/vsInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (abs [_ a y]
+    (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
+                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+  (fmod [_ a b y]
+    (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (frem [_ a b y]
+    (diagonal-math MKL/vsRemainder ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sqrt [_ a y]
+    (diagonal-math MKL/vsSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-sqrt [_ a y]
+    (diagonal-math MKL/vsInvSqrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cbrt [_ a y]
+    (diagonal-math MKL/vsCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (inv-cbrt [_ a y]
+    (diagonal-math MKL/vsInvCbrt ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow2o3 [_ a y]
+    (diagonal-math MKL/vsPow2o3 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow3o2 [_ a y]
+    (diagonal-math MKL/vsPow3o2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (pow [_ a b y]
+    (diagonal-math MKL/vsPow ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (powx [_ a b y]
+    (diagonal-powx MKL/vsPowx ^RealDiagonalMatrix a b ^RealDiagonalMatrix y))
+  (hypot [_ a b y]
+    (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (exp [_ a y]
+    (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expm1 [_ a y]
+    (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log [_ a y]
+    (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log10 [_ a y]
+    (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sin [_ a y]
+    (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cos [_ a y]
+    (diagonal-math MKL/vsCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tan [_ a y]
+    (diagonal-math MKL/vsTan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (sincos [_ a y z]
+    (diagonal-math MKL/vsSinCos ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (asin [_ a y]
+    (diagonal-math MKL/vsAsin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acos [_ a y]
+    (diagonal-math MKL/vsAcos ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan [_ a y]
+    (diagonal-math MKL/vsAtan ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atan2 [_ a b y]
+    (diagonal-math MKL/vsAtan2 ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sinh [_ a y]
+    (diagonal-math MKL/vsSinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cosh [_ a y]
+    (diagonal-math MKL/vsCosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (tanh [_ a y]
+    (diagonal-math MKL/vsTanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (asinh [_ a y]
+    (diagonal-math MKL/vsAsinh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (acosh [_ a y]
+    (diagonal-math MKL/vsAcosh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (atanh [_ a y]
+    (diagonal-math MKL/vsAtanh ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf [_ a y]
+    (diagonal-math MKL/vsErf ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc [_ a y]
+    (diagonal-math MKL/vsErfc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erf-inv [_ a y]
+    (diagonal-math MKL/vsErfInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (erfc-inv [_ a y]
+    (diagonal-math MKL/vsErfcInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm [_ a y]
+    (diagonal-math MKL/vsCdfNorm ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (cdf-norm-inv [_ a y]
+    (diagonal-math MKL/vsCdfNormInv ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (gamma [_ a y]
+    (diagonal-math MKL/vsGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (lgamma [_ a y]
+    (diagonal-math MKL/vsLGamma ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (expint1 [_ a y]
+    (diagonal-math MKL/vsExpInt1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (floor [_ a y]
+    (diagonal-math MKL/vsFloor ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fceil [_ a y]
+    (diagonal-math MKL/vsCeil ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (trunc [_ a y]
+    (diagonal-math MKL/vsTrunc ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (round [_ a y]
+    (diagonal-math MKL/vsRound ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (modf [_ a y z]
+    (diagonal-math MKL/vsModf ^RealDiagonalMatrix a ^RealDiagonalMatrix y ^RealDiagonalMatrix z))
+  (frac [_ a y]
+    (diagonal-math MKL/vsFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (fmin [_ a b y]
+    (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (fmax [_ a b y]
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
 
 ;; =============== Factories ==================================================
 
