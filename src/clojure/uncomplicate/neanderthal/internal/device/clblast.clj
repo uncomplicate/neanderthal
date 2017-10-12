@@ -203,6 +203,55 @@
        ~y)
      ~y))
 
+(defn ^:private vector-math
+  ([queue prog kernel-name ^CLBlockVector x ^CLBlockVector y]
+   (when (< 0 (.dim x))
+     (with-release [vector-kernel (kernel prog kernel-name)]
+       (set-args! vector-kernel 0
+                  (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+       (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
+   y)
+  ([queue prog kernel-name ^CLBlockVector x ^CLBlockVector y ^CLBlockVector z]
+   (when (< 0 (.dim x))
+     (with-release [vector-kernel (kernel prog kernel-name)]
+       (set-args! vector-kernel 0
+                  (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
+                  (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
+       (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
+   z))
+
+(defn ^:private vector-linear-frac [queue prog ^CLBlockVector x ^CLBlockVector y
+                                    scalea shifta scaleb shiftb ^CLBlockVector z]
+ (when (< 0 (.dim x))
+   (let [da (data-accessor x)]
+     (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+       (with-release [vector-kernel (kernel prog "vector_scale_shift")]
+         (set-args! vector-kernel 0
+                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                    (.wrapPrim da scalea) (.wrapPrim da shifta)
+                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+         (enq-nd! queue vector-kernel (work-size-1d (.dim x))))
+       (with-release [vector-kernel (kernel prog "vector_linear_frac")]
+         (set-args! vector-kernel 0
+                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
+                    (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
+                    (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
+         (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))))
+  z)
+
+(defn ^:private vector-powx [queue prog ^CLBlockVector x b ^CLBlockVector y]
+  (when (< 0 (.dim x))
+    (with-release [vector-kernel (kernel prog "vector_powx")]
+      (set-args! vector-kernel 0
+                 (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                 (.wrapPrim (data-accessor x) b)
+                 (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+      (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
+ y)
+
 ;; =============== Common GE matrix macros and functions =======================
 
 (defn ^:private ge-equals [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
@@ -512,7 +561,112 @@
   (set-all [_ alpha x]
     (vector-set ctx queue prog alpha x))
   (axpby [_ alpha x beta y]
-    (vector-axpby queue prog alpha x beta y)))
+    (vector-axpby queue prog alpha x beta y))
+  VectorMath
+  (sqr [_ a y]
+    (vector-math queue prog "vector_sqr" a y))
+  (mul [_ a b y]
+    (vector-math queue prog "vector_mul" a b y))
+  (div [_ a b y]
+    (vector-math queue prog "vector_div" a b y))
+  (inv [_ a y]
+    (vector-math queue prog "vector_inv" a y))
+  (abs [_ a y]
+    (vector-math queue prog "vector_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (vector-linear-frac queue prog a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (vector-math queue prog "vector_fmod" a b y))
+  (frem [_ a b y]
+    (vector-math queue prog "vector_frem" a b y))
+  (sqrt [_ a y]
+    (vector-math queue prog "vector_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (vector-math queue prog "vector_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (vector-math queue prog "vector_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (vector-math queue prog "vector_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (vector-math queue prog "vector_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (vector-math queue prog "vector_pow3o2" a y))
+  (pow [_ a b y]
+    (vector-math queue prog "vector_pow" a b y))
+  (powx [_ a b y]
+    (vector-powx queue prog a b y))
+  (hypot [_ a b y]
+    (vector-math queue prog "vector_hypot" a b y))
+  (exp [_ a y]
+    (vector-math queue prog "vector_exp" a y))
+  (expm1 [_ a y]
+    (vector-math queue prog "vector_expm1" a y))
+  (log [_ a y]
+    (vector-math queue prog "vector_log" a y))
+  (log10 [_ a y]
+    (vector-math queue prog "vector_log10" a y))
+  (sin [_ a y]
+    (vector-math queue prog "vector_sin" a y))
+  (cos [_ a y]
+    (vector-math queue prog "vector_cos" a y))
+  (tan [_ a y]
+    (vector-math queue prog "vector_tan" a y))
+  (sincos [_ a y z]
+    (vector-math queue prog "vector_sincos" a y z))
+  (asin [_ a y]
+    (vector-math queue prog "vector_asin" a y))
+  (acos [_ a y]
+    (vector-math queue prog "vector_acos" a y))
+  (atan [_ a y]
+    (vector-math queue prog "vector_atan" a y))
+  (atan2 [_ a b y]
+    (vector-math queue prog "vector_atan2"  a b y))
+  (sinh [_ a y]
+    (vector-math queue prog "vector_sinh" a y))
+  (cosh [_ a y]
+    (vector-math queue prog "vector_cosh" a y))
+  (tanh [_ a y]
+    (vector-math queue prog "vector_tanh"  a y))
+  (asinh [_ a y]
+    (vector-math queue prog "vector_asinh" a y))
+  (acosh [_ a y]
+    (vector-math queue prog "vector_acosh" a y))
+  (atanh [_ a y]
+    (vector-math queue prog "vector_atanh" a y))
+  (erf [_ a y]
+    (vector-math queue prog "vector_erf" a y))
+  (erfc [_ a y]
+    (vector-math queue prog "vector_erfc" a y))
+  (erf-inv [_ a y]
+    (vector-math queue prog "vector_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (not-available))
+  (cdf-norm [_ a y]
+    (vector-math queue prog "vector_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (not-available))
+  (gamma [_ a y]
+    (vector-math queue prog "vector_gamma" a y))
+  (lgamma [_ a y]
+    (vector-math queue prog "vector_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (vector-math queue prog "vector_floor" a y))
+  (fceil [_ a y]
+    (vector-math queue prog "vector_ceil" a y))
+  (trunc [_ a y]
+    (vector-math queue prog "vector_trunc" a y))
+  (round [_ a y]
+    (vector-math queue prog "vector_round" a y))
+  (modf [_ a y z]
+    (vector-math queue prog "vector_modf" a y z))
+  (frac [_ a y]
+    (not-available))
+  (fmin [_ a b y]
+    (vector-math queue prog "vector_fmin" a b y))
+  (fmax [_ a b y]
+    (vector-math queue prog "vector_fmax" a b y)))
 
 (deftype FloatVectorEngine [ctx queue prog]
   BlockEngine
@@ -564,7 +718,112 @@
   (set-all [_ alpha x]
     (vector-set ctx queue prog alpha x))
   (axpby [_ alpha x beta y]
-    (vector-axpby queue prog alpha x beta y)))
+    (vector-axpby queue prog alpha x beta y))
+  VectorMath
+  (sqr [_ a y]
+    (vector-math queue prog "vector_sqr" a y))
+  (mul [_ a b y]
+    (vector-math queue prog "vector_mul" a b y))
+  (div [_ a b y]
+    (vector-math queue prog "vector_div" a b y))
+  (inv [_ a y]
+    (vector-math queue prog "vector_inv" a y))
+  (abs [_ a y]
+    (vector-math queue prog "vector_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (vector-linear-frac queue prog a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (vector-math queue prog "vector_fmod" a b y))
+  (frem [_ a b y]
+    (vector-math queue prog "vector_frem" a b y))
+  (sqrt [_ a y]
+    (vector-math queue prog "vector_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (vector-math queue prog "vector_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (vector-math queue prog "vector_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (vector-math queue prog "vector_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (vector-math queue prog "vector_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (vector-math queue prog "vector_pow3o2" a y))
+  (pow [_ a b y]
+    (vector-math queue prog "vector_pow" a b y))
+  (powx [_ a b y]
+    (vector-powx queue prog a b y))
+  (hypot [_ a b y]
+    (vector-math queue prog "vector_hypot" a b y))
+  (exp [_ a y]
+    (vector-math queue prog "vector_exp" a y))
+  (expm1 [_ a y]
+    (vector-math queue prog "vector_expm1" a y))
+  (log [_ a y]
+    (vector-math queue prog "vector_log" a y))
+  (log10 [_ a y]
+    (vector-math queue prog "vector_log10" a y))
+  (sin [_ a y]
+    (vector-math queue prog "vector_sin" a y))
+  (cos [_ a y]
+    (vector-math queue prog "vector_cos" a y))
+  (tan [_ a y]
+    (vector-math queue prog "vector_tan" a y))
+  (sincos [_ a y z]
+    (vector-math queue prog "vector_sincos" a y z))
+  (asin [_ a y]
+    (vector-math queue prog "vector_asin" a y))
+  (acos [_ a y]
+    (vector-math queue prog "vector_acos" a y))
+  (atan [_ a y]
+    (vector-math queue prog "vector_atan" a y))
+  (atan2 [_ a b y]
+    (vector-math queue prog "vector_atan2"  a b y))
+  (sinh [_ a y]
+    (vector-math queue prog "vector_sinh" a y))
+  (cosh [_ a y]
+    (vector-math queue prog "vector_cosh" a y))
+  (tanh [_ a y]
+    (vector-math queue prog "vector_tanh"  a y))
+  (asinh [_ a y]
+    (vector-math queue prog "vector_asinh" a y))
+  (acosh [_ a y]
+    (vector-math queue prog "vector_acosh" a y))
+  (atanh [_ a y]
+    (vector-math queue prog "vector_atanh" a y))
+  (erf [_ a y]
+    (vector-math queue prog "vector_erf" a y))
+  (erfc [_ a y]
+    (vector-math queue prog "vector_erfc" a y))
+  (erf-inv [_ a y]
+    (vector-math queue prog "vector_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (not-available))
+  (cdf-norm [_ a y]
+    (vector-math queue prog "vector_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (not-available))
+  (gamma [_ a y]
+    (vector-math queue prog "vector_gamma" a y))
+  (lgamma [_ a y]
+    (vector-math queue prog "vector_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (vector-math queue prog "vector_floor" a y))
+  (fceil [_ a y]
+    (vector-math queue prog "vector_ceil" a y))
+  (trunc [_ a y]
+    (vector-math queue prog "vector_trunc" a y))
+  (round [_ a y]
+    (vector-math queue prog "vector_round" a y))
+  (modf [_ a y z]
+    (vector-math queue prog "vector_modf" a y z))
+  (frac [_ a y]
+    (vector-math queue prog "vector_frac" a y))
+  (fmin [_ a b y]
+    (vector-math queue prog "vector_fmin" a b y))
+  (fmax [_ a b y]
+    (vector-math queue prog "vector_fmax" a b y)))
 
 (deftype DoubleGEEngine [ctx queue prog]
   BlockEngine
@@ -788,7 +1047,8 @@
   (tr-engine [_]
     tr-eng))
 
-(let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cl"))]]
+(let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cl"))
+           (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cl"))]]
 
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 

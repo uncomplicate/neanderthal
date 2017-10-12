@@ -11,7 +11,7 @@
             [uncomplicate.commons.core :refer [release with-release let-release double-fn]]
             [uncomplicate.fluokitten.core :refer [fmap]]
             [uncomplicate.neanderthal
-             [core :refer [vctr ge sy tr tp sp gd gt dt st copy axpy! nrm2 scal]]
+             [core :refer [vctr ge sy tr tp sp gd gt dt st copy axpy! nrm2 scal transfer]]
              [math :as m]
              [vect-math :as vm]])
   (:import clojure.lang.ExceptionInfo))
@@ -23,8 +23,10 @@
   ([factory scalarf vectorf start end by]
    (with-release [a (vctr factory (range start end by))
                   result (vectorf a)
-                  expected (fmap scalarf a)]
-     (nrm2 (axpy! -1 result expected))))
+                  host-result (transfer result)
+                  host-a (transfer a)
+                  expected (fmap scalarf host-a)]
+     (nrm2 (axpy! -1 host-result expected))))
   ([factory scalarf vectorf]
    (diff-vctr-1 factory scalarf vectorf -1 1 0.07)))
 
@@ -33,24 +35,32 @@
    (with-release [a (vctr factory (range start end by))
                   b (scal 0.9 a)
                   result (vectorf a b)
-                  expected (fmap scalarf a b)]
-     (nrm2 (axpy! -1 result expected))))
+                  host-result (transfer result)
+                  host-a (transfer a)
+                  host-b (transfer b)
+                  expected (fmap scalarf host-a host-b)]
+     (nrm2 (axpy! -1 host-result expected))))
   ([factory scalarf vectorf]
    (diff-vctr-2 factory scalarf vectorf -1 1 0.07))
   ([factory scalarf1 scalarf2 vectorf start end by]
    (with-release [a (vctr factory (range start end by))
                   result (vectorf a)
-                  expected1 (fmap scalarf1 a)
-                  expected2 (fmap scalarf2 a)]
-     [(nrm2 (axpy! -1 (result 0) expected1))
-      (nrm2 (axpy! -1 (result 1) expected2))])))
+                  host-result-1 (transfer (result 0))
+                  host-result-2 (transfer (result 1))
+                  host-a (transfer a)
+                  expected1 (fmap scalarf1 host-a)
+                  expected2 (fmap scalarf2 host-a)]
+     [(nrm2 (axpy! -1 host-result-1 expected1))
+      (nrm2 (axpy! -1 host-result-2 expected2))])))
 
 (defn diff-ge-1
   ([factory scalarf vectorf start end by]
    (with-release [a (ge factory 5 3 (range start end by))
                   result (vectorf a)
-                  expected (fmap scalarf a)]
-     (nrm2 (axpy! -1 result expected))))
+                  host-result (transfer result)
+                  host-a (transfer a)
+                  expected (fmap scalarf host-a)]
+     (nrm2 (axpy! -1 host-result expected))))
   ([factory scalarf vectorf]
    (diff-ge-1 factory scalarf vectorf -1 1 0.13)))
 
@@ -59,24 +69,32 @@
    (with-release [a (ge factory 5 3 (range start end by))
                   b (scal 0.9 a)
                   result (vectorf a b)
-                  expected (fmap scalarf a b)]
-     (nrm2 (axpy! -1 result expected))))
+                  host-result (transfer result)
+                  host-a (transfer a)
+                  host-b (transfer b)
+                  expected (fmap scalarf host-a host-b)]
+     (nrm2 (axpy! -1 host-result expected))))
   ([factory scalarf vectorf]
    (diff-ge-2 factory scalarf vectorf -1 1 0.13))
   ([factory scalarf1 scalarf2 vectorf start end by]
    (with-release [a (ge factory 5 3(range start end by))
                   result (vectorf a)
-                  expected1 (fmap scalarf1 a)
-                  expected2 (fmap scalarf2 a)]
-     [(nrm2 (axpy! -1 (result 0) expected1))
-      (nrm2 (axpy! -1 (result 1) expected2))])))
+                  host-result-1 (transfer (result 0))
+                  host-result-2 (transfer (result 1))
+                  host-a (transfer a)
+                  expected1 (fmap scalarf1 host-a)
+                  expected2 (fmap scalarf2 host-a)]
+     [(nrm2 (axpy! -1 host-result-1 expected1))
+      (nrm2 (axpy! -1 host-result-2 expected2))])))
 
 (defn diff-square-1
   ([create factory scalarf vectorf start end by]
    (with-release [a (create factory 4 (range start end by))
                   result (vectorf a)
-                  expected (fmap scalarf a)]
-     (nrm2 (axpy! -1 result expected))))
+                  host-result (transfer result)
+                  host-a (transfer a)
+                  expected (fmap scalarf host-a)]
+     (nrm2 (axpy! -1 host-result expected))))
   ([create factory scalarf vectorf]
    (diff-square-1 create factory scalarf vectorf -1 1 0.13)))
 
@@ -85,17 +103,23 @@
    (with-release [a (create factory 4 (range start end by))
                   b (scal 0.9 a)
                   result (vectorf a b)
-                  expected (fmap scalarf a b)]
-     (nrm2 (axpy! -1 result expected))))
+                  host-result (transfer result)
+                  host-a (transfer a)
+                  host-b (transfer b)
+                  expected (fmap scalarf host-a host-b)]
+     (nrm2 (axpy! -1 host-result expected))))
   ([create factory scalarf vectorf]
    (diff-square-2 create factory scalarf vectorf -1 1 0.13))
   ([create factory scalarf1 scalarf2 vectorf start end by]
    (with-release [a (create factory 4 (range start end by))
                   result (vectorf a)
-                  expected1 (fmap scalarf1 a)
-                  expected2 (fmap scalarf2 a)]
-     [(nrm2 (axpy! -1 (result 0) expected1))
-      (nrm2 (axpy! -1 (result 1) expected2))])))
+                  host-result-1 (transfer (result 0))
+                  host-result-2 (transfer (result 1))
+                  host-a (transfer a)
+                  expected1 (fmap scalarf1 host-a)
+                  expected2 (fmap scalarf2 host-a)]
+     [(nrm2 (axpy! -1 host-result-1 expected1))
+      (nrm2 (axpy! -1 host-result-2 expected2))])))
 
 ;; =========================================================================
 
@@ -138,24 +162,29 @@
   (facts "atanh" (diff-1 factory m/atanh vm/atanh 0 1 0.06) => (zero))
   (facts "erf" (diff-1 factory m/erf vm/erf) => (zero))
   (facts "erfc" (diff-1 factory m/erfc vm/erfc) => (zero))
-  (facts "erf-inv"
-         (diff-1 factory (double-fn (comp m/erf-inv m/erf)) (comp vm/erf-inv vm/erf)) => (zero))
-  (facts "erfc-inv"
-         (diff-1 factory (double-fn (comp m/erfc-inv m/erfc)) (comp vm/erfc-inv vm/erfc)) => (zero))
   (facts "cdf-norm" (diff-1 factory m/cdf-norm vm/cdf-norm) => (zero))
-  (facts "cdf-norm-inv"
-         (diff-1 factory (double-fn (comp m/cdf-norm-inv m/cdf-norm)) (comp vm/cdf-norm-inv vm/cdf-norm))
-         => (zero))
-  (facts "gamma" (diff-1 factory m/gamma vm/gamma 0.1 7 0.22) => (zero))
   (facts "lgamma" (diff-1 factory m/lgamma vm/lgamma 0.1 7 0.22) => (zero))
   (facts "floor" (diff-1 factory m/floor vm/floor -5 7 0.22) => (zero))
   (facts "ceil" (diff-1 factory m/ceil vm/ceil -5 7 0.342) => (zero))
   (facts "trunc" (diff-1 factory m/trunc vm/trunc -5 7 0.342) => (zero))
   (facts "round" (diff-1 factory m/round vm/round -5 7 0.342) => (zero))
   (facts "modf" (diff-2 factory m/trunc m/frac vm/modf -5 6 0.77) => (just [(zero) (zero)]))
-  (facts "frac" (diff-1 factory m/frac vm/frac -5 9 0.87) => (zero))
   (facts "max" (diff-2 factory (double-fn max) vm/fmax) => (zero))
   (facts "min" (diff-2 factory (double-fn min) vm/fmin) => (zero)))
+
+(defn test-math-host [factory diff-1 diff-2]
+  (facts "erf-inv"
+         (diff-1 factory (double-fn (comp m/erf-inv m/erf)) (comp vm/erf-inv vm/erf)) => (zero))
+  (facts "erfc-inv"
+         (diff-1 factory (double-fn (comp m/erfc-inv m/erfc)) (comp vm/erfc-inv vm/erfc)) => (zero))
+  (facts "cdf-norm-inv"
+         (diff-1 factory (double-fn (comp m/cdf-norm-inv m/cdf-norm)) (comp vm/cdf-norm-inv vm/cdf-norm))
+         => (zero))
+  (facts "frac" (diff-1 factory m/frac vm/frac -5 9 0.87) => (zero))
+  (facts "gamma" (diff-1 factory m/gamma vm/gamma 0.1 7 0.22) => (zero)))
+
+(defn test-math-device [factory diff-1 diff-2]
+  (facts "gamma" (diff-1 factory m/gamma vm/gamma 0.1 7 0.22) => (roughly 0 0.001)))
 
 (defn test-vctr-linear-frac [factory]
   (facts "vctr-linear-frac"
@@ -189,7 +218,7 @@
                         result (vm/linear-frac 2 a 3 4 b 5)]
            (nrm2 (axpy! -1 result expected)) => (zero))))
 
-(defn test-all [factory]
+(defn test-all-host [factory]
   (test-math factory diff-vctr-1 diff-vctr-2)
   (test-math factory diff-ge-1 diff-ge-2)
   (test-math factory (partial diff-square-1 tr) (partial diff-square-2 tr))
@@ -200,7 +229,22 @@
   (test-math factory (partial diff-square-1 gt) (partial diff-square-2 gt))
   (test-math factory (partial diff-square-1 dt) (partial diff-square-2 dt))
   (test-math factory (partial diff-square-1 st) (partial diff-square-2 st))
+  (test-math-host factory diff-vctr-1 diff-vctr-2)
+  (test-math-host factory diff-ge-1 diff-ge-2)
+  (test-math-host factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  (test-math-host factory (partial diff-square-1 sy) (partial diff-square-2 sy))
+  (test-math-host factory (partial diff-square-1 tp) (partial diff-square-2 tp))
+  (test-math-host factory (partial diff-square-1 sp) (partial diff-square-2 sp))
+  (test-math-host factory (partial diff-square-1 gd) (partial diff-square-2 gd))
+  (test-math-host factory (partial diff-square-1 gt) (partial diff-square-2 gt))
+  (test-math-host factory (partial diff-square-1 dt) (partial diff-square-2 dt))
+  (test-math-host factory (partial diff-square-1 st) (partial diff-square-2 st))
   (test-vctr-linear-frac factory)
   (test-ge-linear-frac factory)
   (test-tr-linear-frac factory)
   (test-sy-linear-frac factory))
+
+(defn test-all-device [factory]
+  (test-math factory diff-vctr-1 diff-vctr-2)
+  (test-math-device factory diff-vctr-1 diff-vctr-2)
+  (test-vctr-linear-frac factory))

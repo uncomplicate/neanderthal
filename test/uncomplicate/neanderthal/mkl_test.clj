@@ -76,5 +76,5 @@
 (real-test/test-blas-st-host mkl-double)
 (real-test/test-blas-st-host mkl-float)
 
-(math-test/test-all mkl-double)
-(math-test/test-all mkl-float)
+(math-test/test-all-host mkl-double)
+(math-test/test-all-host mkl-float)
