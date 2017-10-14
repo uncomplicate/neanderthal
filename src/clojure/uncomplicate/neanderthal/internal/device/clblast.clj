@@ -203,55 +203,6 @@
        ~y)
      ~y))
 
-(defn ^:private vector-math
-  ([queue prog kernel-name ^CLBlockVector x ^CLBlockVector y]
-   (when (< 0 (.dim x))
-     (with-release [vector-kernel (kernel prog kernel-name)]
-       (set-args! vector-kernel 0
-                  (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-       (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
-   y)
-  ([queue prog kernel-name ^CLBlockVector x ^CLBlockVector y ^CLBlockVector z]
-   (when (< 0 (.dim x))
-     (with-release [vector-kernel (kernel prog kernel-name)]
-       (set-args! vector-kernel 0
-                  (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
-                  (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
-       (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
-   z))
-
-(defn ^:private vector-linear-frac [queue prog ^CLBlockVector x ^CLBlockVector y
-                                    scalea shifta scaleb shiftb ^CLBlockVector z]
- (when (< 0 (.dim x))
-   (let [da (data-accessor x)]
-     (if (and (= 0.0 scaleb) (= 1.0 shiftb))
-       (with-release [vector-kernel (kernel prog "vector_scale_shift")]
-         (set-args! vector-kernel 0
-                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                    (.wrapPrim da scalea) (.wrapPrim da shifta)
-                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-         (enq-nd! queue vector-kernel (work-size-1d (.dim x))))
-       (with-release [vector-kernel (kernel prog "vector_linear_frac")]
-         (set-args! vector-kernel 0
-                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
-                    (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
-                    (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
-         (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))))
-  z)
-
-(defn ^:private vector-powx [queue prog ^CLBlockVector x b ^CLBlockVector y]
-  (when (< 0 (.dim x))
-    (with-release [vector-kernel (kernel prog "vector_powx")]
-      (set-args! vector-kernel 0
-                 (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                 (.wrapPrim (data-accessor x) b)
-                 (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-      (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
- y)
-
 ;; =============== Common GE matrix macros and functions =======================
 
 (defn ^:private ge-equals [ctx queue prog ^CLGEMatrix a ^CLGEMatrix b]
@@ -507,6 +458,110 @@
       ~b))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+
+;; =============== Common vectorized math functions ============================
+
+(defn ^:private vector-math
+  ([queue prog kernel-name ^CLBlockVector x ^CLBlockVector y]
+   (when (< 0 (.dim x))
+     (with-release [vector-kernel (kernel prog kernel-name)]
+       (set-args! vector-kernel 0
+                  (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+       (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
+   y)
+  ([queue prog kernel-name ^CLBlockVector x ^CLBlockVector y ^CLBlockVector z]
+   (when (< 0 (.dim x))
+     (with-release [vector-kernel (kernel prog kernel-name)]
+       (set-args! vector-kernel 0
+                  (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
+                  (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
+       (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
+   z))
+
+(defn ^:private vector-linear-frac [queue prog ^CLBlockVector x ^CLBlockVector y
+                                    scalea shifta scaleb shiftb ^CLBlockVector z]
+ (when (< 0 (.dim x))
+   (let [da (data-accessor x)]
+     (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+       (with-release [vector-kernel (kernel prog "vector_scale_shift")]
+         (set-args! vector-kernel 0
+                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                    (.wrapPrim da scalea) (.wrapPrim da shifta)
+                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+         (enq-nd! queue vector-kernel (work-size-1d (.dim x))))
+       (with-release [vector-kernel (kernel prog "vector_linear_frac")]
+         (set-args! vector-kernel 0
+                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
+                    (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
+                    (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
+         (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))))
+  z)
+
+(defn ^:private vector-powx [queue prog ^CLBlockVector x b ^CLBlockVector y]
+  (when (< 0 (.dim x))
+    (with-release [vector-kernel (kernel prog "vector_powx")]
+      (set-args! vector-kernel 0
+                 (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                 (.wrapPrim (data-accessor x) b)
+                 (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+      (enq-nd! queue vector-kernel (work-size-1d (.dim x)))))
+ y)
+
+(defn ^:private ge-math
+  ([queue prog kernel-name ^CLGEMatrix a ^CLGEMatrix b]
+   (when (< 0 (.dim a))
+     (let [stor (full-storage a)]
+       (with-release [ge-kernel (kernel prog kernel-name)]
+         (set-args! ge-kernel 0
+                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
+         (enq-nd! queue ge-kernel (work-size-2d (.sd stor) (.fd stor))))))
+   b)
+  ([queue prog kernel-name ^CLGEMatrix a ^CLGEMatrix b ^CLGEMatrix c]
+   (when (< 0 (.dim a))
+     (let [stor (full-storage a)]
+       (with-release [ge-kernel (kernel prog kernel-name)]
+         (set-args! ge-kernel 0
+                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
+                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
+         (enq-nd! queue ge-kernel (work-size-2d (.sd stor) (.fd stor))))))
+   c))
+
+(defn ^:private ge-linear-frac [queue prog ^CLGEMatrix a ^CLGEMatrix b
+                                scalea shifta scaleb shiftb ^CLGEMatrix c]
+ (when (< 0 (.dim a))
+   (let [da (data-accessor a)
+         stor (full-storage a)]
+     (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+       (with-release [ge-kernel (kernel prog "ge_scale_shift")]
+         (set-args! ge-kernel 0
+                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                    (.wrapPrim da scalea) (.wrapPrim da shifta)
+                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
+         (enq-nd! queue ge-kernel (work-size-2d (.sd stor) (.fd stor))))
+       (with-release [ge-kernel (kernel prog "ge_linear_frac")]
+         (set-args! ge-kernel 0
+                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
+                    (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
+                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
+         (enq-nd! queue ge-kernel (work-size-2d (.sd stor) (.fd stor)))))))
+  c)
+
+(defn ^:private ge-powx [queue prog ^CLGEMatrix a b ^CLGEMatrix c]
+  (when (< 0 (.dim a))
+    (let [stor (full-storage a)]
+      (with-release [ge-kernel (kernel prog "ge_powx")]
+        (set-args! ge-kernel 0
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.wrapPrim (data-accessor a) b)
+                   (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
+        (enq-nd! queue ge-kernel (work-size-2d (.sd stor) (.fd stor))))))
+  c)
 
 ;; =============== CLBlast based engines =======================================
 
@@ -868,7 +923,112 @@
   (axpby [_ alpha a beta b]
     (ge-axpby queue prog alpha a beta b))
   (trans [_ a]
-    (ge-omatcopy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a)))
+    (ge-omatcopy queue CLBlast/CLBlastDomatcopy ^CLGEMatrix a))
+  VectorMath
+  (sqr [_ a y]
+    (ge-math queue prog "ge_sqr" a y))
+  (mul [_ a b y]
+    (ge-math queue prog "ge_mul" a b y))
+  (div [_ a b y]
+    (ge-math queue prog "ge_div" a b y))
+  (inv [_ a y]
+    (ge-math queue prog "ge_inv" a y))
+  (abs [_ a y]
+    (ge-math queue prog "ge_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (ge-linear-frac queue prog a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (ge-math queue prog "ge_fmod" a b y))
+  (frem [_ a b y]
+    (ge-math queue prog "ge_frem" a b y))
+  (sqrt [_ a y]
+    (ge-math queue prog "ge_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (ge-math queue prog "ge_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (ge-math queue prog "ge_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (ge-math queue prog "ge_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (ge-math queue prog "ge_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (ge-math queue prog "ge_pow3o2" a y))
+  (pow [_ a b y]
+    (ge-math queue prog "ge_pow" a b y))
+  (powx [_ a b y]
+    (ge-powx queue prog a b y))
+  (hypot [_ a b y]
+    (ge-math queue prog "ge_hypot" a b y))
+  (exp [_ a y]
+    (ge-math queue prog "ge_exp" a y))
+  (expm1 [_ a y]
+    (ge-math queue prog "ge_expm1" a y))
+  (log [_ a y]
+    (ge-math queue prog "ge_log" a y))
+  (log10 [_ a y]
+    (ge-math queue prog "ge_log10" a y))
+  (sin [_ a y]
+    (ge-math queue prog "ge_sin" a y))
+  (cos [_ a y]
+    (ge-math queue prog "ge_cos" a y))
+  (tan [_ a y]
+    (ge-math queue prog "ge_tan" a y))
+  (sincos [_ a y z]
+    (ge-math queue prog "ge_sincos" a y z))
+  (asin [_ a y]
+    (ge-math queue prog "ge_asin" a y))
+  (acos [_ a y]
+    (ge-math queue prog "ge_acos" a y))
+  (atan [_ a y]
+    (ge-math queue prog "ge_atan" a y))
+  (atan2 [_ a b y]
+    (ge-math queue prog "ge_atan2"  a b y))
+  (sinh [_ a y]
+    (ge-math queue prog "ge_sinh" a y))
+  (cosh [_ a y]
+    (ge-math queue prog "ge_cosh" a y))
+  (tanh [_ a y]
+    (ge-math queue prog "ge_tanh"  a y))
+  (asinh [_ a y]
+    (ge-math queue prog "ge_asinh" a y))
+  (acosh [_ a y]
+    (ge-math queue prog "ge_acosh" a y))
+  (atanh [_ a y]
+    (ge-math queue prog "ge_atanh" a y))
+  (erf [_ a y]
+    (ge-math queue prog "ge_erf" a y))
+  (erfc [_ a y]
+    (ge-math queue prog "ge_erfc" a y))
+  (erf-inv [_ a y]
+    (ge-math queue prog "ge_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (not-available))
+  (cdf-norm [_ a y]
+    (ge-math queue prog "ge_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (not-available))
+  (gamma [_ a y]
+    (ge-math queue prog "ge_gamma" a y))
+  (lgamma [_ a y]
+    (ge-math queue prog "ge_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (ge-math queue prog "ge_floor" a y))
+  (fceil [_ a y]
+    (ge-math queue prog "ge_ceil" a y))
+  (trunc [_ a y]
+    (ge-math queue prog "ge_trunc" a y))
+  (round [_ a y]
+    (ge-math queue prog "ge_round" a y))
+  (modf [_ a y z]
+    (ge-math queue prog "ge_modf" a y z))
+  (frac [_ a y]
+    (not-available))
+  (fmin [_ a b y]
+    (ge-math queue prog "ge_fmin" a b y))
+  (fmax [_ a b y]
+    (ge-math queue prog "ge_fmax" a b y)))
 
 (deftype FloatGEEngine [ctx queue prog]
   BlockEngine
@@ -913,7 +1073,112 @@
   (axpby [_ alpha a beta b]
     (ge-axpby queue prog alpha a beta b))
   (trans [_ a]
-    (ge-omatcopy queue CLBlast/CLBlastSomatcopy ^CLGEMatrix a)))
+    (ge-omatcopy queue CLBlast/CLBlastSomatcopy ^CLGEMatrix a))
+  VectorMath
+  (sqr [_ a y]
+    (ge-math queue prog "ge_sqr" a y))
+  (mul [_ a b y]
+    (ge-math queue prog "ge_mul" a b y))
+  (div [_ a b y]
+    (ge-math queue prog "ge_div" a b y))
+  (inv [_ a y]
+    (ge-math queue prog "ge_inv" a y))
+  (abs [_ a y]
+    (ge-math queue prog "ge_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (ge-linear-frac queue prog a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (ge-math queue prog "ge_fmod" a b y))
+  (frem [_ a b y]
+    (ge-math queue prog "ge_frem" a b y))
+  (sqrt [_ a y]
+    (ge-math queue prog "ge_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (ge-math queue prog "ge_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (ge-math queue prog "ge_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (ge-math queue prog "ge_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (ge-math queue prog "ge_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (ge-math queue prog "ge_pow3o2" a y))
+  (pow [_ a b y]
+    (ge-math queue prog "ge_pow" a b y))
+  (powx [_ a b y]
+    (ge-powx queue prog a b y))
+  (hypot [_ a b y]
+    (ge-math queue prog "ge_hypot" a b y))
+  (exp [_ a y]
+    (ge-math queue prog "ge_exp" a y))
+  (expm1 [_ a y]
+    (ge-math queue prog "ge_expm1" a y))
+  (log [_ a y]
+    (ge-math queue prog "ge_log" a y))
+  (log10 [_ a y]
+    (ge-math queue prog "ge_log10" a y))
+  (sin [_ a y]
+    (ge-math queue prog "ge_sin" a y))
+  (cos [_ a y]
+    (ge-math queue prog "ge_cos" a y))
+  (tan [_ a y]
+    (ge-math queue prog "ge_tan" a y))
+  (sincos [_ a y z]
+    (ge-math queue prog "ge_sincos" a y z))
+  (asin [_ a y]
+    (ge-math queue prog "ge_asin" a y))
+  (acos [_ a y]
+    (ge-math queue prog "ge_acos" a y))
+  (atan [_ a y]
+    (ge-math queue prog "ge_atan" a y))
+  (atan2 [_ a b y]
+    (ge-math queue prog "ge_atan2"  a b y))
+  (sinh [_ a y]
+    (ge-math queue prog "ge_sinh" a y))
+  (cosh [_ a y]
+    (ge-math queue prog "ge_cosh" a y))
+  (tanh [_ a y]
+    (ge-math queue prog "ge_tanh"  a y))
+  (asinh [_ a y]
+    (ge-math queue prog "ge_asinh" a y))
+  (acosh [_ a y]
+    (ge-math queue prog "ge_acosh" a y))
+  (atanh [_ a y]
+    (ge-math queue prog "ge_atanh" a y))
+  (erf [_ a y]
+    (ge-math queue prog "ge_erf" a y))
+  (erfc [_ a y]
+    (ge-math queue prog "ge_erfc" a y))
+  (erf-inv [_ a y]
+    (ge-math queue prog "ge_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (not-available))
+  (cdf-norm [_ a y]
+    (ge-math queue prog "ge_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (not-available))
+  (gamma [_ a y]
+    (ge-math queue prog "ge_gamma" a y))
+  (lgamma [_ a y]
+    (ge-math queue prog "ge_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (ge-math queue prog "ge_floor" a y))
+  (fceil [_ a y]
+    (ge-math queue prog "ge_ceil" a y))
+  (trunc [_ a y]
+    (ge-math queue prog "ge_trunc" a y))
+  (round [_ a y]
+    (ge-math queue prog "ge_round" a y))
+  (modf [_ a y z]
+    (ge-math queue prog "ge_modf" a y z))
+  (frac [_ a y]
+    (not-available))
+  (fmin [_ a b y]
+    (ge-math queue prog "ge_fmin" a b y))
+  (fmax [_ a b y]
+    (ge-math queue prog "ge_fmax" a b y)))
 
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine

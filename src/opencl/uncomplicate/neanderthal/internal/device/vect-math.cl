@@ -32,7 +32,7 @@ __kernel void vector_div (__global const REAL* x, const uint offset_x, const uin
 
 __kernel void vector_inv (__global const REAL* x, const uint offset_x, const uint stride_x,
                           __global REAL* y, const uint offset_y, const uint stride_y) {
-    y[offset_y + get_global_id(0) * stride_y] = 1.0 / x[offset_x + get_global_id(0) * stride_x];
+    y[offset_y + get_global_id(0) * stride_y] = (REAL)1.0 / x[offset_x + get_global_id(0) * stride_x];
 }
 
 __kernel void vector_abs (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -132,7 +132,7 @@ __kernel void vector_expm1 (__global const REAL* x, const uint offset_x, const u
 }
 
 __kernel void vector_log (__global const REAL* x, const uint offset_x, const uint stride_x,
-                            __global REAL* y, const uint offset_y, const uint stride_y) {
+                          __global REAL* y, const uint offset_y, const uint stride_y) {
     y[offset_y + get_global_id(0) * stride_y] = log(x[offset_x + get_global_id(0) * stride_x]);
 }
 
@@ -159,8 +159,9 @@ __kernel void vector_tan (__global const REAL* x, const uint offset_x, const uin
 __kernel void vector_sincos (__global const REAL* x, const uint offset_x, const uint stride_x,
                              __global REAL* y, const uint offset_y, const uint stride_y,
                              __global REAL* z, const uint offset_z, const uint stride_z) {
-    y[offset_y + get_global_id(0) * stride_y] = sin(x[offset_x + get_global_id(0) * stride_x]);
-    z[offset_z + get_global_id(0) * stride_z] = cos(x[offset_x + get_global_id(0) * stride_x]);
+    const REAL xval = x[offset_x + get_global_id(0) * stride_x];
+    y[offset_y + get_global_id(0) * stride_y] = sin(xval);
+    z[offset_z + get_global_id(0) * stride_z] = cos(xval);
 }
 
 __kernel void vector_asin (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -228,7 +229,7 @@ __kernel void vector_erfc (__global const REAL* x, const uint offset_x, const ui
 __kernel void vector_cdf_norm (__global const REAL* x, const uint offset_x, const uint stride_x,
                                __global REAL* y, const uint offset_y, const uint stride_y) {
     y[offset_y + get_global_id(0) * stride_y] =
-        0.5 * (1.0 +  erf((REAL)(x[offset_x + get_global_id(0) * stride_x] / M_SQRT2_F)));
+        (REAL)0.5 * ((REAL)1.0 +  erf((REAL)(x[offset_x + get_global_id(0) * stride_x] / M_SQRT2_F)));
 }
 
 __kernel void vector_gamma (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -282,4 +283,320 @@ __kernel void vector_fmin (__global const REAL* x, const uint offset_x, const ui
     const REAL xval = x[offset_x + get_global_id(0) * stride_x];
     const REAL yval = y[offset_y + get_global_id(0) * stride_y];
     z[offset_z + get_global_id(0) * stride_z] = yval < xval ? yval : xval;
+}
+
+__kernel void ge_sqr (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] = aval * aval;
+}
+
+__kernel void ge_mul (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global const REAL* b, const uint offset_b, const uint ld_b,
+                      __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] *
+        b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
+}
+
+__kernel void ge_div (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global const REAL* b, const uint offset_b, const uint ld_b,
+                      __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] /
+        b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
+}
+
+__kernel void ge_inv (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        (REAL)1.0 / a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+}
+
+__kernel void ge_abs (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        fabs(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_linear_frac (__global const REAL* a, const uint offset_a, const uint ld_a,
+                              __global const REAL* b, const uint offset_b, const uint ld_b,
+                              const REAL scalea, const REAL shifta, const REAL scaleb, const REAL shiftb,
+                              __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        (scalea * a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] + shifta) /
+        (scaleb * b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] + shiftb);
+}
+
+__kernel void ge_scale_shift (__global const REAL* a, const uint offset_a, const uint ld_a,
+                              const REAL scalea, const REAL shifta,
+                              __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        scalea * a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] + shifta;
+
+}
+
+__kernel void ge_fmod (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global const REAL* b, const uint offset_b, const uint ld_b,
+                       __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        fmod(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
+             b[offset_b + get_global_id(0) + get_global_id(1) * ld_b]);
+}
+
+__kernel void ge_frem (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global const REAL* b, const uint offset_b, const uint ld_b,
+                       __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        remainder(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
+                  b[offset_b + get_global_id(0) + get_global_id(1) * ld_b]);
+}
+
+__kernel void ge_sqrt (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        sqrt(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_inv_sqrt (__global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        rsqrt(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_cbrt (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        cbrt(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_inv_cbrt (__global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        (REAL)1.0 / cbrt(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_pow2o3 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        pow(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a], REAL2o3);
+}
+
+__kernel void ge_pow3o2 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        pow(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a], REAL3o2);
+}
+
+__kernel void ge_pow (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global const REAL* b, const uint offset_b, const uint ld_b,
+                      __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        pow(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
+            b[offset_b + get_global_id(0) + get_global_id(1) * ld_b]);
+}
+
+__kernel void ge_powx (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       const REAL b,
+                       __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        pow(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a], b);
+}
+
+__kernel void ge_hypot (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global const REAL* b, const uint offset_b, const uint ld_b,
+                        __global REAL* c, const uint offset_c, const uint ld_c) {
+    const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    const REAL bval = b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] = sqrt(aval * aval + bval * bval);
+}
+
+__kernel void ge_exp (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        exp(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_expm1 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        expm1(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_log (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        log(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_log10 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        log10(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_sin (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        sin(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_cos (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        cos(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_tan (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        tan(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_sincos (__global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b,
+                         __global REAL* c, const uint offset_c, const uint ld_c) {
+    const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] = sin(aval);
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] = cos(aval);
+}
+
+__kernel void ge_asin (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        asin(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_acos (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        acos(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_atan (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        atan(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_atan2 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global const REAL* b, const uint offset_b, const uint ld_b,
+                        __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        atan2(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
+              b[offset_b + get_global_id(0) + get_global_id(1) * ld_b]);
+}
+
+__kernel void ge_sinh (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        sinh(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_cosh (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        cosh(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_tanh (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        tanh(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_asinh (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        asinh(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_acosh (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        acosh(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_atanh (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        atanh(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_erf (__global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        erf(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_erfc (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        erfc(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_cdf_norm (__global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        (REAL)0.5 * ((REAL)1.0 + erf(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a] / M_SQRT2_F));
+}
+
+__kernel void ge_gamma (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        tgamma(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_lgamma (__global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        lgamma(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_floor (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        floor(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_ceil (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        ceil(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_trunc (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        trunc(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_round (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        round(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_modf (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global const REAL* b, const uint offset_b, const uint ld_b,
+                       __global REAL* c, const uint offset_c, const uint ld_c) {
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        modf(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
+             &b[offset_b + get_global_id(0) + get_global_id(1) * ld_b]);
+}
+
+__kernel void ge_fmax (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global const REAL* b, const uint offset_b, const uint ld_b,
+                       __global REAL* c, const uint offset_c, const uint ld_c) {
+    const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    const REAL bval = b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] = aval < bval ? bval : aval;
+}
+
+__kernel void ge_fmin (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global const REAL* b, const uint offset_b, const uint ld_b,
+                       __global REAL* c, const uint offset_c, const uint ld_c) {
+    const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    const REAL bval = b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] = bval < aval ? bval : aval;
 }

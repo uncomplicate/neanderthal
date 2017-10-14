@@ -246,5 +246,8 @@
 
 (defn test-all-device [factory]
   (test-math factory diff-vctr-1 diff-vctr-2)
+  (test-math factory diff-ge-1 diff-ge-2)
   (test-math-device factory diff-vctr-1 diff-vctr-2)
-  (test-vctr-linear-frac factory))
+  (test-math-device factory diff-ge-1 diff-ge-2)
+  (test-vctr-linear-frac factory)
+  (test-ge-linear-frac factory))
