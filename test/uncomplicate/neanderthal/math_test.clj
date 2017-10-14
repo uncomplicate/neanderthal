@@ -13,7 +13,8 @@
             [uncomplicate.neanderthal
              [core :refer [vctr ge sy tr tp sp gd gt dt st copy axpy! nrm2 scal transfer]]
              [math :as m]
-             [vect-math :as vm]])
+             [vect-math :as vm]]
+            [uncomplicate.neanderthal.internal.api :refer [native-factory]])
   (:import clojure.lang.ExceptionInfo))
 
 (defmacro ^:private zero []
@@ -198,25 +199,28 @@
   (facts "ge-linear-frac"
          (with-release [a (ge factory 3 2 [1 2 3 1 2 3])
                         b (ge factory 3 2 [2 3 4 2 3 4])
-                        expected (ge factory 3 2 [5/13 7/17 9/21 5/13 7/17 9/21])
-                        result (vm/linear-frac 2 a 3 4 b 5)]
-           (nrm2 (axpy! -1 result expected)) => (zero))))
+                        host-expected (ge (native-factory factory) 3 2 [5/13 7/17 9/21 5/13 7/17 9/21])
+                        result (vm/linear-frac 2 a 3 4 b 5)
+                        host-result (transfer result)]
+           (nrm2 (axpy! -1 host-result host-expected)) => (zero))))
 
 (defn test-tr-linear-frac [factory]
   (facts "tr-linear-frac"
          (with-release [a (tr factory 3 [1 2 3 1 2 3])
                         b (tr factory 3 [2 3 4 2 3 4])
-                        expected (tr factory 3 [5/13 7/17 9/21 5/13 7/17 9/21])
-                        result (vm/linear-frac 2 a 3 4 b 5)]
-           (nrm2 (axpy! -1 result expected)) => (zero))))
+                        host-expected (tr (native-factory factory) 3 [5/13 7/17 9/21 5/13 7/17 9/21])
+                        result (vm/linear-frac 2 a 3 4 b 5)
+                        host-result (transfer result)]
+           (nrm2 (axpy! -1 host-result host-expected)) => (zero))))
 
 (defn test-sy-linear-frac [factory]
   (facts "sy-linear-frac"
          (with-release [a (sy factory 3 [1 2 3 1 2 3])
                         b (sy factory 3 [2 3 4 2 3 4])
-                        expected (sy factory 3 [5/13 7/17 9/21 5/13 7/17 9/21])
-                        result (vm/linear-frac 2 a 3 4 b 5)]
-           (nrm2 (axpy! -1 result expected)) => (zero))))
+                        host-expected (sy (native-factory factory) 3 [5/13 7/17 9/21 5/13 7/17 9/21])
+                        result (vm/linear-frac 2 a 3 4 b 5)
+                        host-result (transfer result)]
+           (nrm2 (axpy! -1 host-result host-expected)) => (zero))))
 
 (defn test-all-host [factory]
   (test-math factory diff-vctr-1 diff-vctr-2)
@@ -247,7 +251,10 @@
 (defn test-all-device [factory]
   (test-math factory diff-vctr-1 diff-vctr-2)
   (test-math factory diff-ge-1 diff-ge-2)
+  (test-math factory (partial diff-square-1 tr) (partial diff-square-2 tr))
   (test-math-device factory diff-vctr-1 diff-vctr-2)
   (test-math-device factory diff-ge-1 diff-ge-2)
+  (test-math-device factory (partial diff-square-1 tr) (partial diff-square-2 tr))
   (test-vctr-linear-frac factory)
-  (test-ge-linear-frac factory))
+  (test-ge-linear-frac factory)
+  (test-tr-linear-frac factory))

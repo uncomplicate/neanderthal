@@ -27,7 +27,7 @@ __kernel void vector_div (__global const REAL* x, const uint offset_x, const uin
                           __global const REAL* y, const uint offset_y, const uint stride_y,
                           __global REAL* z, const uint offset_z, const uint stride_z) {
     z[offset_z + get_global_id(0) * stride_z] =
-      x[offset_x + get_global_id(0) * stride_x] / y[offset_y + get_global_id(0) * stride_y];
+        x[offset_x + get_global_id(0) * stride_x] / y[offset_y + get_global_id(0) * stride_y];
 }
 
 __kernel void vector_inv (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -96,7 +96,7 @@ __kernel void vector_pow2o3 (__global const REAL* x, const uint offset_x, const 
 
 __kernel void vector_pow3o2 (__global const REAL* x, const uint offset_x, const uint stride_x,
                              __global REAL* y, const uint offset_y, const uint stride_y) {
-        y[offset_y + get_global_id(0) * stride_y] = powr(x[offset_x + get_global_id(0) * stride_x], REAL3o2);
+    y[offset_y + get_global_id(0) * stride_y] = powr(x[offset_x + get_global_id(0) * stride_x], REAL3o2);
 }
 
 __kernel void vector_pow (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -578,7 +578,7 @@ __kernel void ge_round (__global const REAL* a, const uint offset_a, const uint 
 }
 
 __kernel void ge_modf (__global const REAL* a, const uint offset_a, const uint ld_a,
-                       __global const REAL* b, const uint offset_b, const uint ld_b,
+                       __global REAL* b, const uint offset_b, const uint ld_b,
                        __global REAL* c, const uint offset_c, const uint ld_c) {
     c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
         modf(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
@@ -599,4 +599,616 @@ __kernel void ge_fmin (__global const REAL* a, const uint offset_a, const uint l
     const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
     const REAL bval = b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
     c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] = bval < aval ? bval : aval;
+}
+
+__kernel void uplo_sqr (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        const REAL aval = a[offset_a + gid_0 + gid_1 * ld_a];
+        b[offset_b + gid_0 + gid_1 * ld_b] = aval * aval;
+    }
+}
+
+__kernel void uplo_mul (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global const REAL* b, const uint offset_b, const uint ld_b,
+                        __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            a[offset_a + gid_0 + gid_1 * ld_a] * b[offset_b + gid_0 + gid_1 * ld_b];
+
+    }
+}
+
+__kernel void uplo_div (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global const REAL* b, const uint offset_b, const uint ld_b,
+                        __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            a[offset_a + gid_0 + gid_1 * ld_a] / b[offset_b + gid_0 + gid_1 * ld_b];
+
+    }
+}
+
+__kernel void uplo_inv (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = (REAL)1.0 / a[offset_a + gid_0 + gid_1 * ld_a];
+    }
+}
+
+__kernel void uplo_abs (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = fabs(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_linear_frac (const uint unit, const int bottom,
+                                __global const REAL* a, const uint offset_a, const uint ld_a,
+                                __global const REAL* b, const uint offset_b, const uint ld_b,
+                                const REAL scalea, const REAL shifta, const REAL scaleb, const REAL shiftb,
+                                __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    c[offset_c + gid_0 + gid_1 * ld_c] =
+        (scalea * a[offset_a + gid_0 + gid_1 * ld_a] + shifta) /
+        (scaleb * b[offset_b + gid_0 + gid_1 * ld_b] + shiftb);
+}
+
+__kernel void uplo_scale_shift (const uint unit, const int bottom,
+                                __global const REAL* a, const uint offset_a, const uint ld_a,
+                                const REAL scalea, const REAL shifta,
+                                __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    c[offset_c + gid_0 + gid_1 * ld_c] =
+        (scalea * a[offset_a + gid_0 + gid_1 * ld_a] + shifta);
+
+}
+
+__kernel void uplo_fmod (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global const REAL* b, const uint offset_b, const uint ld_b,
+                         __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            fmod(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+    }
+}
+
+__kernel void uplo_frem (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global const REAL* b, const uint offset_b, const uint ld_b,
+                         __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            remainder(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+    }
+}
+
+__kernel void uplo_sqrt (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = sqrt(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_inv_sqrt (const uint unit, const int bottom,
+                             __global const REAL* a, const uint offset_a, const uint ld_a,
+                             __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = rsqrt(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_cbrt (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = cbrt(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_inv_cbrt (const uint unit, const int bottom,
+                             __global const REAL* a, const uint offset_a, const uint ld_a,
+                             __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = (REAL)1.0 / cbrt(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_pow2o3 (const uint unit, const int bottom,
+                           __global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = pow(a[offset_a + gid_0 + gid_1 * ld_a], REAL2o3);
+    }
+}
+
+__kernel void uplo_pow3o2 (const uint unit, const int bottom,
+                           __global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = pow(a[offset_a + gid_0 + gid_1 * ld_a], REAL3o2);
+    }
+}
+
+__kernel void uplo_pow (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global const REAL* b, const uint offset_b, const uint ld_b,
+                        __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            pow(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+    }
+}
+
+__kernel void uplo_powx (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         const REAL b,
+                         __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] = pow(a[offset_a + gid_0 + gid_1 * ld_a], b);
+    }
+}
+
+__kernel void uplo_hypot (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global const REAL* b, const uint offset_b, const uint ld_b,
+                          __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        const REAL aval = a[offset_a + gid_0 + gid_1 * ld_a];
+        const REAL bval = b[offset_b + gid_0 + gid_1 * ld_b];
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            sqrt(aval * aval + bval * bval);
+    }
+}
+
+__kernel void uplo_exp (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = exp(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_expm1 (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = expm1(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_log (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = log(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_log10 (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = log10(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_sin (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = sin(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_cos (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = cos(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_tan (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = tan(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_sincos (const uint unit, const int bottom,
+                           __global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global REAL* b, const uint offset_b, const uint ld_b,
+                           __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        const REAL aval = a[offset_a + gid_0 + gid_1 * ld_a];
+        b[offset_b + gid_0 + gid_1 * ld_b] = sin(aval);
+        c[offset_c + gid_0 + gid_1 * ld_c] = cos(aval);
+    }
+
+}
+
+__kernel void uplo_asin (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = asin(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_acos (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = acos(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_atan (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = atan(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_atan2 (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global const REAL* b, const uint offset_b, const uint ld_b,
+                          __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            atan2(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+    }
+}
+
+__kernel void uplo_sinh (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = sinh(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_cosh (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = cosh(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_tanh (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = tanh(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_asinh (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = asinh(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_acosh (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = acosh(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_atanh (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = atanh(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_erf (const uint unit, const int bottom,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = erf(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_erfc (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = erfc(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_cdf_norm (const uint unit, const int bottom,
+                             __global const REAL* a, const uint offset_a, const uint ld_a,
+                             __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] =
+            (REAL)0.5 * ((REAL)1.0 + erf(a[offset_a + gid_0 + gid_1 * ld_a] / M_SQRT2_F));
+    }
+}
+
+__kernel void uplo_gamma (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = tgamma(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_lgamma (const uint unit, const int bottom,
+                           __global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = lgamma(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_floor (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = floor(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_ceil (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = ceil(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_trunc (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = trunc(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_round (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = round(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_modf (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global const REAL* b, const uint offset_b, const uint ld_b,
+                         __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            modf(a[offset_a + gid_0 + gid_1 * ld_a], &b[offset_b + gid_0 + gid_1 * ld_b]);
+    }
+}
+
+__kernel void uplo_fmax (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global const REAL* b, const uint offset_b, const uint ld_b,
+                         __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        const REAL aval = a[offset_a + gid_0 + gid_1 * ld_a];
+        const REAL bval = b[offset_b + gid_0 + gid_1 * ld_b];
+        c[offset_c + gid_0 + gid_1 * ld_c] = aval < bval ? bval : aval;
+    }
+}
+
+__kernel void uplo_fmin (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global const REAL* b, const uint offset_b, const uint ld_b,
+                         __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        const REAL aval = a[offset_a + gid_0 + gid_1 * ld_a];
+        const REAL bval = b[offset_b + gid_0 + gid_1 * ld_b];
+        c[offset_c + gid_0 + gid_1 * ld_c] = bval < aval ? bval : aval;
+    }
 }
