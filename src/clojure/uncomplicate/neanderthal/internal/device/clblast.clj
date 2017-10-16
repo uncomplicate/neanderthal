@@ -777,7 +777,7 @@
   (modf [_ a y z]
     (vector-math queue prog "vector_modf" a y z))
   (frac [_ a y]
-    (not-available))
+    (vector-math queue prog "vector_frac" a y))
   (fmin [_ a b y]
     (vector-math queue prog "vector_fmin" a b y))
   (fmax [_ a b y]
@@ -1084,7 +1084,7 @@
   (modf [_ a y z]
     (ge-math queue prog "ge_modf" a y z))
   (frac [_ a y]
-    (not-available))
+    (ge-math queue prog "ge_frac" a y))
   (fmin [_ a b y]
     (ge-math queue prog "ge_fmin" a b y))
   (fmax [_ a b y]
@@ -1234,7 +1234,7 @@
   (modf [_ a y z]
     (ge-math queue prog "ge_modf" a y z))
   (frac [_ a y]
-    (not-available))
+    (ge-math queue prog "ge_frac" a y))
   (fmin [_ a b y]
     (ge-math queue prog "ge_fmin" a b y))
   (fmax [_ a b y]
@@ -1381,7 +1381,7 @@
   (modf [_ a y z]
     (uplo-math queue prog "uplo_modf" a y z))
   (frac [_ a y]
-    (not-available))
+    (uplo-math queue prog "uplo_frac" a y))
   (fmin [_ a b y]
     (uplo-math queue prog "uplo_fmin" a b y))
   (fmax [_ a b y]
@@ -1528,7 +1528,7 @@
   (modf [_ a y z]
     (uplo-math queue prog "uplo_modf" a y z))
   (frac [_ a y]
-    (not-available))
+    (uplo-math queue prog "uplo_frac" a y))
   (fmin [_ a b y]
     (uplo-math queue prog "uplo_fmin" a b y))
   (fmax [_ a b y]

@@ -405,6 +405,57 @@
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
 
+;; =============== Common vectorized math functions ============================
+
+(defn ^:private vector-math
+  ([modl hstream kernel-name ^CUBlockVector x ^CUBlockVector y]
+   (when (< 0 (.dim x))
+     (with-release [math-kernel (function modl kernel-name)]
+       (launch! math-kernel (grid-1d (.dim x)) hstream
+                (parameters (.dim x)
+                            (.buffer x) (.offset x) (.stride x)
+                            (.buffer y) (.offset y) (.stride y)))))
+   y)
+  ([modl hstream kernel-name ^CUBlockVector x ^CUBlockVector y ^CUBlockVector z]
+   (when (< 0 (.dim x))
+     (with-release [math-kernel (function modl kernel-name)]
+       (launch! math-kernel (grid-1d (.dim x)) hstream
+                (parameters (.dim x)
+                            (.buffer x) (.offset x) (.stride x)
+                            (.buffer y) (.offset y) (.stride y)
+                            (.buffer z) (.offset z) (.stride z)))))
+   y))
+
+(defn ^:private vector-linear-frac [modl hstream ^CUBlockVector x ^CUBlockVector y
+                                    scalea shifta scaleb shiftb ^CUBlockVector z]
+ (when (< 0 (.dim x))
+   (let [da (data-accessor x)]
+     (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+       (with-release [math-kernel (function modl "vector_scale_shift")]
+         (launch! math-kernel (grid-1d (.dim x)) hstream
+                  (parameters (.dim x)
+                              (.buffer x) (.offset x) (.stride x)
+                              scalea shifta scaleb shiftb
+                              (.buffer z) (.offset z) (.stride z))))
+       (with-release [math-kernel (function modl "vector_linear_frac")]
+         (launch! math-kernel (grid-1d (.dim x)) hstream
+                  (parameters (.dim x)
+                              (.buffer x) (.offset x) (.stride x)
+                              (.buffer y) (.offset y) (.stride y)
+                              scalea shifta scaleb shiftb
+                              (.buffer z) (.offset z) (.stride z)))))))
+  z)
+
+(defn ^:private vector-powx [modl hstream ^CUBlockVector x b ^CUBlockVector y]
+  (when (< 0 (.dim x))
+    (with-release [math-kernel (function modl "vector_powx")]
+      (launch! math-kernel (grid-1d (.dim x)) hstream
+               (parameters (.dim x)
+                           (.buffer x) (.offset x) (.stride x)
+                           b
+                           (.buffer y) (.offset y) (.stride y)))))
+  y)
+
 ;; ======================== Engines ===========================================
 
 (deftype DoubleVectorEngine [cublas-handle modl hstream]
@@ -457,7 +508,112 @@
   (set-all [_ alpha x]
     (vector-set modl hstream (double alpha) ^CUBlockVector x))
   (axpby [_ alpha x beta y]
-    (vector-axpby modl hstream (double alpha) x (double beta) y)))
+    (vector-axpby modl hstream (double alpha) x (double beta) y))
+  VectorMath
+  (sqr [_ a y]
+    (vector-math modl hstream "vector_sqr" a y))
+  (mul [_ a b y]
+    (vector-math modl hstream "vector_mul" a b y))
+  (div [_ a b y]
+    (vector-math modl hstream "vector_div" a b y))
+  (inv [_ a y]
+    (vector-math modl hstream "vector_inv" a y))
+  (abs [_ a y]
+    (vector-math modl hstream "vector_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (vector-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (vector-math modl hstream "vector_fmod" a b y))
+  (frem [_ a b y]
+    (vector-math modl hstream "vector_frem" a b y))
+  (sqrt [_ a y]
+    (vector-math modl hstream "vector_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (vector-math modl hstream "vector_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (vector-math modl hstream "vector_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (vector-math modl hstream "vector_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (vector-math modl hstream "vector_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (vector-math modl hstream "vector_pow3o2" a y))
+  (pow [_ a b y]
+    (vector-math modl hstream "vector_pow" a b y))
+  (powx [_ a b y]
+    (vector-powx modl hstream a (double b) y))
+  (hypot [_ a b y]
+    (vector-math modl hstream "vector_hypot" a b y))
+  (exp [_ a y]
+    (vector-math modl hstream "vector_exp" a y))
+  (expm1 [_ a y]
+    (vector-math modl hstream "vector_expm1" a y))
+  (log [_ a y]
+    (vector-math modl hstream "vector_log" a y))
+  (log10 [_ a y]
+    (vector-math modl hstream "vector_log10" a y))
+  (sin [_ a y]
+    (vector-math modl hstream "vector_sin" a y))
+  (cos [_ a y]
+    (vector-math modl hstream "vector_cos" a y))
+  (tan [_ a y]
+    (vector-math modl hstream "vector_tan" a y))
+  (sincos [_ a y z]
+    (vector-math modl hstream "vector_sincos" a y z))
+  (asin [_ a y]
+    (vector-math modl hstream "vector_asin" a y))
+  (acos [_ a y]
+    (vector-math modl hstream "vector_acos" a y))
+  (atan [_ a y]
+    (vector-math modl hstream "vector_atan" a y))
+  (atan2 [_ a b y]
+    (vector-math modl hstream "vector_atan2"  a b y))
+  (sinh [_ a y]
+    (vector-math modl hstream "vector_sinh" a y))
+  (cosh [_ a y]
+    (vector-math modl hstream "vector_cosh" a y))
+  (tanh [_ a y]
+    (vector-math modl hstream "vector_tanh"  a y))
+  (asinh [_ a y]
+    (vector-math modl hstream "vector_asinh" a y))
+  (acosh [_ a y]
+    (vector-math modl hstream "vector_acosh" a y))
+  (atanh [_ a y]
+    (vector-math modl hstream "vector_atanh" a y))
+  (erf [_ a y]
+    (vector-math modl hstream "vector_erf" a y))
+  (erfc [_ a y]
+    (vector-math modl hstream "vector_erfc" a y))
+  (erf-inv [_ a y]
+    (vector-math modl hstream "vector_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (vector-math modl hstream "vector_erfc_inv" a y))
+  (cdf-norm [_ a y]
+    (vector-math modl hstream "vector_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (vector-math modl hstream "vector_cdf_norm_norm" a y))
+  (gamma [_ a y]
+    (vector-math modl hstream "vector_gamma" a y))
+  (lgamma [_ a y]
+    (vector-math modl hstream "vector_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (vector-math modl hstream "vector_floor" a y))
+  (fceil [_ a y]
+    (vector-math modl hstream "vector_ceil" a y))
+  (trunc [_ a y]
+    (vector-math modl hstream "vector_trunc" a y))
+  (round [_ a y]
+    (vector-math modl hstream "vector_round" a y))
+  (modf [_ a y z]
+    (vector-math modl hstream "vector_modf" a y z))
+  (frac [_ a y]
+    (vector-math modl hstream "vector_frac" a y))
+  (fmin [_ a b y]
+    (vector-math modl hstream "vector_fmin" a b y))
+  (fmax [_ a b y]
+    (vector-math modl hstream "vector_fmax" a b y)))
 
 (deftype FloatVectorEngine [cublas-handle modl hstream]
   BlockEngine
@@ -509,7 +665,112 @@
   (set-all [_ alpha x]
     (vector-set modl hstream (float alpha) ^CUBlockVector x))
   (axpby [_ alpha x beta y]
-    (vector-axpby modl hstream (float alpha) x (float beta) y)))
+    (vector-axpby modl hstream (float alpha) x (float beta) y))
+  VectorMath
+  (sqr [_ a y]
+    (vector-math modl hstream "vector_sqr" a y))
+  (mul [_ a b y]
+    (vector-math modl hstream "vector_mul" a b y))
+  (div [_ a b y]
+    (vector-math modl hstream "vector_div" a b y))
+  (inv [_ a y]
+    (vector-math modl hstream "vector_inv" a y))
+  (abs [_ a y]
+    (vector-math modl hstream "vector_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (vector-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (vector-math modl hstream "vector_fmod" a b y))
+  (frem [_ a b y]
+    (vector-math modl hstream "vector_frem" a b y))
+  (sqrt [_ a y]
+    (vector-math modl hstream "vector_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (vector-math modl hstream "vector_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (vector-math modl hstream "vector_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (vector-math modl hstream "vector_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (vector-math modl hstream "vector_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (vector-math modl hstream "vector_pow3o2" a y))
+  (pow [_ a b y]
+    (vector-math modl hstream "vector_pow" a b y))
+  (powx [_ a b y]
+    (vector-powx modl hstream a (float b) y))
+  (hypot [_ a b y]
+    (vector-math modl hstream "vector_hypot" a b y))
+  (exp [_ a y]
+    (vector-math modl hstream "vector_exp" a y))
+  (expm1 [_ a y]
+    (vector-math modl hstream "vector_expm1" a y))
+  (log [_ a y]
+    (vector-math modl hstream "vector_log" a y))
+  (log10 [_ a y]
+    (vector-math modl hstream "vector_log10" a y))
+  (sin [_ a y]
+    (vector-math modl hstream "vector_sin" a y))
+  (cos [_ a y]
+    (vector-math modl hstream "vector_cos" a y))
+  (tan [_ a y]
+    (vector-math modl hstream "vector_tan" a y))
+  (sincos [_ a y z]
+    (vector-math modl hstream "vector_sincos" a y z))
+  (asin [_ a y]
+    (vector-math modl hstream "vector_asin" a y))
+  (acos [_ a y]
+    (vector-math modl hstream "vector_acos" a y))
+  (atan [_ a y]
+    (vector-math modl hstream "vector_atan" a y))
+  (atan2 [_ a b y]
+    (vector-math modl hstream "vector_atan2"  a b y))
+  (sinh [_ a y]
+    (vector-math modl hstream "vector_sinh" a y))
+  (cosh [_ a y]
+    (vector-math modl hstream "vector_cosh" a y))
+  (tanh [_ a y]
+    (vector-math modl hstream "vector_tanh"  a y))
+  (asinh [_ a y]
+    (vector-math modl hstream "vector_asinh" a y))
+  (acosh [_ a y]
+    (vector-math modl hstream "vector_acosh" a y))
+  (atanh [_ a y]
+    (vector-math modl hstream "vector_atanh" a y))
+  (erf [_ a y]
+    (vector-math modl hstream "vector_erf" a y))
+  (erfc [_ a y]
+    (vector-math modl hstream "vector_erfc" a y))
+  (erf-inv [_ a y]
+    (vector-math modl hstream "vector_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (vector-math modl hstream "vector_erfc_inv" a y))
+  (cdf-norm [_ a y]
+    (vector-math modl hstream "vector_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (vector-math modl hstream "vector_cdf_norm_norm" a y))
+  (gamma [_ a y]
+    (vector-math modl hstream "vector_gamma" a y))
+  (lgamma [_ a y]
+    (vector-math modl hstream "vector_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (vector-math modl hstream "vector_floor" a y))
+  (fceil [_ a y]
+    (vector-math modl hstream "vector_ceil" a y))
+  (trunc [_ a y]
+    (vector-math modl hstream "vector_trunc" a y))
+  (round [_ a y]
+    (vector-math modl hstream "vector_round" a y))
+  (modf [_ a y z]
+    (vector-math modl hstream "vector_modf" a y z))
+  (frac [_ a y]
+    (vector-math modl hstream "vector_frac" a y))
+  (fmin [_ a b y]
+    (vector-math modl hstream "vector_fmin" a b y))
+  (fmax [_ a b y]
+    (vector-math modl hstream "vector_fmax" a b y)))
 
 (deftype DoubleGEEngine [cublas-handle modl hstream]
   BlockEngine
@@ -759,12 +1020,14 @@
    (cublas-handle 0)))
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu")))]
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu"))
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cu")))]
 
   (JCublas2/setExceptionsEnabled false)
 
   (defn cublas-double [handle]
-    (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double" "-arch=compute_30"])]
+    (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double"
+                                                 "-DCAST(fun)=fun" "-arch=compute_30"])]
       (let-release [modl (module prog)
                     hstream (get-stream handle)]
         (->CUFactory modl hstream (cu-double-accessor (current-context)) native-double
@@ -772,7 +1035,8 @@
                      (->DoubleTREngine handle modl hstream)))))
 
   (defn cublas-float [handle]
-    (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double" "-arch=compute_30"])]
+    (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double"
+                                                 "-DCAST(fun)=fun##f" "-arch=compute_30"])]
       (let-release [modl (module prog)
                     hstream (get-stream handle)]
         (->CUFactory modl hstream (cu-float-accessor (current-context)) native-float

@@ -170,6 +170,7 @@
   (facts "trunc" (diff-1 factory m/trunc vm/trunc -5 7 0.342) => (zero))
   (facts "round" (diff-1 factory m/round vm/round -5 7 0.342) => (zero))
   (facts "modf" (diff-2 factory m/trunc m/frac vm/modf -5 6 0.77) => (just [(zero) (zero)]))
+  (facts "frac" (diff-1 factory m/frac vm/frac -5 9 0.87) => (zero))
   (facts "max" (diff-2 factory (double-fn max) vm/fmax) => (zero))
   (facts "min" (diff-2 factory (double-fn min) vm/fmin) => (zero)))
 
@@ -181,7 +182,6 @@
   (facts "cdf-norm-inv"
          (diff-1 factory (double-fn (comp m/cdf-norm-inv m/cdf-norm)) (comp vm/cdf-norm-inv vm/cdf-norm))
          => (zero))
-  (facts "frac" (diff-1 factory m/frac vm/frac -5 9 0.87) => (zero))
   (facts "gamma" (diff-1 factory m/gamma vm/gamma 0.1 7 0.22) => (zero)))
 
 (defn test-math-device [factory diff-1 diff-2]
@@ -258,3 +258,10 @@
   (test-vctr-linear-frac factory)
   (test-ge-linear-frac factory)
   (test-tr-linear-frac factory))
+
+(defn test-all-cuda [factory]
+  (test-math factory diff-vctr-1 diff-vctr-2)
+  (test-math-device factory diff-vctr-1 diff-vctr-2)
+
+  (test-vctr-linear-frac factory)
+  )

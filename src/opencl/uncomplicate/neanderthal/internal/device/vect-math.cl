@@ -3,11 +3,11 @@
 #endif
 
 #ifndef REAL2o3
-#define REAL2o3 (REAL)(2.0/3.0)
+#define REAL2o3 (REAL)0.6666666666666666
 #endif
 
 #ifndef REAL3o2
-#define REAL3o2 (REAL)(3.0/2.0)
+#define REAL3o2 (REAL)1.5
 #endif
 
 __kernel void vector_sqr (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -96,7 +96,7 @@ __kernel void vector_pow2o3 (__global const REAL* x, const uint offset_x, const 
 
 __kernel void vector_pow3o2 (__global const REAL* x, const uint offset_x, const uint stride_x,
                              __global REAL* y, const uint offset_y, const uint stride_y) {
-    y[offset_y + get_global_id(0) * stride_y] = powr(x[offset_x + get_global_id(0) * stride_x], REAL3o2);
+    y[offset_y + get_global_id(0) * stride_y] = pow(x[offset_x + get_global_id(0) * stride_x], REAL3o2);
 }
 
 __kernel void vector_pow (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -267,6 +267,12 @@ __kernel void vector_modf (__global const REAL* x, const uint offset_x, const ui
                            __global REAL* z, const uint offset_z, const uint stride_z) {
     z[offset_z + get_global_id(0) * stride_z] =
         modf(x[offset_x + get_global_id(0) * stride_x], &y[offset_y + get_global_id(0) * stride_y]);
+}
+
+__kernel void vector_frac (__global const REAL* x, const uint offset_x, const uint stride_x,
+                           __global REAL* y, const uint offset_y, const uint stride_y) {
+    REAL dummy;
+    y[offset_y + get_global_id(0) * stride_y] = modf(x[offset_x + get_global_id(0) * stride_x], &dummy);
 }
 
 __kernel void vector_fmax (__global const REAL* x, const uint offset_x, const uint stride_x,
@@ -583,6 +589,13 @@ __kernel void ge_modf (__global const REAL* a, const uint offset_a, const uint l
     c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
         modf(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
              &b[offset_b + get_global_id(0) + get_global_id(1) * ld_b]);
+}
+
+__kernel void ge_frac (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    REAL dummy;
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        modf(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a], &dummy);
 }
 
 __kernel void ge_fmax (__global const REAL* a, const uint offset_a, const uint ld_a,
@@ -1180,6 +1193,20 @@ __kernel void uplo_modf (const uint unit, const int bottom,
     if (check) {
         c[offset_c + gid_0 + gid_1 * ld_c] =
             modf(a[offset_a + gid_0 + gid_1 * ld_a], &b[offset_b + gid_0 + gid_1 * ld_b]);
+    }
+}
+
+__kernel void uplo_frac (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        REAL dummy;
+        b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+            modf(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a], &dummy);
     }
 }
 

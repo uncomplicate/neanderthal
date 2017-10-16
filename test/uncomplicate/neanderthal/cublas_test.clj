@@ -5,7 +5,8 @@
              [cuda :refer [with-engine *cuda-factory* cuda-handle cuda-float cuda-double]]
              [block-test :as block-test]
              [real-test :as real-test]
-             [device-test :as device-test]]))
+             [device-test :as device-test]
+             [math-test :as math-test]]))
 
 (defn test-blas-cublas [factory]
   (real-test/test-iamin factory)
@@ -18,10 +19,12 @@
     (block-test/test-all *cuda-factory*)
     (real-test/test-blas *cuda-factory*)
     (test-blas-cublas *cuda-factory*)
-    (device-test/test-all *cuda-factory*))
+    (device-test/test-all *cuda-factory*)
+    (math-test/test-all-cuda *cuda-factory*))
 
   (with-engine cuda-double handle
     (block-test/test-all *cuda-factory*)
     (real-test/test-blas *cuda-factory*)
     (test-blas-cublas *cuda-factory*)
-    (device-test/test-all *cuda-factory*)))
+    (device-test/test-all *cuda-factory*)
+    (math-test/test-all-cuda *cuda-factory*)))

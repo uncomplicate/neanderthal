@@ -222,7 +222,7 @@ extern "C" {
 
     __global__ void tr_swap_transp (const int sd, const int unit, const int bottom,
                                     REAL* a, const int offset_a, const int ld_a,
-                                    REAL* b,  int offset_b, const int ld_b) {
+                                    REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
