@@ -28,7 +28,7 @@
 * Updated JOCLBlast dependency to 1.0.1.
 * Orthogonal factorizations greatly simplified
 * Symmetric and triangular mm support more layout and a/b position variations.
-* Upgraded Intel MKL to 2018 (it should work with earlier versions, but YMMV).o
+* Upgraded Intel MKL to 2018 (it should work with earlier versions, but YMMV).
 
 ### Breaking changes
 

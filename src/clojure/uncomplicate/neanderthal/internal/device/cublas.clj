@@ -25,7 +25,7 @@
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage]]
-             [common :refer [dragan-says-ex]]]
+             [common :refer [dragan-says-ex check-eq-navigators]]]
             [uncomplicate.neanderthal.internal.device
              [common :refer [name-transp tr-bottom]]
              [cublock :refer :all]])
@@ -456,6 +456,63 @@
                            (.buffer y) (.offset y) (.stride y)))))
   y)
 
+(defn ^:private ge-math
+  ([modl hstream kernel-name ^CUGEMatrix a ^CUGEMatrix b]
+   (when (< 0 (.dim a))
+     (check-eq-navigators a b)
+     (let [stor (full-storage a)]
+       (with-release [math-kernel (function modl kernel-name)]
+         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                  (parameters (.sd stor) (.fd stor)
+                              (.buffer a) (.offset a) (.stride a)
+                              (.buffer b) (.offset b) (.stride b))))))
+   b)
+  ([modl hstream kernel-name ^CUGEMatrix a ^CUGEMatrix b ^CUGEMatrix c]
+   (when (< 0 (.dim a))
+     (check-eq-navigators a b)
+     (let [stor (full-storage a)]
+       (with-release [math-kernel (function modl kernel-name)]
+         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                  (parameters (.sd stor) (.fd stor)
+                              (.buffer a) (.offset a) (.stride a)
+                              (.buffer b) (.offset b) (.stride b)
+                              (.buffer c) (.offset c) (.stride c))))))
+   c))
+
+(defn ^:private ge-linear-frac [modl hstream ^CUGEMatrix a ^CUGEMatrix b
+                                scalea shifta scaleb shiftb ^CUGEMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a b c)
+    (let [da (data-accessor a)
+          stor (full-storage a)]
+      (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+        (with-release [math-kernel (function modl "ge_scale_shift")]
+          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                   (parameters (.sd stor) (.fd stor)
+                               (.buffer a) (.offset a) (.stride a)
+                               scalea shifta scaleb shiftb
+                               (.buffer c) (.offset c) (.stride c))))
+        (with-release [math-kernel (function modl "ge_linear_frac")]
+          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                   (parameters (.sd stor) (.fd stor)
+                               (.buffer a) (.offset a) (.stride a)
+                               (.buffer b) (.offset b) (.stride b)
+                               scalea shifta scaleb shiftb
+                               (.buffer c) (.offset c) (.stride c)))))))
+  c)
+
+(defn ^:private ge-powx [modl hstream ^CUGEMatrix a b ^CUGEMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a c)
+    (let [stor (full-storage a)]
+      (with-release [math-kernel (function modl "ge_powx")]
+        (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.fd stor)
+                             (.buffer a) (.offset a) (.stride a)
+                             b
+                             (.buffer c) (.offset c) (.stride c))))))
+  c)
+
 ;; ======================== Engines ===========================================
 
 (deftype DoubleVectorEngine [cublas-handle modl hstream]
@@ -818,7 +875,112 @@
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double beta) ^CUGEMatrix b))
   (trans [_ a]
-    (not-available)))
+    (not-available))
+  VectorMath
+  (sqr [_ a y]
+    (ge-math modl hstream "ge_sqr" a y))
+  (mul [_ a b y]
+    (ge-math modl hstream "ge_mul" a b y))
+  (div [_ a b y]
+    (ge-math modl hstream "ge_div" a b y))
+  (inv [_ a y]
+    (ge-math modl hstream "ge_inv" a y))
+  (abs [_ a y]
+    (ge-math modl hstream "ge_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (ge-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (ge-math modl hstream "ge_fmod" a b y))
+  (frem [_ a b y]
+    (ge-math modl hstream "ge_frem" a b y))
+  (sqrt [_ a y]
+    (ge-math modl hstream "ge_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (ge-math modl hstream "ge_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (ge-math modl hstream "ge_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (ge-math modl hstream "ge_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (ge-math modl hstream "ge_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (ge-math modl hstream "ge_pow3o2" a y))
+  (pow [_ a b y]
+    (ge-math modl hstream "ge_pow" a b y))
+  (powx [_ a b y]
+    (ge-powx modl hstream a (double b) y))
+  (hypot [_ a b y]
+    (ge-math modl hstream "ge_hypot" a b y))
+  (exp [_ a y]
+    (ge-math modl hstream "ge_exp" a y))
+  (expm1 [_ a y]
+    (ge-math modl hstream "ge_expm1" a y))
+  (log [_ a y]
+    (ge-math modl hstream "ge_log" a y))
+  (log10 [_ a y]
+    (ge-math modl hstream "ge_log10" a y))
+  (sin [_ a y]
+    (ge-math modl hstream "ge_sin" a y))
+  (cos [_ a y]
+    (ge-math modl hstream "ge_cos" a y))
+  (tan [_ a y]
+    (ge-math modl hstream "ge_tan" a y))
+  (sincos [_ a y z]
+    (ge-math modl hstream "ge_sincos" a y z))
+  (asin [_ a y]
+    (ge-math modl hstream "ge_asin" a y))
+  (acos [_ a y]
+    (ge-math modl hstream "ge_acos" a y))
+  (atan [_ a y]
+    (ge-math modl hstream "ge_atan" a y))
+  (atan2 [_ a b y]
+    (ge-math modl hstream "ge_atan2"  a b y))
+  (sinh [_ a y]
+    (ge-math modl hstream "ge_sinh" a y))
+  (cosh [_ a y]
+    (ge-math modl hstream "ge_cosh" a y))
+  (tanh [_ a y]
+    (ge-math modl hstream "ge_tanh"  a y))
+  (asinh [_ a y]
+    (ge-math modl hstream "ge_asinh" a y))
+  (acosh [_ a y]
+    (ge-math modl hstream "ge_acosh" a y))
+  (atanh [_ a y]
+    (ge-math modl hstream "ge_atanh" a y))
+  (erf [_ a y]
+    (ge-math modl hstream "ge_erf" a y))
+  (erfc [_ a y]
+    (ge-math modl hstream "ge_erfc" a y))
+  (erf-inv [_ a y]
+    (ge-math modl hstream "ge_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (ge-math modl hstream "ge_erfc_inv"a y))
+  (cdf-norm [_ a y]
+    (ge-math modl hstream "ge_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (ge-math modl hstream "ge_cdf_norm_inv" a y))
+  (gamma [_ a y]
+    (ge-math modl hstream "ge_gamma" a y))
+  (lgamma [_ a y]
+    (ge-math modl hstream "ge_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (ge-math modl hstream "ge_floor" a y))
+  (fceil [_ a y]
+    (ge-math modl hstream "ge_ceil" a y))
+  (trunc [_ a y]
+    (ge-math modl hstream "ge_trunc" a y))
+  (round [_ a y]
+    (ge-math modl hstream "ge_round" a y))
+  (modf [_ a y z]
+    (ge-math modl hstream "ge_modf" a y z))
+  (frac [_ a y]
+    (ge-math modl hstream "ge_frac" a y))
+  (fmin [_ a b y]
+    (ge-math modl hstream "ge_fmin" a b y))
+  (fmax [_ a b y]
+    (ge-math modl hstream "ge_fmax" a b y)))
 
 (deftype FloatGEEngine [cublas-handle modl hstream]
   BlockEngine
@@ -866,7 +1028,112 @@
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float beta) ^CUGEMatrix b))
   (trans [_ a]
-    (not-available)))
+    (not-available))
+  VectorMath
+  (sqr [_ a y]
+    (ge-math modl hstream "ge_sqr" a y))
+  (mul [_ a b y]
+    (ge-math modl hstream "ge_mul" a b y))
+  (div [_ a b y]
+    (ge-math modl hstream "ge_div" a b y))
+  (inv [_ a y]
+    (ge-math modl hstream "ge_inv" a y))
+  (abs [_ a y]
+    (ge-math modl hstream "ge_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (ge-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (ge-math modl hstream "ge_fmod" a b y))
+  (frem [_ a b y]
+    (ge-math modl hstream "ge_frem" a b y))
+  (sqrt [_ a y]
+    (ge-math modl hstream "ge_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (ge-math modl hstream "ge_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (ge-math modl hstream "ge_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (ge-math modl hstream "ge_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (ge-math modl hstream "ge_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (ge-math modl hstream "ge_pow3o2" a y))
+  (pow [_ a b y]
+    (ge-math modl hstream "ge_pow" a b y))
+  (powx [_ a b y]
+    (ge-powx modl hstream a (float b) y))
+  (hypot [_ a b y]
+    (ge-math modl hstream "ge_hypot" a b y))
+  (exp [_ a y]
+    (ge-math modl hstream "ge_exp" a y))
+  (expm1 [_ a y]
+    (ge-math modl hstream "ge_expm1" a y))
+  (log [_ a y]
+    (ge-math modl hstream "ge_log" a y))
+  (log10 [_ a y]
+    (ge-math modl hstream "ge_log10" a y))
+  (sin [_ a y]
+    (ge-math modl hstream "ge_sin" a y))
+  (cos [_ a y]
+    (ge-math modl hstream "ge_cos" a y))
+  (tan [_ a y]
+    (ge-math modl hstream "ge_tan" a y))
+  (sincos [_ a y z]
+    (ge-math modl hstream "ge_sincos" a y z))
+  (asin [_ a y]
+    (ge-math modl hstream "ge_asin" a y))
+  (acos [_ a y]
+    (ge-math modl hstream "ge_acos" a y))
+  (atan [_ a y]
+    (ge-math modl hstream "ge_atan" a y))
+  (atan2 [_ a b y]
+    (ge-math modl hstream "ge_atan2"  a b y))
+  (sinh [_ a y]
+    (ge-math modl hstream "ge_sinh" a y))
+  (cosh [_ a y]
+    (ge-math modl hstream "ge_cosh" a y))
+  (tanh [_ a y]
+    (ge-math modl hstream "ge_tanh"  a y))
+  (asinh [_ a y]
+    (ge-math modl hstream "ge_asinh" a y))
+  (acosh [_ a y]
+    (ge-math modl hstream "ge_acosh" a y))
+  (atanh [_ a y]
+    (ge-math modl hstream "ge_atanh" a y))
+  (erf [_ a y]
+    (ge-math modl hstream "ge_erf" a y))
+  (erfc [_ a y]
+    (ge-math modl hstream "ge_erfc" a y))
+  (erf-inv [_ a y]
+    (ge-math modl hstream "ge_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (ge-math modl hstream "ge_erfc_inv"a y))
+  (cdf-norm [_ a y]
+    (ge-math modl hstream "ge_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (ge-math modl hstream "ge_cdf_norm_inv" a y))
+  (gamma [_ a y]
+    (ge-math modl hstream "ge_gamma" a y))
+  (lgamma [_ a y]
+    (ge-math modl hstream "ge_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (ge-math modl hstream "ge_floor" a y))
+  (fceil [_ a y]
+    (ge-math modl hstream "ge_ceil" a y))
+  (trunc [_ a y]
+    (ge-math modl hstream "ge_trunc" a y))
+  (round [_ a y]
+    (ge-math modl hstream "ge_round" a y))
+  (modf [_ a y z]
+    (ge-math modl hstream "ge_modf" a y z))
+  (frac [_ a y]
+    (ge-math modl hstream "ge_frac" a y))
+  (fmin [_ a b y]
+    (ge-math modl hstream "ge_fmin" a b y))
+  (fmax [_ a b y]
+    (ge-math modl hstream "ge_fmax" a b y)))
 
 (deftype DoubleTREngine [cublas-handle modl hstream]
   BlockEngine
