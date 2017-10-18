@@ -41,6 +41,7 @@ book.
 * [Clojure Numerics, Part 2 - General Linear Systems and LU Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-2-General-Linear-Systems-and-LU-Factorization)
 * [Clojure Numerics, Part 3 - Special Linear Systems and Cholesky Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-3-Special-Linear-Systems-and-Cholesky-Factorization)
 * [Clojure Numerics, Part 4 - Singular Value Decomposition (SVD)](http://dragan.rocks/articles/17/Clojure-Numerics-4-Singular-Value-Decomposition-SVD)
+* [Clojure Numerics, Part 5 - Orthogonalization and Least Squares](http://dragan.rocks/articles/17/Clojure-Numerics-5-Orthogonalization-and-Least-Squares)
 
 ## Internal details and edge cases
 
