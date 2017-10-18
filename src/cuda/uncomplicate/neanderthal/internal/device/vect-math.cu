@@ -295,8 +295,8 @@ extern "C" {
     }
 
     __global__ void vector_asin (const int n,
-                                const REAL* x, const int offset_x, const int stride_x,
-                                REAL* y, const int offset_y, const int stride_y) {
+                                 const REAL* x, const int offset_x, const int stride_x,
+                                 REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -305,8 +305,8 @@ extern "C" {
     }
 
     __global__ void vector_acos (const int n,
-                                const REAL* x, const int offset_x, const int stride_x,
-                                REAL* y, const int offset_y, const int stride_y) {
+                                 const REAL* x, const int offset_x, const int stride_x,
+                                 REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -315,8 +315,8 @@ extern "C" {
     }
 
     __global__ void vector_atan (const int n,
-                                const REAL* x, const int offset_x, const int stride_x,
-                                REAL* y, const int offset_y, const int stride_y) {
+                                 const REAL* x, const int offset_x, const int stride_x,
+                                 REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -367,8 +367,8 @@ extern "C" {
     }
 
     __global__ void vector_asinh (const int n,
-                                 const REAL* x, const int offset_x, const int stride_x,
-                                 REAL* y, const int offset_y, const int stride_y) {
+                                  const REAL* x, const int offset_x, const int stride_x,
+                                  REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -377,8 +377,8 @@ extern "C" {
     }
 
     __global__ void vector_acosh (const int n,
-                                 const REAL* x, const int offset_x, const int stride_x,
-                                 REAL* y, const int offset_y, const int stride_y) {
+                                  const REAL* x, const int offset_x, const int stride_x,
+                                  REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -387,8 +387,8 @@ extern "C" {
     }
 
     __global__ void vector_atanh (const int n,
-                                 const REAL* x, const int offset_x, const int stride_x,
-                                 REAL* y, const int offset_y, const int stride_y) {
+                                  const REAL* x, const int offset_x, const int stride_x,
+                                  REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -397,8 +397,8 @@ extern "C" {
     }
 
     __global__ void vector_erf (const int n,
-                                 const REAL* x, const int offset_x, const int stride_x,
-                                 REAL* y, const int offset_y, const int stride_y) {
+                                const REAL* x, const int offset_x, const int stride_x,
+                                REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -427,8 +427,8 @@ extern "C" {
     }
 
     __global__ void vector_erfc_inv (const int n,
-                                 const REAL* x, const int offset_x, const int stride_x,
-                                 REAL* y, const int offset_y, const int stride_y) {
+                                     const REAL* x, const int offset_x, const int stride_x,
+                                     REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
@@ -866,7 +866,8 @@ extern "C" {
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < fd);
         if (valid) { 
-            CAST(sincos)(a[offset_a + gid_0 + gid_1 * ld_a], &b[offset_b + gid_0 + gid_1 * ld_b], &c[offset_c + gid_0 + gid_1 * ld_c]);
+            CAST(sincos)(a[offset_a + gid_0 + gid_1 * ld_a],
+                         &b[offset_b + gid_0 + gid_1 * ld_b], &c[offset_c + gid_0 + gid_1 * ld_c]);
         }
     }
 
@@ -1165,15 +1166,711 @@ extern "C" {
         }
     }
 
-    
-    
+    __global__ void uplo_sqr (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            const REAL aval = a[offset_a + gid_0 + gid_1 * ld_a];
+            b[offset_b + gid_0 + gid_1 * ld_b] = aval * aval;
+        }
+    }
 
-    
+    __global__ void uplo_mul (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              const REAL* b, const int offset_b, const int ld_b,
+                              REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                a[offset_a + gid_0 + gid_1 * ld_a] * b[offset_b + gid_0 + gid_1 * ld_b];
+        }
+    }
 
-    
-    
+    __global__ void uplo_div (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              const REAL* b, const int offset_b, const int ld_b,
+                              REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                a[offset_a + gid_0 + gid_1 * ld_a] / b[offset_b + gid_0 + gid_1 * ld_b];
+        }
+    }
 
+    __global__ void uplo_inv (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = (REAL)1.0 / a[offset_a + gid_0 + gid_1 * ld_a];
+        }
+    }
 
+    __global__ void uplo_abs (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fabs)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
     
+    __global__ void uplo_linear_frac (const int sd, const int unit, const int bottom,
+                                      const REAL* a, const int offset_a, const int ld_a,
+                                      const REAL* b, const int offset_b, const int ld_b,
+                                      const REAL scalea, const REAL shifta, const REAL scaleb, const REAL shiftb,
+                                      REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                (scalea * a[offset_a + gid_0 + gid_1 * ld_a] + shifta) /
+                (scaleb * b[offset_b + gid_0 + gid_1 * ld_b] + shiftb);
+        }
+    }
+
+    __global__ void uplo_scale_shift (const int sd, const int unit, const int bottom,
+                                      const REAL* a, const int offset_a, const int ld_a,
+                                      const REAL scalea, const REAL shifta, const REAL scaleb, const REAL shiftb,
+                                      REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] = scalea * a[offset_a + gid_0 + gid_1 * ld_a] + shifta;
+                
+        }
+    }
+
+    __global__ void uplo_fmod (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               const REAL* b, const int offset_b, const int ld_b,
+                               REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(fmod)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_frem (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               const REAL* b, const int offset_b, const int ld_b,
+                               REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(remainder)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_sqrt (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(sqrt)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_inv_sqrt (const int sd, const int unit, const int bottom,
+                                   const REAL* a, const int offset_a, const int ld_a,
+                                   REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(rsqrt)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_cbrt (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(cbrt)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_inv_cbrt (const int sd, const int unit, const int bottom,
+                                   const REAL* a, const int offset_a, const int ld_a,
+                                   REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(rcbrt)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_pow2o3 (const int sd, const int unit, const int bottom,
+                                 const REAL* a, const int offset_a, const int ld_a,
+                                 REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(pow)(a[offset_a + gid_0 + gid_1 * ld_a], REAL2o3);
+        }
+    }
+
+    __global__ void uplo_pow3o2 (const int sd, const int unit, const int bottom,
+                                 const REAL* a, const int offset_a, const int ld_a,
+                                 REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(pow)(a[offset_a + gid_0 + gid_1 * ld_a], REAL3o2);
+        }
+    }
+
+    __global__ void uplo_pow (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              const REAL* b, const int offset_b, const int ld_b,
+                              REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(pow)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_powx (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               const REAL b,
+                               REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] = CAST(pow)(a[offset_a + gid_0 + gid_1 * ld_a], b);
+        }
+    }
+
+    __global__ void uplo_hypot (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                const REAL* b, const int offset_b, const int ld_b,
+                                REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(hypot)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_exp (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(exp)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_expm1 (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(expm1)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_log (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_log10 (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log10)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_sin (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(sin)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_cos (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(cos)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_tan (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(tan)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_sincos (const int sd, const int unit, const int bottom,
+                                 const REAL* a, const int offset_a, const int ld_a,
+                                 REAL* b, const int offset_b, const int ld_b,
+                                 REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            CAST(sincos)(a[offset_a + gid_0 + gid_1 * ld_a],
+                         &b[offset_b + gid_0 + gid_1 * ld_b], &c[offset_c + gid_0 + gid_1 * ld_c]);
+        }
+    }
+
+    __global__ void uplo_asin (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(asin)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_acos (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(acos)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_atan (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(atan)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_atan2 (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                const REAL* b, const int offset_b, const int ld_b,
+                                REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(atan2)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_sinh (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(sinh)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_cosh (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(cosh)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_tanh (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(tanh)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_asinh (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(asinh)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_acosh (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(acosh)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_atanh (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(atanh)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_erf (const int sd, const int unit, const int bottom,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(erf)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_erf_inv (const int sd, const int unit, const int bottom,
+                                  const REAL* a, const int offset_a, const int ld_a,
+                                  REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(erfinv)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_erfc (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(erfc)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_erfc_inv (const int sd, const int unit, const int bottom,
+                                   const REAL* a, const int offset_a, const int ld_a,
+                                   REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(erfcinv)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_cdf_norm (const int sd, const int unit, const int bottom,
+                                   const REAL* a, const int offset_a, const int ld_a,
+                                   REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(normcdf)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_cdf_norm_inv (const int sd, const int unit, const int bottom,
+                                       const REAL* a, const int offset_a, const int ld_a,
+                                       REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(normcdfinv)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_gamma (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(tgamma)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_lgamma (const int sd, const int unit, const int bottom,
+                                 const REAL* a, const int offset_a, const int ld_a,
+                                 REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(lgamma)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_floor (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(floor)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_ceil (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(ceil)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_trunc (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(trunc)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_round (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(round)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_modf (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b,
+                               REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(modf)(a[offset_a + gid_0 + gid_1 * ld_a], &b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_frac (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            REAL dummy;
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(modf)(a[offset_a + gid_0 + gid_1 * ld_a], &dummy);
+        }
+    }
+
+    __global__ void uplo_fmax (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               const REAL* b, const int offset_b, const int ld_b,
+                               REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(fmax)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_fmin (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               const REAL* b, const int offset_b, const int ld_b,
+                               REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(fmin)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
     
 }

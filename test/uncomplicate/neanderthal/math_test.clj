@@ -174,14 +174,16 @@
   (facts "max" (diff-2 factory (double-fn max) vm/fmax) => (zero))
   (facts "min" (diff-2 factory (double-fn min) vm/fmin) => (zero)))
 
-(defn test-math-host [factory diff-1 diff-2]
+(defn test-math-inv [factory diff-1 diff-2]
   (facts "erf-inv"
          (diff-1 factory (double-fn (comp m/erf-inv m/erf)) (comp vm/erf-inv vm/erf)) => (zero))
   (facts "erfc-inv"
          (diff-1 factory (double-fn (comp m/erfc-inv m/erfc)) (comp vm/erfc-inv vm/erfc)) => (zero))
   (facts "cdf-norm-inv"
          (diff-1 factory (double-fn (comp m/cdf-norm-inv m/cdf-norm)) (comp vm/cdf-norm-inv vm/cdf-norm))
-         => (zero))
+         => (zero)))
+
+(defn test-math-host [factory diff-1 diff-2]
   (facts "gamma" (diff-1 factory m/gamma vm/gamma 0.1 7 0.22) => (zero)))
 
 (defn test-math-device [factory diff-1 diff-2]
@@ -243,6 +245,16 @@
   (test-math-host factory (partial diff-square-1 gt) (partial diff-square-2 gt))
   (test-math-host factory (partial diff-square-1 dt) (partial diff-square-2 dt))
   (test-math-host factory (partial diff-square-1 st) (partial diff-square-2 st))
+  (test-math-inv factory diff-vctr-1 diff-vctr-2)
+  (test-math-inv factory diff-ge-1 diff-ge-2)
+  (test-math-inv factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  (test-math-inv factory (partial diff-square-1 sy) (partial diff-square-2 sy))
+  (test-math-inv factory (partial diff-square-1 tp) (partial diff-square-2 tp))
+  (test-math-inv factory (partial diff-square-1 sp) (partial diff-square-2 sp))
+  (test-math-inv factory (partial diff-square-1 gd) (partial diff-square-2 gd))
+  (test-math-inv factory (partial diff-square-1 gt) (partial diff-square-2 gt))
+  (test-math-inv factory (partial diff-square-1 dt) (partial diff-square-2 dt))
+  (test-math-inv factory (partial diff-square-1 st) (partial diff-square-2 st))
   (test-vctr-linear-frac factory)
   (test-ge-linear-frac factory)
   (test-tr-linear-frac factory)
@@ -258,12 +270,3 @@
   (test-vctr-linear-frac factory)
   (test-ge-linear-frac factory)
   (test-tr-linear-frac factory))
-
-(defn test-all-cuda [factory]
-  (test-math factory diff-vctr-1 diff-vctr-2)
-  (test-math-device factory diff-vctr-1 diff-vctr-2)
-  (test-math-device factory diff-ge-1 diff-ge-2)
-  (test-math factory diff-ge-1 diff-ge-2)
-  (test-vctr-linear-frac factory)
-  (test-ge-linear-frac factory)
-  )

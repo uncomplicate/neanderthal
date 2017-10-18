@@ -513,6 +513,63 @@
                              (.buffer c) (.offset c) (.stride c))))))
   c)
 
+(defn ^:private uplo-math
+  ([modl hstream kernel-name ^CUUploMatrix a ^CUUploMatrix b]
+   (when (< 0 (.dim a))
+     (check-eq-navigators a b)
+     (let [stor (full-storage a)]
+       (with-release [math-kernel (function modl kernel-name)]
+         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                  (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                              (.buffer a) (.offset a) (.stride a)
+                              (.buffer b) (.offset b) (.stride b))))))
+   b)
+  ([modl hstream kernel-name ^CUUploMatrix a ^CUUploMatrix b ^CUUploMatrix c]
+   (when (< 0 (.dim a))
+     (check-eq-navigators a b)
+     (let [stor (full-storage a)]
+       (with-release [math-kernel (function modl kernel-name)]
+         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                  (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                              (.buffer a) (.offset a) (.stride a)
+                              (.buffer b) (.offset b) (.stride b)
+                              (.buffer c) (.offset c) (.stride c))))))
+   c))
+
+(defn ^:private uplo-linear-frac [modl hstream ^CUUploMatrix a ^CUUploMatrix b
+                                  scalea shifta scaleb shiftb ^CUUploMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a b c)
+    (let [da (data-accessor a)
+          stor (full-storage a)]
+      (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+        (with-release [math-kernel (function modl "uplo_scale_shift")]
+          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                   (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                               (.buffer a) (.offset a) (.stride a)
+                               scalea shifta scaleb shiftb
+                               (.buffer c) (.offset c) (.stride c))))
+        (with-release [math-kernel (function modl "uplo_linear_frac")]
+          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                   (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                               (.buffer a) (.offset a) (.stride a)
+                               (.buffer b) (.offset b) (.stride b)
+                               scalea shifta scaleb shiftb
+                               (.buffer c) (.offset c) (.stride c)))))))
+  c)
+
+(defn ^:private uplo-powx [modl hstream ^CUUploMatrix a b ^CUUploMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a c)
+    (let [stor (full-storage a)]
+      (with-release [math-kernel (function modl "uplo_powx")]
+        (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                             (.buffer a) (.offset a) (.stride a)
+                             b
+                             (.buffer c) (.offset c) (.stride c))))))
+  c)
+
 ;; ======================== Engines ===========================================
 
 (deftype DoubleVectorEngine [cublas-handle modl hstream]
@@ -648,7 +705,7 @@
   (cdf-norm [_ a y]
     (vector-math modl hstream "vector_cdf_norm" a y))
   (cdf-norm-inv [_ a y]
-    (vector-math modl hstream "vector_cdf_norm_norm" a y))
+    (vector-math modl hstream "vector_cdf_norm_inv" a y))
   (gamma [_ a y]
     (vector-math modl hstream "vector_gamma" a y))
   (lgamma [_ a y]
@@ -805,7 +862,7 @@
   (cdf-norm [_ a y]
     (vector-math modl hstream "vector_cdf_norm" a y))
   (cdf-norm-inv [_ a y]
-    (vector-math modl hstream "vector_cdf_norm_norm" a y))
+    (vector-math modl hstream "vector_cdf_norm_inv" a y))
   (gamma [_ a y]
     (vector-math modl hstream "vector_gamma" a y))
   (lgamma [_ a y]
@@ -1175,7 +1232,112 @@
   (set-all [_ alpha a]
     (tr-set-scal modl hstream "tr_set" (double alpha) a))
   (axpby [_ alpha a beta b]
-    (tr-axpby modl hstream (double alpha) ^CUUploMatrix a (double beta) b)))
+    (tr-axpby modl hstream (double alpha) ^CUUploMatrix a (double beta) b))
+  VectorMath
+  (sqr [_ a y]
+    (uplo-math modl hstream "uplo_sqr" a y))
+  (mul [_ a b y]
+    (uplo-math modl hstream "uplo_mul" a b y))
+  (div [_ a b y]
+    (uplo-math modl hstream "uplo_div" a b y))
+  (inv [_ a y]
+    (uplo-math modl hstream "uplo_inv" a y))
+  (abs [_ a y]
+    (uplo-math modl hstream "uplo_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (uplo-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (uplo-math modl hstream "uplo_fmod" a b y))
+  (frem [_ a b y]
+    (uplo-math modl hstream "uplo_frem" a b y))
+  (sqrt [_ a y]
+    (uplo-math modl hstream "uplo_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (uplo-math modl hstream "uplo_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (uplo-math modl hstream "uplo_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (uplo-math modl hstream "uplo_pow3o2" a y))
+  (pow [_ a b y]
+    (uplo-math modl hstream "uplo_pow" a b y))
+  (powx [_ a b y]
+    (uplo-powx modl hstream a (double b) y))
+  (hypot [_ a b y]
+    (uplo-math modl hstream "uplo_hypot" a b y))
+  (exp [_ a y]
+    (uplo-math modl hstream "uplo_exp" a y))
+  (expm1 [_ a y]
+    (uplo-math modl hstream "uplo_expm1" a y))
+  (log [_ a y]
+    (uplo-math modl hstream "uplo_log" a y))
+  (log10 [_ a y]
+    (uplo-math modl hstream "uplo_log10" a y))
+  (sin [_ a y]
+    (uplo-math modl hstream "uplo_sin" a y))
+  (cos [_ a y]
+    (uplo-math modl hstream "uplo_cos" a y))
+  (tan [_ a y]
+    (uplo-math modl hstream "uplo_tan" a y))
+  (sincos [_ a y z]
+    (uplo-math modl hstream "uplo_sincos" a y z))
+  (asin [_ a y]
+    (uplo-math modl hstream "uplo_asin" a y))
+  (acos [_ a y]
+    (uplo-math modl hstream "uplo_acos" a y))
+  (atan [_ a y]
+    (uplo-math modl hstream "uplo_atan" a y))
+  (atan2 [_ a b y]
+    (uplo-math modl hstream "uplo_atan2"  a b y))
+  (sinh [_ a y]
+    (uplo-math modl hstream "uplo_sinh" a y))
+  (cosh [_ a y]
+    (uplo-math modl hstream "uplo_cosh" a y))
+  (tanh [_ a y]
+    (uplo-math modl hstream "uplo_tanh"  a y))
+  (asinh [_ a y]
+    (uplo-math modl hstream "uplo_asinh" a y))
+  (acosh [_ a y]
+    (uplo-math modl hstream "uplo_acosh" a y))
+  (atanh [_ a y]
+    (uplo-math modl hstream "uplo_atanh" a y))
+  (erf [_ a y]
+    (uplo-math modl hstream "uplo_erf" a y))
+  (erfc [_ a y]
+    (uplo-math modl hstream "uplo_erfc" a y))
+  (erf-inv [_ a y]
+    (uplo-math modl hstream "uplo_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (uplo-math modl hstream "uplo_erfc_inv"a y))
+  (cdf-norm [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm_inv" a y))
+  (gamma [_ a y]
+    (uplo-math modl hstream "uplo_gamma" a y))
+  (lgamma [_ a y]
+    (uplo-math modl hstream "uplo_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (uplo-math modl hstream "uplo_floor" a y))
+  (fceil [_ a y]
+    (uplo-math modl hstream "uplo_ceil" a y))
+  (trunc [_ a y]
+    (uplo-math modl hstream "uplo_trunc" a y))
+  (round [_ a y]
+    (uplo-math modl hstream "uplo_round" a y))
+  (modf [_ a y z]
+    (uplo-math modl hstream "uplo_modf" a y z))
+  (frac [_ a y]
+    (uplo-math modl hstream "uplo_frac" a y))
+  (fmin [_ a b y]
+    (uplo-math modl hstream "uplo_fmin" a b y))
+  (fmax [_ a b y]
+    (uplo-math modl hstream "uplo_fmax" a b y)))
 
 (deftype FloatTREngine [cublas-handle modl hstream]
   BlockEngine
@@ -1213,7 +1375,112 @@
   (set-all [_ alpha a]
     (tr-set-scal modl hstream "tr_set" (float alpha) a))
   (axpby [_ alpha a beta b]
-    (tr-axpby modl hstream (float alpha) a (float beta) b)))
+    (tr-axpby modl hstream (float alpha) a (float beta) b))
+  VectorMath
+  (sqr [_ a y]
+    (uplo-math modl hstream "uplo_sqr" a y))
+  (mul [_ a b y]
+    (uplo-math modl hstream "uplo_mul" a b y))
+  (div [_ a b y]
+    (uplo-math modl hstream "uplo_div" a b y))
+  (inv [_ a y]
+    (uplo-math modl hstream "uplo_inv" a y))
+  (abs [_ a y]
+    (uplo-math modl hstream "uplo_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (uplo-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (uplo-math modl hstream "uplo_fmod" a b y))
+  (frem [_ a b y]
+    (uplo-math modl hstream "uplo_frem" a b y))
+  (sqrt [_ a y]
+    (uplo-math modl hstream "uplo_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (uplo-math modl hstream "uplo_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (uplo-math modl hstream "uplo_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (uplo-math modl hstream "uplo_pow3o2" a y))
+  (pow [_ a b y]
+    (uplo-math modl hstream "uplo_pow" a b y))
+  (powx [_ a b y]
+    (uplo-powx modl hstream a (float b) y))
+  (hypot [_ a b y]
+    (uplo-math modl hstream "uplo_hypot" a b y))
+  (exp [_ a y]
+    (uplo-math modl hstream "uplo_exp" a y))
+  (expm1 [_ a y]
+    (uplo-math modl hstream "uplo_expm1" a y))
+  (log [_ a y]
+    (uplo-math modl hstream "uplo_log" a y))
+  (log10 [_ a y]
+    (uplo-math modl hstream "uplo_log10" a y))
+  (sin [_ a y]
+    (uplo-math modl hstream "uplo_sin" a y))
+  (cos [_ a y]
+    (uplo-math modl hstream "uplo_cos" a y))
+  (tan [_ a y]
+    (uplo-math modl hstream "uplo_tan" a y))
+  (sincos [_ a y z]
+    (uplo-math modl hstream "uplo_sincos" a y z))
+  (asin [_ a y]
+    (uplo-math modl hstream "uplo_asin" a y))
+  (acos [_ a y]
+    (uplo-math modl hstream "uplo_acos" a y))
+  (atan [_ a y]
+    (uplo-math modl hstream "uplo_atan" a y))
+  (atan2 [_ a b y]
+    (uplo-math modl hstream "uplo_atan2"  a b y))
+  (sinh [_ a y]
+    (uplo-math modl hstream "uplo_sinh" a y))
+  (cosh [_ a y]
+    (uplo-math modl hstream "uplo_cosh" a y))
+  (tanh [_ a y]
+    (uplo-math modl hstream "uplo_tanh"  a y))
+  (asinh [_ a y]
+    (uplo-math modl hstream "uplo_asinh" a y))
+  (acosh [_ a y]
+    (uplo-math modl hstream "uplo_acosh" a y))
+  (atanh [_ a y]
+    (uplo-math modl hstream "uplo_atanh" a y))
+  (erf [_ a y]
+    (uplo-math modl hstream "uplo_erf" a y))
+  (erfc [_ a y]
+    (uplo-math modl hstream "uplo_erfc" a y))
+  (erf-inv [_ a y]
+    (uplo-math modl hstream "uplo_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (uplo-math modl hstream "uplo_erfc_inv"a y))
+  (cdf-norm [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm_inv" a y))
+  (gamma [_ a y]
+    (uplo-math modl hstream "uplo_gamma" a y))
+  (lgamma [_ a y]
+    (uplo-math modl hstream "uplo_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (uplo-math modl hstream "uplo_floor" a y))
+  (fceil [_ a y]
+    (uplo-math modl hstream "uplo_ceil" a y))
+  (trunc [_ a y]
+    (uplo-math modl hstream "uplo_trunc" a y))
+  (round [_ a y]
+    (uplo-math modl hstream "uplo_round" a y))
+  (modf [_ a y z]
+    (uplo-math modl hstream "uplo_modf" a y z))
+  (frac [_ a y]
+    (uplo-math modl hstream "uplo_frac" a y))
+  (fmin [_ a b y]
+    (uplo-math modl hstream "uplo_fmin" a b y))
+  (fmax [_ a b y]
+    (uplo-math modl hstream "uplo_fmax" a b y)))
 
 (deftype CUFactory [modl hstream ^DataAccessor da native-fact vector-eng ge-eng tr-eng]
   Releaseable
