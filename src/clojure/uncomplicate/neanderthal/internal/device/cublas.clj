@@ -27,13 +27,13 @@
              [navigation :refer [full-storage]]
              [common :refer [dragan-says-ex check-eq-navigators]]]
             [uncomplicate.neanderthal.internal.device
-             [common :refer [name-transp tr-bottom]]
+             [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [cublock :refer :all]])
   (:import [jcuda.runtime JCuda cudaStream_t]
            jcuda.driver.CUstream
            [jcuda.jcublas JCublas2 cublasHandle cublasOperation cublasSideMode cublasDiagType
             cublasFillMode]
-           [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor Region
+           [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix Block DataAccessor Region
             DenseStorage FullStorage LayoutNavigator]
            [uncomplicate.neanderthal.internal.device.cublock CUBlockVector CUGEMatrix CUUploMatrix]))
 
@@ -175,7 +175,7 @@
           (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
           (ptr (.buffer ~param)))
          ~param))
-     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
+     (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
 ;; =============== Common GE matrix macros and functions =======================
 
@@ -283,7 +283,7 @@
           ~y))
       ~y))
   ([a]
-   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (str ~a)}))))
+   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (info ~a)}))))
 
 (defmacro ^:private ge-rk [cublas-handle method alpha x y a]
   `(if (< 0 (.dim ~a))
@@ -300,90 +300,94 @@
 
 (defmacro ^:private ge-mm
   ([alpha a b]
-   `(mm (engine ~b) ~alpha ~b ~a false))
+   `(if-not (instance? GEMatrix ~b)
+      (mm (engine ~b) ~alpha ~b ~a false)
+      (dragan-says-ex "In-place mm! is not supported for GE matrices. Use QR factorization."
+                      {:a (info ~a) :b (info ~b)} )))
   ([cublas-handle method alpha a b beta c]
    `(if (< 0 (.dim ~a))
-      (let [da# (data-accessor ~a)
-            nav-c# (navigator ~c)
-            stor-c# (full-storage ~c)]
-        (with-check cublas-error
-          (let [[x# y# trans-x# trans-y#]
-                (if (.isColumnMajor nav-c#)
-                  [~a ~b (= nav-c# (navigator ~a)) (= nav-c# (navigator ~b))]
-                  [~b ~a (= nav-c# (navigator ~b)) (= nav-c# (navigator ~a))])]
-            (~method ~cublas-handle
-             (if trans-x# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
-             (if trans-y# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
-             (.sd stor-c#) (.fd stor-c#) (.ncols ~a)
-             (ptr ~alpha) (offset da# (cu-ptr (block/buffer x#)) (block/offset x#)) (block/stride x#)
-             (offset da# (cu-ptr (block/buffer y#)) (block/offset y#)) (block/stride y#)
-             (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.ld stor-c#)))
-          ~c))
+      (if (instance? GEMatrix ~b)
+        (let [da# (data-accessor ~a)
+              nav-c# (navigator ~c)
+              stor-c# (full-storage ~c)]
+          (with-check cublas-error
+            (let [[x# y# trans-x# trans-y#]
+                  (if (.isColumnMajor nav-c#)
+                    [~a ~b (= nav-c# (navigator ~a)) (= nav-c# (navigator ~b))]
+                    [~b ~a (= nav-c# (navigator ~b)) (= nav-c# (navigator ~a))])]
+              (~method ~cublas-handle
+               (if trans-x# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
+               (if trans-y# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
+               (.sd stor-c#) (.fd stor-c#) (.ncols ~a)
+               (ptr ~alpha) (offset da# (cu-ptr (block/buffer x#)) (block/offset x#)) (block/stride x#)
+               (offset da# (cu-ptr (block/buffer y#)) (block/offset y#)) (block/stride y#)
+               (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.ld stor-c#)))
+            ~c))
+        (mm (engine ~b) ~alpha ~b ~a ~beta ~c false))
       ~c)))
 
-;; =============== Common TR matrix macros and functions =======================
+;; =============== Common UPLO matrix macros and functions =======================
 
-(defn ^:private tr-equals [modl hstream ^CUUploMatrix a ^CUUploMatrix b]
+(defn ^:private uplo-equals [modl hstream transpf ^CUUploMatrix a ^CUUploMatrix b]
   (if (< 0 (.dim a))
     (let [stor (full-storage a)]
-      (with-release [tr-equals-kernel (function modl (name-transp "tr_equals" a b))
+      (with-release [equals-kernel (function modl (name-transp (transpf a b) "uplo_equals" a b))
                      eq-flag-buf (mem-alloc Integer/BYTES)]
         (memset! eq-flag-buf 0)
-        (launch! tr-equals-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+        (launch! equals-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.buffer a) (.offset a) (.ld stor) (.buffer b) (.offset b) (.stride b)
                              eq-flag-buf))
         (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1)) 0))))
     (= 0 (.dim b))))
 
-(defn ^:private tr-map [modl hstream op-name ^CUUploMatrix a ^CUUploMatrix b]
+(defn ^:private uplo-map [modl hstream transpf op-name ^CUUploMatrix a ^CUUploMatrix b]
   (when (< 0 (.dim a))
     (let [da (data-accessor a)
           stor (full-storage a)]
-      (with-release [tr-map-kernel (function modl (name-transp op-name a b))]
-        (launch! tr-map-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+      (with-release [map-kernel (function modl (name-transp (transpf a b) op-name a b))]
+        (launch! map-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.buffer a) (.offset a) (.ld stor) (.buffer b) (.offset b) (.stride b))))))
   b)
 
-(defn ^:private tr-axpby [modl hstream alpha ^CUUploMatrix a beta ^CUUploMatrix b]
+(defn ^:private uplo-axpby [modl hstream transpf alpha ^CUUploMatrix a beta ^CUUploMatrix b]
   (when (< 0 (.dim a))
     (let [da (data-accessor a)
           stor (full-storage a)]
-      (with-release [tr-axpby-kernel (function modl (name-transp "tr_axpby" a b))]
-        (launch! tr-axpby-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+      (with-release [axpby-kernel (function modl (name-transp (transpf a b) "uplo_axpby" a b))]
+        (launch! axpby-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              alpha (.buffer a) (.offset a) (.ld stor)
                              beta (.buffer b) (.offset b) (.stride b))))))
   b)
 
-(defn ^:private tr-set-scal [modl hstream op-name alpha ^CUUploMatrix a]
+(defn ^:private uplo-set-scal [modl hstream op-name alpha ^CUUploMatrix a]
   (when (< 0 (.dim a))
     (let [da (data-accessor a)
           stor (full-storage a)]
-      (with-release [tr-op-kernel (function modl op-name)]
-        (launch! tr-op-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+      (with-release [op-kernel (function modl op-name)]
+        (launch! op-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              alpha (.buffer a) (.offset a) (.ld stor))))))
   a)
 
 (defmacro ^:private tr-mv
   ([cublas-handle method a x]
    `(if (< 0 (.dim ~a))
-      (let [da# (data-accessor ~a)
-            stor# (full-storage ~a)]
+      (let [da# (data-accessor ~a)]
         (with-check cublas-error
           (~method ~cublas-handle
-           (if (tr-bottom ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+           (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
            (if (.isColumnMajor (navigator ~a)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
            (if (.isDiagUnit (region ~a)) cublasDiagType/CUBLAS_DIAG_UNIT cublasDiagType/CUBLAS_DIAG_NON_UNIT)
-           (.sd stor#)
-           (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld stor#)
+           (.ncols ~a)
+           (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
            (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x))
           ~x))
       ~x))
   ([a]
-   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
 
 (defmacro ^:private tr-mm
   ([cublas-handle method alpha a b left]
@@ -393,7 +397,7 @@
         (with-check cublas-error
           (~method ~cublas-handle
            (if ~left cublasSideMode/CUBLAS_SIDE_LEFT cublasSideMode/CUBLAS_SIDE_RIGHT)
-           (if (.isLower (region ~a)) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+           (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
            (if (= (navigator ~a) (navigator ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
            (if (.isDiagUnit (region ~a)) cublasDiagType/CUBLAS_DIAG_UNIT cublasDiagType/CUBLAS_DIAG_NON_UNIT)
            (.sd stor-b#) (.fd stor-b#)
@@ -403,7 +407,45 @@
           ~b))
       ~b))
   ([a]
-   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
+
+(defmacro ^:private sy-mv
+  ([cublas-handle method alpha a x beta y]
+   `(if (< 0 (.dim ~a))
+      (let [da# (data-accessor ~a)]
+        (with-check cublas-error
+          (~method ~cublas-handle
+           (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+           (.ncols ~a)
+           (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
+           (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
+           (ptr ~beta) (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y))
+          ~y))
+      ~y))
+  ([a]
+   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))));;TODO str
+
+(defmacro ^:private sy-mm
+  ([cublas-handle method alpha a b beta c left]
+   `(if (< 0 (.dim ~a))
+      (let [nav-c# (navigator ~c)
+            da# (data-accessor ~a)
+            stor-c# (full-storage ~c)]
+        (if (= nav-c# (navigator ~b))
+          (with-check cublas-error
+            (~method ~cublas-handle
+             (if ~left cublasSideMode/CUBLAS_SIDE_LEFT cublasSideMode/CUBLAS_SIDE_RIGHT)
+             (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+             (.sd stor-c#) (.fd stor-c#)
+             (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
+             (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.stride ~b)
+             (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.stride ~c))
+            ~c)
+          (dragan-says-ex "Both GE matrices in symmetric multiplication must have the same orientation."
+                          {:b (info ~b) :c (info ~c)})))
+      ~c))
+  ([a]
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
 
 ;; =============== Common vectorized math functions ============================
 
@@ -520,7 +562,7 @@
      (let [stor (full-storage a)]
        (with-release [math-kernel (function modl kernel-name)]
          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                  (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                               (.buffer a) (.offset a) (.stride a)
                               (.buffer b) (.offset b) (.stride b))))))
    b)
@@ -530,7 +572,7 @@
      (let [stor (full-storage a)]
        (with-release [math-kernel (function modl kernel-name)]
          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                  (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                               (.buffer a) (.offset a) (.stride a)
                               (.buffer b) (.offset b) (.stride b)
                               (.buffer c) (.offset c) (.stride c))))))
@@ -545,13 +587,13 @@
       (if (and (= 0.0 scaleb) (= 1.0 shiftb))
         (with-release [math-kernel (function modl "uplo_scale_shift")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                   (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                   (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                                (.buffer a) (.offset a) (.stride a)
                                scalea shifta scaleb shiftb
                                (.buffer c) (.offset c) (.stride c))))
         (with-release [math-kernel (function modl "uplo_linear_frac")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                   (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                   (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                                (.buffer a) (.offset a) (.stride a)
                                (.buffer b) (.offset b) (.stride b)
                                scalea shifta scaleb shiftb
@@ -564,7 +606,7 @@
     (let [stor (full-storage a)]
       (with-release [math-kernel (function modl "uplo_powx")]
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.diag (region a)) (if (tr-bottom a) 1 -1)
+                 (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.buffer a) (.offset a) (.stride a)
                              b
                              (.buffer c) (.offset c) (.stride c))))))
@@ -1195,17 +1237,17 @@
 (deftype DoubleTREngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ a b]
-    (tr-equals modl hstream a b))
+    (uplo-equals modl hstream layout-match? a b))
   Blas
   (swap [_ a b]
-    (tr-map modl hstream "tr_swap" a b)
+    (uplo-map modl hstream layout-match? "uplo_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map modl hstream "tr_copy" a b))
+    (uplo-map modl hstream layout-match? "uplo_copy" a b))
   (scal [_ alpha a]
-    (tr-set-scal modl hstream "tr_scal" (double alpha) a))
+    (uplo-set-scal modl hstream "uplo_scal" (double alpha) a))
   (axpy [_ alpha a b]
-    (tr-axpby modl hstream (double alpha) ^CUUploMatrix a (double 1.0) b))
+    (uplo-axpby modl hstream layout-match? (double alpha) ^CUUploMatrix a (double 1.0) b))
   (dot [_ _ _]
     (not-available))
   (nrm1 [_ _]
@@ -1230,9 +1272,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (tr-set-scal modl hstream "tr_set" (double alpha) a))
+    (uplo-set-scal modl hstream "uplo_set" (double alpha) a))
   (axpby [_ alpha a beta b]
-    (tr-axpby modl hstream (double alpha) ^CUUploMatrix a (double beta) b))
+    (uplo-axpby modl hstream layout-match? (double alpha) ^CUUploMatrix a (double beta) b))
   VectorMath
   (sqr [_ a y]
     (uplo-math modl hstream "uplo_sqr" a y))
@@ -1342,17 +1384,17 @@
 (deftype FloatTREngine [cublas-handle modl hstream]
   BlockEngine
   (equals-block [_ a b]
-    (tr-equals modl hstream a b))
+    (uplo-equals modl hstream layout-match? a b))
   Blas
   (swap [_ a b]
-    (tr-map modl hstream "tr_swap" a b)
+    (uplo-map modl hstream layout-match? "uplo_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map modl hstream "tr_copy" a b))
+    (uplo-map modl hstream layout-match? "uplo_copy" a b))
   (scal [_ alpha a]
-    (tr-set-scal modl hstream "tr_scal" (float alpha) a))
+    (uplo-set-scal modl hstream "uplo_scal" (float alpha) a))
   (axpy [_ alpha a b]
-    (tr-axpby modl hstream (float alpha) a (float 1.0) b))
+    (uplo-axpby modl hstream layout-match? (float alpha) a (float 1.0) b))
   (dot [_ _ _]
     (not-available))
   (nrm2 [_ _]
@@ -1373,9 +1415,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (tr-set-scal modl hstream "tr_set" (float alpha) a))
+    (uplo-set-scal modl hstream "uplo_set" (float alpha) a))
   (axpby [_ alpha a beta b]
-    (tr-axpby modl hstream (float alpha) a (float beta) b))
+    (uplo-axpby modl hstream layout-match? (float alpha) a (float beta) b))
   VectorMath
   (sqr [_ a y]
     (uplo-math modl hstream "uplo_sqr" a y))
@@ -1482,12 +1524,307 @@
   (fmax [_ a b y]
     (uplo-math modl hstream "uplo_fmax" a b y)))
 
-(deftype CUFactory [modl hstream ^DataAccessor da native-fact vector-eng ge-eng tr-eng]
+(deftype DoubleSYEngine [cublas-handle modl hstream]
+  BlockEngine
+  (equals-block [_ a b]
+    (uplo-equals modl hstream symmetric-match? a b))
+  Blas
+  (swap [_ a b]
+    (uplo-map modl hstream symmetric-match? "uplo_swap" a b)
+    a)
+  (copy [_ a b]
+    (uplo-map modl hstream symmetric-match? "uplo_copy" a b))
+  (scal [_ alpha a]
+    (uplo-set-scal modl hstream "uplo_scal" (double alpha) a))
+  (axpy [_ alpha a b]
+    (uplo-axpby modl hstream symmetric-match? (double alpha) ^CUUploMatrix a (double 1.0) b))
+  (dot [_ _ _]
+    (not-available))
+  (nrm1 [_ _]
+    (not-available))
+  (nrm2 [_ _]
+    (not-available))
+  (nrmi [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
+  (mv [this alpha a x beta y]
+    (sy-mv cublas-handle JCublas2/cublasDsymv
+           (double alpha) ^CUUploMatrix a ^CUBlockVector x (double beta) ^CUBlockVector y))
+  (mv [_ a x]
+    (sy-mv a))
+  (mm [this alpha a b beta c left]
+    (sy-mm cublas-handle JCublas2/cublasDsymm
+           (double alpha) ^CUUploMatrix a ^CUGEMatrix b (double beta) ^CUGEMatrix c left))
+  (mm [_ alpha a b _]
+    (sy-mm a))
+  BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
+  (set-all [_ alpha a]
+    (uplo-set-scal modl hstream "uplo_set" (double alpha) a))
+  (axpby [_ alpha a beta b]
+    (uplo-axpby modl hstream symmetric-match? (double alpha) ^CUUploMatrix a (double beta) b))
+  VectorMath
+  (sqr [_ a y]
+    (uplo-math modl hstream "uplo_sqr" a y))
+  (mul [_ a b y]
+    (uplo-math modl hstream "uplo_mul" a b y))
+  (div [_ a b y]
+    (uplo-math modl hstream "uplo_div" a b y))
+  (inv [_ a y]
+    (uplo-math modl hstream "uplo_inv" a y))
+  (abs [_ a y]
+    (uplo-math modl hstream "uplo_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (uplo-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (uplo-math modl hstream "uplo_fmod" a b y))
+  (frem [_ a b y]
+    (uplo-math modl hstream "uplo_frem" a b y))
+  (sqrt [_ a y]
+    (uplo-math modl hstream "uplo_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (uplo-math modl hstream "uplo_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (uplo-math modl hstream "uplo_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (uplo-math modl hstream "uplo_pow3o2" a y))
+  (pow [_ a b y]
+    (uplo-math modl hstream "uplo_pow" a b y))
+  (powx [_ a b y]
+    (uplo-powx modl hstream a (double b) y))
+  (hypot [_ a b y]
+    (uplo-math modl hstream "uplo_hypot" a b y))
+  (exp [_ a y]
+    (uplo-math modl hstream "uplo_exp" a y))
+  (expm1 [_ a y]
+    (uplo-math modl hstream "uplo_expm1" a y))
+  (log [_ a y]
+    (uplo-math modl hstream "uplo_log" a y))
+  (log10 [_ a y]
+    (uplo-math modl hstream "uplo_log10" a y))
+  (sin [_ a y]
+    (uplo-math modl hstream "uplo_sin" a y))
+  (cos [_ a y]
+    (uplo-math modl hstream "uplo_cos" a y))
+  (tan [_ a y]
+    (uplo-math modl hstream "uplo_tan" a y))
+  (sincos [_ a y z]
+    (uplo-math modl hstream "uplo_sincos" a y z))
+  (asin [_ a y]
+    (uplo-math modl hstream "uplo_asin" a y))
+  (acos [_ a y]
+    (uplo-math modl hstream "uplo_acos" a y))
+  (atan [_ a y]
+    (uplo-math modl hstream "uplo_atan" a y))
+  (atan2 [_ a b y]
+    (uplo-math modl hstream "uplo_atan2"  a b y))
+  (sinh [_ a y]
+    (uplo-math modl hstream "uplo_sinh" a y))
+  (cosh [_ a y]
+    (uplo-math modl hstream "uplo_cosh" a y))
+  (tanh [_ a y]
+    (uplo-math modl hstream "uplo_tanh"  a y))
+  (asinh [_ a y]
+    (uplo-math modl hstream "uplo_asinh" a y))
+  (acosh [_ a y]
+    (uplo-math modl hstream "uplo_acosh" a y))
+  (atanh [_ a y]
+    (uplo-math modl hstream "uplo_atanh" a y))
+  (erf [_ a y]
+    (uplo-math modl hstream "uplo_erf" a y))
+  (erfc [_ a y]
+    (uplo-math modl hstream "uplo_erfc" a y))
+  (erf-inv [_ a y]
+    (uplo-math modl hstream "uplo_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (uplo-math modl hstream "uplo_erfc_inv"a y))
+  (cdf-norm [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm_inv" a y))
+  (gamma [_ a y]
+    (uplo-math modl hstream "uplo_gamma" a y))
+  (lgamma [_ a y]
+    (uplo-math modl hstream "uplo_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (uplo-math modl hstream "uplo_floor" a y))
+  (fceil [_ a y]
+    (uplo-math modl hstream "uplo_ceil" a y))
+  (trunc [_ a y]
+    (uplo-math modl hstream "uplo_trunc" a y))
+  (round [_ a y]
+    (uplo-math modl hstream "uplo_round" a y))
+  (modf [_ a y z]
+    (uplo-math modl hstream "uplo_modf" a y z))
+  (frac [_ a y]
+    (uplo-math modl hstream "uplo_frac" a y))
+  (fmin [_ a b y]
+    (uplo-math modl hstream "uplo_fmin" a b y))
+  (fmax [_ a b y]
+    (uplo-math modl hstream "uplo_fmax" a b y)))
+
+(deftype FloatSYEngine [cublas-handle modl hstream]
+  BlockEngine
+  (equals-block [_ a b]
+    (uplo-equals modl hstream symmetric-match? a b))
+  Blas
+  (swap [_ a b]
+    (uplo-map modl hstream symmetric-match? "uplo_swap" a b)
+    a)
+  (copy [_ a b]
+    (uplo-map modl hstream symmetric-match? "uplo_copy" a b))
+  (scal [_ alpha a]
+    (uplo-set-scal modl hstream "uplo_scal" (float alpha) a))
+  (axpy [_ alpha a b]
+    (uplo-axpby modl hstream symmetric-match? (float alpha) a (float 1.0) b))
+  (dot [_ _ _]
+    (not-available))
+  (nrm2 [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
+  (mv [this alpha a x beta y]
+    (sy-mv cublas-handle JCublas2/cublasSsymv
+           (float alpha) ^CUUploMatrix a ^CUBlockVector x (float beta)  ^CUBlockVector y))
+  (mv [_ a x]
+    (sy-mv a))
+  (mm [this alpha a b beta c left]
+    (sy-mm cublas-handle JCublas2/cublasSsymm
+           (float alpha) ^CUUploMatrix a ^CUGEMatrix b (float beta) ^CUGEMatrix c left))
+  (mm [_ alpha a b _]
+    (sy-mm a))
+  BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
+  (set-all [_ alpha a]
+    (uplo-set-scal modl hstream "uplo_set" (float alpha) a))
+  (axpby [_ alpha a beta b]
+    (uplo-axpby modl hstream symmetric-match? (float alpha) a (float beta) b))
+  VectorMath
+  (sqr [_ a y]
+    (uplo-math modl hstream "uplo_sqr" a y))
+  (mul [_ a b y]
+    (uplo-math modl hstream "uplo_mul" a b y))
+  (div [_ a b y]
+    (uplo-math modl hstream "uplo_div" a b y))
+  (inv [_ a y]
+    (uplo-math modl hstream "uplo_inv" a y))
+  (abs [_ a y]
+    (uplo-math modl hstream "uplo_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (uplo-linear-frac modl hstream a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (uplo-math modl hstream "uplo_fmod" a b y))
+  (frem [_ a b y]
+    (uplo-math modl hstream "uplo_frem" a b y))
+  (sqrt [_ a y]
+    (uplo-math modl hstream "uplo_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (uplo-math modl hstream "uplo_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (uplo-math modl hstream "uplo_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (uplo-math modl hstream "uplo_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (uplo-math modl hstream "uplo_pow3o2" a y))
+  (pow [_ a b y]
+    (uplo-math modl hstream "uplo_pow" a b y))
+  (powx [_ a b y]
+    (uplo-powx modl hstream a (float b) y))
+  (hypot [_ a b y]
+    (uplo-math modl hstream "uplo_hypot" a b y))
+  (exp [_ a y]
+    (uplo-math modl hstream "uplo_exp" a y))
+  (expm1 [_ a y]
+    (uplo-math modl hstream "uplo_expm1" a y))
+  (log [_ a y]
+    (uplo-math modl hstream "uplo_log" a y))
+  (log10 [_ a y]
+    (uplo-math modl hstream "uplo_log10" a y))
+  (sin [_ a y]
+    (uplo-math modl hstream "uplo_sin" a y))
+  (cos [_ a y]
+    (uplo-math modl hstream "uplo_cos" a y))
+  (tan [_ a y]
+    (uplo-math modl hstream "uplo_tan" a y))
+  (sincos [_ a y z]
+    (uplo-math modl hstream "uplo_sincos" a y z))
+  (asin [_ a y]
+    (uplo-math modl hstream "uplo_asin" a y))
+  (acos [_ a y]
+    (uplo-math modl hstream "uplo_acos" a y))
+  (atan [_ a y]
+    (uplo-math modl hstream "uplo_atan" a y))
+  (atan2 [_ a b y]
+    (uplo-math modl hstream "uplo_atan2"  a b y))
+  (sinh [_ a y]
+    (uplo-math modl hstream "uplo_sinh" a y))
+  (cosh [_ a y]
+    (uplo-math modl hstream "uplo_cosh" a y))
+  (tanh [_ a y]
+    (uplo-math modl hstream "uplo_tanh"  a y))
+  (asinh [_ a y]
+    (uplo-math modl hstream "uplo_asinh" a y))
+  (acosh [_ a y]
+    (uplo-math modl hstream "uplo_acosh" a y))
+  (atanh [_ a y]
+    (uplo-math modl hstream "uplo_atanh" a y))
+  (erf [_ a y]
+    (uplo-math modl hstream "uplo_erf" a y))
+  (erfc [_ a y]
+    (uplo-math modl hstream "uplo_erfc" a y))
+  (erf-inv [_ a y]
+    (uplo-math modl hstream "uplo_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (uplo-math modl hstream "uplo_erfc_inv"a y))
+  (cdf-norm [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (uplo-math modl hstream "uplo_cdf_norm_inv" a y))
+  (gamma [_ a y]
+    (uplo-math modl hstream "uplo_gamma" a y))
+  (lgamma [_ a y]
+    (uplo-math modl hstream "uplo_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (uplo-math modl hstream "uplo_floor" a y))
+  (fceil [_ a y]
+    (uplo-math modl hstream "uplo_ceil" a y))
+  (trunc [_ a y]
+    (uplo-math modl hstream "uplo_trunc" a y))
+  (round [_ a y]
+    (uplo-math modl hstream "uplo_round" a y))
+  (modf [_ a y z]
+    (uplo-math modl hstream "uplo_modf" a y z))
+  (frac [_ a y]
+    (uplo-math modl hstream "uplo_frac" a y))
+  (fmin [_ a b y]
+    (uplo-math modl hstream "uplo_fmin" a b y))
+  (fmax [_ a b y]
+    (uplo-math modl hstream "uplo_fmax" a b y)))
+
+(deftype CUFactory [modl hstream ^DataAccessor da native-fact vector-eng ge-eng tr-eng sy-eng]
   Releaseable
   (release [_]
     (release vector-eng)
     (release ge-eng)
     (release tr-eng)
+    (release sy-eng)
     (release modl)
     true)
   DataAccessorProvider
@@ -1522,12 +1859,19 @@
       (when init
         (.initialize da (.buffer ^Block res)))
       res))
+  (create-sy [this n column? lower? init]
+    (let-release [res (cu-uplo-matrix this n column? lower?)]
+      (when init
+        (.initialize da (.buffer ^Block res)))
+      res))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
     ge-eng)
   (tr-engine [_]
-    tr-eng))
+    tr-eng)
+  (sy-engine [_]
+    sy-eng))
 
 (extend-type cublasHandle
   Releaseable
@@ -1566,7 +1910,7 @@
                     hstream (get-stream handle)]
         (->CUFactory modl hstream (cu-double-accessor (current-context)) native-double
                      (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
-                     (->DoubleTREngine handle modl hstream)))))
+                     (->DoubleTREngine handle modl hstream) (->DoubleSYEngine handle modl hstream)))))
 
   (defn cublas-float [handle]
     (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double"
@@ -1575,4 +1919,4 @@
                     hstream (get-stream handle)]
         (->CUFactory modl hstream (cu-float-accessor (current-context)) native-float
                      (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
-                     (->FloatTREngine handle modl hstream))))))
+                     (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))

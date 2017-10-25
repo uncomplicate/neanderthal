@@ -385,7 +385,7 @@
         (mm (engine ~b) ~alpha ~b ~a ~beta ~c false))
       ~c)))
 
-;; =============== Common TR matrix macros and functions ==========================
+;; =============== Common UPLO matrix macros and functions ==========================
 
 (defn ^:private uplo-equals [ctx queue prog transpf ^CLUploMatrix a ^CLUploMatrix b]
   (if (< 0 (.dim a))
@@ -1314,7 +1314,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal queue prog layout-match? "uplo_set" alpha a))
+    (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog layout-match? alpha a beta b))
   VectorMath
@@ -1462,7 +1462,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal queue prog layout-match? "uplo_set" alpha a))
+    (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog layout-match? alpha a beta b))
   VectorMath
@@ -1873,6 +1873,8 @@
       (release prog)
       (release vector-eng)
       (release ge-eng)
+      (release tr-eng)
+      (release sy-eng)
       true
       (finally (CLBlast/CLBlastClearCache))))
   DataAccessorProvider
