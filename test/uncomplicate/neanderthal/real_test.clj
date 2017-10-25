@@ -2280,7 +2280,7 @@
                                      9.81, -4.09, -4.57, -8.61,  8.99])
                   t1 (copy t)
                   b1 (copy b)
-                  t2 (transfer! t (tr factory 5 {:layout :row}))
+                  t2 (copy! t (tr factory 5 {:layout :row}))
                   b2 (copy b)
                   t3 (copy t2)
                   b3 (copy b)]

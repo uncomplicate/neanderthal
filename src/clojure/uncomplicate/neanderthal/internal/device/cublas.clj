@@ -447,6 +447,22 @@
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
 
+(defmacro ^:private tr-sv
+  [cublas-handle method alpha a b]
+  `(if (< 0 (.dim ~a))
+     (let [da# (data-accessor ~a)
+           stor-b# (full-storage ~b)]
+       (with-check cublas-error
+         (~method ~cublas-handle cublasSideMode/CUBLAS_SIDE_LEFT
+          (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+          (if (= (navigator ~a) (navigator ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
+          (if (.isDiagUnit (region ~a)) cublasDiagType/CUBLAS_DIAG_UNIT cublasDiagType/CUBLAS_DIAG_NON_UNIT)
+          (.sd stor-b#) (.fd stor-b#)
+          (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
+          (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.ld stor-b#))
+         ~b))
+     ~b))
+
 ;; =============== Common vectorized math functions ============================
 
 (defn ^:private vector-math
@@ -1275,6 +1291,19 @@
     (uplo-set-scal modl hstream "uplo_set" (double alpha) a))
   (axpby [_ alpha a beta b]
     (uplo-axpby modl hstream layout-match? (double alpha) ^CUUploMatrix a (double beta) b))
+  Lapack
+  (srt [_ a increasing]
+    (not-available))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "There is no use for pivots when working with TR matrices."))
+  (tri [_ a]
+    (not-available))
+  (trs [_ a b]
+    (tr-sv cublas-handle JCublas2/cublasDtrsm (double 1.0) ^CUUploMatrix a ^CUGEMatrix b))
+  (sv [_ a b _]
+    (tr-sv cublas-handle JCublas2/cublasDtrsm (double 1.0) ^CUUploMatrix a ^CUGEMatrix b))
+  (con [_ a nrm1?]
+    (not-available))
   VectorMath
   (sqr [_ a y]
     (uplo-math modl hstream "uplo_sqr" a y))
@@ -1418,6 +1447,19 @@
     (uplo-set-scal modl hstream "uplo_set" (float alpha) a))
   (axpby [_ alpha a beta b]
     (uplo-axpby modl hstream layout-match? (float alpha) a (float beta) b))
+  Lapack
+  (srt [_ a increasing]
+    (not-available))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "There is no use for pivots when working with TR matrices."))
+  (tri [_ a]
+    (not-available))
+  (trs [_ a b]
+    (tr-sv cublas-handle JCublas2/cublasStrsm (float 1.0) ^CUUploMatrix a ^CUGEMatrix b))
+  (sv [_ a b _]
+    (tr-sv cublas-handle JCublas2/cublasStrsm (float 1.0) ^CUUploMatrix a ^CUGEMatrix b))
+  (con [_ a nrm1?]
+    (not-available))
   VectorMath
   (sqr [_ a y]
     (uplo-math modl hstream "uplo_sqr" a y))

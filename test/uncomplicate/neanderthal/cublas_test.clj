@@ -14,6 +14,10 @@
   (real-test/test-rot factory)
   (real-test/test-rotm factory))
 
+(defn test-lapack-cublas [factory]
+  (real-test/test-tr-sv factory tr)
+  (real-test/test-tr-trs factory tr))
+
 (defn test-math-cuda [factory]
   (math-test/test-math-inv factory math-test/diff-vctr-1 math-test/diff-vctr-2)
   (math-test/test-math-inv factory math-test/diff-ge-1 math-test/diff-ge-2)
@@ -25,6 +29,7 @@
     (block-test/test-all *cuda-factory*)
     (real-test/test-blas *cuda-factory*)
     (test-blas-cublas *cuda-factory*)
+    (test-lapack-cublas *cuda-factory*)
     (device-test/test-all *cuda-factory*)
     (math-test/test-all-device *cuda-factory*)
     (test-math-cuda *cuda-factory*))
@@ -33,6 +38,7 @@
     (block-test/test-all *cuda-factory*)
     (real-test/test-blas *cuda-factory*)
     (test-blas-cublas *cuda-factory*)
+    (test-lapack-cublas *cuda-factory*)
     (device-test/test-all *cuda-factory*)
     (math-test/test-all-device *cuda-factory*)
     (test-math-cuda *cuda-factory*)))

@@ -75,6 +75,9 @@
 (def ^:private f* (double-fn *))
 (def ^:private falsify (constantly false))
 
+(defn require-trf []
+  (dragan-says-ex "Please do the triangular factorization of this matrix first."))
+
 (defn ^:private stale-factorization [& args]
   (throw (ex-info "Cannot compute with a stale factorization. Decompose the original matrix again." {})))
 

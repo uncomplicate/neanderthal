@@ -494,6 +494,19 @@
   ([a]
    `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
 
+(defmacro ^:private tr-sv [queue method a b]
+  `(with-check error
+     (let [reg# (region ~a)]
+       (~method (.layout (navigator ~b)) CLBlastSide/CLBlastSideLeft (.uplo reg#)
+        (if (= (navigator ~a) (navigator ~b))
+          CLBlastTranspose/CLBlastTransposeNo
+          CLBlastTranspose/CLBlastTransposeYes)
+        (.diag reg#) (.mrows ~b) (.ncols ~b)
+        1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+        (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+        ~queue nil))
+     ~b))
+
 ;; =============== Common vectorized math functions ============================
 
 (defn ^:private vector-math
@@ -658,6 +671,7 @@
                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
         (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
   c)
+
 ;; =============== CLBlast based engines =======================================
 
 (deftype DoubleVectorEngine [ctx queue prog]
@@ -1317,6 +1331,19 @@
     (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog layout-match? alpha a beta b))
+  Lapack
+  (srt [_ a increasing]
+    (not-available))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "There is no use for pivots when working with TR matrices."))
+  (tri [_ a]
+    (not-available))
+  (trs [_ a b]
+    (tr-sv queue CLBlast/CLBlastDtrsm ^CLUploMatrix a ^CLGEMatrix b))
+  (sv [_ a b _]
+    (tr-sv queue CLBlast/CLBlastDtrsm ^CLUploMatrix a ^CLGEMatrix b))
+  (con [_ a nrm1?]
+    (not-available))
   VectorMath
   (sqr [_ a y]
     (uplo-math queue prog "uplo_sqr" a y))
@@ -1465,6 +1492,19 @@
     (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog layout-match? alpha a beta b))
+  Lapack
+  (srt [_ a increasing]
+    (not-available))
+  (laswp [_ _ _ _ _]
+    (dragan-says-ex "There is no use for pivots when working with TR matrices."))
+  (tri [_ a]
+    (not-available))
+  (trs [_ a b]
+    (tr-sv queue CLBlast/CLBlastStrsm ^CLUploMatrix a ^CLGEMatrix b))
+  (sv [_ a b _]
+    (tr-sv queue CLBlast/CLBlastStrsm ^CLUploMatrix a ^CLGEMatrix b))
+  (con [_ a nrm1?]
+    (not-available))
   VectorMath
   (sqr [_ a y]
     (uplo-math queue prog "uplo_sqr" a y))
@@ -1613,6 +1653,17 @@
     (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog symmetric-match? alpha a beta b))
+  Lapack
+  (srt [_ a increasing]
+    (not-available))
+  (tri [_ a]
+    (not-available))
+  (trs [_ a b]
+    (not-available))
+  (sv [_ a b _]
+    (not-available))
+  (con [_ a nrm1?]
+    (not-available))
   VectorMath
   (sqr [_ a y]
     (uplo-math queue prog "uplo_sqr" a y))
@@ -1760,6 +1811,17 @@
     (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog symmetric-match? alpha a beta b))
+  Lapack
+  (srt [_ a increasing]
+    (not-available))
+  (tri [_ a]
+    (not-available))
+  (trs [_ a b]
+    (not-available))
+  (sv [_ a b _]
+    (not-available))
+  (con [_ a nrm1?]
+    (not-available))
   VectorMath
   (sqr [_ a y]
     (uplo-math queue prog "uplo_sqr" a y))

@@ -24,7 +24,7 @@
              [api :refer :all]
              [common :refer [dense-rows dense-cols dense-dias region-dias region-cols region-rows
                              lu-factorization pivotless-lu-factorization dual-lu-factorization
-                             dragan-says-ex real-accessor]]
+                             dragan-says-ex real-accessor require-trf]]
              [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
@@ -43,9 +43,6 @@
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
 
 (def ^:private f* (double-fn *))
-
-(defn ^:private require-trf []
-  (dragan-says-ex "Please do the triangular factorization of this matrix first."))
 
 (extend-type DirectByteBuffer
   Releaseable

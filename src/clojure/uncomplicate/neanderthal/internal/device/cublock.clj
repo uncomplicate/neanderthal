@@ -22,7 +22,7 @@
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [dense-rows dense-cols dense-dias region-dias dragan-says-ex]]
+             [common :refer [dense-rows dense-cols dense-dias region-dias dragan-says-ex require-trf]]
              [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
@@ -44,6 +44,9 @@
 
 (def ^{:private true :const true} INEFFICIENT_OPERATION_MSG
   "This operation would be inefficient because it uses memory transfer. Please use transfer! to be reminded of that.")
+
+(def ^{:private true :const true} UNAVAILABLE_CUDA_MSG
+  "This operation is not available in CUDA (yet).")
 
 ;; ================== Declarations ============================================
 
@@ -703,7 +706,46 @@
       (dragan-says-ex "You cannot create a non-uplo submatrix of a uplo (TR or SY) matrix. Take a view-ge."
                       {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
-    (cu-uplo-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng)))
+    (cu-uplo-matrix fact false buf n ofst (flip nav) stor (flip reg) matrix-type default eng))
+  Triangularizable
+  (create-trf [a pure]
+    (if (= :sy matrix-type)
+      (dragan-says-ex UNAVAILABLE_CUDA_MSG)
+      a))
+  (create-ptrf [a]
+    (if (= :sy matrix-type)
+      (dragan-says-ex UNAVAILABLE_CUDA_MSG)
+      a))
+  TRF
+  (trtrs [a b]
+    (if (= :tr matrix-type)
+      (let-release [res (raw b)]
+        (copy (engine b) b res)
+        (trs eng a res))
+      (require-trf)))
+  (trtrs! [a b]
+    (if (= :tr matrix-type)
+      (trs eng a b)
+      (require-trf)))
+  (trtri! [a]
+    (if (= :tr matrix-type)
+      (tri eng a)
+      (require-trf)))
+  (trtri [a]
+    (if (= :tr matrix-type)
+      (let-release [res (raw a)]
+        (tri eng (copy eng a res)))
+      (require-trf)))
+  (trcon [a _ nrm1?]
+    (if (= :tr matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trcon [a nrm1?]
+    (if (= :tr matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trdet [a]
+    (dragan-says-ex UNAVAILABLE_CUDA_MSG)))
 
 (extend CUUploMatrix
   Applicative
@@ -748,6 +790,16 @@
   [source destination]
   (copy! source destination))
 
+(defmethod transfer! [CUUploMatrix CUGEMatrix]
+  [source destination]
+  (let [reg (region source)]
+    (copy! source (view-tr destination (.isLower reg) (.isDiagUnit reg)))))
+
+(defmethod transfer! [CUGEMatrix CUUploMatrix]
+  [source destination]
+  (let [reg (region destination)]
+    (copy! (view-tr source (.isLower reg) (.isDiagUnit reg)) destination)))
+
 (defmethod transfer! [CUMatrix RealNativeMatrix]
   [source destination]
   (if (= (navigator source) (navigator destination))
@@ -774,6 +826,8 @@
 
 ;; =============== Transfer preferences ========================================
 
+(prefer-method transfer! [CUVector Object] [Object CUVector])
+(prefer-method transfer! [CUMatrix Object] [Object CUMatrix])
 (prefer-method transfer! [CUVector Object] [Object CLVector])
 (prefer-method transfer! [CUMatrix Object] [Object CLMatrix])
 (prefer-method transfer! [CLVector Object] [Object CUVector])

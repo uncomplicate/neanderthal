@@ -19,7 +19,8 @@
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [dense-rows dense-cols dense-dias region-dias dragan-says-ex]]
+             [common :refer [dense-rows dense-cols dense-dias region-dias dragan-says-ex
+                             require-trf]]
              [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
@@ -39,6 +40,9 @@
 
 (def ^{:private true :const true} INEFFICIENT_OPERATION_MSG
   "This operation would be inefficient because it uses memory transfer. Please use transfer! of map-memory to be reminded of that.")
+
+(def ^{:private true :const true} UNAVAILABLE_OPENCL_MSG
+  "This operation is not available in OpenCL (yet).")
 
 (defn cl-to-host [cl host]
   (let [mapped-host (mmap cl :read)]
@@ -301,8 +305,6 @@
 (defmethod transfer! [Object CLVector]
   [source destination]
   (obj-to-cl source destination))
-
-
 
 ;; ================== CL Matrix ============================================
 
@@ -708,7 +710,46 @@
         (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [this mapped]
     (enq-unmap! (get-queue da) @buf (.buffer ^NativeBlock mapped))
-    this))
+    this)
+  Triangularizable
+  (create-trf [a pure]
+    (if (= :sy matrix-type)
+      (dragan-says-ex UNAVAILABLE_OPENCL_MSG)
+      a))
+  (create-ptrf [a]
+    (if (= :sy matrix-type)
+      (dragan-says-ex UNAVAILABLE_OPENCL_MSG)
+      a))
+  TRF
+  (trtrs [a b]
+    (if (= :tr matrix-type)
+      (let-release [res (raw b)]
+        (copy (engine b) b res)
+        (trs eng a res))
+      (require-trf)))
+  (trtrs! [a b]
+    (if (= :tr matrix-type)
+      (trs eng a b)
+      (require-trf)))
+  (trtri! [a]
+    (if (= :tr matrix-type)
+      (tri eng a)
+      (require-trf)))
+  (trtri [a]
+    (if (= :tr matrix-type)
+      (let-release [res (raw a)]
+        (tri eng (copy eng a res)))
+      (require-trf)))
+  (trcon [a _ nrm1?]
+    (if (= :tr matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trcon [a nrm1?]
+    (if (= :tr matrix-type)
+      (con eng a nrm1?)
+      (require-trf)))
+  (trdet [a]
+    (dragan-says-ex UNAVAILABLE_OPENCL_MSG)))
 
 (extend CLUploMatrix
   Applicative
@@ -755,6 +796,16 @@
   [source destination]
   (copy! source destination))
 
+(defmethod transfer! [CLUploMatrix CLGEMatrix]
+  [source destination]
+  (let [reg (region source)]
+    (copy! source (view-tr destination (.isLower reg) (.isDiagUnit reg)))))
+
+(defmethod transfer! [CLGEMatrix CLUploMatrix]
+  [source destination]
+  (let [reg (region destination)]
+    (copy! (view-tr source (.isLower reg) (.isDiagUnit reg)) destination)))
+
 (defmethod transfer! [CLMatrix RealNativeMatrix]
   [source destination]
   (cl-to-host source destination))
@@ -770,3 +821,6 @@
 (defmethod transfer! [Object CLMatrix]
   [source destination]
   (obj-to-cl source destination))
+
+(prefer-method transfer! [CLVector Object] [Object CLVector])
+(prefer-method transfer! [CLMatrix Object] [Object CLMatrix])
