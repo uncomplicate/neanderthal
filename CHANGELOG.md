@@ -10,7 +10,9 @@
 
 ### Enhancements
 
-* JOCLBlast engine upgraded to 1.1.0
+* JOCLBlast engine upgraded to 1.1.0.
+* CUDA implementation of SY matrices.
+* OpenCL implementation of SY matrices.
 
 ## 0.16.1
 
