@@ -24,11 +24,11 @@
              [navigation :refer [full-storage]]
              [common :refer [dragan-says-ex check-eq-navigators]]]
             [uncomplicate.neanderthal.internal.device
-             [common :refer [name-transp tr-bottom]]
+             [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [clblock :refer :all]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
            [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
-           [uncomplicate.neanderthal.internal.api Vector Matrix Block DataAccessor Region
+           [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix Block DataAccessor Region
             DenseStorage FullStorage LayoutNavigator]
            [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLUploMatrix]))
 
@@ -114,7 +114,7 @@
          (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
           (cl-mem (.buffer ~param)) (.offset ~param) ~queue nil)
          ~param))
-     (throw (ex-info "You cannot use strided vector as param." {:param (str ~param)}))))
+     (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
 (defmacro ^:private vector-method
   ([queue method x]
@@ -345,7 +345,7 @@
         ~y)
       ~y))
   ([a]
-   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (str ~a)}))))
+   `(throw (ex-info "In-place mv! is not supported for GE matrices." {:a (info ~a)}))))
 
 (defmacro ^:private ge-rk [queue method alpha x y a]
   `(if (< 0 (.dim ~a))
@@ -360,73 +360,78 @@
 
 (defmacro ^:private ge-mm
   ([alpha a b]
-   `(mm (engine ~b) ~alpha ~b ~a false))
+   `(if-not (instance? GEMatrix ~b)
+      (mm (engine ~b) ~alpha ~b ~a false)
+      (dragan-says-ex "In-place mm! is not supported for GE matrices. Use QR factorization."
+                      {:a (info ~a) :b (info ~b)} )))
   ([queue method alpha a b beta c]
    `(if (< 0 (.dim ~a))
-      (with-check error
-        (let [nav-c# (navigator ~c)]
-          (~method (.layout nav-c#)
-           (if (= (navigator ~a) nav-c#)
-             CLBlastTranspose/CLBlastTransposeNo
-             CLBlastTranspose/CLBlastTransposeYes)
-           (if (= (navigator ~b) nav-c#)
-             CLBlastTranspose/CLBlastTransposeNo
-             CLBlastTranspose/CLBlastTransposeYes)
-           (.mrows ~a) (.ncols ~b) (.ncols ~a)
-           ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-           (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-           ~beta (cl-mem (.buffer ~c)) (.offset ~c) (.stride ~c)
-           ~queue nil))
-        ~c)
+      (if (instance? GEMatrix ~b)
+        (with-check error
+          (let [nav-c# (navigator ~c)]
+            (~method (.layout nav-c#)
+             (if (= (navigator ~a) nav-c#)
+               CLBlastTranspose/CLBlastTransposeNo
+               CLBlastTranspose/CLBlastTransposeYes)
+             (if (= (navigator ~b) nav-c#)
+               CLBlastTranspose/CLBlastTransposeNo
+               CLBlastTranspose/CLBlastTransposeYes)
+             (.mrows ~a) (.ncols ~b) (.ncols ~a)
+             ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+             (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+             ~beta (cl-mem (.buffer ~c)) (.offset ~c) (.stride ~c)
+             ~queue nil))
+          ~c)
+        (mm (engine ~b) ~alpha ~b ~a ~beta ~c false))
       ~c)))
 
 ;; =============== Common TR matrix macros and functions ==========================
 
-(defn ^:private tr-equals [ctx queue prog ^CLUploMatrix a ^CLUploMatrix b]
+(defn ^:private uplo-equals [ctx queue prog transpf ^CLUploMatrix a ^CLUploMatrix b]
   (if (< 0 (.dim a))
     (let [res (wrap-int 0)
           stor (full-storage a)]
-      (with-release [tr-equals-kernel (kernel prog (name-transp "tr_equals" a b))
+      (with-release [equals-kernel (kernel prog (name-transp (transpf a b) "uplo_equals" a b))
                      eq-flag-buf (cl-buffer ctx Integer/BYTES :read-write)]
         (enq-fill! queue eq-flag-buf res)
-        (set-args! tr-equals-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+        (set-args! equals-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                    eq-flag-buf)
-        (enq-nd! queue tr-equals-kernel (work-size-2d (.sd stor) (.fd stor)))
+        (enq-nd! queue equals-kernel (work-size-2d (.sd stor) (.fd stor)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
 
-(defn ^:private tr-map [queue prog op-name ^CLUploMatrix a ^CLUploMatrix b]
+(defn ^:private uplo-map [queue prog transpf op-name ^CLUploMatrix a ^CLUploMatrix b]
   (when (< 0 (.dim a))
     (let [stor (full-storage a)]
-      (with-release [tr-map-kernel (kernel prog (name-transp op-name a b))]
-        (set-args! tr-map-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+      (with-release [map-kernel (kernel prog (name-transp (transpf a b) op-name a b))]
+        (set-args! map-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-        (enq-nd! queue tr-map-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-nd! queue map-kernel (work-size-2d (.sd stor) (.fd stor))))))
   b)
 
-(defn ^:private tr-axpby [queue prog alpha ^CLUploMatrix a beta ^CLUploMatrix b]
+(defn ^:private uplo-axpby [queue prog transpf alpha ^CLUploMatrix a beta ^CLUploMatrix b]
   (when (< 0 (.dim a))
     (let [da (data-accessor a)
           stor (full-storage a)]
-      (with-release [tr-axpby-kernel (kernel prog (name-transp "tr_axpby" a b))]
-        (set-args! tr-axpby-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+      (with-release [axpby-kernel (kernel prog (name-transp (transpf a b) "uplo_axpby" a b))]
+        (set-args! axpby-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.wrapPrim da alpha) (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.wrapPrim da beta) (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-        (enq-nd! queue tr-axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-nd! queue axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
   b)
 
-(defn ^:private tr-set-scal [queue prog op-name alpha ^CLUploMatrix a]
+(defn ^:private uplo-set-scal [queue prog op-name alpha ^CLUploMatrix a]
   (when (< 0 (.dim a))
     (let [stor (full-storage a)]
-      (with-release [tr-op-kernel (kernel prog op-name)]
-        (set-args! tr-op-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+      (with-release [op-kernel (kernel prog op-name)]
+        (set-args! op-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.wrapPrim (data-accessor a) alpha)
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor)))
-        (enq-nd! queue tr-op-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-nd! queue op-kernel (work-size-2d (.sd stor) (.fd stor))))))
   a)
 
 (defmacro ^:private tr-mv
@@ -439,7 +444,7 @@
        ~queue nil)
       ~x))
   ([a]
-   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
 
 (defmacro ^:private tr-mm
   ([queue method alpha a b left]
@@ -457,7 +462,37 @@
          ~queue nil))
       ~b))
   ([a]
-   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (str ~a)}))))
+   `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
+
+(defmacro ^:private sy-mv
+  ([queue method alpha a x beta y]
+   `(with-check error
+      (~method (.layout (navigator ~a)) (.uplo (region ~a)) (.ncols ~a)
+       ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+       (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
+       ~beta (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
+       ~queue nil)
+      ~y))
+  ([a]
+   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
+
+(defmacro ^:private sy-mm
+  ([queue method alpha a b beta c left]
+   `(with-check error
+      (let [nav-c# (navigator ~c)]
+        (if (= nav-c# (navigator ~b))
+          (~method (.layout nav-c#)
+           (if ~left CLBlastSide/CLBlastSideLeft CLBlastSide/CLBlastSideRight)
+           (.uplo (region ~a)) (.mrows ~c) (.ncols ~c)
+           ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+           (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+           ~beta (cl-mem (.buffer ~c)) (.offset ~c) (.stride ~c)
+           ~queue nil)
+          (dragan-says-ex "Both GE matrices in symmetric multiplication must have the same orientation."
+                          {:b (info ~b) :c (info ~c)})))
+      ~c))
+  ([a]
+   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
 
 ;; =============== Common vectorized math functions ============================
 
@@ -573,7 +608,7 @@
      (check-eq-navigators a b)
      (let [stor (full-storage a)]
        (with-release [math-kernel (kernel prog kernel-name)]
-         (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+         (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                     (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
          (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
@@ -583,7 +618,7 @@
      (check-eq-navigators a b c)
      (let [stor (full-storage a)]
        (with-release [math-kernel (kernel prog kernel-name)]
-         (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+         (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                     (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                     (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
@@ -598,13 +633,13 @@
           stor (full-storage a)]
       (if (and (= 0.0 scaleb) (= 1.0 shiftb))
         (with-release [math-kernel (kernel prog "uplo_scale_shift")]
-          (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+          (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                      (.wrapPrim da scalea) (.wrapPrim da shifta)
                      (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
           (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))
         (with-release [math-kernel (kernel prog "uplo_linear_frac")]
-          (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+          (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                      (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                      (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
@@ -617,7 +652,7 @@
     (check-eq-navigators a c)
     (let [stor (full-storage a)]
       (with-release [math-kernel (kernel prog "uplo_powx")]
-        (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (tr-bottom a) 1 -1))
+        (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                    (.wrapPrim (data-accessor a) b)
                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
@@ -1243,15 +1278,16 @@
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    (tr-equals ctx queue prog a b))
+    (uplo-equals ctx queue prog layout-match? a b))
   Blas
   (swap [_ a b]
-    (tr-map queue prog "tr_swap" a b)
+    (uplo-map queue prog layout-match? "uplo_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map queue prog "tr_copy" a b) b)
+    (uplo-map queue prog layout-match? "uplo_copy" a b)
+    b)
   (scal [_ alpha a]
-    (tr-set-scal queue prog "tr_scal" alpha a))
+    (uplo-set-scal queue prog "uplo_scal" alpha a))
   (dot [_ _ _]
     (not-available))
   (nrm1 [_ _]
@@ -1263,7 +1299,7 @@
   (asum [_ _]
     (not-available))
   (axpy [_ alpha a b]
-    (tr-axpby queue prog alpha a 1.0 b))
+    (uplo-axpby queue prog layout-match? alpha a 1.0 b))
   (mv [this alpha a x beta y]
     (tr-mv a))
   (mv [_ a x]
@@ -1278,9 +1314,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (tr-set-scal queue prog "tr_set" alpha a))
+    (uplo-set-scal queue prog layout-match? "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
-    (tr-axpby queue prog alpha a beta b))
+    (uplo-axpby queue prog layout-match? alpha a beta b))
   VectorMath
   (sqr [_ a y]
     (uplo-math queue prog "uplo_sqr" a y))
@@ -1390,15 +1426,16 @@
 (deftype FloatTREngine [ctx queue prog]
   BlockEngine
   (equals-block [_ a b]
-    (tr-equals ctx queue prog a b))
+    (uplo-equals ctx queue prog layout-match? a b))
   Blas
   (swap [_ a b]
-    (tr-map queue prog "tr_swap" a b)
+    (uplo-map queue prog layout-match? "uplo_swap" a b)
     a)
   (copy [_ a b]
-    (tr-map queue prog "tr_copy" a b))
+    (uplo-map queue prog layout-match? "uplo_copy" a b)
+    b)
   (scal [_ alpha a]
-    (tr-set-scal queue prog "tr_scal" alpha a))
+    (uplo-set-scal queue prog "uplo_scal" alpha a))
   (dot [_ _ _]
     (not-available))
   (nrm1 [_ _]
@@ -1410,7 +1447,7 @@
   (asum [_ _]
     (not-available))
   (axpy [_ alpha a b]
-    (tr-axpby queue prog alpha a 1.0 b))
+    (uplo-axpby queue prog layout-match? alpha a 1.0 b))
   (mv [this alpha a x beta y]
     (tr-mv a))
   (mv [_ a x]
@@ -1425,9 +1462,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (tr-set-scal queue prog "tr_set" alpha a))
+    (uplo-set-scal queue prog layout-match? "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
-    (tr-axpby queue prog alpha a beta b))
+    (uplo-axpby queue prog layout-match? alpha a beta b))
   VectorMath
   (sqr [_ a y]
     (uplo-math queue prog "uplo_sqr" a y))
@@ -1534,7 +1571,302 @@
   (fmax [_ a b y]
     (uplo-math queue prog "uplo_fmax" a b y)))
 
-(deftype CLFactory [ctx queue prog ^DataAccessor da native-fact vector-eng ge-eng tr-eng]
+(deftype DoubleSYEngine [ctx queue prog]
+  BlockEngine
+  (equals-block [_ a b]
+    (uplo-equals ctx queue prog symmetric-match? a b))
+  Blas
+  (swap [_ a b]
+    (uplo-map queue prog symmetric-match? "uplo_swap" a b)
+    a)
+  (copy [_ a b]
+    (uplo-map queue prog symmetric-match? "uplo_copy" a b)
+    b)
+  (scal [_ alpha a]
+    (uplo-set-scal queue prog "uplo_scal" alpha a))
+  (dot [_ _ _]
+    (not-available))
+  (nrm1 [_ _]
+    (not-available))
+  (nrm2 [_ _]
+    (not-available))
+  (nrmi [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
+  (axpy [_ alpha a b]
+    (uplo-axpby queue prog symmetric-match? alpha a 1.0 b))
+  (mv [this alpha a x beta y]
+    (sy-mv queue CLBlast/CLBlastDsymv alpha ^CLUploMatrix a ^CLBlockVector x beta ^CLBlockVector y))
+  (mv [_ a x]
+    (sy-mv a))
+  (mm [this alpha a b beta c left]
+    (sy-mm queue CLBlast/CLBlastDsymm alpha ^CLUploMatrix a ^CLGEMatrix b beta ^CLGEMatrix c left))
+  (mm [_ alpha a b left]
+    (sy-mm a))
+  BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
+  (set-all [_ alpha a]
+    (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
+  (axpby [_ alpha a beta b]
+    (uplo-axpby queue prog symmetric-match? alpha a beta b))
+  VectorMath
+  (sqr [_ a y]
+    (uplo-math queue prog "uplo_sqr" a y))
+  (mul [_ a b y]
+    (uplo-math queue prog "uplo_mul" a b y))
+  (div [_ a b y]
+    (uplo-math queue prog "uplo_div" a b y))
+  (inv [_ a y]
+    (uplo-math queue prog "uplo_inv" a y))
+  (abs [_ a y]
+    (uplo-math queue prog "uplo_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (uplo-linear-frac queue prog a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (uplo-math queue prog "uplo_fmod" a b y))
+  (frem [_ a b y]
+    (uplo-math queue prog "uplo_frem" a b y))
+  (sqrt [_ a y]
+    (uplo-math queue prog "uplo_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (uplo-math queue prog "uplo_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (uplo-math queue prog "uplo_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (uplo-math queue prog "uplo_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (uplo-math queue prog "uplo_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (uplo-math queue prog "uplo_pow3o2" a y))
+  (pow [_ a b y]
+    (uplo-math queue prog "uplo_pow" a b y))
+  (powx [_ a b y]
+    (uplo-powx queue prog a b y))
+  (hypot [_ a b y]
+    (uplo-math queue prog "uplo_hypot" a b y))
+  (exp [_ a y]
+    (uplo-math queue prog "uplo_exp" a y))
+  (expm1 [_ a y]
+    (uplo-math queue prog "uplo_expm1" a y))
+  (log [_ a y]
+    (uplo-math queue prog "uplo_log" a y))
+  (log10 [_ a y]
+    (uplo-math queue prog "uplo_log10" a y))
+  (sin [_ a y]
+    (uplo-math queue prog "uplo_sin" a y))
+  (cos [_ a y]
+    (uplo-math queue prog "uplo_cos" a y))
+  (tan [_ a y]
+    (uplo-math queue prog "uplo_tan" a y))
+  (sincos [_ a y z]
+    (uplo-math queue prog "uplo_sincos" a y z))
+  (asin [_ a y]
+    (uplo-math queue prog "uplo_asin" a y))
+  (acos [_ a y]
+    (uplo-math queue prog "uplo_acos" a y))
+  (atan [_ a y]
+    (uplo-math queue prog "uplo_atan" a y))
+  (atan2 [_ a b y]
+    (uplo-math queue prog "uplo_atan2"  a b y))
+  (sinh [_ a y]
+    (uplo-math queue prog "uplo_sinh" a y))
+  (cosh [_ a y]
+    (uplo-math queue prog "uplo_cosh" a y))
+  (tanh [_ a y]
+    (uplo-math queue prog "uplo_tanh"  a y))
+  (asinh [_ a y]
+    (uplo-math queue prog "uplo_asinh" a y))
+  (acosh [_ a y]
+    (uplo-math queue prog "uplo_acosh" a y))
+  (atanh [_ a y]
+    (uplo-math queue prog "uplo_atanh" a y))
+  (erf [_ a y]
+    (uplo-math queue prog "uplo_erf" a y))
+  (erfc [_ a y]
+    (uplo-math queue prog "uplo_erfc" a y))
+  (erf-inv [_ a y]
+    (uplo-math queue prog "uplo_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (not-available))
+  (cdf-norm [_ a y]
+    (uplo-math queue prog "uplo_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (not-available))
+  (gamma [_ a y]
+    (uplo-math queue prog "uplo_gamma" a y))
+  (lgamma [_ a y]
+    (uplo-math queue prog "uplo_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (uplo-math queue prog "uplo_floor" a y))
+  (fceil [_ a y]
+    (uplo-math queue prog "uplo_ceil" a y))
+  (trunc [_ a y]
+    (uplo-math queue prog "uplo_trunc" a y))
+  (round [_ a y]
+    (uplo-math queue prog "uplo_round" a y))
+  (modf [_ a y z]
+    (uplo-math queue prog "uplo_modf" a y z))
+  (frac [_ a y]
+    (uplo-math queue prog "uplo_frac" a y))
+  (fmin [_ a b y]
+    (uplo-math queue prog "uplo_fmin" a b y))
+  (fmax [_ a b y]
+    (uplo-math queue prog "uplo_fmax" a b y)))
+
+(deftype FloatSYEngine [ctx queue prog]
+  BlockEngine
+  (equals-block [_ a b]
+    (uplo-equals ctx queue prog symmetric-match? a b))
+  Blas
+  (swap [_ a b]
+    (uplo-map queue prog symmetric-match? "uplo_swap" a b)
+    a)
+  (copy [_ a b]
+    (uplo-map queue prog symmetric-match? "uplo_copy" a b) b)
+  (scal [_ alpha a]
+    (uplo-set-scal queue prog "uplo_scal" alpha a))
+  (dot [_ _ _]
+    (not-available))
+  (nrm1 [_ _]
+    (not-available))
+  (nrm2 [_ _]
+    (not-available))
+  (nrmi [_ _]
+    (not-available))
+  (asum [_ _]
+    (not-available))
+  (axpy [_ alpha a b]
+    (uplo-axpby queue prog symmetric-match? alpha a 1.0 b))
+  (mv [this alpha a x beta y]
+    (sy-mv queue CLBlast/CLBlastSsymv alpha ^CLUploMatrix a ^CLBlockVector x beta ^CLBlockVector y))
+  (mv [_ a x]
+    (sy-mv a))
+  (mm [this alpha a b beta c left]
+    (sy-mm queue CLBlast/CLBlastSsymm alpha ^CLUploMatrix a ^CLGEMatrix b beta ^CLGEMatrix c left))
+  (mm [_ alpha a b left]
+    (sy-mm a))
+  BlasPlus
+  (amax [_ _]
+    (not-available))
+  (sum [_ _]
+    (not-available))
+  (set-all [_ alpha a]
+    (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
+  (axpby [_ alpha a beta b]
+    (uplo-axpby queue prog symmetric-match? alpha a beta b))
+  VectorMath
+  (sqr [_ a y]
+    (uplo-math queue prog "uplo_sqr" a y))
+  (mul [_ a b y]
+    (uplo-math queue prog "uplo_mul" a b y))
+  (div [_ a b y]
+    (uplo-math queue prog "uplo_div" a b y))
+  (inv [_ a y]
+    (uplo-math queue prog "uplo_inv" a y))
+  (abs [_ a y]
+    (uplo-math queue prog "uplo_abs" a y))
+  (linear-frac [_ a b scalea shifta scaleb shiftb y]
+    (uplo-linear-frac queue prog a b scalea shifta scaleb shiftb y))
+  (fmod [_ a b y]
+    (uplo-math queue prog "uplo_fmod" a b y))
+  (frem [_ a b y]
+    (uplo-math queue prog "uplo_frem" a b y))
+  (sqrt [_ a y]
+    (uplo-math queue prog "uplo_sqrt" a y))
+  (inv-sqrt [_ a y]
+    (uplo-math queue prog "uplo_inv_sqrt" a y))
+  (cbrt [_ a y]
+    (uplo-math queue prog "uplo_cbrt" a y))
+  (inv-cbrt [_ a y]
+    (uplo-math queue prog "uplo_inv_cbrt" a y))
+  (pow2o3 [_ a y]
+    (uplo-math queue prog "uplo_pow2o3" a y))
+  (pow3o2 [_ a y]
+    (uplo-math queue prog "uplo_pow3o2" a y))
+  (pow [_ a b y]
+    (uplo-math queue prog "uplo_pow" a b y))
+  (powx [_ a b y]
+    (uplo-powx queue prog a b y))
+  (hypot [_ a b y]
+    (uplo-math queue prog "uplo_hypot" a b y))
+  (exp [_ a y]
+    (uplo-math queue prog "uplo_exp" a y))
+  (expm1 [_ a y]
+    (uplo-math queue prog "uplo_expm1" a y))
+  (log [_ a y]
+    (uplo-math queue prog "uplo_log" a y))
+  (log10 [_ a y]
+    (uplo-math queue prog "uplo_log10" a y))
+  (sin [_ a y]
+    (uplo-math queue prog "uplo_sin" a y))
+  (cos [_ a y]
+    (uplo-math queue prog "uplo_cos" a y))
+  (tan [_ a y]
+    (uplo-math queue prog "uplo_tan" a y))
+  (sincos [_ a y z]
+    (uplo-math queue prog "uplo_sincos" a y z))
+  (asin [_ a y]
+    (uplo-math queue prog "uplo_asin" a y))
+  (acos [_ a y]
+    (uplo-math queue prog "uplo_acos" a y))
+  (atan [_ a y]
+    (uplo-math queue prog "uplo_atan" a y))
+  (atan2 [_ a b y]
+    (uplo-math queue prog "uplo_atan2"  a b y))
+  (sinh [_ a y]
+    (uplo-math queue prog "uplo_sinh" a y))
+  (cosh [_ a y]
+    (uplo-math queue prog "uplo_cosh" a y))
+  (tanh [_ a y]
+    (uplo-math queue prog "uplo_tanh"  a y))
+  (asinh [_ a y]
+    (uplo-math queue prog "uplo_asinh" a y))
+  (acosh [_ a y]
+    (uplo-math queue prog "uplo_acosh" a y))
+  (atanh [_ a y]
+    (uplo-math queue prog "uplo_atanh" a y))
+  (erf [_ a y]
+    (uplo-math queue prog "uplo_erf" a y))
+  (erfc [_ a y]
+    (uplo-math queue prog "uplo_erfc" a y))
+  (erf-inv [_ a y]
+    (uplo-math queue prog "uplo_erf_inv" a y))
+  (erfc-inv [_ a y]
+    (not-available))
+  (cdf-norm [_ a y]
+    (uplo-math queue prog "uplo_cdf_norm" a y))
+  (cdf-norm-inv [_ a y]
+    (not-available))
+  (gamma [_ a y]
+    (uplo-math queue prog "uplo_gamma" a y))
+  (lgamma [_ a y]
+    (uplo-math queue prog "uplo_lgamma" a y))
+  (expint1 [_ a y]
+    (not-available))
+  (floor [_ a y]
+    (uplo-math queue prog "uplo_floor" a y))
+  (fceil [_ a y]
+    (uplo-math queue prog "uplo_ceil" a y))
+  (trunc [_ a y]
+    (uplo-math queue prog "uplo_trunc" a y))
+  (round [_ a y]
+    (uplo-math queue prog "uplo_round" a y))
+  (modf [_ a y z]
+    (uplo-math queue prog "uplo_modf" a y z))
+  (frac [_ a y]
+    (uplo-math queue prog "uplo_frac" a y))
+  (fmin [_ a b y]
+    (uplo-math queue prog "uplo_fmin" a b y))
+  (fmax [_ a b y]
+    (uplo-math queue prog "uplo_fmax" a b y)))
+
+(deftype CLFactory [ctx queue prog ^DataAccessor da native-fact vector-eng ge-eng tr-eng sy-eng]
   Releaseable
   (release [_]
     (try
@@ -1575,12 +1907,19 @@
       (when init
         (.initialize da (.buffer ^Block res)))
       res))
+  (create-sy [this n column? lower? init]
+    (let-release [res (cl-uplo-matrix this n column? lower?)]
+      (when init
+        (.initialize da (.buffer ^Block res)))
+      res))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
     ge-eng)
   (tr-engine [_]
-    tr-eng))
+    tr-eng)
+  (sy-engine [_]
+    sy-eng))
 
 (let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cl"))
            (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cl"))]]
@@ -1593,7 +1932,7 @@
                    (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double)
                    native-double
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
-                   (->DoubleTREngine ctx queue prog))))
+                   (->DoubleTREngine ctx queue prog) (->DoubleSYEngine ctx queue prog))))
 
   (defn clblast-float [ctx queue]
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
@@ -1601,4 +1940,4 @@
                    (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float)
                    native-float
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)
-                   (->FloatTREngine ctx queue prog)))))
+                   (->FloatTREngine ctx queue prog) (->FloatSYEngine ctx queue prog)))))

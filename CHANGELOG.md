@@ -5,8 +5,12 @@
 ### New features
 
 * Vectorized mathematical functions (cca 50 pieces in the vect-math namespace).
-* New functions in the math namespace to make it support the scalar equivalents of vect-math functions.
+* New functions in the math namespace to support scalar equivalents of vect-math functions.
 * Schur decomposition!
+
+### Enhancements
+
+* JOCLBlast engine upgraded to 1.1.0
 
 ## 0.16.1
 

@@ -2720,7 +2720,15 @@
   (test-uplo-scal factory tr)
   (test-uplo-axpy factory tr)
   (test-tr-mv factory tr)
-  (test-tr-mm factory tr))
+  (test-tr-mm factory tr)
+  (test-sy-constructor factory)
+  (test-sy factory)
+  (test-uplo-copy factory sy)
+  (test-uplo-swap factory sy)
+  (test-uplo-scal factory sy)
+  (test-uplo-axpy factory sy)
+  (test-sy-mv factory sy)
+  (test-sy-mm factory))
 
 (defn test-blas-host [factory]
   (test-iamin factory)

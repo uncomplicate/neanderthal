@@ -137,10 +137,45 @@ extern "C" {
         }
     }
 
-    __global__ void tr_equals_no_transp (const int sd, const int unit, const int bottom,
+    __global__ void uplo_equals_no_transp (const int sd, const int unit, const int bottom,
+                                           const REAL* a, const int offset_a, const int ld_a,
+                                           const REAL* b, const int offset_b, const int ld_b,
+                                           int* eq_flag) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            const int ia = offset_a + gid_0 + gid_1 * ld_a;
+            const int ib = offset_b + gid_0 + gid_1 * ld_b;
+            if (a[ia] != b[ib]){
+                eq_flag[0]++;
+            }
+        }
+    }
+
+    __global__ void uplo_equals_transp (const int sd, const int unit, const int bottom,
+                                        const REAL* a, const int offset_a, const int ld_a,
+                                        const REAL* b, const int offset_b, const int ld_b,
+                                        int* eq_flag) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            const int ia = offset_a + gid_0 + gid_1 * ld_a;
+            const int ib = offset_b + gid_1 + gid_0 * ld_b;
+            if (a[ia] != b[ib]){
+                eq_flag[0]++;
+            }
+        }
+    }
+
+    __global__ void uplo_copy_no_transp (const int sd, const int unit, const int bottom,
                                          const REAL* a, const int offset_a, const int ld_a,
-                                         const REAL* b, const int offset_b, const int ld_b,
-                                         int* eq_flag) {
+                                         REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -149,48 +184,13 @@ extern "C" {
         if (check) {
             const int ia = offset_a + gid_0 + gid_1 * ld_a;
             const int ib = offset_b + gid_0 + gid_1 * ld_b;
-            if (a[ia] != b[ib]){
-                eq_flag[0]++;
-            }
+            b[ib] = a[ia];
         }
     }
 
-    __global__ void tr_equals_transp (const int sd, const int unit, const int bottom,
+    __global__ void uplo_copy_transp (const int sd, const int unit, const int bottom,
                                       const REAL* a, const int offset_a, const int ld_a,
-                                      const REAL* b, const int offset_b, const int ld_b,
-                                      int* eq_flag) {
-        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
-        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
-        const bool valid = (gid_0 < sd) && (gid_1 < sd);
-        const bool check = valid &&
-            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
-        if (check) {
-            const int ia = offset_a + gid_0 + gid_1 * ld_a;
-            const int ib = offset_b + gid_1 + gid_0 * ld_b;
-            if (a[ia] != b[ib]){
-                eq_flag[0]++;
-            }
-        }
-    }
-
-    __global__ void tr_copy_no_transp (const int sd, const int unit, const int bottom,
-                                       const REAL* a, const int offset_a, const int ld_a,
-                                       REAL* b, const int offset_b, const int ld_b) {
-        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
-        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
-        const bool valid = (gid_0 < sd) && (gid_1 < sd);
-        const bool check = valid &&
-            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
-        if (check) {
-            const int ia = offset_a + gid_0 + gid_1 * ld_a;
-            const int ib = offset_b + gid_0 + gid_1 * ld_b;
-            b[ib] = a[ia];
-        }
-    }
-
-    __global__ void tr_copy_transp (const int sd, const int unit, const int bottom,
-                                    const REAL* a, const int offset_a, const int ld_a,
-                                    REAL* b, const int offset_b, const int ld_b) {
+                                      REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -203,9 +203,9 @@ extern "C" {
         }
     }
 
-    __global__ void tr_swap_no_transp (const int sd, const int unit, const int bottom,
-                                       REAL* a, const int offset_a, const int ld_a,
-                                       REAL* b, const int offset_b, const int ld_b) {
+    __global__ void uplo_swap_no_transp (const int sd, const int unit, const int bottom,
+                                         REAL* a, const int offset_a, const int ld_a,
+                                         REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -220,9 +220,9 @@ extern "C" {
         }
     }
 
-    __global__ void tr_swap_transp (const int sd, const int unit, const int bottom,
-                                    REAL* a, const int offset_a, const int ld_a,
-                                    REAL* b, const int offset_b, const int ld_b) {
+    __global__ void uplo_swap_transp (const int sd, const int unit, const int bottom,
+                                      REAL* a, const int offset_a, const int ld_a,
+                                      REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -237,9 +237,9 @@ extern "C" {
         }
     }
 
-    __global__ void tr_axpby_no_transp (const int sd, const int unit, const int bottom,
-                                        const REAL alpha, const REAL* a, const int offset_a, const int ld_a,
-                                        const REAL beta, REAL* b, const int offset_b, const int ld_b) {
+    __global__ void uplo_axpby_no_transp (const int sd, const int unit, const int bottom,
+                                          const REAL alpha, const REAL* a, const int offset_a, const int ld_a,
+                                          const REAL beta, REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -252,9 +252,9 @@ extern "C" {
         }
     }
 
-    __global__ void tr_axpby_transp (const int sd, const int unit, const int bottom,
-                                     const REAL alpha, const REAL* a, const int offset_a, const int ld_a,
-                                     const REAL beta, REAL* b, const int offset_b, const int ld_b) {
+    __global__ void uplo_axpby_transp (const int sd, const int unit, const int bottom,
+                                       const REAL alpha, const REAL* a, const int offset_a, const int ld_a,
+                                       const REAL beta, REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -267,8 +267,8 @@ extern "C" {
         }
     }
 
-    __global__ void tr_scal (const int sd, const int unit, const int bottom,
-                             const REAL alpha, REAL* a, const int offset_a, const int ld_a) {
+    __global__ void uplo_scal (const int sd, const int unit, const int bottom,
+                               const REAL alpha, REAL* a, const int offset_a, const int ld_a) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);
@@ -279,8 +279,8 @@ extern "C" {
         }
     }
 
-    __global__ void tr_set (const int sd, const int unit, const int bottom,
-                            const REAL alpha, REAL* a, const int offset_a, const int ld_a) {
+    __global__ void uplo_set (const int sd, const int unit, const int bottom,
+                              const REAL alpha, REAL* a, const int offset_a, const int ld_a) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < sd);

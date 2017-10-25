@@ -12,10 +12,21 @@
              :refer [compatible? fits? equals-block navigator region]])
   (:import [uncomplicate.neanderthal.internal.api MatrixImplementation LayoutNavigator Region]))
 
-(defn name-transp [name a b]
-  (format "%s_%s" name (if (= (navigator a) (navigator b)) "no_transp" "transp")))
+(defn name-transp
+  ([condition name a b]
+   (format "%s_%s" name (if condition "no_transp" "transp")))
+  ([name a b]
+   (name-transp (= (navigator a) (navigator b)) name a b)))
 
-(defn tr-bottom [a]
+(defn layout-match? [a b]
+  (= (navigator a) (navigator b)))
+
+(defn symmetric-match? [a b]
+  (if (= (navigator a) (navigator b))
+    (= (.uplo (region a)) (.uplo (region b)))
+    (not= (.uplo (region a)) (.uplo (region b)))))
+
+(defn uplo-bottom? [a]
   (let [reg (region a)]
     (if (.isColumnMajor (navigator a)) (.isLower reg) (.isUpper reg))))
 

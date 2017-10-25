@@ -398,6 +398,10 @@
       (cl-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld stor))
                       (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?)
                       (tr-engine fact))))
+  (view-sy [_ lower?]
+    (let [n (min m n)]
+      (cl-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld stor))
+                      (band-region n lower?) :sy sy-default (sy-engine fact))))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
