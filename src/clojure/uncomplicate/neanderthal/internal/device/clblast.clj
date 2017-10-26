@@ -1933,10 +1933,6 @@
   (release [_]
     (try
       (release prog)
-      (release vector-eng)
-      (release ge-eng)
-      (release tr-eng)
-      (release sy-eng)
       true
       (finally (CLBlast/CLBlastClearCache))))
   DataAccessorProvider

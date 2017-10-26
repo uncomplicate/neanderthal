@@ -1863,10 +1863,6 @@
 (deftype CUFactory [modl hstream ^DataAccessor da native-fact vector-eng ge-eng tr-eng sy-eng]
   Releaseable
   (release [_]
-    (release vector-eng)
-    (release ge-eng)
-    (release tr-eng)
-    (release sy-eng)
     (release modl)
     true)
   DataAccessorProvider
