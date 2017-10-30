@@ -423,7 +423,7 @@
           ~y))
       ~y))
   ([a]
-   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))));;TODO str
+   `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
 
 (defmacro ^:private sy-mm
   ([cublas-handle method alpha a b beta c left]

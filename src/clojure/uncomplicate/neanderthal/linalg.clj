@@ -620,7 +620,20 @@
    (ev! a nil nil)))
 
 (defn es!
-  "TODO"
+  "Computes the eigenvalues and Schur factorization of a matrix `a`.
+
+  On exit, `a` is overwritten with the Schur form T. The first 2 columns of a column-oriented GE matrix
+  `w` are overwritten with eigenvalues of `a`. If `v` GE matrice is provided, it will be overwritten
+  by the orthogonal matrix Z of Schur vectors.
+
+  If the QR algorithm failed to compute all the eigenvalues, throws ExceptionInfo, with the information
+  on the index of the first eigenvalue that converged.
+  If `w` is not column-oriented, or does not have 2 columns, throws ExceptionInfo.
+  If `v`'s dimensions do not fit with `a`'s dimensions, throws ExceptionInfo.
+  If some value in the native call is illegal, throws ExceptionInfo.
+
+  See related info about [lapacke_?gees](https://software.intel.com/en-us/mkl-developer-reference-c-gees).
+  "
   ([^Matrix a ^Matrix w ^Matrix vs]
    (if (and (= (.mrows a) (.ncols a))
             (= (.mrows a) (.mrows w)) (= 2 (.ncols w))
