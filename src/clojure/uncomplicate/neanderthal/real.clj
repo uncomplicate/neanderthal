@@ -23,8 +23,7 @@
             [uncomplicate.fluokitten.core :refer [foldmap]]
             [uncomplicate.neanderthal
              [math :refer [sqr]]
-             [core :as core]
-             [linalg :as linalg]]
+             [core :as core]]
             [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api RealVector RealMatrix RealChangeable Vector]))
 

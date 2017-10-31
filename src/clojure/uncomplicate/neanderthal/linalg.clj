@@ -19,7 +19,7 @@
   - Orthogonal factorizations: [[qrf!]], [[qrf]], [[qrfp!]], [[qrfp]], [[qpf!]], [[qpf]], [[qrfp!]],
   [[qrfp]], [[rqf!]], [[rqf]], [[qlf!]], [[qlf]], [[lqf!]], [[qlf!]], [[qlf]], [[org!]], [[org]],
   - Linear least squares: [[ls!]], [[ls]], [[lse!]], [[lse]], [[gls!]], [[gls]].
-  - Eigen decomposition: [[ev!]].
+  - Eigen decomposition: [[ev!]], [[es!]].
   - Singular value decomposition (SVD): [[svd!]], [[svd]].
 
   ### Also see:
