@@ -1184,7 +1184,7 @@ __kernel void uplo_round (const uint unit, const int bottom,
 
 __kernel void uplo_modf (const uint unit, const int bottom,
                          __global const REAL* a, const uint offset_a, const uint ld_a,
-                         __global const REAL* b, const uint offset_b, const uint ld_b,
+                         __global REAL* b, const uint offset_b, const uint ld_b,
                          __global REAL* c, const uint offset_c, const uint ld_c) {
     const int gid_0 = get_global_id(0);
     const int gid_1 = get_global_id(1);
