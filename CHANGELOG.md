@@ -1,5 +1,13 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.18.0
+
+* Upgrades JCuda dependency to 0.9.0, supports CUDA 9.
+
+## 0.17.2
+
+* Fix the uplo_modf bug (#33).
+
 ## 0.17.1
 
 * Upgraded JOCLBlast dependency to 1.2.0.
