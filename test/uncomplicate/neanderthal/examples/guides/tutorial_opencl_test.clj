@@ -20,7 +20,7 @@ parallel architectures, and you'd need to learn quite a few new tricks to collec
 the benefits you see on NVIDIA and AMD websites.
 
 * The good: Neanderthal implements BLAS algorithms and abstracts most of that
-complexity for vector and matrix computations away, behind a frendly Clojure API.
+complexity for vector and matrix computations away, behind a friendly Clojure API.
 
 **TL/DR: Multiplication of large matrices is more than 1000x faster with Neanderthal
 than with optimized pure Java libraries, 10x faster than Neanderthal native engine
@@ -34,7 +34,7 @@ is to be aware that a large part of your code will run on a physically separate
 device, which also has its own working memory. It can not access data from the
 main memory, such as your objects, arrays, primitives and such. It also can not
 run your arbitrary program code (Java, C, R). Even if/when it could (Aparapi)
-it sucks at it big time, because it is made of thousans of very dumb processorss that
+it sucks at it big time, because it is made of thousands of very dumb processors that
 are excellent at one thing only - raw computations - and poor at everything else,
 including logic.
 
@@ -59,7 +59,7 @@ So, the moral of this story is: avoid copying data to and from the device unless
 it is absolutely necessary. Even avoid the communication with the device unless
 it is absolutely necessary.
 
-The typical workflow woud be: prepare the input data in your Clojure program and
+The typical workflow would be: prepare the input data in your Clojure program and
 send it to the device. Then, call many Neanderthal and ClojureCL functions that
 work with that data without transferring it back. Only transfer the final result.
 
@@ -71,7 +71,7 @@ are on the device.
 ## Require the Right Namespaces and Set up the Context
 
 Functions for creating the appropriate OpenCL (that means GPU but also other
-accellerators) vectors or matrices are in the `uncomplicate.neanderthal.opencl`
+accelerators) vectors or matrices are in the `uncomplicate.neanderthal.opencl`
 namespace.
 
 Import the appropriate namespaces: `core` for computation functions,
@@ -194,7 +194,7 @@ $code"
 
 "$text
 
-When meansuring very fast code, the `time` function gives wildly imprecise results
+When measuring very fast code, the `time` function gives wildly imprecise results
 - thus we replace the calls to `time` with calls for criterium `quick-bench` and it
 shows much faster and precise measurements. Anyway, we can see that CPU is much faster:
 37 nanoseconds vs many microseconds. This is because calling GPU takes some time

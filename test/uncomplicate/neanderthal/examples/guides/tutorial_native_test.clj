@@ -164,7 +164,7 @@ of two vectors."
 
 (facts
  "BLAS 1 copy: Here is how we copy the data from one vector to another. We may
-provide the destionation and change it, or copy the data into a new vector.
+provide the destination and change it, or copy the data into a new vector.
 And, it works with matrices, too."
  (let [x (dv 1 2 3)
        y (dv 3)
@@ -199,7 +199,7 @@ by a scalar value). Also works on matrices."
 
 (facts
  "BLAS 1 axpy: SAXPY stands for Scalar a times x plus y. It scales a vector and
-adds it to another vector. It can help in acomplishing both the scaling of
+adds it to another vector. It can help in accomplishing both the scaling of
 vectors, additions, or both. It also works on matrices.
 It have destructive and non-destructive variants, and accepts varargs:
 ax - scaling
@@ -374,7 +374,7 @@ sequences box all numbers, and are thus orders of magnitude slower than
 functions working on primitive arrays. On the other hand, primitive arrays
 areduce and amap are macros and a bit awkward...
 
-Fortunataly, Neanderthal comes with its own map and reduce functions that:
+Fortunately, Neanderthal comes with its own map and reduce functions that:
 
 - Work on primitives
 - Accept primitive hinted functions
