@@ -133,7 +133,7 @@ $code"
       (facts
        "Create a vector on the device, write into it the data from the host vector
 and compute the sum of absolute values."
-       (asum gpu-x))) => 6.0))
+       (asum gpu-x) => 6.0))))
 
 "$text
 
