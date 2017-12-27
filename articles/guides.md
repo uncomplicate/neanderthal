@@ -42,10 +42,11 @@ book.
 * [Clojure Numerics, Part 3 - Special Linear Systems and Cholesky Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-3-Special-Linear-Systems-and-Cholesky-Factorization)
 * [Clojure Numerics, Part 4 - Singular Value Decomposition (SVD)](http://dragan.rocks/articles/17/Clojure-Numerics-4-Singular-Value-Decomposition-SVD)
 * [Clojure Numerics, Part 5 - Orthogonalization and Least Squares](http://dragan.rocks/articles/17/Clojure-Numerics-5-Orthogonalization-and-Least-Squares)
+* [Clojure Numerics, Part 6 - More Linear Algebra Fun with Least Squares](http://dragan.rocks/articles/17/Clojure-Numerics-6-More-Linear-Algebra-Fun-with-Least-Squares)
 
 ## Internal details and edge cases
 
-* [Neanderthal Tests](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal) show many more details, but without explanations in prose. It will help when you are struggling with an edge case.
+* [Neanderthal Tests](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal) show many more details, without explanations in prose. This will help when you are struggling with an edge case.
 
 # Making sense of legacy BLAS & LAPACK
 
