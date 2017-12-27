@@ -96,6 +96,7 @@ Neanderthal **uses the native Intel MKL library and expects that you make it ava
 There are two main steps to how to make MKL available on your system; either:
 
 1. (Optional) Install MKL using a [GUI installer provided by Intel](https://software.intel.com/en-us/intel-mkl) free of charge. In case you use this method, you may [set environment variables as explained in this guide](https://software.intel.com/en-us/node/528500), but it is probably not required, since you do **not** need to compile anything.
+   * For a Leiningen project, [lein-with-env-vars](https://github.com/athos/lein-with-env-vars) is useful for passing the path of the MKL libraries to the native linker environment variables, see [lin-alg-app](https://github.com/viesti/lin-alg-app) example project.
 2. Put all required binary files (that you installed with MKL installer or copied from wherever you acquired them) in a directory that is available from your `LD_LIBRARY_PATH` (Linux), `DYLD_LIBRARY_PATH` (OSX) or, `PATH` (windows). Those binary files are available from anyone who installed MKL and have the (free) license to redistribute it with a project.
 
 Either way, Neanderthal does not care how MKL has been provided, as long as it is on the path of your OS. When it comes to distributing the software you build using Neanderthal, I guess the most convenient option is that you include the required MKL binary files in the uberjar or other package that you use to ship the product. Then, it would not require any additional action from your users.
