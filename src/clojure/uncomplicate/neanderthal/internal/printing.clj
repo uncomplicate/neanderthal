@@ -98,14 +98,16 @@
          (format-row w (map formatter (seq (subvector x 0 print-left)))
                      (map formatter (seq (subvector x (- (dim x) print-right) print-right)))))))
     ([^java.io.Writer w x]
-     (let [max-value (double (amax (engine x) x))
-           min-value (entry x (iamin (engine x) x))
-           formatter (partial cl-format nil
-                              (if (and (not (< 0.0 min-value 0.01)) (< max-value 10000.0))
-                                format-f
-                                format-g))]
+     (when (< 0 (dim x))
        (.write w "\n[")
-       (print-vector w formatter x)
+       (let [max-value (double (amax (engine x) x))
+             min-value (entry x (iamin (engine x) x))
+             formatter (partial cl-format nil
+                                (if (and (not (< 0.0 min-value 0.01)) (< max-value 10000.0))
+                                  format-f
+                                  format-g))]
+
+         (print-vector w formatter x))
        (.write w "]\n"))))
 
   (defn print-ge
