@@ -158,6 +158,15 @@
   [x]
   (api/native x))
 
+(defn native!
+  "Ensures that `x` is in the native main memory, and if not, transfers it there and releases `x`.
+  "
+  [x]
+  (let [native-x (api/native x)]
+    (when-not (identical? native-x x)
+      (release x))
+    native-x))
+
 (defn vctr
   "Creates a dense vector in the context of `factory`, from the provided `source`.
 
@@ -165,7 +174,7 @@
   in the resulting vector. Otherwise, transfers the data from `source` (a sequence, vector, etc.)
   to the resulting vector.
 
-  If the provided source do not make sense, throws ExceptionInfo.
+    If the provided source do not make sense, throws ExceptionInfo.
 
       (vctr double-factory 3)
       (vctr float-factory 1 2 3)

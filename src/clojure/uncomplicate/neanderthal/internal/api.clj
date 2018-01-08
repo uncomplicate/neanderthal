@@ -245,8 +245,11 @@
     true)
   Container
   (raw [this fact]
-    (let [n (count this)]
-      (create-vector fact n false))))
+    (let [e1 (first this)
+          n (count this)]
+      (if (sequential? e1)
+        (create-ge fact (count e1) (count this) true false)
+        (create-vector fact n false)))))
 
 (extend-type Object
   MemoryContext
