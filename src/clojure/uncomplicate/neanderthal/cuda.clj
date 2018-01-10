@@ -14,8 +14,7 @@
   (:require [uncomplicate.commons.core :refer [release with-release]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr]]
             [uncomplicate.neanderthal.internal.device.cublas
-             :refer [cublas-double cublas-float cublas-handle]])
-  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
+             :refer [cublas-double cublas-float cublas-handle]]))
 
 (def ^{:dynamic true
        :doc "Dynamically bound CUDA factory that is used in vector and matrix constructors."}

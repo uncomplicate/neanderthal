@@ -16,8 +16,7 @@
              [core :refer [*context* *command-queue*]]
              [info :refer [queue-context]]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr]]
-            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-double clblast-float]])
-  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
+            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-double clblast-float]]))
 
 (def ^{:dynamic true
        :doc "Dynamically bound OpenCL factory that is used in vector and matrix constructors."}
@@ -81,7 +80,7 @@
   ([a]
    (ge *opencl-factory* a)))
 
-(defn cltr
+(defn clt
   "Creates a TR matrix using GPU engine provided to the bound [[*opencl-factory*]]
   (see [[uncomplicate.neanderthal.core/tr]])."
   ([^long n source options]

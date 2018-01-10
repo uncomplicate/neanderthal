@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.block
-  (:import [uncomplicate.neanderthal.internal.api Block]))
+  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
 
 (defn buffer [^Block x]
   (.buffer x))
@@ -17,3 +17,24 @@
 
 (defn stride ^long [^Block x]
   (.stride x))
+
+(defn wrap-prim [^DataAccessor accessor ^double v]
+  (.wrapPrim accessor v))
+
+(defn entry-type [^DataAccessor accessor]
+  (.entryType accessor))
+
+(defn entry-width [^DataAccessor accessor]
+  (.entryWidth accessor))
+
+(defn count-entries [^DataAccessor accessor data]
+  (.count accessor data))
+
+(defn create-data [^DataAccessor accessor ^long n]
+  (.createDataSource accessor n))
+
+(defn initialize
+  ([^DataAccessor accessor buf v]
+   (.initialize accessor buf v))
+  ([^DataAccessor accessor buf]
+   (.initialize accessor buf)))

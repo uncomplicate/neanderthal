@@ -41,7 +41,7 @@
   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
-                       "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]
+                       #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [lein-codox "0.10.3"]]
