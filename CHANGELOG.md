@@ -2,9 +2,10 @@
 
 ## 0.18.0
 
-* Updated to Java 9 modules. Requires add-open jvm argument.
-* Clojure dep updated to 1.9.0
+* Updated to Java 9 modules. Requires add-open jvm argument if run with JDK 9+.
+* Clojure dep updated to 1.9.0.
 * Upgrades JCuda dependency to 0.9.0, supports CUDA 9.
+* Core constructors accept any factory provider as factory.
 
 ## 0.17.2
 
