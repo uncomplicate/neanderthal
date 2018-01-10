@@ -12,8 +12,7 @@
              [bytes :refer [direct-buffer byte-seq slice-buffer]]
              [structs :refer [float64 float32 int32 int64 wrap-byte-seq]]]
             [uncomplicate.commons.core
-             :refer [Releaseable release let-release clean-buffer double-fn
-                     wrap-float wrap-double wrap-int wrap-long]]
+             :refer [Releaseable release let-release double-fn wrap-float wrap-double wrap-int wrap-long]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
             [uncomplicate.neanderthal
@@ -43,11 +42,6 @@
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
 
 (def ^:private f* (double-fn *))
-
-(extend-type DirectByteBuffer
-  Releaseable
-  (release [this]
-    (clean-buffer this)))
 
 ;; ================== Declarations ============================================
 
@@ -388,7 +382,7 @@
      :info (info eng)})
   Releaseable
   (release [_]
-    (if master (clean-buffer buf) true))
+    (if master (release buf) true))
   Seqable
   (seq [_]
     (take n (.toSeq da buf ofst strd)))
@@ -555,7 +549,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (if master (clean-buffer buf) true))
+    (if master (release buf) true))
   Seqable
   (seq [_]
     (take n (.toSeq da buf ofst strd)))
@@ -796,7 +790,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (if master (clean-buffer buf) true))
+    (if master (release buf) true))
   GEMatrix
   (matrixType [_]
     :ge)
@@ -1041,7 +1035,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (if master (clean-buffer buf) true))
+    (if master (release buf) true))
   UploMatrix
   (matrixType [_]
     matrix-type)
@@ -1326,7 +1320,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (if master (clean-buffer buf) true))
+    (if master (release buf) true))
   BandedMatrix
   (matrixType [_]
     matrix-type)
@@ -1641,7 +1635,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (if master (clean-buffer buf) true))
+    (if master (release buf) true))
   PackedMatrix
   (matrixType [_]
     matrix-type)
@@ -1903,7 +1897,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (if master (clean-buffer buf) true))
+    (if master (release buf) true))
   DiagonalMatrix
   (matrixType [_]
     matrix-type)
