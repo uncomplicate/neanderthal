@@ -7,6 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.block
+  (:require [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
 
 (defn buffer [^Block x]
@@ -24,13 +25,13 @@
 (defn entry-type [^DataAccessor accessor]
   (.entryType accessor))
 
-(defn entry-width [^DataAccessor accessor]
+(defn entry-width ^long [^DataAccessor accessor]
   (.entryWidth accessor))
 
-(defn count-entries [^DataAccessor accessor data]
+(defn count-entries ^long [^DataAccessor accessor data]
   (.count accessor data))
 
-(defn create-data [^DataAccessor accessor ^long n]
+(defn create-data-source [^DataAccessor accessor ^long n]
   (.createDataSource accessor n))
 
 (defn initialize
@@ -38,3 +39,6 @@
    (.initialize accessor buf v))
   ([^DataAccessor accessor buf]
    (.initialize accessor buf)))
+
+(defn data-accessor [provider]
+  (api/data-accessor provider))

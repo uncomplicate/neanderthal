@@ -23,7 +23,7 @@
   linear algebra operation. Compute operations typically (and on purpose!) do not support arguments
   of mixed types. For example, you can not call the [[dot]] function with one double vector (dv) and
   one float vector (fv), or for one vector in the CPU memory and one in the GPU memory.
-  If you try to do that, an `ex-info` is thrown. You can use those different types side-by-side
+  If you try to do bthat, an `ex-info` is thrown. You can use those different types side-by-side
   and transfer data between them though.
 
   ### How to use
@@ -143,7 +143,7 @@
       (transfer (fv [1 2 3]))
   "
   ([factory x]
-   (let-release [res (api/raw x factory)]
+   (let-release [res (api/raw x (api/factory factory))]
      (transfer! x res)
      res))
   ([x]
@@ -185,7 +185,7 @@
   ([factory source]
    (cond
      (integer? source) (if (<= 0 (long source))
-                         (api/create-vector factory source true)
+                         (api/create-vector (api/factory factory) source true)
                          (dragan-says-ex  "Vector cannot have a negative dimension." {:source (info source)}))
      (number? source) (.setBoxed ^Changeable (vctr factory 1) 0 source)
      :default (transfer factory source)))
@@ -234,7 +234,7 @@
   "
   ([factory m n source options]
    (if (and (<= 0 (long m)) (<= 0 (long n)))
-     (let-release [res (api/create-ge factory m n (api/options-column? options)
+     (let-release [res (api/create-ge (api/factory factory) m n (api/options-column? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "GE matrix cannot have a negative dimension." {:m m :n n})))
@@ -280,7 +280,7 @@
   "
   ([factory ^long n source options]
    (if (<= 0 n)
-     (let-release [res (api/create-tr factory n (api/options-column? options)
+     (let-release [res (api/create-tr (api/factory factory) n (api/options-column? options)
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
@@ -327,7 +327,7 @@
   "
   ([factory ^long n source options]
    (if (<= 0 n)
-     (let-release [res (api/create-sy factory n (api/options-column? options)
+     (let-release [res (api/create-sy (api/factory factory) n (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "SY matrix cannot have a negative dimension." {:n n})))
@@ -371,7 +371,7 @@
   "
   ([factory m n kl ku source options]
    (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
-     (let-release [res (api/create-gb factory m n kl ku
+     (let-release [res (api/create-gb (api/factory factory) m n kl ku
                                       (api/options-column? options) (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "GB matrix cannot have a negative dimension nor overflow diagonals."
@@ -407,7 +407,7 @@
   "
   ([factory n k source options]
    (if (or (< -1 (long k) (long n)) (= 0 k n))
-     (let-release [res (api/create-sb factory n k (api/options-column? options)
+     (let-release [res (api/create-sb (api/factory factory) n k (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source
          (transfer! source res)
@@ -447,7 +447,7 @@
   "
   ([factory n k source options]
    (if (or (< -1 (long k) (long n)) (= 0 k n))
-     (let-release [res (api/create-tb factory n k (api/options-column? options)
+     (let-release [res (api/create-tb (api/factory factory) n k (api/options-column? options)
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
@@ -485,7 +485,7 @@
   "
   ([factory n source options]
    (if  (< -1 (long n))
-     (let-release [res (api/create-tp factory n (api/options-column? options)
+     (let-release [res (api/create-tp (api/factory factory) n (api/options-column? options)
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
@@ -515,7 +515,7 @@
   "
   ([factory ^long n source options]
    (if  (< -1 n)
-     (let-release [res (api/create-sp factory n (api/options-column? options)
+     (let-release [res (api/create-sp (api/factory factory) n (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "SP matrix cannot have a negative dimension." {:n n})))
@@ -535,7 +535,7 @@
   "
   ([factory ^long n source options]
    (if (< -1 n)
-     (let-release [res (api/create-diagonal factory n :gd (not (:raw options)))]
+     (let-release [res (api/create-diagonal (api/factory factory) n :gd (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "GT matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
@@ -554,7 +554,7 @@
   "
   ([factory ^long n source options]
    (if (< -1 n)
-     (let-release [res (api/create-diagonal factory n :gt (not (:raw options)))]
+     (let-release [res (api/create-diagonal (api/factory factory) n :gt (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "GT matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
@@ -574,7 +574,7 @@
   "
   ([factory ^long n source options]
    (if (< -1 n)
-     (let-release [res (api/create-diagonal factory n :dt (not (:raw options)))]
+     (let-release [res (api/create-diagonal (api/factory factory) n :dt (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "DT matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
@@ -594,7 +594,7 @@
   "
   ([factory ^long n source options]
    (if (< -1 n)
-     (let-release [res (api/create-diagonal factory n :st (not (:raw options)))]
+     (let-release [res (api/create-diagonal (api/factory factory) n :st (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "ST matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
