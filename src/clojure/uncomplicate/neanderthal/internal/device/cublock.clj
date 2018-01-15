@@ -58,9 +58,13 @@
 
 (defprotocol CUAccessor
   ;;TODO (get-stream [this])
-  (offset [this buf ofst]))
+  (offset [this buf ofst])
+  (active? [this]))
 
-(deftype TypedCUAccessor [ctx et ^long w wrap-fn]
+(deftype TypedCUAccessor [active ctx et ^long w wrap-fn]
+  Releaseable
+  (release [_]
+    (vreset! active false))
   DataAccessor
   (entryType [_]
     et)
@@ -80,6 +84,8 @@
     (if (= 0 (long ofst))
       buf-ptr
       (with-offset buf-ptr (* (long ofst) w))))
+  (active? [_]
+    @active)
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -90,23 +96,23 @@
   (compatible? [this o]
     (let [da (data-accessor o)]
       (or
-       (identical? this o)
+       (identical? this o) (identical? this da)
        (and (instance? TypedCUAccessor da)
             (= et (.et ^TypedCUAccessor da)) (= ctx (.ctx ^TypedCUAccessor da)))
        (= ctx o)
        (= et o)))))
 
 (defn cu-float-accessor [ctx]
-  (->TypedCUAccessor ctx Float/TYPE Float/BYTES wrap-float))
+  (->TypedCUAccessor (volatile! true) ctx Float/TYPE Float/BYTES wrap-float))
 
 (defn cu-double-accessor [ctx]
-  (->TypedCUAccessor ctx Double/TYPE Double/BYTES wrap-double))
+  (->TypedCUAccessor (volatile! true) ctx Double/TYPE Double/BYTES wrap-double))
 
 (defn cu-int-accessor [ctx]
-  (->TypedCUAccessor ctx Integer/TYPE Integer/BYTES wrap-int))
+  (->TypedCUAccessor (volatile! true) ctx Integer/TYPE Integer/BYTES wrap-int))
 
 (defn cu-long-accessor [ctx]
-  (->TypedCUAccessor ctx Long/TYPE Long/BYTES wrap-long))
+  (->TypedCUAccessor (volatile! true) ctx Long/TYPE Long/BYTES wrap-long))
 
 ;; ================ CUDA memory transfer ======================================
 
@@ -318,7 +324,7 @@
 (defmethod print-method CUBlockVector
   [^CUBlockVector x ^java.io.Writer w]
   (.write w (str x))
-  (when (and (< 0 (.dim x)) (.buffer x))
+  (when (and (< 0 (.dim x)) (.buffer x) (active? (.da x)))
     (with-release [host-x (host x)]
       (print-vector w host-x))))
 
@@ -539,7 +545,7 @@
 
 (defmethod print-method CUGEMatrix [^CUGEMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a))
+  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
     (with-release [host-a (host a)]
       (print-ge w host-a))))
 
@@ -778,7 +784,7 @@
 
 (defmethod print-method CUUploMatrix [^CUUploMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a))
+  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
     (with-release [host-a (host a)]
       (print-uplo w host-a "*"))))
 

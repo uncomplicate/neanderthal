@@ -1933,6 +1933,7 @@
   (release [_]
     (try
       (release prog)
+      (release da)
       true
       (finally (CLBlast/CLBlastClearCache))))
   DataAccessorProvider
@@ -1989,15 +1990,13 @@
   (defn clblast-double [ctx queue]
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)]
       (->CLFactory ctx queue prog
-                   (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double)
-                   native-double
+                   (cl-double-accessor ctx queue) native-double
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
                    (->DoubleTREngine ctx queue prog) (->DoubleSYEngine ctx queue prog))))
 
   (defn clblast-float [ctx queue]
     (let [prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
       (->CLFactory ctx queue prog
-                   (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float)
-                   native-float
+                   (cl-float-accessor ctx queue) native-float
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)
                    (->FloatTREngine ctx queue prog) (->FloatSYEngine ctx queue prog)))))

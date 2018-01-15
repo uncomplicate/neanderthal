@@ -31,14 +31,14 @@
 (defn count-entries ^long [^DataAccessor accessor data]
   (.count accessor data))
 
-(defn create-data-source [^DataAccessor accessor ^long n]
-  (.createDataSource accessor n))
+(defn create-data-source [da-provider ^long n]
+  (.createDataSource (api/data-accessor da-provider) n))
 
 (defn initialize
-  ([^DataAccessor accessor buf v]
-   (.initialize accessor buf v))
-  ([^DataAccessor accessor buf]
-   (.initialize accessor buf)))
+  ([da-provider buf v]
+   (.initialize (api/data-accessor da-provider) buf v))
+  ([da-provider buf]
+   (.initialize (api/data-accessor da-provider) buf)))
 
 (defn data-accessor [provider]
   (api/data-accessor provider))

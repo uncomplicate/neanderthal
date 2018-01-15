@@ -71,7 +71,8 @@
       (finally (unmap cl mapped-host)))))
 
 (defprotocol CLAccessor
-  (get-queue [this]))
+  (get-queue [this])
+  (active? [this]))
 
 ;; ================== Declarations ============================================
 
@@ -81,7 +82,10 @@
 
 ;; ================== Accessors ================================================
 
-(deftype TypedCLAccessor [ctx queue et ^long w array-fn wrap-fn]
+(deftype TypedCLAccessor [active ctx queue et ^long w array-fn wrap-fn]
+  Releaseable
+  (release [this]
+    (vreset! active false))
   DataAccessor
   (entryType [_]
     et)
@@ -102,6 +106,8 @@
   CLAccessor
   (get-queue [_]
     queue)
+  (active? [_]
+    @active)
   Contextual
   (cl-context [_]
     ctx)
@@ -112,23 +118,23 @@
   (compatible? [this o]
     (let [da (data-accessor o)]
       (or
-       (identical? this o)
+       (identical? this o) (identical? this da)
        (and (instance? TypedCLAccessor da)
             (= et (.et ^TypedCLAccessor da)) (= ctx (.ctx ^TypedCLAccessor da)))
        (= ctx o)
        (= et o)))))
 
 (defn cl-float-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Float/TYPE Float/BYTES float-array wrap-float))
+  (->TypedCLAccessor (volatile! true) ctx queue Float/TYPE Float/BYTES float-array wrap-float))
 
 (defn cl-double-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Double/TYPE Double/BYTES double-array wrap-double))
+  (->TypedCLAccessor (volatile! true) ctx queue Double/TYPE Double/BYTES double-array wrap-double))
 
 (defn cl-int-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Integer/TYPE Integer/BYTES int-array wrap-int))
+  (->TypedCLAccessor (volatile! true) ctx queue Integer/TYPE Integer/BYTES int-array wrap-int))
 
 (defn cl-long-accessor [ctx queue]
-  (->TypedCLAccessor ctx queue Long/TYPE Long/BYTES long-array wrap-long))
+  (->TypedCLAccessor (volatile! true) ctx queue Long/TYPE Long/BYTES long-array wrap-long))
 
 ;; =============================================================================
 
@@ -280,7 +286,7 @@
 (defmethod print-method CLBlockVector
   [^CLBlockVector x ^java.io.Writer w]
   (.write w (str x))
-  (when (and (< 0 (.dim x)) (.buffer x))
+  (when (and (< 0 (.dim x)) (.buffer x) (active? (.da x)))
     (let [mapped-x (mmap x :read)]
       (try
         (print-vector w mapped-x)
@@ -513,7 +519,7 @@
 
 (defmethod print-method CLGEMatrix [^CLGEMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a))
+  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
     (let [mapped-a (mmap a :read)]
       (try
         (print-ge w mapped-a)
@@ -782,7 +788,7 @@
 
 (defmethod print-method CLUploMatrix [^CLUploMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a))
+  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
     (let [mapped-a (mmap a :read)]
       (try
         (print-uplo w mapped-a "*")

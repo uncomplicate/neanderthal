@@ -249,7 +249,9 @@
           n (count this)]
       (if (sequential? e1)
         (create-ge fact (count e1) (count this) true false)
-        (create-vector fact n false)))))
+        (create-vector fact n false))))
+  (native [this]
+    this))
 
 (extend-type Object
   MemoryContext
@@ -257,7 +259,10 @@
     (instance? (class this) o))
   DataAccessorProvider
   (data-accessor [_]
-    nil))
+    nil)
+  Container
+  (native [this]
+    this))
 
 (extend-type nil
   MemoryContext

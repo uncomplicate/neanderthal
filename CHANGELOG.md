@@ -6,6 +6,7 @@
 * Clojure dep updated to 1.9.0.
 * Upgrades JCuda dependency to 0.9.0, supports CUDA 9.
 * Core constructors accept any factory provider as factory.
+* GPU objects are safe to print after the factory has been released.
 
 ## 0.17.2
 

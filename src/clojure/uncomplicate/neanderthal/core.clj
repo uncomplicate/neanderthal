@@ -162,7 +162,7 @@
   "Ensures that `x` is in the native main memory, and if not, transfers it there and releases `x`.
   "
   [x]
-  (let [native-x (api/native x)]
+  (let-release [native-x (api/native x)]
     (when-not (identical? native-x x)
       (release x))
     native-x))

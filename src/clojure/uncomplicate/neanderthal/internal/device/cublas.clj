@@ -1864,6 +1864,7 @@
   Releaseable
   (release [_]
     (release modl)
+    (release da)
     true)
   DataAccessorProvider
   (data-accessor [_]
