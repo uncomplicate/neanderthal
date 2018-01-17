@@ -293,8 +293,8 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/dcopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/dcopy lx (.buffer ^IntegerBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^IntegerBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -342,8 +342,8 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^IntegerBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -404,8 +404,8 @@
   (amax [_ x]
     (vector-amax ^RealBlockVector x))
   (subcopy [_ x y kx lx ky]
-    (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (vector-method CBLAS/dsum ^RealBlockVector x))
@@ -573,8 +573,8 @@
   (amax [_ x]
     (vector-amax ^RealBlockVector x))
   (subcopy [_ x y kx lx ky]
-    (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (vector-method CBLAS/ssum ^RealBlockVector x))
@@ -2701,7 +2701,7 @@
     (sp-con LAPACK/sspcon ^RealPackedMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
     (sp-con LAPACK/sppcon ^RealPackedMatrix gg nrm))
-    VectorMath
+  VectorMath
   (sqr [_ a y]
     (packed-math MKL/vsSqr ^RealPackedMatrix a ^RealPackedMatrix y))
   (mul [_ a b y]
@@ -2879,7 +2879,7 @@
     (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]
@@ -3042,7 +3042,7 @@
     (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]
@@ -3201,7 +3201,7 @@
     (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]
@@ -3360,7 +3360,7 @@
     (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]
@@ -3521,7 +3521,7 @@
     (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]
@@ -3682,7 +3682,7 @@
     (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]
@@ -3843,7 +3843,7 @@
     (diagonal-math MKL/vdAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vdLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vdFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]
@@ -4004,7 +4004,7 @@
     (diagonal-math MKL/vsAbs ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (linear-frac [_ a b scalea shifta scaleb shiftb y]
     (diagonal-linear-frac MKL/vsLinearFrac ^RealDiagonalMatrix a ^RealDiagonalMatrix b
-                        scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
+                          scalea shifta scaleb shiftb ^RealDiagonalMatrix y))
   (fmod [_ a b y]
     (diagonal-math MKL/vsFmod ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (frem [_ a b y]

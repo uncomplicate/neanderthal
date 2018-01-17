@@ -92,7 +92,7 @@
   (entryWidth [_]
     w)
   (count [_ b]
-    (quot (long (size b)) w))
+    (quot ^long (size b) w))
   (createDataSource [_ n]
     (cl-buffer ctx (* w (max 1 (long n))) :read-write))
   (initialize [_ buf]
@@ -180,7 +180,7 @@
   (view-vctr [_]
     (cl-block-vector fact false buf n ofst strd))
   (view-vctr [_ stride-mult]
-    (cl-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
+    (cl-block-vector fact false buf (ceil (/ n ^long stride-mult)) ofst (* ^long stride-mult strd)))
   (view-ge [_]
     (cl-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
@@ -395,11 +395,11 @@
   (view-ge [a]
     a)
   (view-ge [_ stride-mult]
-    (let [shrinked (ceil (/ (.fd stor) (long stride-mult)))
+    (let [shrinked (ceil (/ (.fd stor) ^long stride-mult))
           column-major (.isColumnMajor nav)
           [m n] (if column-major [m shrinked] [shrinked n])]
       (cl-ge-matrix fact false buf m n ofst nav
-                    (full-storage column-major m n (* (long stride-mult) (.ld stor)))
+                    (full-storage column-major m n (* ^long stride-mult (.ld stor)))
                     (ge-region m n))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
@@ -675,13 +675,13 @@
   (row [a i]
     (let [start (.rowStart reg i)]
       (cl-block-vector fact false buf (- (.rowEnd reg i) start) (+ ofst (.index nav stor i start))
-                         (if (.isRowMajor nav) 1 (.ld ^FullStorage stor)))))
+                       (if (.isRowMajor nav) 1 (.ld ^FullStorage stor)))))
   (rows [a]
     (dense-rows a))
   (col [a j]
     (let [start (.colStart reg j)]
       (cl-block-vector fact false buf (- (.colEnd reg j) start) (+ ofst (.index nav stor start j))
-                         (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor)))))
+                       (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor)))))
   (cols [a]
     (dense-cols a))
   (dia [a]
@@ -690,9 +690,9 @@
     (if (<= (- (.kl reg)) k (.ku reg))
       (if (< 0 k)
         (cl-block-vector fact false buf (- n k) (+ ofst (.index nav stor 0 k))
-                           (inc (.ld ^FullStorage stor)))
+                         (inc (.ld ^FullStorage stor)))
         (cl-block-vector fact false buf (+ n k) (+ ofst (.index nav stor (- k) 0))
-                           (inc (.ld ^FullStorage stor))))
+                         (inc (.ld ^FullStorage stor))))
       (cl-block-vector fact false buf 0 ofst 1)))
   (dias [a]
     (region-dias a))

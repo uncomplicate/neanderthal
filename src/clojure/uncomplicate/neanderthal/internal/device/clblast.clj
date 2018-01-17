@@ -301,12 +301,12 @@
    `(let [stor# (full-storage ~a)]
       (if (< 0 (.dim ~a))
         (if (.isGapless stor#)
-            (with-check error
-              (~method CBLAS/ORDER_COLUMN_MAJOR CLBlastTranspose/CLBlastTransposeYes
-               (.sd stor#) (.fd stor#) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
-               (cl-mem (.buffer ~a)) (.offset ~a) (.fd stor#)
-               ~queue nil)
-              ~a)
+          (with-check error
+            (~method CBLAS/ORDER_COLUMN_MAJOR CLBlastTranspose/CLBlastTransposeYes
+             (.sd stor#) (.fd stor#) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
+             (cl-mem (.buffer ~a)) (.offset ~a) (.fd stor#)
+             ~queue nil)
+            ~a)
           (dragan-says-ex "You can not hard-transpose the content of a matrix with a gap in memory. Sorry."
                           {:a (info ~a)}))
         ~a))))
@@ -530,22 +530,22 @@
 
 (defn ^:private vector-linear-frac [queue prog ^CLBlockVector x ^CLBlockVector y
                                     scalea shifta scaleb shiftb ^CLBlockVector z]
- (when (< 0 (.dim x))
-   (let [da (data-accessor x)]
-     (if (and (= 0.0 scaleb) (= 1.0 shiftb))
-       (with-release [math-kernel (kernel prog "vector_scale_shift")]
-         (set-args! math-kernel 0
-                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                    (.wrapPrim da scalea) (.wrapPrim da shifta)
-                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-         (enq-nd! queue math-kernel (work-size-1d (.dim x))))
-       (with-release [math-kernel (kernel prog "vector_linear_frac")]
-         (set-args! math-kernel 0
-                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
-                    (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
-                    (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
-         (enq-nd! queue math-kernel (work-size-1d (.dim x)))))))
+  (when (< 0 (.dim x))
+    (let [da (data-accessor x)]
+      (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+        (with-release [math-kernel (kernel prog "vector_scale_shift")]
+          (set-args! math-kernel 0
+                     (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                     (.wrapPrim da scalea) (.wrapPrim da shifta)
+                     (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+          (enq-nd! queue math-kernel (work-size-1d (.dim x))))
+        (with-release [math-kernel (kernel prog "vector_linear_frac")]
+          (set-args! math-kernel 0
+                     (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                     (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
+                     (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
+                     (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
+          (enq-nd! queue math-kernel (work-size-1d (.dim x)))))))
   z)
 
 (defn ^:private vector-powx [queue prog ^CLBlockVector x b ^CLBlockVector y]
@@ -556,7 +556,7 @@
                  (.wrapPrim (data-accessor x) b)
                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
       (enq-nd! queue math-kernel (work-size-1d (.dim x)))))
- y)
+  y)
 
 (defn ^:private ge-math
   ([queue prog kernel-name ^CLGEMatrix a ^CLGEMatrix b]
@@ -639,7 +639,7 @@
    c))
 
 (defn ^:private uplo-linear-frac [queue prog ^CLUploMatrix a ^CLUploMatrix b
-                                scalea shifta scaleb shiftb ^CLUploMatrix c]
+                                  scalea shifta scaleb shiftb ^CLUploMatrix c]
   (when (< 0 (.dim a))
     (check-eq-navigators a b c)
     (let [da (data-accessor a)

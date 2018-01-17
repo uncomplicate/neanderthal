@@ -92,7 +92,7 @@
   (defn print-vector
     ([^java.io.Writer w formatter x]
      (when (< 0 (dim x))
-       (let [print-width (min (dim x) (long (:matrix-width @settings)))
+       (let [print-width (min (dim x) ^long (:matrix-width @settings))
              print-left (long (if (= print-width (dim x)) print-width (ceil (/ print-width 2))))
              print-right (- print-width print-left)]
          (format-row w (map formatter (seq (subvector x 0 print-left)))
@@ -115,12 +115,12 @@
      (when (< 0 (dim a))
        (let [m (mrows a)
              n (ncols a)
-             print-height (let [h (min m (long (:matrix-height @settings)))]
-                            (long (if (= m h) h (+ h (- 1 (long (mod h 2)))))))
-             print-chunk-h (long (if (= m print-height) (ceil (/ print-height 2)) (/ print-height 2)))
-             print-width (let [w (min n (long (:matrix-width @settings)))]
-                           (long (if (= n w) w (+ w (- 1 (long (mod w 2)))))))
-             print-chunk-w (long (if (= n print-width) (ceil (/ print-width 2)) (/ print-width 2)))
+             print-height (let [h (min m ^long (:matrix-height @settings))]
+                            ^long (if (= m h) h (+ h (- 1 ^long (mod h 2)))))
+             print-chunk-h ^long (if (= m print-height) (ceil (/ print-height 2)) (/ print-height 2))
+             print-width (let [w (min n ^long (:matrix-width @settings))]
+                           ^long (if (= n w) w (+ w (- 1 ^long (mod w 2)))))
+             print-chunk-w ^long (if (= n print-width) (ceil (/ print-width 2)) (/ print-width 2))
              print-table (string-table print-height print-width five-dots)]
          (dotimes [i print-chunk-h]
            (dotimes [j print-chunk-w]
@@ -145,13 +145,13 @@
              formatter (partial cl-format nil  (if (< max-value 10000.0) format-f format-g))]
          (print-ge w formatter a)))))
 
-    (defn print-uplo
+  (defn print-uplo
     ([^java.io.Writer w formatter a placeholder]
      (when (< 0 (dim a))
        (let [reg (region a)
              nav (navigator a)
-             print-height (min (mrows a) (long (:matrix-height @settings)))
-             print-width (min (ncols a) (long (:matrix-width @settings)))
+             print-height (min (mrows a) ^long (:matrix-height @settings))
+             print-width (min (ncols a) ^long (:matrix-width @settings))
              print-table (string-table print-height print-width (cl-format nil format-a placeholder))]
          (dotimes [i print-height]
            (loop [j (.rowStart reg i)]
@@ -187,7 +187,7 @@
              formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
          (print-uplo w formatter a placeholder)))))
 
-    (defn print-banded
+  (defn print-banded
     ([^java.io.Writer w formatter a]
      (let [nav (navigator a)
            stor (storage a)
@@ -195,10 +195,10 @@
            ku (max 0 (.ku reg))
            width (.fd stor)
            height (.sd ^FullStorage stor)
-           print-height (min height (long (:matrix-height @settings)))
-           print-width (min width (long (:matrix-width @settings)))
+           print-height (min height ^long (:matrix-height @settings))
+           print-width (min width ^long (:matrix-width @settings))
            print-table (string-table print-height print-width)
-           k-max (min ku (max (long (/ print-height 2)) (- print-height (max 0 (.kl reg)))))
+           k-max (min ku (max ^long (/ print-height 2) (- print-height (max 0 (.kl reg)))))
            format-header (if (.isColumnMajor nav) format-header-col format-header-row)
            direction-arrow (if (.isColumnMajor nav) col-arrow row-arrow)]
        (dotimes [i print-height]
@@ -237,7 +237,7 @@
              formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
          (print-banded w formatter a)))))
 
-    (defn print-diagonal
+  (defn print-diagonal
     ([^java.io.Writer w formatter a]
      (let [stor (storage a)
            reg (region a)
@@ -245,10 +245,10 @@
            kl (.kl reg)
            width (ncols a)
            height (inc (+ ku kl))
-           print-height (min height (long (:matrix-height @settings)))
-           print-width (min width (long (:matrix-width @settings)))
+           print-height (min height ^long (:matrix-height @settings))
+           print-width (min width ^long (:matrix-width @settings))
            print-table (string-table print-height print-width pad-dot)
-           k-max (min ku (max (long (/ print-height 2)) (- print-height kl)))
+           k-max (min ku (max ^long (/ print-height 2) (- print-height kl)))
            format-header format-header-col]
        (dotimes [i print-height]
          (let [k (- k-max i)

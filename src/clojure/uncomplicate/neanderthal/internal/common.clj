@@ -123,7 +123,7 @@
     (nrm-needed-for-con))
   (trdet [_]
     (if @fresh
-      (let [res (double (fold f* 1.0 (.dia lu)))]
+      (let [res ^double (fold f* 1.0 (.dia lu))]
         (if (even? (.dim ipiv))
           res
           (- res)))
@@ -195,7 +195,7 @@
   (trdet [_]
     (if @fresh
       (let [dia-lu (.dia lu)
-            res (double (fold f* 1.0 dia-lu))]
+            res ^double (fold f* 1.0 dia-lu)]
         (if (even? (.dim dia-lu))
           res
           (- res)))

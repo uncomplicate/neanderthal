@@ -495,27 +495,27 @@
       ~b)))
 
 (defmacro symmetric-band-storage-map [a b len offset-a offset-b expr]
- `(let [reg# (region ~a)
-        nav# (navigator ~a)
-        stor-a# (full-storage ~a)
-        stor-b# (full-storage ~b)
-        m# (.mrows ~a)
-        n# (.ncols ~a)
-        kl# (.kl reg#)
-        ku# (.ku reg#)
-        offset-a# (.offset ~a)
-        offset-b# (.offset ~b)]
-    (dotimes [k# (inc kl#)]
-      (let [~len (min (- m# k#) n#)
-            ~offset-a (+ offset-a# (.index nav# stor-a# k# 0))
-            ~offset-b (+ offset-b# (.index nav# stor-b# k# 0))]
-        ~expr))
-    (dotimes [k# ku#]
-      (let [~len (min m# (- n# (inc k#)))
-            ~offset-a (+ offset-a# (.index nav# stor-a# 0 (inc k#)))
-            ~offset-b (+ offset-b# (.index nav# stor-b# 0 (inc k#)))]
-        ~expr))
-    ~b))
+  `(let [reg# (region ~a)
+         nav# (navigator ~a)
+         stor-a# (full-storage ~a)
+         stor-b# (full-storage ~b)
+         m# (.mrows ~a)
+         n# (.ncols ~a)
+         kl# (.kl reg#)
+         ku# (.ku reg#)
+         offset-a# (.offset ~a)
+         offset-b# (.offset ~b)]
+     (dotimes [k# (inc kl#)]
+       (let [~len (min (- m# k#) n#)
+             ~offset-a (+ offset-a# (.index nav# stor-a# k# 0))
+             ~offset-b (+ offset-b# (.index nav# stor-b# k# 0))]
+         ~expr))
+     (dotimes [k# ku#]
+       (let [~len (min m# (- n# (inc k#)))
+             ~offset-a (+ offset-a# (.index nav# stor-a# 0 (inc k#)))
+             ~offset-b (+ offset-b# (.index nav# stor-b# 0 (inc k#)))]
+         ~expr))
+     ~b))
 
 (defmacro symmetric-band-storage-reduce
   ([a len offset acc init expr]

@@ -68,7 +68,7 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v (double v)
+    (let [v ^double v
           strd Float/BYTES]
       (dotimes [i (.count this b)]
         (.putFloat ^ByteBuffer b (* strd i) v))
@@ -110,7 +110,7 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v (double v)
+    (let [v ^double v
           strd Double/BYTES]
       (dotimes [i (.count this b)]
         (.putDouble ^ByteBuffer b (* strd i) v))
@@ -154,7 +154,7 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v (double v)
+    (let [v ^double v
           strd Integer/BYTES]
       (dotimes [i (.count this b)]
         (.putInt ^ByteBuffer b (* strd i) v))
@@ -198,7 +198,7 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v (double v)
+    (let [v ^double v
           strd Long/BYTES]
       (dotimes [i (.count this b)]
         (.putInt ^ByteBuffer b (* strd i) v))
@@ -571,7 +571,7 @@
   (view-vctr [_]
     (real-block-vector fact false buf n ofst strd))
   (view-vctr [_ stride-mult]
-    (real-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
+    (real-block-vector fact false buf (ceil (/ n ^long stride-mult)) ofst (* ^long stride-mult strd)))
   (view-ge [_]
     (real-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
@@ -842,11 +842,11 @@
   (view-ge [a]
     a)
   (view-ge [_ stride-mult]
-    (let [shrinked (ceil (/ (.fd stor) (long stride-mult)))
+    (let [shrinked (ceil (/ (.fd stor) ^long stride-mult))
           column-major (.isColumnMajor nav)
           [m n] (if column-major [m shrinked] [shrinked n])]
       (real-ge-matrix fact false buf m n ofst nav
-                      (full-storage column-major m n (* (long stride-mult) (.ld stor)))
+                      (full-storage column-major m n (* ^long stride-mult (.ld stor)))
                       (ge-region m n))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
@@ -1505,7 +1505,7 @@
     (real-banded-matrix fact false buf n m ofst (flip nav) stor (flip reg) matrix-type default eng))
   Subband
   (subband [a kl ku]
-    (if (and (<= 0 (long kl) (.kl reg)) (<= 0 (long ku) (.ku reg)))
+    (if (and (<= 0 ^long kl (.kl reg)) (<= 0 ^long ku (.ku reg)))
       (let [sub-stor (band-storage (.isColumnMajor nav) m n (.ld stor) kl ku)]
         (real-banded-matrix fact false buf m n
                             (+ ofst (- (.index stor 0 0) (.index ^DenseStorage sub-stor 0 0)))
@@ -1593,12 +1593,12 @@
                        (band-region m n kl ku) :gb zero-default (gb-engine fact))))
 
 (defn real-tb-matrix [fact n k column? lower? diag-unit?]
- (real-banded-matrix fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
-                     (tb-region n k lower? diag-unit?) :tb (real-default :tb diag-unit?) (tb-engine fact)))
+  (real-banded-matrix fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
+                      (tb-region n k lower? diag-unit?) :tb (real-default :tb diag-unit?) (tb-engine fact)))
 
 (defn real-sb-matrix [fact n k column? lower?]
- (real-banded-matrix fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
-                     (sb-region n k lower?) :sb sb-default (sb-engine fact)))
+  (real-banded-matrix fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
+                      (sb-region n k lower?) :sb sb-default (sb-engine fact)))
 
 (defmethod print-method RealBandedMatrix [a ^java.io.Writer w]
   (.write w (str a))

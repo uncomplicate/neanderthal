@@ -71,7 +71,7 @@
   (entryWidth [_]
     w)
   (count [_ b]
-    (quot (long (size b)) w))
+    (quot ^long (size b) w))
   (createDataSource [_ n]
     (mem-alloc (* w (max 1 (long n)))))
   (initialize [_ buf]
@@ -81,9 +81,9 @@
     (wrap-fn s))
   CUAccessor
   (offset [_ buf-ptr ofst]
-    (if (= 0 (long ofst))
+    (if (= 0 ^long ofst)
       buf-ptr
-      (with-offset buf-ptr (* (long ofst) w))))
+      (with-offset buf-ptr (* ^long ofst w))))
   (active? [_]
     @active)
   DataAccessorProvider
@@ -230,7 +230,7 @@
   (view-vctr [_]
     (cu-block-vector fact false buf n ofst strd))
   (view-vctr [_ stride-mult]
-    (cu-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
+    (cu-block-vector fact false buf (ceil (/ n ^long stride-mult)) ofst (* ^long stride-mult strd)))
   (view-ge [_]
     (cu-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
@@ -433,12 +433,12 @@
   (view-ge [a]
     a)
   (view-ge [_ stride-mult]
-    (let [shrinked (ceil (/ (.fd stor) (long stride-mult)))
+    (let [shrinked (ceil (/ (.fd stor) ^long stride-mult))
           column-major (.isColumnMajor nav)
           [m n] (if column-major [m shrinked] [shrinked n])]
       (cu-ge-matrix fact false buf m n ofst nav
-                      (full-storage column-major m n (* (long stride-mult) (.ld stor)))
-                      (ge-region m n))))
+                    (full-storage column-major m n (* ^long stride-mult (.ld stor)))
+                    (ge-region m n))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
       (cu-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld  stor))
@@ -617,10 +617,10 @@
     (view-ge (view-ge a) stride-mult))
   (view-tr [_ lower? diag-unit?]
     (cu-uplo-matrix fact false buf n ofst nav stor (band-region n lower? diag-unit?)
-                      :tr (real-default :tr diag-unit?) (tr-engine fact)))
+                    :tr (real-default :tr diag-unit?) (tr-engine fact)))
   (view-sy [_ lower?]
     (cu-uplo-matrix fact false buf n ofst nav stor (band-region n lower?)
-                      :sy sy-default (sy-engine fact)))
+                    :sy sy-default (sy-engine fact)))
   MemoryContext
   (compatible? [_ b]
     (compatible? da b))
@@ -683,13 +683,13 @@
   (row [a i]
     (let [start (.rowStart reg i)]
       (cu-block-vector fact false buf (- (.rowEnd reg i) start) (+ ofst (.index nav stor i start))
-                         (if (.isRowMajor nav) 1 (.ld ^FullStorage stor)))))
+                       (if (.isRowMajor nav) 1 (.ld ^FullStorage stor)))))
   (rows [a]
     (dense-rows a))
   (col [a j]
     (let [start (.colStart reg j)]
       (cu-block-vector fact false buf (- (.colEnd reg j) start) (+ ofst (.index nav stor start j))
-                         (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor)))))
+                       (if (.isColumnMajor nav) 1 (.ld ^FullStorage stor)))))
   (cols [a]
     (dense-cols a))
   (dia [a]
@@ -698,17 +698,17 @@
     (if (<= (- (.kl reg)) k (.ku reg))
       (if (< 0 k)
         (cu-block-vector fact false buf (- n k) (+ ofst (.index nav stor 0 k))
-                           (inc (.ld ^FullStorage stor)))
+                         (inc (.ld ^FullStorage stor)))
         (cu-block-vector fact false buf (+ n k) (+ ofst (.index nav stor (- k) 0))
-                           (inc (.ld ^FullStorage stor))))
+                         (inc (.ld ^FullStorage stor))))
       (cu-block-vector fact false buf 0 ofst 1)))
   (dias [a]
     (region-dias a))
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
       (cu-uplo-matrix fact false buf k (+ ofst (.index nav stor i j)) nav
-                        (full-storage (.isColumnMajor nav) k k (.ld ^FullStorage stor))
-                        (band-region k (.isLower reg) (.isDiagUnit reg)) matrix-type default eng)
+                      (full-storage (.isColumnMajor nav) k k (.ld ^FullStorage stor))
+                      (band-region k (.isLower reg) (.isDiagUnit reg)) matrix-type default eng)
       (dragan-says-ex "You cannot create a non-uplo submatrix of a uplo (TR or SY) matrix. Take a view-ge."
                       {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]

@@ -378,40 +378,40 @@
   ReductionFunction
   (vector-reduce
     ([this init x]
-     (vector-reduce* this (double init) ^RealVector x))
+     (vector-reduce* this ^double init ^RealVector x))
     ([this init x y]
-     (vector-reduce* this (double init) ^RealVector x ^RealVector y))
+     (vector-reduce* this ^double init ^RealVector x ^RealVector y))
     ([this init x y z]
-     (vector-reduce* this (double init) ^RealVector x ^RealVector y ^RealVector z))
+     (vector-reduce* this ^double init ^RealVector x ^RealVector y ^RealVector z))
     ([this init x y z v]
-     (vector-reduce* this (double init) ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-reduce* this ^double init ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce* this (double init) ^IFn$DD g ^RealVector x))
+     (vector-map-reduce* this ^double init ^IFn$DD g ^RealVector x))
     ([this init g x y]
-     (vector-map-reduce* this (double init) ^IFn$DDD g ^RealVector x ^RealVector y))
+     (vector-map-reduce* this ^double init ^IFn$DDD g ^RealVector x ^RealVector y))
     ([this init g x y z]
-     (vector-map-reduce* this (double init) ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
+     (vector-map-reduce* this ^double init ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
     ([this init g x y z v]
-     (vector-map-reduce* this (double init) ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-map-reduce* this ^double init ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
   (matrix-reduce
     ([this init a]
-     (matrix-reduce* double this (double init) a))
+     (matrix-reduce* double this ^double init a))
     ([this init a b]
-     (matrix-reduce* double this (double init) a b))
+     (matrix-reduce* double this ^double init a b))
     ([this init a b c]
-     (matrix-reduce* double this (double init) a b c))
+     (matrix-reduce* double this ^double init a b c))
     ([this init a b c d]
-     (matrix-reduce* double this (double init) a b c d)))
+     (matrix-reduce* double this ^double init a b c d)))
   (matrix-map-reduce
     ([this init g a]
-     (matrix-map-reduce* double this (double init) ^IFn$DD g a))
+     (matrix-map-reduce* double this ^double init ^IFn$DD g a))
     ([this init g a b]
-     (matrix-map-reduce* double this (double init) ^IFn$DDD g a b))
+     (matrix-map-reduce* double this ^double init ^IFn$DDD g a b))
     ([this init g a b c]
-     (matrix-map-reduce* double this (double init) ^IFn$DDDD g a b c))
+     (matrix-map-reduce* double this ^double init ^IFn$DDDD g a b c))
     ([this init g a b c d]
-     (matrix-map-reduce* double this (double init) ^IFn$DDDDD g a b c d))))
+     (matrix-map-reduce* double this ^double init ^IFn$DDDDD g a b c d))))
 
 (extend-type IFn$ODO
   ReductionFunction
@@ -456,22 +456,22 @@
   ReductionFunction
   (vector-reduce
     ([this init x]
-     (vector-reduce-indexed* this (double init) ^RealVector x))
+     (vector-reduce-indexed* this ^double init ^RealVector x))
     ([this init x y]
-     (vector-reduce-indexed* this (double init) ^RealVector x ^RealVector y))
+     (vector-reduce-indexed* this ^double init ^RealVector x ^RealVector y))
     ([this init x y z]
-     (vector-reduce-indexed* this (double init) ^RealVector x ^RealVector y ^RealVector z))
+     (vector-reduce-indexed* this ^double init ^RealVector x ^RealVector y ^RealVector z))
     ([this init x y z v]
-     (vector-reduce-indexed* this (double init) ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-reduce-indexed* this ^double init ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DD g ^RealVector x))
+     (vector-map-reduce-indexed* this ^double init ^IFn$DD g ^RealVector x))
     ([this init g x y]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DDD g ^RealVector x ^RealVector y))
+     (vector-map-reduce-indexed* this ^double init ^IFn$DDD g ^RealVector x ^RealVector y))
     ([this init g x y z]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
+     (vector-map-reduce-indexed* this ^double init ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
     ([this init g x y z v]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v))))
+     (vector-map-reduce-indexed* this ^double init ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v))))
 
 (extend-type IFn$OLDO
   ReductionFunction

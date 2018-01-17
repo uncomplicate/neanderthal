@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-  uncomplicate.neanderthal.real
+    uncomplicate.neanderthal.real
   "Contains type-specific primitive floating point functions, equivalents of functions from the
   [[uncomplicate.neanderthal.core]] namespace. Typically, you would want to require this namespace
   if you need to compute real matrices containing doubles and/or floats.
@@ -61,27 +61,27 @@
 (defn dot
   "Primitive wrapper of [[uncomplicate.neanderthal.core/dot]]."
   ^double [x y]
-  (double (core/dot x y)))
+  (core/dot x y))
 
 (defn nrm2
   "Primitive wrapper of [[uncomplicate.neanderthal.core/nrm2]]."
   ^double [x]
-  (double (core/nrm2 x)))
+  (core/nrm2 x))
 
 (defn asum
   "Primitive wrapper of [[uncomplicate.neanderthal.core/asum]]."
   ^double [x]
-  (double (core/asum x)))
+  (core/asum x))
 
 (defn sum
   "Primitive wrapper of [[uncomplicate.neanderthal.core/sum]]."
   ^double [x]
-  (double (core/sum x)))
+  (core/sum x))
 
 (defn amax
   "Primitive wrapper of [[uncomplicate.neanderthal.core/amax]]."
   ^double [x]
-  (double (core/amax x)))
+  (core/amax x))
 
 (defn ls-residual
   "Computes the residual sum of squares for the solution of a linear system returned by
