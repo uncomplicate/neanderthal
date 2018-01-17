@@ -560,12 +560,12 @@
         (when (< ~j fd#)
           (let [end# (.end ~nav ~region ~j)]
             (recur (inc ~j)
-                   ^long (loop [~i (.start ~nav ~region ~j) ~cnt cnt#]
+                   (long (loop [~i (.start ~nav ~region ~j) ~cnt cnt#]
                            (if (< ~i end#)
                              (let [~idx (.index ~stor ~i ~j)]
                                ~expr
                                (recur (inc ~i) (inc ~cnt)))
-                             ~cnt))))))))
+                             ~cnt)))))))))
   ([nav stor region i j idx expr]
    `(dotimes [~j (.fd ~stor)]
       (let [start# (.start ~nav ~region ~j)

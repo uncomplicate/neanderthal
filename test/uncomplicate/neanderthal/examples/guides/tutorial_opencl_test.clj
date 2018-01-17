@@ -90,8 +90,9 @@ $code"
   (:require [midje.sweet :refer [facts => truthy roughly]]
             #_[criterium.core :refer [quick-bench with-progress-reporting]]
             [uncomplicate.commons.core :refer [with-release]]
-            [uncomplicate.clojurecl.core
-             :refer [with-default finish!]]
+            [uncomplicate.clojurecl
+             [core :refer [finish!]]
+             [legacy :refer [with-default-1]]]
             [uncomplicate.neanderthal
              [core :refer [asum dot axpy! mv! mm! transfer! copy]]
              [native :refer [fv fge]]
@@ -112,7 +113,7 @@ using the AMD's OpenCL drivers. Your setup may be different.
 
 $code"
 
-(with-default
+(with-default-1
   (with-default-engine
     (facts "We'll write our GPU code here, but for now here is only the plain
 CPU stuff you recognize from the plain Neanderthal tutorial."
@@ -127,7 +128,7 @@ Let's see how to do the same computation on the GPU:
 
 $code"
 
-(with-default
+(with-default-1
   (with-default-engine
     (with-release [gpu-x (transfer! (fv 1 -2 3) (clv 3))]
       (facts
@@ -179,7 +180,7 @@ Radeon R9 290x GPU. Your hardware will give different numbers.
 
 $code"
 
-(with-default
+(with-default-1
   (with-default-engine
     (with-release [host-x (fv 1 -2 3)
                    gpu-x (clv 1 -2 3)]
@@ -210,7 +211,7 @@ Let's try again with more data!
 
 $code"
 
-(with-default
+(with-default-1
   (with-default-engine
     (let [cnt (long (Math/pow 2 20))]
       (with-release [host-x (fv (range cnt))
@@ -236,7 +237,7 @@ A million is still smallish, though. Let's get serious. Let's give a vector of
 
 $code"
 
-#_(with-default
+#_(with-default-1
   (with-default-engine
     ;; I had to change it to 2^28 because a recent update for my GPU driver caused
     ;; it to complain about insufficient memory, but this is probably a temporary issue.
@@ -274,7 +275,7 @@ that the main constraint is memory throughput, not computing power.
 
 $code"
 
-#_(with-default
+#_(with-default-1
   (with-default-engine
     (let [cnt (long (Math/pow 2 28))]
       (with-release [host-x (fv (range cnt))
@@ -310,7 +311,7 @@ We'll do a matrix - vector multiplication.
 
 $code"
 
-(with-default
+(with-default-1
     (with-default-engine
       (let [cnt 8192]
         (with-release [host-a (fge cnt cnt (range (* cnt cnt)))
@@ -341,7 +342,7 @@ multiplication and see how that goes.
 
 $code"
 
-#_(with-default
+#_(with-default-1
     (with-default-engine
       (let [cnt 8192]
         (with-release [host-a (fge cnt cnt (range (* cnt cnt)))

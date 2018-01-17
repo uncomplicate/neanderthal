@@ -1,7 +1,8 @@
 (ns uncomplicate.neanderthal.clblast-test
   (:require [midje.sweet :refer :all]
-            [uncomplicate.clojurecl.core
-             :refer [with-default *command-queue*]]
+            [uncomplicate.clojurecl
+             [core :refer [*command-queue*]]
+             [legacy :refer [with-default-1]]]
             [uncomplicate.neanderthal
              [core :refer [tr]]
              [opencl :refer [with-engine *opencl-factory*]]
@@ -21,7 +22,7 @@
   ;;(real-test/test-tr-trs factory tr)
   (real-test/test-tr-sv factory tr))
 
-(with-default
+(with-default-1
 
   (with-engine clblast-float *command-queue*
     (block-test/test-all *opencl-factory*)
