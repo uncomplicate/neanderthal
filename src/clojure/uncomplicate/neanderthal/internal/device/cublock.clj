@@ -57,11 +57,10 @@
 ;; ================== Accessors ================================================
 
 (defprotocol CUAccessor
-  ;;TODO (get-stream [this])
   (offset [this buf ofst])
   (active? [this]))
 
-(deftype TypedCUAccessor [active ctx et ^long w wrap-fn]
+(deftype TypedCUAccessor [active ctx hstream et ^long w wrap-fn]
   Releaseable
   (release [_]
     (vreset! active false))
@@ -75,10 +74,16 @@
   (createDataSource [_ n]
     (mem-alloc (* w (max 1 (long n)))))
   (initialize [_ buf]
-    (memset! buf 0)
+    (memset! buf 0 hstream)
+    buf)
+  (initialize [_ buf v]
+    (memset! buf v hstream)
     buf)
   (wrapPrim [_ s]
     (wrap-fn s))
+  FlowProvider
+  (flow [_]
+    hstream)
   CUAccessor
   (offset [_ buf-ptr ofst]
     (if (= 0 ^long ofst)
@@ -102,17 +107,17 @@
        (= ctx o)
        (= et o)))))
 
-(defn cu-float-accessor [ctx]
-  (->TypedCUAccessor (volatile! true) ctx Float/TYPE Float/BYTES wrap-float))
+(defn cu-float-accessor [ctx hstream]
+  (->TypedCUAccessor (volatile! true) ctx hstream Float/TYPE Float/BYTES wrap-float))
 
-(defn cu-double-accessor [ctx]
-  (->TypedCUAccessor (volatile! true) ctx Double/TYPE Double/BYTES wrap-double))
+(defn cu-double-accessor [ctx hstream]
+  (->TypedCUAccessor (volatile! true) ctx hstream Double/TYPE Double/BYTES wrap-double))
 
-(defn cu-int-accessor [ctx]
-  (->TypedCUAccessor (volatile! true) ctx Integer/TYPE Integer/BYTES wrap-int))
+(defn cu-int-accessor [ctx hstream]
+  (->TypedCUAccessor (volatile! true) ctx hstream Integer/TYPE Integer/BYTES wrap-int))
 
-(defn cu-long-accessor [ctx]
-  (->TypedCUAccessor (volatile! true) ctx Long/TYPE Long/BYTES wrap-long))
+(defn cu-long-accessor [ctx hstream]
+  (->TypedCUAccessor (volatile! true) ctx hstream Long/TYPE Long/BYTES wrap-long))
 
 ;; ================ CUDA memory transfer ======================================
 

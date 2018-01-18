@@ -71,7 +71,6 @@
       (finally (unmap cl mapped-host)))))
 
 (defprotocol CLAccessor
-  (get-queue [this])
   (active? [this]))
 
 ;; ================== Declarations ============================================
@@ -104,10 +103,11 @@
   (wrapPrim [_ s]
     (wrap-fn s))
   CLAccessor
-  (get-queue [_]
-    queue)
   (active? [_]
     @active)
+  FlowProvider
+  (flow [_]
+    queue)
   Contextual
   (cl-context [_]
     ctx)
@@ -257,14 +257,14 @@
   Mappable
   (mmap [_ flags]
     (let [host-fact (native-factory fact)
-          queue (get-queue da)
+          queue (flow da)
           mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* strd n (.entryWidth da)) flags nil nil)]
       (try
         (real-block-vector host-fact true mapped-buf n 0 strd)
         (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [x mapped]
-    (enq-unmap! (get-queue da) @buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) @buf (.buffer ^NativeBlock mapped))
     x))
 
 (defn cl-block-vector
@@ -490,14 +490,14 @@
   Mappable
   (mmap [a flags]
     (let [host-fact (native-factory fact)
-          queue (get-queue da)
+          queue (flow da)
           mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
         (real-ge-matrix host-fact true mapped-buf m n 0 nav stor reg)
         (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (get-queue da) @buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) @buf (.buffer ^NativeBlock mapped))
     this))
 
 (defn cl-ge-matrix
@@ -708,14 +708,14 @@
   Mappable
   (mmap [a flags]
     (let [host-fact (native-factory fact)
-          queue (get-queue da)
+          queue (flow da)
           mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
         (real-uplo-matrix host-fact true mapped-buf n 0 nav stor reg matrix-type default (tr-engine host-fact))
         (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (get-queue da) @buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) @buf (.buffer ^NativeBlock mapped))
     this)
   Triangularizable
   (create-trf [a pure]

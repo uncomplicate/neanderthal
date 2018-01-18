@@ -1880,6 +1880,9 @@
     this)
   (native-factory [this]
     native-fact)
+  FlowProvider
+  (flow [_]
+    hstream)
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
@@ -1923,7 +1926,7 @@
   (release [this]
     (with-check cublas-error (JCublas2/cublasDestroy this) true)))
 
-(defn ^:private get-stream [handle]
+(defn ^:private get-cublas-stream [handle]
   (let [res (cudaStream_t.)]
     (with-check cublas-error (JCublas2/cublasGetStream handle res) (CUstream. res))))
 
@@ -1952,8 +1955,8 @@
     (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double"
                                                  "-DCAST(fun)=fun" "-arch=compute_30"])]
       (let-release [modl (module prog)
-                    hstream (get-stream handle)]
-        (->CUFactory modl hstream (cu-double-accessor (current-context)) native-double
+                    hstream (get-cublas-stream handle)]
+        (->CUFactory modl hstream (cu-double-accessor (current-context) hstream) native-double
                      (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
                      (->DoubleTREngine handle modl hstream) (->DoubleSYEngine handle modl hstream)))))
 
@@ -1961,7 +1964,7 @@
     (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double"
                                                  "-DCAST(fun)=fun##f" "-arch=compute_30"])]
       (let-release [modl (module prog)
-                    hstream (get-stream handle)]
-        (->CUFactory modl hstream (cu-float-accessor (current-context)) native-float
+                    hstream (get-cublas-stream handle)]
+        (->CUFactory modl hstream (cu-float-accessor (current-context) hstream) native-float
                      (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
                      (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))

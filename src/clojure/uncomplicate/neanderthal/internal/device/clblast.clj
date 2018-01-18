@@ -1944,6 +1944,9 @@
     this)
   (native-factory [this]
     native-fact)
+  FlowProvider
+  (flow [_]
+    queue)
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))

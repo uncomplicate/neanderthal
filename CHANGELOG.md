@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+## 0.18.1
+
+* Added FlowProvider/flow to internal core.
+
 ## 0.18.0
 
 * Updated to Java 9 modules. Requires add-open jvm argument if run with JDK 9+.

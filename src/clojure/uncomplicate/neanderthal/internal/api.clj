@@ -213,6 +213,9 @@
 (defprotocol DataAccessorProvider
   (data-accessor ^DataAccessor [this]))
 
+(defprotocol FlowProvider
+  (flow [this]))
+
 (defprotocol Info
   (info [this]))
 
