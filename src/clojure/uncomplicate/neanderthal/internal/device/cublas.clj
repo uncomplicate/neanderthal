@@ -53,7 +53,7 @@
                              (.buffer x) (.offset x) (.stride x)
                              (.buffer y) (.offset y) (.stride y)
                              eq-flag-buf))
-        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1)) 0)))
+        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1) hstream) 0)))
       (= 0 (.dim y)))))
 
 (defn ^:private vector-subcopy [modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky]
@@ -73,7 +73,7 @@
                      cu-acc (mem-alloc (* Double/BYTES (count-blocks block-dim cnt)))]
         (launch-reduce! hstream sum-kernel sum-reduction-kernel
                         [(.buffer x) (.offset x) (.stride x) cu-acc] [cu-acc] cnt block-dim)
-        (get ^doubles (memcpy-host! cu-acc (double-array 1)) 0))
+        (get ^doubles (memcpy-host! cu-acc (double-array 1) hstream) 0))
       0.0)))
 
 (defn ^:private vector-set [modl hstream alpha ^CUBlockVector x]
@@ -194,7 +194,7 @@
         (launch! equals-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.fd stor) (.buffer a) (.offset a) (.ld stor)
                              (.buffer b) (.offset b) (.stride b) eq-flag-buf))
-        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1)) 0))))
+        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1) hstream) 0))))
     (= 0 (.dim b))))
 
 (defn ^:private ge-set [modl hstream alpha ^CUGEMatrix a]
@@ -344,7 +344,7 @@
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.buffer a) (.offset a) (.ld stor) (.buffer b) (.offset b) (.stride b)
                              eq-flag-buf))
-        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1)) 0))))
+        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1) hstream) 0))))
     (= 0 (.dim b))))
 
 (defn ^:private uplo-map [modl hstream transpf op-name ^CUUploMatrix a ^CUUploMatrix b]
