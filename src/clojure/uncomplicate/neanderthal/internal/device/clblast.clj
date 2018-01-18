@@ -62,7 +62,7 @@
     (= 0 (.dim y))))
 
 (defn ^:private vector-set [ctx queue prog alpha ^CLBlockVector x]
-  (if (< 0 (.dim x))
+  (when (< 0 (.dim x))
     (let [da (data-accessor x)]
       (if (= (.dim x) (.count da (.buffer x)))
         (.initialize da (.buffer x) alpha)

@@ -77,18 +77,20 @@
       0.0)))
 
 (defn ^:private vector-set [modl hstream alpha ^CUBlockVector x]
-  (with-release [set-kernel (function modl "vector_set")]
-    (launch! set-kernel (grid-1d (.dim x)) hstream
-             (parameters (.dim x) alpha (.buffer x) (.offset x) (.stride x)))
-    x))
+  (when (< 0 (.dim x))
+    (with-release [set-kernel (function modl "vector_set")]
+      (launch! set-kernel (grid-1d (.dim x)) hstream
+               (parameters (.dim x) alpha (.buffer x) (.offset x) (.stride x)))))
+  x)
 
 (defn ^:private vector-axpby [modl hstream alpha ^CUBlockVector x beta ^CUBlockVector y]
-  (with-release [axpby-kernel (function modl "vector_axpby")]
-    (launch! axpby-kernel (grid-1d (.dim x)) hstream
-             (parameters (.dim x)
-                         alpha (.buffer x) (.offset x) (.stride x)
-                         beta (.buffer y) (.offset y) (.stride y)))
-    y))
+  (when (< 0 (.dim x))
+    (with-release [axpby-kernel (function modl "vector_axpby")]
+      (launch! axpby-kernel (grid-1d (.dim x)) hstream
+               (parameters (.dim x)
+                           alpha (.buffer x) (.offset x) (.stride x)
+                           beta (.buffer y) (.offset y) (.stride y)))))
+  y)
 
 (defmacro ^:private vector-method
   ([cublas-handle method x]
@@ -159,21 +161,25 @@
 
 (defmacro ^:private vector-rot [cublas-handle method x y c s]
   `(let [da# (data-accessor ~x)]
-     (with-check cublas-error
-       (~method ~cublas-handle (.dim ~x)
-        (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-        (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
-        (ptr ~c) (ptr ~s))
+     (if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
+       (with-check cublas-error
+         (~method ~cublas-handle (.dim ~x)
+          (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
+          (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
+          (ptr ~c) (ptr ~s))
+         ~x)
        ~x)))
 
 (defmacro ^:private vector-rotm [cublas-handle method x y param]
   `(if (= 1 (.stride ~param))
      (let [da# (data-accessor ~x)]
-       (with-check cublas-error
-         (~method ~cublas-handle (.dim ~x)
-          (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-          (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
-          (ptr (.buffer ~param)))
+       (if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
+         (with-check cublas-error
+           (~method ~cublas-handle (.dim ~x)
+            (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
+            (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
+            (ptr (.buffer ~param)))
+           ~param)
          ~param))
      (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
