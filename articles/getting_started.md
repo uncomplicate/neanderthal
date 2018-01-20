@@ -49,25 +49,26 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 ### Implemented Features
 
-* Data structures: double and single precision vectors, dense matrices (GE), and triangular matrices (TR);
+* Data structures: double and single precision vectors, dense matrices (GE), triangular matrices (TR), symmetric matrices (SY), banded, diagonal, etc.;
 * BLAS Level 1, 2, and 3 routines;
 * Major LAPACK routines;
 * Various Clojure vector and matrix functions (transpositions, submatrices etc.);
 * Easy and efficient data mapping and transfer to and from GPUs;
 * Fast map, reduce and fold implementations for the provided structures.
+* OpenCL GPU support
+* CUDA GPU support
 
 ### On the TODO List
 
-* CUDA support (in addition to OpenCL support that already works with Nvidia)
-* Banded, symmetric, and sparse matrices;
-* More LAPACK routines;
+* "Tensors" (as defined in various deep learning libraries)
+* Sparse matrices;
 * Support for complex numbers;
 
 ## Installation
 
 1. Add Neanderthal jars to your classpath ([from the Clojars](https://clojars.org/uncomplicate/neanderthal)).
 2. To use the native engine: install Intel's MKL on your system following [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine)).
-3. To use the GPU engine: install the drivers and an OpenCL platform software provided by the vendor of your graphic card (you probably already have that; see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
+3. To use the GPU engine: install the drivers and a CUDA and/or OpenCL platform software provided by the vendor of your graphic card (you probably already have that; see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
 
 ### With Leiningen
 
@@ -84,10 +85,6 @@ Neanderthal's data structures are written in Clojure, so many functions work eve
 ### The native library used by Neanderthal's native engine
 
 * Works on Linux, OS X, and Windows!
-
-* Note: Previous versions of Neanderthal used ATLAS, while from version 0.9.0, it uses Intel's MKL. If you used ATLAS previously, you'll have to install MKL!
-
-* While old versions had different installation guides for each OS, from version 0.9.0, installation on all OSes is more or less the same.
 
 Neanderthal **uses the native Intel MKL library and expects that you make it available on your system, typically as shared xyz.so, xyz.dll, or xyz.dylib files**. Intel MKL is highly optimized for various architectures; its installation comes with many optimized binaries for all supported architectures, that are then selected during runtime according to the hardware at hand. Neanderthal has been built and tested with **Intel MKL 2018**; please make sure that you use a compatible MKL version.
 
