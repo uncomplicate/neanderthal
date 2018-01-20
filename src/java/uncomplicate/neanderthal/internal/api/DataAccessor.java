@@ -26,4 +26,6 @@ public interface DataAccessor {
 
     Object wrapPrim (double data);
 
+    Object castPrim (double data);
+
 }

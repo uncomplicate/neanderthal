@@ -22,6 +22,9 @@
 (defn wrap-prim [^DataAccessor accessor ^double v]
   (.wrapPrim accessor v))
 
+(defn cast-prim [^DataAccessor accessor v]
+  (.castPrim accessor v))
+
 (defn entry-type [^DataAccessor accessor]
   (.entryType accessor))
 

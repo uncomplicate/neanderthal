@@ -73,8 +73,10 @@
       (dotimes [i (.count this b)]
         (.putFloat ^ByteBuffer b (* strd i) v))
       b))
-  (wrapPrim [_ s]
-    (wrap-float s))
+  (wrapPrim [_ v]
+    (wrap-float v))
+  (castPrim [_ v]
+    (float v))
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -117,6 +119,8 @@
       b))
   (wrapPrim [_ s]
     (wrap-double s))
+  (castPrim [_ v]
+    (double v))
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -161,6 +165,8 @@
       b))
   (wrapPrim [_ s]
     (wrap-int s))
+  (castPrim [_ v]
+    (int v))
   DataAccessorProvider
   (data-accessor [this]
     this)
@@ -205,6 +211,8 @@
       b))
   (wrapPrim [_ s]
     (wrap-long s))
+  (castPrim [_ v]
+    (long v))
   DataAccessorProvider
   (data-accessor [this]
     this)

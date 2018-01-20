@@ -81,7 +81,7 @@
 
 ;; ================== Accessors ================================================
 
-(deftype TypedCLAccessor [active ctx queue et ^long w array-fn wrap-fn]
+(deftype TypedCLAccessor [active ctx queue et ^long w array-fn wrap-fn cast-fn]
   Releaseable
   (release [this]
     (vreset! active false))
@@ -102,6 +102,8 @@
     buf)
   (wrapPrim [_ s]
     (wrap-fn s))
+  (castPrim [_ v]
+    (cast-fn v))
   CLAccessor
   (active? [_]
     @active)
@@ -125,16 +127,16 @@
        (= et o)))))
 
 (defn cl-float-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Float/TYPE Float/BYTES float-array wrap-float))
+  (->TypedCLAccessor (volatile! true) ctx queue Float/TYPE Float/BYTES float-array wrap-float float))
 
 (defn cl-double-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Double/TYPE Double/BYTES double-array wrap-double))
+  (->TypedCLAccessor (volatile! true) ctx queue Double/TYPE Double/BYTES double-array wrap-double double))
 
 (defn cl-int-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Integer/TYPE Integer/BYTES int-array wrap-int))
+  (->TypedCLAccessor (volatile! true) ctx queue Integer/TYPE Integer/BYTES int-array wrap-int int))
 
 (defn cl-long-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Long/TYPE Long/BYTES long-array wrap-long))
+  (->TypedCLAccessor (volatile! true) ctx queue Long/TYPE Long/BYTES long-array wrap-long long))
 
 ;; =============================================================================
 

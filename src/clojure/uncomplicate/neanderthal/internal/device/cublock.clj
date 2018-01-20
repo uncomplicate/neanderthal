@@ -60,7 +60,7 @@
   (offset [this buf ofst])
   (active? [this]))
 
-(deftype TypedCUAccessor [active ctx hstream et ^long w wrap-fn]
+(deftype TypedCUAccessor [active ctx hstream et ^long w wrap-fn cast-fn]
   Releaseable
   (release [_]
     (vreset! active false))
@@ -81,6 +81,8 @@
     buf)
   (wrapPrim [_ s]
     (wrap-fn s))
+  (castPrim [_ v]
+    (cast-fn v))
   FlowProvider
   (flow [_]
     hstream)
@@ -108,16 +110,16 @@
        (= et o)))))
 
 (defn cu-float-accessor [ctx hstream]
-  (->TypedCUAccessor (volatile! true) ctx hstream Float/TYPE Float/BYTES wrap-float))
+  (->TypedCUAccessor (volatile! true) ctx hstream Float/TYPE Float/BYTES wrap-float float))
 
 (defn cu-double-accessor [ctx hstream]
-  (->TypedCUAccessor (volatile! true) ctx hstream Double/TYPE Double/BYTES wrap-double))
+  (->TypedCUAccessor (volatile! true) ctx hstream Double/TYPE Double/BYTES wrap-double double))
 
 (defn cu-int-accessor [ctx hstream]
-  (->TypedCUAccessor (volatile! true) ctx hstream Integer/TYPE Integer/BYTES wrap-int))
+  (->TypedCUAccessor (volatile! true) ctx hstream Integer/TYPE Integer/BYTES wrap-int int))
 
 (defn cu-long-accessor [ctx hstream]
-  (->TypedCUAccessor (volatile! true) ctx hstream Long/TYPE Long/BYTES wrap-long))
+  (->TypedCUAccessor (volatile! true) ctx hstream Long/TYPE Long/BYTES wrap-long long))
 
 ;; ================ CUDA memory transfer ======================================
 
