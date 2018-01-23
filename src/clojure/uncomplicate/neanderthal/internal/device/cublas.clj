@@ -14,7 +14,7 @@
              [utils :refer [with-check]]]
             [uncomplicate.clojurecuda
              [protocols :refer [cu-ptr ptr]]
-             [core :refer :all :exclude [device]]
+             [core :refer :all :as cuda :exclude [device]]
              [toolbox :refer [launch-reduce! count-blocks]]
              [nvrtc :refer [program compile!]]
              [utils :refer [error]]]
@@ -29,7 +29,7 @@
             [uncomplicate.neanderthal.internal.device
              [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [cublock :refer :all]])
-  (:import [jcuda.runtime JCuda cudaStream_t]
+  (:import jcuda.runtime.cudaStream_t
            jcuda.driver.CUstream
            [jcuda.jcublas JCublas2 cublasHandle cublasOperation cublasSideMode cublasDiagType
             cublasFillMode]
@@ -1933,17 +1933,17 @@
 (defn cublas-handle
   "Creates a cuBLAS context handler on the specific `device-id` (default `0`) and `stream`
   (default is a per-thread cuda stream)"
-  ([^long device-id ^CUstream stream]
-   (with-check error (JCuda/cudaSetDevice device-id)
-     (let [handle (cublasHandle.)
-           cuda-stream (cudaStream_t. ^CUStream stream)]
-       (with-check cublas-error (JCublas2/cublasCreate handle)
-         (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream)
-           handle)))))
-  ([^long device-id]
-   (cublas-handle device-id default-stream))
+  ([ctx ^CUstream stream]
+   (in-context
+    ctx
+    (let [handle (cublasHandle.)
+          cuda-stream (cudaStream_t. ^CUStream stream)]
+      (with-check cublas-error (JCublas2/cublasCreate handle)
+        (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream) handle)))))
+  ([ctx]
+   (cublas-handle ctx default-stream))
   ([]
-   (cublas-handle 0)))
+   (cublas-handle (current-context))))
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu"))
