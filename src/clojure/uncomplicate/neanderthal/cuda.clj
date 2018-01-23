@@ -12,9 +12,9 @@
   creating and maintaining engines in appropriate CUDA and cuBLAS context.
   A convenience over agnostic [[uncomplicate.neanderthal.core]] functions."
   (:require [uncomplicate.commons.core :refer [release with-release]]
+            [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr]]
-            [uncomplicate.neanderthal.internal.device.cublas
-             :refer [cublas-double cublas-float cublas-handle]]))
+            [uncomplicate.neanderthal.internal.device.cublas :refer [cublas-double cublas-float]]))
 
 (def ^{:dynamic true
        :doc "Dynamically bound CUDA factory that is used in vector and matrix constructors."}
@@ -26,17 +26,14 @@
 (def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
   cuda-double cublas-double)
 
-(def  ^{:doc "Creates the context handler for the cuda BLAS engine."}
-  cuda-handle cublas-handle)
-
 (defmacro with-engine
   "Creates a CUDA factory using the provided `factory` constructor function and a `handle` cuBLAS
   context handler. The created factory will work using the provided cuBLAS `handle` and its context,
   and will be bound to [[*cuda-factory*]].
   Enables the use of [[cuv]], [[cuge]], [[cutr]], etc. in its body.
   "
-  [factory handle & body]
-  `(binding [*cuda-factory* (~factory ~handle)]
+  [factory hstream & body]
+  `(binding [*cuda-factory* (~factory (current-context) ~hstream)]
      (try
        ~@body
        (finally (release *cuda-factory*)))))
@@ -46,8 +43,7 @@
   Enables the use of [[cuv]], [[cuge]], [[cutr]], etc. in its body.
   "
   [& body]
-  `(with-release [handle# (cuda-handle)]
-     (with-engine cuda-float handle# ~@body)))
+  `(with-engine cuda-float default-stream ~@body))
 
 (defn cuv
   "Creates a vector using CUDA GPU engine provided to the bound [[*cuda-factory*]]

@@ -1,10 +1,10 @@
 (ns uncomplicate.neanderthal.cublas-test
   (:require [midje.sweet :refer :all]
             [uncomplicate.commons.core :refer [with-release]]
-            [uncomplicate.clojurecuda.core :refer [with-default]]
+            [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
              [core :refer [tr]]
-             [cuda :refer [with-engine *cuda-factory* cuda-handle cuda-float cuda-double]]
+             [cuda :refer [with-engine *cuda-factory* cuda-float cuda-double]]
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
@@ -25,22 +25,21 @@
   (math-test/test-math-inv factory (partial math-test/diff-square-1 tr) (partial math-test/diff-square-2 tr)))
 
 (with-default
-  (with-release [handle (cuda-handle)]
 
-    (with-engine cuda-float handle
-      (block-test/test-all *cuda-factory*)
-      (real-test/test-blas *cuda-factory*)
-      (test-blas-cublas *cuda-factory*)
-      (test-lapack-cublas *cuda-factory*)
-      (device-test/test-all *cuda-factory*)
-      (math-test/test-all-device *cuda-factory*)
-      (test-math-cuda *cuda-factory*))
+  (with-engine cuda-float default-stream
+    (block-test/test-all *cuda-factory*)
+    (real-test/test-blas *cuda-factory*)
+    (test-blas-cublas *cuda-factory*)
+    (test-lapack-cublas *cuda-factory*)
+    (device-test/test-all *cuda-factory*)
+    (math-test/test-all-device *cuda-factory*)
+    (test-math-cuda *cuda-factory*))
 
-    (with-engine cuda-double handle
-      (block-test/test-all *cuda-factory*)
-      (real-test/test-blas *cuda-factory*)
-      (test-blas-cublas *cuda-factory*)
-      (test-lapack-cublas *cuda-factory*)
-      (device-test/test-all *cuda-factory*)
-      (math-test/test-all-device *cuda-factory*)
-      (test-math-cuda *cuda-factory*))))
+  (with-engine cuda-double default-stream
+    (block-test/test-all *cuda-factory*)
+    (real-test/test-blas *cuda-factory*)
+    (test-blas-cublas *cuda-factory*)
+    (test-lapack-cublas *cuda-factory*)
+    (device-test/test-all *cuda-factory*)
+    (math-test/test-all-device *cuda-factory*)
+    (test-math-cuda *cuda-factory*)))

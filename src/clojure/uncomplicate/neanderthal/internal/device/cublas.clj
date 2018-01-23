@@ -1930,20 +1930,14 @@
   (let [res (cudaStream_t.)]
     (with-check cublas-error (JCublas2/cublasGetStream handle res) (CUstream. res))))
 
-(defn cublas-handle
+(defn ^:private cublas-handle
   "Creates a cuBLAS context handler on the specific `device-id` (default `0`) and `stream`
   (default is a per-thread cuda stream)"
-  ([ctx ^CUstream stream]
-   (in-context
-    ctx
-    (let [handle (cublasHandle.)
-          cuda-stream (cudaStream_t. ^CUStream stream)]
-      (with-check cublas-error (JCublas2/cublasCreate handle)
-        (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream) handle)))))
-  ([ctx]
-   (cublas-handle ctx default-stream))
-  ([]
-   (cublas-handle (current-context))))
+  [ctx ^CUstream hstream]
+  (let [handle (cublasHandle.)
+        cuda-stream (cudaStream_t. ^CUStream hstream)]
+    (with-check cublas-error (JCublas2/cublasCreate handle)
+      (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream) handle))))
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu"))
@@ -1951,20 +1945,26 @@
 
   (JCublas2/setExceptionsEnabled false)
 
-  (defn cublas-double [handle]
-    (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double"
-                                                 "-DCAST(fun)=fun" "-arch=compute_30"])]
-      (let-release [modl (module prog)
-                    hstream (get-cublas-stream handle)]
-        (->CUFactory modl hstream (cu-double-accessor (current-context) hstream) native-double
-                     (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
-                     (->DoubleTREngine handle modl hstream) (->DoubleSYEngine handle modl hstream)))))
+  (defn cublas-double [ctx hstream]
+    (in-context
+     ctx
+     (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double"
+                                                  "-DCAST(fun)=fun" "-arch=compute_30"])]
+       (let-release [modl (module prog)
+                     handle (cublas-handle ctx hstream)
+                     hstream (get-cublas-stream handle)]
+         (->CUFactory modl hstream (cu-double-accessor (current-context) hstream) native-double
+                      (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
+                      (->DoubleTREngine handle modl hstream) (->DoubleSYEngine handle modl hstream))))))
 
-  (defn cublas-float [handle]
-    (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double"
-                                                 "-DCAST(fun)=fun##f" "-arch=compute_30"])]
-      (let-release [modl (module prog)
-                    hstream (get-cublas-stream handle)]
-        (->CUFactory modl hstream (cu-float-accessor (current-context) hstream) native-float
-                     (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
-                     (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))
+  (defn cublas-float [ctx hstream]
+    (in-context
+     ctx
+     (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double"
+                                                  "-DCAST(fun)=fun##f" "-arch=compute_30"])]
+       (let-release [modl (module prog)
+                     handle (cublas-handle ctx hstream)
+                     hstream (get-cublas-stream handle)]
+         (->CUFactory modl hstream (cu-float-accessor (current-context) hstream) native-float
+                      (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
+                      (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream)))))))
