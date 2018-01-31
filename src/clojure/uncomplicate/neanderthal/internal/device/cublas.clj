@@ -78,18 +78,20 @@
 
 (defn ^:private vector-set [modl hstream alpha ^CUBlockVector x]
   (when (< 0 (.dim x))
-    (with-release [set-kernel (function modl "vector_set")]
-      (launch! set-kernel (grid-1d (.dim x)) hstream
-               (parameters (.dim x) alpha (.buffer x) (.offset x) (.stride x)))))
+    (let [da (data-accessor x)]
+      (with-release [set-kernel (function modl "vector_set")]
+        (launch! set-kernel (grid-1d (.dim x)) hstream
+                 (parameters (.dim x) (.wrapPrim da alpha) (.buffer x) (.offset x) (.stride x))))))
   x)
 
 (defn ^:private vector-axpby [modl hstream alpha ^CUBlockVector x beta ^CUBlockVector y]
   (when (< 0 (.dim x))
-    (with-release [axpby-kernel (function modl "vector_axpby")]
-      (launch! axpby-kernel (grid-1d (.dim x)) hstream
-               (parameters (.dim x)
-                           alpha (.buffer x) (.offset x) (.stride x)
-                           beta (.buffer y) (.offset y) (.stride y)))))
+    (let [da (data-accessor x)]
+      (with-release [axpby-kernel (function modl "vector_axpby")]
+        (launch! axpby-kernel (grid-1d (.dim x)) hstream
+                 (parameters (.dim x)
+                             (.wrapPrim da alpha) (.buffer x) (.offset x) (.stride x)
+                             (.wrapPrim da beta) (.buffer y) (.offset y) (.stride y))))))
   y)
 
 (defmacro ^:private vector-method
@@ -203,7 +205,7 @@
           stor (full-storage a)]
       (with-release [ge-set-kernel (function modl "ge_set")]
         (launch! ge-set-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.fd stor) alpha (.buffer a) (.offset a) (.ld stor))))
+                 (parameters (.sd stor) (.fd stor) (.wrapPrim da alpha) (.buffer a) (.offset a) (.ld stor))))
       a)))
 
 (defmacro ^:private ge-swap [cublas-handle method modl hstream a b]
@@ -364,8 +366,8 @@
       (with-release [axpby-kernel (function modl (name-transp (transpf a b) "uplo_axpby" a b))]
         (launch! axpby-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             alpha (.buffer a) (.offset a) (.ld stor)
-                             beta (.buffer b) (.offset b) (.stride b))))))
+                             (.wrapPrim da alpha) (.buffer a) (.offset a) (.ld stor)
+                             (.wrapPrim da beta) (.buffer b) (.offset b) (.stride b))))))
   b)
 
 (defn ^:private uplo-set-scal [modl hstream op-name alpha ^CUUploMatrix a]
@@ -375,7 +377,7 @@
       (with-release [op-kernel (function modl op-name)]
         (launch! op-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             alpha (.buffer a) (.offset a) (.ld stor))))))
+                             (.wrapPrim da alpha) (.buffer a) (.offset a) (.ld stor))))))
   a)
 
 (defmacro ^:private tr-mv
@@ -499,25 +501,28 @@
          (launch! math-kernel (grid-1d (.dim x)) hstream
                   (parameters (.dim x)
                               (.buffer x) (.offset x) (.stride x)
-                              scalea shifta scaleb shiftb
+                              (.wrapPrim da scalea) (.wrapPrim da shifta)
+                              (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                               (.buffer z) (.offset z) (.stride z))))
        (with-release [math-kernel (function modl "vector_linear_frac")]
          (launch! math-kernel (grid-1d (.dim x)) hstream
                   (parameters (.dim x)
                               (.buffer x) (.offset x) (.stride x)
                               (.buffer y) (.offset y) (.stride y)
-                              scalea shifta scaleb shiftb
+                              (.wrapPrim da scalea) (.wrapPrim da shifta)
+                              (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                               (.buffer z) (.offset z) (.stride z)))))))
   z)
 
 (defn ^:private vector-powx [modl hstream ^CUBlockVector x b ^CUBlockVector y]
   (when (< 0 (.dim x))
-    (with-release [math-kernel (function modl "vector_powx")]
-      (launch! math-kernel (grid-1d (.dim x)) hstream
-               (parameters (.dim x)
-                           (.buffer x) (.offset x) (.stride x)
-                           b
-                           (.buffer y) (.offset y) (.stride y)))))
+    (let [da (data-accessor x)]
+      (with-release [math-kernel (function modl "vector_powx")]
+        (launch! math-kernel (grid-1d (.dim x)) hstream
+                 (parameters (.dim x)
+                             (.buffer x) (.offset x) (.stride x)
+                             (.wrapPrim da b)
+                             (.buffer y) (.offset y) (.stride y))))))
   y)
 
 (defn ^:private ge-math
@@ -554,26 +559,29 @@
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                    (parameters (.sd stor) (.fd stor)
                                (.buffer a) (.offset a) (.stride a)
-                               scalea shifta scaleb shiftb
+                               (.wrapPrim da scalea) (.wrapPrim da shifta)
+                               (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                                (.buffer c) (.offset c) (.stride c))))
         (with-release [math-kernel (function modl "ge_linear_frac")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                    (parameters (.sd stor) (.fd stor)
                                (.buffer a) (.offset a) (.stride a)
                                (.buffer b) (.offset b) (.stride b)
-                               scalea shifta scaleb shiftb
+                               (.wrapPrim da scalea) (.wrapPrim da shifta)
+                               (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                                (.buffer c) (.offset c) (.stride c)))))))
   c)
 
 (defn ^:private ge-powx [modl hstream ^CUGEMatrix a b ^CUGEMatrix c]
   (when (< 0 (.dim a))
     (check-eq-navigators a c)
-    (let [stor (full-storage a)]
+    (let [stor (full-storage a)
+          da (data-accessor a)]
       (with-release [math-kernel (function modl "ge_powx")]
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.fd stor)
                              (.buffer a) (.offset a) (.stride a)
-                             b
+                             (.wrapPrim da b)
                              (.buffer c) (.offset c) (.stride c))))))
   c)
 
@@ -611,7 +619,8 @@
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                    (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                                (.buffer a) (.offset a) (.stride a)
-                               scalea shifta scaleb shiftb
+                               (.wrapPrim da scalea) (.wrapPrim da shifta)
+                               (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                                (.buffer c) (.offset c) (.stride c))))
         (with-release [math-kernel (function modl "uplo_linear_frac")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
@@ -625,12 +634,13 @@
 (defn ^:private uplo-powx [modl hstream ^CUUploMatrix a b ^CUUploMatrix c]
   (when (< 0 (.dim a))
     (check-eq-navigators a c)
-    (let [stor (full-storage a)]
+    (let [stor (full-storage a)
+          da (data-accessor a)]
       (with-release [math-kernel (function modl "uplo_powx")]
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.buffer a) (.offset a) (.stride a)
-                             b
+                             (.wrapPrim da b)
                              (.buffer c) (.offset c) (.stride c))))))
   c)
 
@@ -684,9 +694,9 @@
   (imin [this x]
     (not-available))
   (set-all [_ alpha x]
-    (vector-set modl hstream (double alpha) ^CUBlockVector x))
+    (vector-set modl hstream alpha ^CUBlockVector x))
   (axpby [_ alpha x beta y]
-    (vector-axpby modl hstream (double alpha) x (double beta) y))
+    (vector-axpby modl hstream alpha x beta y))
   VectorMath
   (sqr [_ a y]
     (vector-math modl hstream "vector_sqr" a y))
@@ -719,7 +729,7 @@
   (pow [_ a b y]
     (vector-math modl hstream "vector_pow" a b y))
   (powx [_ a b y]
-    (vector-powx modl hstream a (double b) y))
+    (vector-powx modl hstream a b y))
   (hypot [_ a b y]
     (vector-math modl hstream "vector_hypot" a b y))
   (exp [_ a y]
@@ -841,9 +851,9 @@
   (imin [this x]
     (not-available))
   (set-all [_ alpha x]
-    (vector-set modl hstream (float alpha) ^CUBlockVector x))
+    (vector-set modl hstream alpha ^CUBlockVector x))
   (axpby [_ alpha x beta y]
-    (vector-axpby modl hstream (float alpha) x (float beta) y))
+    (vector-axpby modl hstream alpha x beta y))
   VectorMath
   (sqr [_ a y]
     (vector-math modl hstream "vector_sqr" a y))
@@ -876,7 +886,7 @@
   (pow [_ a b y]
     (vector-math modl hstream "vector_pow" a b y))
   (powx [_ a b y]
-    (vector-powx modl hstream a (float b) y))
+    (vector-powx modl hstream a b y))
   (hypot [_ a b y]
     (vector-math modl hstream "vector_hypot" a b y))
   (exp [_ a y]
@@ -992,7 +1002,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (ge-set modl hstream (double alpha) a))
+    (ge-set modl hstream alpha a))
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasDgeam (double alpha) ^CUGEMatrix a (double beta) ^CUGEMatrix b))
   (trans [_ a]
@@ -1029,7 +1039,7 @@
   (pow [_ a b y]
     (ge-math modl hstream "ge_pow" a b y))
   (powx [_ a b y]
-    (ge-powx modl hstream a (double b) y))
+    (ge-powx modl hstream a b y))
   (hypot [_ a b y]
     (ge-math modl hstream "ge_hypot" a b y))
   (exp [_ a y]
@@ -1145,7 +1155,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (ge-set modl hstream (float alpha) a))
+    (ge-set modl hstream alpha a))
   (axpby [_ alpha a beta b]
     (ge-am cublas-handle JCublas2/cublasSgeam (float alpha) ^CUGEMatrix a (float beta) ^CUGEMatrix b))
   (trans [_ a]
@@ -1182,7 +1192,7 @@
   (pow [_ a b y]
     (ge-math modl hstream "ge_pow" a b y))
   (powx [_ a b y]
-    (ge-powx modl hstream a (float b) y))
+    (ge-powx modl hstream a b y))
   (hypot [_ a b y]
     (ge-math modl hstream "ge_hypot" a b y))
   (exp [_ a y]
@@ -1267,9 +1277,9 @@
   (copy [_ a b]
     (uplo-map modl hstream layout-match? "uplo_copy" a b))
   (scal [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_scal" (double alpha) a))
+    (uplo-set-scal modl hstream "uplo_scal" alpha a))
   (axpy [_ alpha a b]
-    (uplo-axpby modl hstream layout-match? (double alpha) ^CUUploMatrix a (double 1.0) b))
+    (uplo-axpby modl hstream layout-match? alpha ^CUUploMatrix a 1.0 b))
   (dot [_ _ _]
     (not-available))
   (nrm1 [_ _]
@@ -1294,9 +1304,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_set" (double alpha) a))
+    (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
-    (uplo-axpby modl hstream layout-match? (double alpha) ^CUUploMatrix a (double beta) b))
+    (uplo-axpby modl hstream layout-match? alpha ^CUUploMatrix a beta b))
   Lapack
   (srt [_ a increasing]
     (not-available))
@@ -1342,7 +1352,7 @@
   (pow [_ a b y]
     (uplo-math modl hstream "uplo_pow" a b y))
   (powx [_ a b y]
-    (uplo-powx modl hstream a (double b) y))
+    (uplo-powx modl hstream a b y))
   (hypot [_ a b y]
     (uplo-math modl hstream "uplo_hypot" a b y))
   (exp [_ a y]
@@ -1427,9 +1437,9 @@
   (copy [_ a b]
     (uplo-map modl hstream layout-match? "uplo_copy" a b))
   (scal [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_scal" (float alpha) a))
+    (uplo-set-scal modl hstream "uplo_scal" alpha a))
   (axpy [_ alpha a b]
-    (uplo-axpby modl hstream layout-match? (float alpha) a (float 1.0) b))
+    (uplo-axpby modl hstream layout-match? alpha a 1.0 b))
   (dot [_ _ _]
     (not-available))
   (nrm2 [_ _]
@@ -1450,9 +1460,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_set" (float alpha) a))
+    (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
-    (uplo-axpby modl hstream layout-match? (float alpha) a (float beta) b))
+    (uplo-axpby modl hstream layout-match? alpha a beta b))
   Lapack
   (srt [_ a increasing]
     (not-available))
@@ -1498,7 +1508,7 @@
   (pow [_ a b y]
     (uplo-math modl hstream "uplo_pow" a b y))
   (powx [_ a b y]
-    (uplo-powx modl hstream a (float b) y))
+    (uplo-powx modl hstream a b y))
   (hypot [_ a b y]
     (uplo-math modl hstream "uplo_hypot" a b y))
   (exp [_ a y]
@@ -1583,9 +1593,9 @@
   (copy [_ a b]
     (uplo-map modl hstream symmetric-match? "uplo_copy" a b))
   (scal [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_scal" (double alpha) a))
+    (uplo-set-scal modl hstream "uplo_scal" alpha a))
   (axpy [_ alpha a b]
-    (uplo-axpby modl hstream symmetric-match? (double alpha) ^CUUploMatrix a (double 1.0) b))
+    (uplo-axpby modl hstream symmetric-match? alpha ^CUUploMatrix a 1.0 b))
   (dot [_ _ _]
     (not-available))
   (nrm1 [_ _]
@@ -1612,9 +1622,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_set" (double alpha) a))
+    (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
-    (uplo-axpby modl hstream symmetric-match? (double alpha) ^CUUploMatrix a (double beta) b))
+    (uplo-axpby modl hstream symmetric-match? alpha ^CUUploMatrix a beta b))
   VectorMath
   (sqr [_ a y]
     (uplo-math modl hstream "uplo_sqr" a y))
@@ -1647,7 +1657,7 @@
   (pow [_ a b y]
     (uplo-math modl hstream "uplo_pow" a b y))
   (powx [_ a b y]
-    (uplo-powx modl hstream a (double b) y))
+    (uplo-powx modl hstream a b y))
   (hypot [_ a b y]
     (uplo-math modl hstream "uplo_hypot" a b y))
   (exp [_ a y]
@@ -1732,9 +1742,9 @@
   (copy [_ a b]
     (uplo-map modl hstream symmetric-match? "uplo_copy" a b))
   (scal [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_scal" (float alpha) a))
+    (uplo-set-scal modl hstream "uplo_scal" alpha a))
   (axpy [_ alpha a b]
-    (uplo-axpby modl hstream symmetric-match? (float alpha) a (float 1.0) b))
+    (uplo-axpby modl hstream symmetric-match? alpha a 1.0 b))
   (dot [_ _ _]
     (not-available))
   (nrm2 [_ _]
@@ -1757,9 +1767,9 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal modl hstream "uplo_set" (float alpha) a))
+    (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
-    (uplo-axpby modl hstream symmetric-match? (float alpha) a (float beta) b))
+    (uplo-axpby modl hstream symmetric-match? alpha a beta b))
   VectorMath
   (sqr [_ a y]
     (uplo-math modl hstream "uplo_sqr" a y))
@@ -1792,7 +1802,7 @@
   (pow [_ a b y]
     (uplo-math modl hstream "uplo_pow" a b y))
   (powx [_ a b y]
-    (uplo-powx modl hstream a (float b) y))
+    (uplo-powx modl hstream a b y))
   (hypot [_ a b y]
     (uplo-math modl hstream "uplo_hypot" a b y))
   (exp [_ a y]

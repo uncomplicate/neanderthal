@@ -12,6 +12,7 @@
             [uncomplicate.neanderthal
              [core :refer :all]
              [math :refer [pow]]
+             [vect-math :refer [linear-frac!]]
              [block :refer [buffer]]]
             [uncomplicate.neanderthal.internal.api :refer [native-factory data-accessor]]))
 
@@ -72,8 +73,6 @@
                     host-y (entry! (vctr host-factory cnt) y-magic)
                     cl-x (vctr factory cnt)
                     cl-y (vctr factory cnt)]
-
-       (dim cl-x) => cnt
 
        (entry! host-x 6 -100000.0)
        (transfer! host-x cl-x)
@@ -167,9 +166,24 @@
            (copy! (col diff j) (subvector diff-vec (* j m-cnt) m-cnt)))
          (< (double (nrm2 diff-vec)) (* 2 m-cnt n-cnt k-cnt 1e-8))) => true))))
 
+(defn test-vect-math [factory]
+  (facts
+   "vect-math arrary overflow test"
+   (let [host-factory (native-factory factory)
+         cnt 10000
+         x-magic 2]
+     (with-release [host-x (entry! (vctr host-factory cnt) x-magic)
+                    cl-x (vctr factory cnt)]
+
+       (transfer! host-x cl-x)
+       (linear-frac! (subvector cl-x 3000 4000) 100)
+       (linear-frac! (subvector host-x 3000 4000) 100)
+       (transfer cl-x) => host-x))))
+
 (defn test-all [factory]
   (do
     (test-clblock factory)
     (test-blas1 factory)
     (test-blas2 factory)
-    (test-blas3 factory)))
+    (test-blas3 factory)
+    (test-vect-math factory)))

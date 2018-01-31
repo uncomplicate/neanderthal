@@ -19,7 +19,6 @@ extern "C" {
         }
     }
 
-
     __global__ void vector_copy (const int n,
                                  const REAL* x, const int offset_x, const int stride_x,
                                  REAL* y, int offset_y, int stride_y) {
@@ -31,7 +30,6 @@ extern "C" {
             y[iy] = x[ix]; 
         }
     }
-
     
     __global__ void vector_sum (const int n,
                                 const REAL* x, const int offset_x, const int stride_x,

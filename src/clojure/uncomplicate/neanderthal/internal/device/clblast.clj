@@ -14,6 +14,7 @@
              [utils :refer [with-check]]]
             [uncomplicate.clojurecl
              [core :refer :all]
+             [info :refer [max-work-group-size queue-device]]
              [constants :refer [dec-error]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
             [uncomplicate.neanderthal
@@ -1991,14 +1992,16 @@
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
   (defn clblast-double [ctx queue]
-    (let [prog (build-program! (program-with-source ctx src) "-DREAL=double" nil)]
+    (let [wgs (max-work-group-size (queue-device queue))
+          prog (build-program! (program-with-source ctx src) (format "-DREAL=double -DWGS=%d" wgs) nil)]
       (->CLFactory ctx queue prog
                    (cl-double-accessor ctx queue) native-double
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
                    (->DoubleTREngine ctx queue prog) (->DoubleSYEngine ctx queue prog))))
 
   (defn clblast-float [ctx queue]
-    (let [prog (build-program! (program-with-source ctx src) "-DREAL=float" nil)]
+    (let [wgs (max-work-group-size (queue-device queue))
+          prog (build-program! (program-with-source ctx src) (format "-DREAL=float -DWGS=%d" wgs) nil)]
       (->CLFactory ctx queue prog
                    (cl-float-accessor ctx queue) native-float
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)

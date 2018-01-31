@@ -2,6 +2,11 @@
 #define REAL float
 #endif
 
+#ifndef WGS
+#define WGS 256
+#endif
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
 __kernel void vector_equals (__global const REAL* x, const uint offset_x, const uint stride_x,
                              __global const REAL* y, const uint offset_y, const uint stride_y,
                              __global uint* eq_flag) {
@@ -12,6 +17,7 @@ __kernel void vector_equals (__global const REAL* x, const uint offset_x, const 
     }
 }
 
+__attribute__((work_group_size_hint(WGS, 1, 1)))
 __kernel void vector_axpby (REAL alpha, __global const REAL* x, const uint offset_x, const uint stride_x,
                             REAL beta, __global REAL* y, const uint offset_y, const uint stride_y) {
     const uint ix = offset_x + get_global_id(0) * stride_x;
@@ -19,6 +25,7 @@ __kernel void vector_axpby (REAL alpha, __global const REAL* x, const uint offse
     y[iy] = alpha * x[ix] + beta * y[iy];
 }
 
+__attribute__((work_group_size_hint(WGS, 1, 1)))
 __kernel void vector_set (const REAL val, __global REAL* x, const uint offset_x, const uint stride_x) {
     x[offset_x + get_global_id(0) * stride_x] = val;
 }
@@ -80,6 +87,13 @@ __kernel void ge_axpby_transp (REAL alpha, __global const REAL* a, const uint of
     b[ib] = alpha * a[ia] + beta * b[ib];
 }
 
+
+__kernel void sum_reduction (__global double* acc) {
+    double sum = 0.0;//work_group_reduction_sum(acc[get_global_id(0)]);
+    if (get_local_id(0) == 0) {
+        acc[get_group_id(0)] = sum;
+    }
+}
 
 __kernel void uplo_equals_no_transp (const uint unit, const int bottom,
                                      __global const REAL* a, const uint offset_a, const uint ld_a,
