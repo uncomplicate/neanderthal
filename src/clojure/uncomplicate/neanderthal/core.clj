@@ -310,7 +310,7 @@
    (api/view-tr a (api/options-lower? options) (api/options-diag-unit? options))))
 
 (defn sy
-  "Creates a dense symmetric matrix (TR) in the context of `factory`, with `n` rows and `n` columns.
+  "Creates a dense symmetric matrix (SY) in the context of `factory`, with `n` rows and `n` columns.
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
   a matrix, or another structure that can be transferred to the context of `factory`.

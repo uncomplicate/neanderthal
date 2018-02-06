@@ -135,6 +135,22 @@ extern "C" {
         }
     }
 
+    __global__ void ge_sum (const int sd, const int fd,
+                            ACCUMULATOR* acc,
+                            const REAL* a, const int offset_a, const int ld_a) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        const int i = offset_a + gid_0 + gid_1 * ld_a;
+        const ACCUMULATOR sum = block_reduction_sum_2( (valid) ? a[i] : 0.0);
+        if (threadIdx.y == 0) {
+            const ACCUMULATOR sum2 = block_reduction_sum((valid) ? sum : 0.0);
+            if (threadIdx.x == 0) {
+                acc[blockDim.x * blockIdx.y + blockIdx.x] = sum2;
+            }
+        }
+    }
+        
     __global__ void uplo_equals_no_transp (const int sd, const int unit, const int bottom,
                                            const REAL* a, const int offset_a, const int ld_a,
                                            const REAL* b, const int offset_b, const int ld_b,
@@ -288,5 +304,41 @@ extern "C" {
             a[offset_a + gid_0 + gid_1 * ld_a] = alpha;
         }
     }
-    
+
+    __global__ void tr_sum (const int sd, const int fd, const int unit, const int bottom,
+                            ACCUMULATOR* acc,
+                            const REAL* a, const int offset_a, const int ld_a) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        const int i = offset_a + gid_0 + gid_1 * ld_a;
+        const ACCUMULATOR sum = block_reduction_sum_2( (check) ? a[i] : 0.0);
+        if (threadIdx.y == 0) {
+            const ACCUMULATOR sum2 = block_reduction_sum((check) ? sum : 0.0);
+            if (threadIdx.x == 0) {
+                acc[blockDim.x * blockIdx.y + blockIdx.x] = sum2;
+            }
+        }
+    }
+
+    __global__ void sy_sum (const int sd, const int fd, const int unit, const int bottom,
+                            ACCUMULATOR* acc,
+                            const REAL* a, const int offset_a, const int ld_a) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        const bool check = bottom * gid_0 >= bottom * gid_1;
+        const int i = offset_a + gid_0 + gid_1 * ld_a;
+        const REAL val = (check) ? a[i] : 0.0;
+        const ACCUMULATOR sum = block_reduction_sum_2( (gid_0 == gid_1) ? val : 2.0 * val);
+        if (threadIdx.y == 0) {
+            const ACCUMULATOR sum2 = block_reduction_sum((check) ? sum : 0.0);
+            if (threadIdx.x == 0) {
+                acc[blockDim.x * blockIdx.y + blockIdx.x] = sum2;
+            }
+        }
+    }
+
 }

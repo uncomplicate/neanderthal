@@ -13,7 +13,7 @@
   A convenience over agnostic [[uncomplicate.neanderthal.core]] functions."
   (:require [uncomplicate.commons.core :refer [release with-release]]
             [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
-            [uncomplicate.neanderthal.core :refer [vctr ge tr]]
+            [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
             [uncomplicate.neanderthal.internal.device.cublas :refer [cublas-double cublas-float]]))
 
 (def ^{:dynamic true
@@ -74,3 +74,13 @@
    (tr *cuda-factory* n arg))
   ([arg]
    (tr *cuda-factory* arg)))
+
+(defn cusy
+  "Creates a SY matrix using CUDA GPU engine provided to the bound [[*cuda-factory*]]
+  (see [[uncomplicate.neanderthal.core/tr]])."
+  ([^long n source options]
+   (sy *cuda-factory* n source options))
+  ([^long n arg]
+   (sy *cuda-factory* n arg))
+  ([arg]
+   (sy *cuda-factory* arg)))

@@ -72,7 +72,8 @@
      (with-release [host-x (entry! (vctr host-factory cnt) x-magic)
                     host-y (entry! (vctr host-factory cnt) y-magic)
                     cl-x (vctr factory cnt)
-                    cl-y (vctr factory cnt)]
+                    cl-y (vctr factory cnt)
+                    cl-a (doto (ge factory 1000 911) (entry! x-magic))]
 
        (entry! host-x 6 -100000.0)
        (transfer! host-x cl-x)
@@ -90,7 +91,9 @@
 
        (transfer (scal! 2 cl-x)) => (scal! 2 host-x)
 
-       (transfer (axpy! 2 cl-x cl-y)) => (axpy! 2 host-x host-y)))
+       (transfer (axpy! 2 cl-x cl-y)) => (axpy! 2 host-x host-y)
+
+       (sum cl-a) => (double (* x-magic 1000 911 ))))
 
    (let [host-factory (native-factory factory)
          cnt (long (+ 1000 (pow 2 12)))

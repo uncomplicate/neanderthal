@@ -17,7 +17,7 @@
                  [uncomplicate/commons "0.4.0"]
                  [uncomplicate/fluokitten "0.6.1"]
                  [uncomplicate/neanderthal-native "0.17.0"]
-                 [uncomplicate/clojurecl "0.8.0"]
+                 [uncomplicate/clojurecl "0.9.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.2.0"]
                  [uncomplicate/clojurecuda "0.4.0-SNAPSHOT"]
                  [org.jcuda/jcublas "0.9.0"]

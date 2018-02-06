@@ -15,7 +15,7 @@
             [uncomplicate.clojurecuda
              [protocols :refer [cu-ptr ptr]]
              [core :refer :all :as cuda :exclude [device]]
-             [toolbox :refer [launch-reduce! count-blocks]]
+             [toolbox :refer [launch-reduce! count-blocks read-double read-int]]
              [nvrtc :refer [program compile!]]
              [utils :refer [error]]]
             [uncomplicate.neanderthal
@@ -53,7 +53,7 @@
                              (.buffer x) (.offset x) (.stride x)
                              (.buffer y) (.offset y) (.stride y)
                              eq-flag-buf))
-        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1) hstream) 0)))
+        (= 0 (read-int hstream eq-flag-buf)))
       (= 0 (.dim y)))))
 
 (defn ^:private vector-subcopy [modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky]
@@ -73,7 +73,7 @@
                      cu-acc (mem-alloc (* Double/BYTES (count-blocks block-dim cnt)))]
         (launch-reduce! hstream sum-kernel sum-reduction-kernel
                         [(.buffer x) (.offset x) (.stride x) cu-acc] [cu-acc] cnt block-dim)
-        (get ^doubles (memcpy-host! cu-acc (double-array 1) hstream) 0))
+        (read-double hstream cu-acc))
       0.0)))
 
 (defn ^:private vector-set [modl hstream alpha ^CUBlockVector x]
@@ -196,7 +196,7 @@
         (launch! equals-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.fd stor) (.buffer a) (.offset a) (.ld stor)
                              (.buffer b) (.offset b) (.stride b) eq-flag-buf))
-        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1) hstream) 0))))
+        (= 0 (read-int hstream eq-flag-buf))))
     (= 0 (.dim b))))
 
 (defn ^:private ge-set [modl hstream alpha ^CUGEMatrix a]
@@ -249,6 +249,30 @@
            (first res#))
          (not-available)))
      0.0))
+
+(defn ^:private ge-sum [modl hstream ^CUGEMatrix a]
+  (let [da (data-accessor a)
+        stor (full-storage a)
+        cnt-sd (.sd stor)
+        cnt-fd (.fd stor)
+        wgs-sd 32
+        wgs-fd 32
+        wgs 1024
+        grid-dim-x (count-blocks wgs-sd cnt-sd)
+        grid-dim-y (count-blocks wgs-fd cnt-fd)
+        acc-count (* grid-dim-x grid-dim-y)]
+    (if (< 0 (.dim a))
+      (with-release [sum-kernel (function modl "ge_sum")
+                     sum-reduction-kernel (function modl "sum_reduction")
+                     cu-acc (mem-alloc (* Double/BYTES acc-count))
+                     params (parameters acc-count cu-acc)]
+        (launch! sum-kernel (grid-2d cnt-sd cnt-fd wgs-sd wgs-fd) hstream
+                 (parameters (int cnt-sd) (int cnt-fd) cu-acc (.buffer a) (.offset a) (.stride a)))
+        (if (< 1 acc-count)
+          (launch-reduce! hstream sum-reduction-kernel sum-reduction-kernel
+                          params params acc-count wgs))
+        (read-double hstream cu-acc))
+      0.0)))
 
 (defmacro ^:private ge-am
   ([cublas-handle method alpha a beta b]
@@ -346,7 +370,7 @@
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.buffer a) (.offset a) (.ld stor) (.buffer b) (.offset b) (.stride b)
                              eq-flag-buf))
-        (= 0 (aget ^ints (memcpy-host! eq-flag-buf (int-array 1) hstream) 0))))
+        (= 0 (read-int hstream eq-flag-buf))))
     (= 0 (.dim b))))
 
 (defn ^:private uplo-map [modl hstream transpf op-name ^CUUploMatrix a ^CUUploMatrix b]
@@ -379,6 +403,31 @@
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.wrapPrim da alpha) (.buffer a) (.offset a) (.ld stor))))))
   a)
+
+(defn ^:private uplo-sum ^double [modl hstream sum-kernel-name ^CUUploMatrix a]
+  (let [da (data-accessor a)
+        stor (full-storage a)
+        cnt-sd (.sd stor)
+        cnt-fd (.fd stor)
+        wgs-sd 32
+        wgs-fd 32
+        wgs 1024
+        grid-dim-x (count-blocks wgs-sd cnt-sd)
+        grid-dim-y (count-blocks wgs-fd cnt-fd)
+        acc-count (* grid-dim-x grid-dim-y)]
+    (if (< 0 (.dim a))
+      (with-release [sum-kernel (function modl sum-kernel-name)
+                     sum-reduction-kernel (function modl "sum_reduction")
+                     cu-acc (mem-alloc (* Double/BYTES acc-count))
+                     params (parameters acc-count cu-acc)]
+        (launch! sum-kernel (grid-2d cnt-sd cnt-fd wgs-sd wgs-fd) hstream
+                 (parameters cnt-sd cnt-fd (.diag (region a)) (if (uplo-bottom? a) 1 -1)
+                             cu-acc (.buffer a) (.offset a) (.stride a)))
+        (if (< 1 acc-count)
+          (launch-reduce! hstream sum-reduction-kernel sum-reduction-kernel
+                          params params acc-count wgs))
+        (read-double hstream cu-acc))
+      0.0)))
 
 (defmacro ^:private tr-mv
   ([cublas-handle method a x]
@@ -999,8 +1048,8 @@
   BlasPlus
   (amax [_ _]
     (not-available))
-  (sum [_ _]
-    (not-available))
+  (sum [_ a]
+    (ge-sum modl hstream a))
   (set-all [_ alpha a]
     (ge-set modl hstream alpha a))
   (axpby [_ alpha a beta b]
@@ -1152,8 +1201,8 @@
   BlasPlus
   (amax [_ _]
     (not-available))
-  (sum [_ _]
-    (not-available))
+  (sum [_ a]
+    (ge-sum modl hstream a))
   (set-all [_ alpha a]
     (ge-set modl hstream alpha a))
   (axpby [_ alpha a beta b]
@@ -1301,8 +1350,8 @@
   BlasPlus
   (amax [_ _]
     (not-available))
-  (sum [_ _]
-    (not-available))
+  (sum [_ a]
+    (uplo-sum modl hstream "tr_sum" a))
   (set-all [_ alpha a]
     (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
@@ -1457,8 +1506,8 @@
   BlasPlus
   (amax [_ _]
     (not-available))
-  (sum [_ _]
-    (not-available))
+  (sum [_ a]
+    (uplo-sum modl hstream "tr_sum" a))
   (set-all [_ alpha a]
     (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
@@ -1619,8 +1668,8 @@
   BlasPlus
   (amax [_ _]
     (not-available))
-  (sum [_ _]
-    (not-available))
+  (sum [_ a]
+    (uplo-sum modl hstream "sy_sum" a))
   (set-all [_ alpha a]
     (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
@@ -1764,8 +1813,8 @@
   BlasPlus
   (amax [_ _]
     (not-available))
-  (sum [_ _]
-    (not-available))
+  (sum [_ a]
+    (uplo-sum modl hstream "sy_sum" a))
   (set-all [_ alpha a]
     (uplo-set-scal modl hstream "uplo_set" alpha a))
   (axpby [_ alpha a beta b]

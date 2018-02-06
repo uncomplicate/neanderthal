@@ -3,7 +3,7 @@
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
-             [core :refer [tr]]
+             [core :refer [tr sy]]
              [cuda :refer [with-engine *cuda-factory* cuda-float cuda-double]]
              [block-test :as block-test]
              [real-test :as real-test]
@@ -13,7 +13,10 @@
 (defn test-blas-cublas [factory]
   (real-test/test-iamin factory)
   (real-test/test-rot factory)
-  (real-test/test-rotm factory))
+  (real-test/test-rotm factory)
+  (real-test/test-ge-sum factory)
+  (real-test/test-tr-sum factory tr)
+  (real-test/test-sy-sum factory sy))
 
 (defn test-lapack-cublas [factory]
   (real-test/test-tr-sv factory tr)

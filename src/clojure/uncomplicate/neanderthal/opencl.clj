@@ -15,7 +15,7 @@
             [uncomplicate.clojurecl
              [core :refer [*context* *command-queue*]]
              [info :refer [queue-context]]]
-            [uncomplicate.neanderthal.core :refer [vctr ge tr]]
+            [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
             [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-double clblast-float]]))
 
 (def ^{:dynamic true
@@ -80,7 +80,7 @@
   ([a]
    (ge *opencl-factory* a)))
 
-(defn clt
+(defn cltr
   "Creates a TR matrix using GPU engine provided to the bound [[*opencl-factory*]]
   (see [[uncomplicate.neanderthal.core/tr]])."
   ([^long n source options]
@@ -89,3 +89,13 @@
    (tr *opencl-factory* n arg))
   ([arg]
    (tr *opencl-factory* arg)))
+
+(defn clsy
+  "Creates a SY matrix using GPU engine provided to the bound [[*opencl-factory*]]
+  (see [[uncomplicate.neanderthal.core/tr]])."
+  ([^long n source options]
+   (sy *opencl-factory* n source options))
+  ([^long n arg]
+   (sy *opencl-factory* n arg))
+  ([arg]
+   (sy *opencl-factory* arg)))

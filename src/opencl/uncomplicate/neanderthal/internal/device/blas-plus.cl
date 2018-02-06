@@ -87,14 +87,6 @@ __kernel void ge_axpby_transp (REAL alpha, __global const REAL* a, const uint of
     b[ib] = alpha * a[ia] + beta * b[ib];
 }
 
-
-__kernel void sum_reduction (__global double* acc) {
-    double sum = 0.0;//work_group_reduction_sum(acc[get_global_id(0)]);
-    if (get_local_id(0) == 0) {
-        acc[get_group_id(0)] = sum;
-    }
-}
-
 __kernel void uplo_equals_no_transp (const uint unit, const int bottom,
                                      __global const REAL* a, const uint offset_a, const uint ld_a,
                                      __global const REAL* b, const uint offset_b, const uint ld_b,
