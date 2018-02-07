@@ -1993,7 +1993,8 @@
 
   (defn clblast-double [ctx queue]
     (let [wgs (max-work-group-size (queue-device queue))
-          prog (build-program! (program-with-source ctx src) (format "-DREAL=double -DWGS=%d" wgs) nil)]
+          prog (build-program! (program-with-source ctx src)
+                               (format "-DREAL=double -DWGS=%d" wgs) nil)]
       (->CLFactory ctx queue prog
                    (cl-double-accessor ctx queue) native-double
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
@@ -2001,7 +2002,8 @@
 
   (defn clblast-float [ctx queue]
     (let [wgs (max-work-group-size (queue-device queue))
-          prog (build-program! (program-with-source ctx src) (format "-DREAL=float -DWGS=%d" wgs) nil)]
+          prog (build-program! (program-with-source ctx src)
+                               (format "-DREAL=float -DWGS=%d" wgs) nil)]
       (->CLFactory ctx queue prog
                    (cl-float-accessor ctx queue) native-float
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)

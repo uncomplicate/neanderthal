@@ -1,5 +1,11 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.19.0
+
+* Support explicit stream in memcpy.
+* CUDA engine uses explicit context.
+* Sum support in CUDA matrices.
+
 ## 0.18.1
 
 * Added FlowProvider/flow to internal core.

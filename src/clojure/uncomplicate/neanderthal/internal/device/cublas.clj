@@ -15,7 +15,7 @@
             [uncomplicate.clojurecuda
              [protocols :refer [cu-ptr ptr]]
              [core :refer :all :as cuda :exclude [device]]
-             [toolbox :refer [launch-reduce! count-blocks read-double read-int]]
+             [toolbox :refer [launch-reduce! count-blocks read-int]]
              [nvrtc :refer [program compile!]]
              [utils :refer [error]]]
             [uncomplicate.neanderthal
@@ -65,15 +65,16 @@
   y)
 
 (defn ^:private vector-sum [modl hstream ^CUBlockVector x]
-  (let [cnt (.dim x)
+  (let [da (data-accessor x)
+        cnt (.dim x)
         block-dim 1024]
     (if (< 0 cnt)
       (with-release [sum-kernel (function modl "vector_sum")
                      sum-reduction-kernel (function modl "sum_reduction")
-                     cu-acc (mem-alloc (* Double/BYTES (count-blocks block-dim cnt)))]
+                     cu-acc (mem-alloc (* (.entryWidth da) (count-blocks block-dim cnt)))]
         (launch-reduce! hstream sum-kernel sum-reduction-kernel
                         [(.buffer x) (.offset x) (.stride x) cu-acc] [cu-acc] cnt block-dim)
-        (read-double hstream cu-acc))
+        (first (memcpy-host! cu-acc (.wrapPrim da 0.0) hstream)))
       0.0)))
 
 (defn ^:private vector-set [modl hstream alpha ^CUBlockVector x]
@@ -271,7 +272,7 @@
         (if (< 1 acc-count)
           (launch-reduce! hstream sum-reduction-kernel sum-reduction-kernel
                           params params acc-count wgs))
-        (read-double hstream cu-acc))
+        (first (memcpy-host! cu-acc (.wrapPrim da 0.0) hstream)))
       0.0)))
 
 (defmacro ^:private ge-am
@@ -426,7 +427,7 @@
         (if (< 1 acc-count)
           (launch-reduce! hstream sum-reduction-kernel sum-reduction-kernel
                           params params acc-count wgs))
-        (read-double hstream cu-acc))
+        (first (memcpy-host! cu-acc (.wrapPrim da 0.0) hstream)))
       0.0)))
 
 (defmacro ^:private tr-mv
@@ -2019,7 +2020,7 @@
   (defn cublas-float [ctx hstream]
     (in-context
      ctx
-     (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=double"
+     (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=float"
                                                   "-DCAST(fun)=fun##f" "-arch=compute_30"])]
        (let-release [modl (module prog)
                      handle (cublas-handle ctx hstream)
