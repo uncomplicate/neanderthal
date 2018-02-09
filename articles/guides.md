@@ -11,8 +11,8 @@ layout: article
 
 ## Presentations (Slides & Videos)
 
-* [EuroClojure 2016 - Clojure is Not Afraid of the GPU](http://2016.euroclojure.org/speakers#ddjuric): Take a look at the [video](https://www.youtube.com/watch?v=bEOOYbscyTs) and [slides](http://dragan.rocks/talks/EuroClojure2016/clojure-is-not-afraid-of-the-gpu.html). Please note that Neanderthal became much faster in later releases than it was in this presentation.
-* [Bob Konferenz 2017 - Bayadera: Bayes + Clojure + GPU](http://bobkonf.de/2017/djuric.html): Take a look at the [video](https://www.youtube.com/watch?v=TGxYfi3Vi3s) and [slides](http://dragan.rocks/talks/Bobkonferenz2017/bayadera-bob.html). Bayadera is a cool library that uses Neanderthal.
+* [EuroClojure 2016 - Clojure is Not Afraid of the GPU](https://2016.euroclojure.org/speakers#ddjuric): Take a look at the [video](https://www.youtube.com/watch?v=bEOOYbscyTs) and [slides](https://dragan.rocks/talks/EuroClojure2016/clojure-is-not-afraid-of-the-gpu.html). Please note that Neanderthal became much faster in later releases than it was in this presentation.
+* [Bob Konferenz 2017 - Bayadera: Bayes + Clojure + GPU](https://bobkonf.de/2017/djuric.html): Take a look at the [video](https://www.youtube.com/watch?v=TGxYfi3Vi3s) and [slides](https://dragan.rocks/talks/Bobkonferenz2017/bayadera-bob.html). Bayadera is a cool library that uses Neanderthal.
 
 ## General and native engine tutorials
 
@@ -24,25 +24,25 @@ layout: article
 
 * [Matrix Computations on the GPU in Clojure (in TFLOPS!)](/articles/tutorial_opencl.html). Proceed to this GPU engine tutorial when you want even more speed ([source code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_opencl_test.clj)).
 
-* [CUDA and cuBLAS GPU matrices in Clojure](http://dragan.rocks/articles/17/CUDA-and-cuBLAS-GPU-matrices-in-Clojure). The CUDA engine announcement blog post.
+* [CUDA and cuBLAS GPU matrices in Clojure](https://dragan.rocks/articles/17/CUDA-and-cuBLAS-GPU-matrices-in-Clojure). The CUDA engine announcement blog post.
 
 ## Linear Algebra Tutorials
 
-* [Clojure Linear Algebra Refresher (1) - Vector Spaces](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Vector-Spaces)
-* [Clojure Linear Algebra Refresher (2) - Eigenvalues and eigenvectors](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Eigenvalues-and-Eigenvectors)
-* [Clojure Linear Algebra Refresher (3) - Matrix Transformations](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Matrix-Transformations)
-* [Clojure Linear Algebra Refresher (4) - Linear Transformations](http://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Linear-Transformations)
-* [Coding the Matrix in Neanderthal](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples/codingthematrix) contains examples that follow the [Coding the Matrix](http://codingthematrix.com/)
+* [Clojure Linear Algebra Refresher (1) - Vector Spaces](https://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Vector-Spaces)
+* [Clojure Linear Algebra Refresher (2) - Eigenvalues and eigenvectors](https://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Eigenvalues-and-Eigenvectors)
+* [Clojure Linear Algebra Refresher (3) - Matrix Transformations](https://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Matrix-Transformations)
+* [Clojure Linear Algebra Refresher (4) - Linear Transformations](https://dragan.rocks/articles/17/Clojure-Linear-Algebra-Refresher-Linear-Transformations)
+* [Coding the Matrix in Neanderthal](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples/codingthematrix) contains examples that follow the [Coding the Matrix](https://codingthematrix.com/)
 book.
 
 ## Clojure Numerics
 
-* [Clojure Numerics, Part 1 - Use Matrices Efficiently](http://dragan.rocks/articles/17/Clojure-Numerics-1-Use-Matrices-Efficiently)
-* [Clojure Numerics, Part 2 - General Linear Systems and LU Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-2-General-Linear-Systems-and-LU-Factorization)
-* [Clojure Numerics, Part 3 - Special Linear Systems and Cholesky Factorization](http://dragan.rocks/articles/17/Clojure-Numerics-3-Special-Linear-Systems-and-Cholesky-Factorization)
-* [Clojure Numerics, Part 4 - Singular Value Decomposition (SVD)](http://dragan.rocks/articles/17/Clojure-Numerics-4-Singular-Value-Decomposition-SVD)
-* [Clojure Numerics, Part 5 - Orthogonalization and Least Squares](http://dragan.rocks/articles/17/Clojure-Numerics-5-Orthogonalization-and-Least-Squares)
-* [Clojure Numerics, Part 6 - More Linear Algebra Fun with Least Squares](http://dragan.rocks/articles/17/Clojure-Numerics-6-More-Linear-Algebra-Fun-with-Least-Squares)
+* [Clojure Numerics, Part 1 - Use Matrices Efficiently](https://dragan.rocks/articles/17/Clojure-Numerics-1-Use-Matrices-Efficiently)
+* [Clojure Numerics, Part 2 - General Linear Systems and LU Factorization](https://dragan.rocks/articles/17/Clojure-Numerics-2-General-Linear-Systems-and-LU-Factorization)
+* [Clojure Numerics, Part 3 - Special Linear Systems and Cholesky Factorization](https://dragan.rocks/articles/17/Clojure-Numerics-3-Special-Linear-Systems-and-Cholesky-Factorization)
+* [Clojure Numerics, Part 4 - Singular Value Decomposition (SVD)](https://dragan.rocks/articles/17/Clojure-Numerics-4-Singular-Value-Decomposition-SVD)
+* [Clojure Numerics, Part 5 - Orthogonalization and Least Squares](https://dragan.rocks/articles/17/Clojure-Numerics-5-Orthogonalization-and-Least-Squares)
+* [Clojure Numerics, Part 6 - More Linear Algebra Fun with Least Squares](https://dragan.rocks/articles/17/Clojure-Numerics-6-More-Linear-Algebra-Fun-with-Least-Squares)
 
 ## Internal details and edge cases
 
@@ -58,9 +58,9 @@ little exploration, it all have sense and reason.
 
 When you need more information beyond [Neanderthal API](/codox), these links can help you:
 
-* [BLAS Netlib Homepage](http://netlib.org/blas/)
-* [LAPACK Netlib Homepage](http://netlib.org/lapack/)
-* [LAPACK Users' Guide](http://www.netlib.org/lapack/lug/)
+* [BLAS Netlib Homepage](https://netlib.org/blas/)
+* [LAPACK Netlib Homepage](https://netlib.org/lapack/)
+* [LAPACK Users' Guide](https://www.netlib.org/lapack/lug/)
 * [Intel MKL Developer Reference](https://software.intel.com/en-us/mkl-reference-manual-for-c)
 
 A more detailed doc for each subroutine is available at these links.

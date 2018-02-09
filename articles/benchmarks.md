@@ -6,7 +6,7 @@ layout: article
 
 ## Matrix Multiplication: Neanderthal vs working core.matrix implementations
 
-The focus of this article is Neanderthal's performance on the CPU. Since Neanderthal is a [Clojure](http://clojure.org) library, I compare it to the implementations of [core.matrix](https://github.com/mikera/core.matrix). Neanderthal is also as fast or faster than the best Java and Scala native BLAS wrappers, but I'll leave detailed reports to others. For comparisons of Matrix APIs, or GPU performance, see [the tutorials](guides) ([more than 1500x speedup](tutorial_opencl) for matrix multiplication of very large matrices compared to core.matrix's flagship Vectorz library).
+The focus of this article is Neanderthal's performance on the CPU. Since Neanderthal is a [Clojure](https://clojure.org) library, I compare it to the implementations of [core.matrix](https://github.com/mikera/core.matrix). Neanderthal is also as fast or faster than the best Java and Scala native BLAS wrappers, but I'll leave detailed reports to others. For comparisons of Matrix APIs, or GPU performance, see [the tutorials](guides) ([more than 1500x speedup](tutorial_opencl) for matrix multiplication of very large matrices compared to core.matrix's flagship Vectorz library).
 
 ### TL;DR Results
 
@@ -24,7 +24,7 @@ I compared Neanderthal with:
 
 * [Vectorz](https://github.com/mikera/vectorz) - a pure Java/Clojure matrix library. It should be fast for very small matrices, but much slower for large matrices. This is practically the only core.matrix implementation that works and is maintained.
 
-* [Clatrix](https://github.com/tel/clatrix)(a wrapper for [jBLAS](http://mikiobraun.github.io/jblas/)) - an easy to install library that uses a native optimized ATLAS BLAS implementation, and is the most popular and the easiest to install native Java matrix library. It is fast for large matrices, but slow for small matrices. Clatrix works with basic core.matrix API, but has been abandoned by the author some years ago. Issues are fixed very scarcely, and it seems that a considerable portion is broken wrt core.matrix API.
+* [Clatrix](https://github.com/tel/clatrix)(a wrapper for [jBLAS](https://mikiobraun.github.io/jblas/)) - an easy to install library that uses a native optimized ATLAS BLAS implementation, and is the most popular and the easiest to install native Java matrix library. It is fast for large matrices, but slow for small matrices. Clatrix works with basic core.matrix API, but has been abandoned by the author some years ago. Issues are fixed very scarcely, and it seems that a considerable portion is broken wrt core.matrix API.
 
 These two libraries are a good representation of the state of matrix computations in Java/Clojure with native (jBLAS) and pure Java (Vectorz) libraries. They also back the most popular Clojure matrix library, [core.matrix](https://github.com/mikera/core.matrix). The core.matrix Wiki currently lists a handful of other implementations, but those haven't seen much work beyond initial exploration and abandonment a few months later, so I am not taking them into account here.
 

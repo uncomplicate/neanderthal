@@ -44,9 +44,9 @@ This is one of the ways to multiply matrices:
 
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
 
-* The **native engine** is based on a highly optimized native [Intel's MKL](http://https://software.intel.com/en-us/intel-mkl) library of [BLAS](http://netlib.org/blas/) and [LAPACK](http://www.netlib.org/lapack/) computation routines (MKL is not open-source, but it is free to use and redistribute since 2016).
-* The **CUDA GPU engine** is based on cuBLAS and supports all modern Nvidia GPUs. It uses [ClojureCUDA](http://clojurecuda.uncomplicate.org) and [JCuda](http://jcuda.org) libraries. Check out [Uncomplicate ClojureCUDA](http://clojurecuda.uncomplicate.org).
-* The **OpenCL GPU engine** is based on OpenCL BLAS routines from [CLBlast](https://github.com/CNugteren/CLBlast) library for even more computational power when needed. It uses [ClojureCL](http://clojurecl.uncomplicate.org) and [JOCL](http://jocl.org) libraries. Check out [Uncomplicate ClojureCL](http://clojurecl.uncomplicate.org).
+* The **native engine** is based on a highly optimized native [Intel's MKL](https://https://software.intel.com/en-us/intel-mkl) library of [BLAS](https://netlib.org/blas/) and [LAPACK](https://www.netlib.org/lapack/) computation routines (MKL is not open-source, but it is free to use and redistribute since 2016).
+* The **CUDA GPU engine** is based on cuBLAS and supports all modern Nvidia GPUs. It uses [ClojureCUDA](https://clojurecuda.uncomplicate.org) and [JCuda](https://jcuda.org) libraries. Check out [Uncomplicate ClojureCUDA](https://clojurecuda.uncomplicate.org).
+* The **OpenCL GPU engine** is based on OpenCL BLAS routines from [CLBlast](https://github.com/CNugteren/CLBlast) library for even more computational power when needed. It uses [ClojureCL](https://clojurecl.uncomplicate.org) and [JOCL](https://jocl.org) libraries. Check out [Uncomplicate ClojureCL](https://clojurecl.uncomplicate.org).
 
 ### Implemented Features
 
@@ -75,7 +75,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependency to your `project.clj`, just like in [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj):
 
-![](http://clojars.org/uncomplicate/neanderthal/latest-version.svg)
+![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
 
 ## Requirements
 
@@ -123,7 +123,7 @@ Everything will magically work (no need to compile anything) on Nvidia, AMD, and
 
 Works on Linux, Windows, and OS X!
 
-Follow the [ClojureCL getting started guide](http://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
+Follow the [ClojureCL getting started guide](https://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
 **If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` from the [ClojureCL's legacy namespace](https://github.com/uncomplicate/clojurecl/blob/master/src/clojure/uncomplicate/clojurecl/legacy.clj) instead of `command-queue` and `with-default` that are used in the examples.**
 
@@ -131,10 +131,10 @@ Follow the [ClojureCL getting started guide](http://clojurecl.uncomplicate.org/a
 
 Everything will magically work (no need to compile anything) on Nvidia, provided that you **installed Nvidia's CUDA Toolkit**.
 
-Follow the [ClojureCUDA getting started guide](http://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
+Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
 ## Where to Go Next
 
 Hopefully this guide got you started and now you'd like to learn more. I expect to build a comprehensive base of articles and references for exploring this topic, so please check the [All Guides](/articles/guides.html) page from time to time. Of course, you should also check the [Neanderthal API](/codox) for specific details, and feel free to take a glance at [the source](https://github.com/uncomplicate/neanderthal) while you are there.
 
-It is also a good idea to follow [my blog at dragan.rocks](http://dragan.rocks) since I'll write about Neanderthal there.
+It is also a good idea to follow [my blog at dragan.rocks](https://dragan.rocks) since I'll write about Neanderthal there.

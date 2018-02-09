@@ -9,7 +9,7 @@ layout: article
 
 [Neanderthal has a mailing list](https://groups.google.com/forum/#!forum/uncomplicate). Feel free to join it and ask any questions you may have.
 
-[Follow my blog at dragan.rocks](http://dragan.rocks) to keep up with the development and tutorials.
+[Follow my blog at dragan.rocks](https://dragan.rocks) to keep up with the development and tutorials.
 
 ## News & Announcements on Twitter
 
@@ -19,9 +19,9 @@ To subscribe for announcements of releases, important changes, and so on, please
 
 A collection of Clojure libraries, currently containing:
 
-* [ClojureCL](http://clojurecl.uncomplicate.org) - a Clojure library for parallel computations with OpenCL
-* [Neanderthal](http://neanderthal.uncomplicate.org) - you are reading about it.
-* [Fluokitten](http://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure.
+* [ClojureCL](https://clojurecl.uncomplicate.org) - a Clojure library for parallel computations with OpenCL
+* [Neanderthal](https://neanderthal.uncomplicate.org) - you are reading about it.
+* [Fluokitten](https://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure.
 
 ## Get Involved
 

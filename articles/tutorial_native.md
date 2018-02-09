@@ -412,7 +412,7 @@ objects: dv, dge etc.
 
 From version 0.9.0 on, Neanderthal supports major (but not yet all) LAPACK operations. For the details on
 how to use them, check out the `test` folder in the Neanderthal github repository, and
-[My blog at dragan.rocks](http://dragan.rocks).
+[My blog at dragan.rocks](https://dragan.rocks).
 
 ## Can Neanderthal Go Even Faster?
 

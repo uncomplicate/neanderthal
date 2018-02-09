@@ -107,7 +107,7 @@ Neanderthal complains, because it explicitly checks that we do not shoot our alg
 
 ```
 
-That's not a bad result for a custom, pure Clojure algorithm, that offers all niceties of higher-order functions. `fold`, `fmap`, `fmap!` and `foldmap` also have varargs versions, and some other niceties. Please read more about that at [Fluokitten's guides page](http://fluokitten.uncomplicate.org/articles/guides.html).
+That's not a bad result for a custom, pure Clojure algorithm, that offers all niceties of higher-order functions. `fold`, `fmap`, `fmap!` and `foldmap` also have varargs versions, and some other niceties. Please read more about that at [Fluokitten's guides page](https://fluokitten.uncomplicate.org/articles/guides.html).
 
 Fluokitten even makes those functions available for Clojure's persistent data structures. The main difference compared to Clojue's versions is that it does not convert everything to a sequence, varargs versions, and that hey are optimized for each data structure type.
 
