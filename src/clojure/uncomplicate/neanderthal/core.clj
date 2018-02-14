@@ -714,7 +714,7 @@
 
 (defn submatrix
   "Returns a submatrix of the matrix `a` starting from row `i`, column `j`,
-  that has `k` kolumns and `l` rows.
+  that has `k` rows and `l` columns.
 
   The resulting submatrix has a live connection to `a`'s data. Any change to the subvector data
   will affect the original data. If you wish to disconnect the submatrix from the parent matrix,
