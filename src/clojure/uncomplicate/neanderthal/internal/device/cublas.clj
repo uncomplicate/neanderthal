@@ -15,7 +15,7 @@
             [uncomplicate.clojurecuda
              [protocols :refer [cu-ptr ptr]]
              [core :refer :all :as cuda :exclude [device]]
-             [toolbox :refer [launch-reduce! count-blocks read-int]]
+             [toolbox :refer [launch-reduce! read-int]]
              [nvrtc :refer [program compile!]]
              [utils :refer [error]]]
             [uncomplicate.neanderthal
@@ -71,7 +71,7 @@
     (if (< 0 cnt)
       (with-release [sum-kernel (function modl "vector_sum")
                      sum-reduction-kernel (function modl "sum_reduction")
-                     cu-acc (mem-alloc (* (.entryWidth da) (count-blocks block-dim cnt)))]
+                     cu-acc (mem-alloc (* (.entryWidth da) (blocks-count block-dim cnt)))]
         (launch-reduce! hstream sum-kernel sum-reduction-kernel
                         [(.buffer x) (.offset x) (.stride x) cu-acc] [cu-acc] cnt block-dim)
         (first (memcpy-host! cu-acc (.wrapPrim da 0.0) hstream)))
@@ -259,8 +259,8 @@
         wgs-sd 32
         wgs-fd 32
         wgs 1024
-        grid-dim-x (count-blocks wgs-sd cnt-sd)
-        grid-dim-y (count-blocks wgs-fd cnt-fd)
+        grid-dim-x (blocks-count wgs-sd cnt-sd)
+        grid-dim-y (blocks-count wgs-fd cnt-fd)
         acc-count (* grid-dim-x grid-dim-y)]
     (if (< 0 (.dim a))
       (with-release [sum-kernel (function modl "ge_sum")
@@ -413,8 +413,8 @@
         wgs-sd 32
         wgs-fd 32
         wgs 1024
-        grid-dim-x (count-blocks wgs-sd cnt-sd)
-        grid-dim-y (count-blocks wgs-fd cnt-fd)
+        grid-dim-x (blocks-count wgs-sd cnt-sd)
+        grid-dim-y (blocks-count wgs-fd cnt-fd)
         acc-count (* grid-dim-x grid-dim-y)]
     (if (< 0 (.dim a))
       (with-release [sum-kernel (function modl sum-kernel-name)
