@@ -4,7 +4,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 ## How to use it
 
-Read the documentation at [Neanderthal Web Site](http://neanderthal.uncomplicate.org).
+Read the documentation at [Neanderthal Web Site](https://neanderthal.uncomplicate.org).
 
 ## License
 
