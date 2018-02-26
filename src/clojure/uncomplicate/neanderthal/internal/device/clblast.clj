@@ -28,7 +28,8 @@
              [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [clblock :refer :all]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
-           [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide]
+           [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide CLBlastLayout
+            CLBlastTriangle]
            [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix Block DataAccessor Region
             DenseStorage FullStorage LayoutNavigator]
            [uncomplicate.neanderthal.internal.device.clblock CLBlockVector CLGEMatrix CLUploMatrix]))
@@ -495,18 +496,21 @@
   ([a]
    `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
 
-(defmacro ^:private tr-sv [queue method a b]
-  `(with-check error
-     (let [reg# (region ~a)]
-       (~method (.layout (navigator ~b)) CLBlastSide/CLBlastSideLeft (.uplo reg#)
-        (if (= (navigator ~a) (navigator ~b))
-          CLBlastTranspose/CLBlastTransposeNo
-          CLBlastTranspose/CLBlastTransposeYes)
-        (.diag reg#) (.mrows ~b) (.ncols ~b)
-        1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-        (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-        ~queue nil))
-     ~b))
+(defmacro ^:private tr-sv [queue method alpha a b]
+  `(if (< 0 (.dim ~a))
+     (with-check error
+       (let [reg# (region ~a)
+             stor-b# (full-storage ~b)]
+         (~method CLBlastLayout/CLBlastLayoutColMajor CLBlastSide/CLBlastSideLeft
+          (if (uplo-bottom? ~a)  CLBlastTriangle/CLBlastTriangleLower CLBlastTriangle/CLBlastTriangleUpper)
+          (if (= (navigator ~a) (navigator ~b))
+            CLBlastTranspose/CLBlastTransposeNo
+            CLBlastTranspose/CLBlastTransposeYes)
+          (.diag reg#) (.sd stor-b#) (.fd stor-b#)
+          ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
+          (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
+          ~queue nil))
+       ~b)))
 
 ;; =============== Common vectorized math functions ============================
 
@@ -1340,9 +1344,9 @@
   (tri [_ a]
     (not-available))
   (trs [_ a b]
-    (tr-sv queue CLBlast/CLBlastDtrsm ^CLUploMatrix a ^CLGEMatrix b))
+    (tr-sv queue CLBlast/CLBlastDtrsm 1.0 ^CLUploMatrix a ^CLGEMatrix b))
   (sv [_ a b _]
-    (tr-sv queue CLBlast/CLBlastDtrsm ^CLUploMatrix a ^CLGEMatrix b))
+    (tr-sv queue CLBlast/CLBlastDtrsm 1.0 ^CLUploMatrix a ^CLGEMatrix b))
   (con [_ a nrm1?]
     (not-available))
   VectorMath
@@ -1501,9 +1505,9 @@
   (tri [_ a]
     (not-available))
   (trs [_ a b]
-    (tr-sv queue CLBlast/CLBlastStrsm ^CLUploMatrix a ^CLGEMatrix b))
+    (tr-sv queue CLBlast/CLBlastStrsm 1.0 ^CLUploMatrix a ^CLGEMatrix b))
   (sv [_ a b _]
-    (tr-sv queue CLBlast/CLBlastStrsm ^CLUploMatrix a ^CLGEMatrix b))
+    (tr-sv queue CLBlast/CLBlastStrsm 1.0 ^CLUploMatrix a ^CLGEMatrix b))
   (con [_ a nrm1?]
     (not-available))
   VectorMath
