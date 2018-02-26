@@ -5,6 +5,8 @@
 * Support explicit stream in memcpy.
 * CUDA engine uses explicit context.
 * Sum support in CUDA matrices.
+* TRSV in OpenCL matrices.
+* CLBlast dependency updated to 1.3.0.
 
 ## 0.18.1
 
