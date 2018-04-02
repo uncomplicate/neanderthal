@@ -7,11 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.buffer-block
-  (:require [vertigo
-             [core :refer [wrap]]
-             [bytes :refer [direct-buffer byte-seq slice-buffer]]
-             [structs :refer [float64 float32 int32 int64 wrap-byte-seq]]]
-            [uncomplicate.commons.core
+  (:require [uncomplicate.commons.core
              :refer [Releaseable release let-release double-fn wrap-float wrap-double wrap-int wrap-long]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
@@ -27,10 +23,9 @@
              [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
-  (:import [java.nio ByteBuffer DirectByteBuffer]
+  (:import [java.nio ByteBuffer DirectByteBuffer ByteOrder]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL]
-           [vertigo.bytes ByteSeq]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
             VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
             RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault
@@ -42,6 +37,21 @@
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
 
 (def ^:private f* (double-fn *))
+
+(defn ^:private direct-buffer [^long size]
+  (let [buff (ByteBuffer/allocateDirect size)]
+    (.order ^ByteBuffer buff (ByteOrder/nativeOrder))
+    buff))
+
+(defn ^:privaet slice-buffer [^ByteBuffer buf ^long ofst ^long len]
+  (when buf
+    (let [ord (.order buf)
+          res (.duplicate buf)]
+      (.position res ofst)
+      (.limit res (+ ofst len))
+      (.slice res)
+      (.order res)
+      res)))
 
 ;; ================== Declarations ============================================
 
@@ -85,10 +95,6 @@
     (let [da (data-accessor o)]
       (or (identical? this da) (instance? FloatBufferAccessor da))))
   BufferAccessor
-  (toSeq [this buf offset stride]
-    (if (< offset (.count this buf))
-      (wrap-byte-seq float32 (* Float/BYTES stride) (* Float/BYTES offset) (byte-seq buf))
-      (list)))
   (slice [_ buf k l]
     (slice-buffer buf (* Float/BYTES k) (* Float/BYTES l)))
   RealBufferAccessor
@@ -131,10 +137,6 @@
   (device [_]
     :cpu)
   BufferAccessor
-  (toSeq [this buf offset stride]
-    (if (< offset (.count this buf))
-      (wrap-byte-seq float64 (* Double/BYTES stride) (* Double/BYTES offset) (byte-seq buf))
-      (list)))
   (slice [_ buf k l]
     (slice-buffer buf (* Double/BYTES k) (* Double/BYTES l)))
   RealBufferAccessor
@@ -177,10 +179,6 @@
   (device [_]
     :cpu)
   BufferAccessor
-  (toSeq [this buf offset stride]
-    (if (< offset (.count this buf))
-      (wrap-byte-seq int32 (* Integer/BYTES stride) (* Integer/BYTES offset) (byte-seq buf))
-      (list)))
   (slice [_ buf k l]
     (slice-buffer buf (* Integer/BYTES k) (* Integer/BYTES l)))
   IntegerBufferAccessor
@@ -223,10 +221,6 @@
   (device [_]
     :cpu)
   BufferAccessor
-  (toSeq [this buf offset stride]
-    (if (< offset (.count this buf))
-      (wrap-byte-seq int64 (* Long/BYTES stride) (* Long/BYTES offset) (byte-seq buf))
-      (list)))
   (slice [_ buf k l]
     (slice-buffer buf (* Long/BYTES k) (* Long/BYTES l)))
   IntegerBufferAccessor
@@ -236,6 +230,12 @@
     (.putLong buf (* Long/BYTES i) val)))
 
 (def long-accessor (->LongBufferAccessor))
+
+(defn ^:private vector-seq [^Vector vector ^long i]
+  (lazy-seq
+   (if (< -1 i (.dim vector))
+     (cons (.boxedEntry vector i) (vector-seq vector (inc i)))
+     '())))
 
 ;; ==================== Transfer macros and functions  =============================================
 
@@ -392,8 +392,8 @@
   (release [_]
     (if master (release buf) true))
   Seqable
-  (seq [_]
-    (take n (.toSeq da buf ofst strd)))
+  (seq [x]
+    (vector-seq x 0))
   Container
   (raw [_]
     (integer-block-vector fact n))
@@ -559,8 +559,8 @@
   (release [_]
     (if master (release buf) true))
   Seqable
-  (seq [_]
-    (take n (.toSeq da buf ofst strd)))
+  (seq [x]
+    (vector-seq x 0))
   Container
   (raw [_]
     (real-block-vector fact n))

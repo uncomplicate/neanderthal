@@ -14,15 +14,14 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [uncomplicate/commons "0.4.0"]
+                 [uncomplicate/commons "0.5.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.6.1"]
                  [uncomplicate/neanderthal-native "0.17.0"]
                  [uncomplicate/clojurecl "0.9.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.2.1-SNAPSHOT"]
                  [uncomplicate/clojurecuda "0.4.0-SNAPSHOT"]
                  [org.jcuda/jcublas "0.9.0"]
-                 [org.apache.commons/commons-math3 "3.6.1"]
-                 [vertigo "0.1.4"]]
+                 [org.apache.commons/commons-math3 "3.6.1"]]
 
   :codox {:metadata {:doc/format :markdown}
           :src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"

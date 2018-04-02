@@ -6,7 +6,8 @@
 * CUDA engine uses explicit context.
 * Sum support in CUDA matrices.
 * TRSV in OpenCL matrices.
-* CLBlast dependency updated to 1.3.0.
+* CLBlast dependency updated to 1.3.0. Context creation for OpenCL is much faster now.
+* Vertigo dependency removed.
 
 ## 0.18.1
 

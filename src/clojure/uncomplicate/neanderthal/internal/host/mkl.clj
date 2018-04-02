@@ -7,8 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.mkl
-  (:require [vertigo.bytes :refer [direct-buffer]]
-            [uncomplicate.commons.core :refer [with-release let-release]]
+  (:require [uncomplicate.commons.core :refer [with-release let-release]]
             [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
