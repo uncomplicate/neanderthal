@@ -43,7 +43,7 @@
     (.order ^ByteBuffer buff (ByteOrder/nativeOrder))
     buff))
 
-(defn ^:privaet slice-buffer [^ByteBuffer buf ^long ofst ^long len]
+(defn ^:private slice-buffer [^ByteBuffer buf ^long ofst ^long len]
   (when buf
     (let [ord (.order buf)
           res (.duplicate buf)]
