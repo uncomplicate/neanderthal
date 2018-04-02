@@ -7,8 +7,9 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.buffer-block
-  (:require [uncomplicate.commons.core
-             :refer [Releaseable release let-release double-fn wrap-float wrap-double wrap-int wrap-long]]
+  (:require [uncomplicate.commons
+             [core :refer [Releaseable release let-release double-fn wrap-float wrap-double wrap-int wrap-long]]
+             [utils :refer [direct-buffer slice-buffer]]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
             [uncomplicate.neanderthal
@@ -23,7 +24,7 @@
              [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
-  (:import [java.nio ByteBuffer DirectByteBuffer ByteOrder]
+  (:import [java.nio ByteBuffer DirectByteBuffer]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
@@ -37,21 +38,6 @@
   (double (clojure.lang.Util/hashCombine h (Double/hashCode x))))
 
 (def ^:private f* (double-fn *))
-
-(defn ^:private direct-buffer [^long size]
-  (let [buff (ByteBuffer/allocateDirect size)]
-    (.order ^ByteBuffer buff (ByteOrder/nativeOrder))
-    buff))
-
-(defn ^:private slice-buffer [^ByteBuffer buf ^long ofst ^long len]
-  (when buf
-    (let [ord (.order buf)
-          res (.duplicate buf)]
-      (.position res ofst)
-      (.limit res (+ ofst len))
-      (.slice res)
-      (.order res)
-      res)))
 
 ;; ================== Declarations ============================================
 
