@@ -292,6 +292,7 @@
                         c (ge factory 2 7 (range 1 15))]
            a1 => a
            (ge factory 2 4 nil) => (zero a)
+           (ge factory [[1 2] [5 6] [9 10] [13 14]]) => (trans a)
            (view-vctr a) => v
            (view-ge a) => a
            (view-ge c 2) => a

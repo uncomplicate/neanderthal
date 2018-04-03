@@ -254,11 +254,19 @@
    `(transfer-matrix-matrix true ~source ~destination)))
 
 (defmacro ^:private transfer-seq-matrix [source destination]
-  `(let [da# (real-accessor ~destination)
-         buf# (.buffer ~destination)
-         ofst# (.offset ~destination)]
-     (doseq-layout ~destination i# j# idx# ~source e# (.set da# buf# (+ ofst# idx#) e#))
-     ~destination))
+  `(if (sequential? (first ~source))
+     (let [m# (.mrows ~destination)]
+       (loop [i# 0 s# ~source]
+         (if (and s# (< i# m#))
+           (do
+             (transfer! (first s#) (.row ~destination i#))
+             (recur (inc i#) (next s#)))
+           ~destination)))
+     (let [da# (real-accessor ~destination)
+           buf# (.buffer ~destination)
+           ofst# (.offset ~destination)]
+       (doseq-layout ~destination i# j# idx# ~source e# (.set da# buf# (+ ofst# idx#) e#))
+       ~destination)))
 
 (defmacro ^:private transfer-vector-matrix [source destination]
   `(let [stor# (storage ~destination)]
