@@ -1,4 +1,4 @@
-;;   Copyright (c) Dragan Djuric. All rights reserved.
+;;   Copyright (c) Dragan Djuric. All rights reserved.;
 ;;   The use and distribution terms for this software are covered by the
 ;;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php) or later
 ;;   which can be found in the file LICENSE at the root of this distribution.
@@ -272,8 +272,8 @@
              dim# (.dim ~destination)]
          (doall-layout nav# stor# reg# i# j# idx# cnt#
                        (when (< cnt# dim#)
-                         (.set da# buf# (+ ofst# idx#) (.entry ~source cnt#))))
-         ~destination))))
+                         (.set da# buf# (+ ofst# idx#) (.entry ~source cnt#))))))
+     ~destination))
 
 (defmacro ^:private transfer-matrix-vector [source destination]
   `(let [stor# (storage ~source)]
@@ -288,8 +288,8 @@
              dim# (.dim ~destination)]
          (doall-layout nav# stor# reg# i# j# idx# cnt#
                        (when (< cnt# dim#)
-                         (.set ~destination cnt# (.get da# buf# (+ ofst# idx#)))))
-         ~destination))))
+                         (.set ~destination cnt# (.get da# buf# (+ ofst# idx#)))))))
+     ~destination))
 
 (defmacro ^:private transfer-array-matrix [source destination]
   ` (let [da# (real-accessor ~destination)

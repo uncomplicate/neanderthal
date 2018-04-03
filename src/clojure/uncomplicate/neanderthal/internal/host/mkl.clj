@@ -33,15 +33,15 @@
 ;; =========== MKL-specific routines ====================================================
 
 (defmacro ge-copy [method a b]
-  ` (if (< 0 (.dim ~a))
-      (let [stor-b# (full-storage ~b)
-            no-trans# (= (navigator ~a) (navigator ~b))
-            rows# (if no-trans# (.sd stor-b#) (.fd stor-b#))
-            cols# (if no-trans# (.fd stor-b#) (.sd stor-b#))]
-        (~method (int \C) (int (if no-trans# \N \T)) rows# cols#
-         1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.ld stor-b#))
-        ~b)
-      ~b))
+  `(if (< 0 (.dim ~a))
+     (let [stor-b# (full-storage ~b)
+           no-trans# (= (navigator ~a) (navigator ~b))
+           rows# (if no-trans# (.sd stor-b#) (.fd stor-b#))
+           cols# (if no-trans# (.fd stor-b#) (.sd stor-b#))]
+       (~method (int \C) (int (if no-trans# \N \T)) rows# cols#
+        1.0 (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.ld stor-b#))
+       ~b)
+     ~b))
 
 (defmacro ge-scal [method alpha a]
   `(if (< 0 (.dim ~a))
