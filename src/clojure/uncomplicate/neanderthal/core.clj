@@ -222,6 +222,12 @@
   [^MatrixImplementation a]
   (.matrixType a))
 
+(defn compatible?
+  "Checks whether x and y are compatible in the sense that they use compatible
+  data formats (float, double, half) and computation contexts (native host memory, CUDA contexts etc.)."
+  [x y]
+  (api/compatible? x y))
+
 (defn ge
   "Creates a dense matrix (GE) in the context of `factory`, with `m` rows and `n` columns.
 
