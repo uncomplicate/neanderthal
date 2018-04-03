@@ -8,7 +8,8 @@
 
 (ns uncomplicate.neanderthal.block
   (:require [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor LayoutNavigator DenseStorage]))
+  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor LayoutNavigator DenseStorage
+            FullStorage]))
 
 (defn buffer [^Block x]
   (.buffer x))
@@ -27,9 +28,6 @@
 
 (defn gapless? [a]
   (.isGapless (api/storage a)))
-
-(defn capacity [a]
-  (.capacity (api/storage a)))
 
 (defn wrap-prim [^DataAccessor accessor ^double v]
   (.wrapPrim accessor v))
