@@ -9,6 +9,7 @@
 * CLBlast dependency updated to 1.3.0. Context creation for OpenCL is much faster now.
 * Vertigo dependency removed.
 * view-ge supports arbitrary dimensions now.
+* ge supports nested sequence as source for its rows.
 
 ## 0.18.1
 

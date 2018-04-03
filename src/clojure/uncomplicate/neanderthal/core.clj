@@ -231,6 +231,7 @@
       (ge float-factory 2 3)
       (ge opencl-factory 2 3 (range 6))
       (ge opencl-factory (ge double-factory 2 3 (range 6)))
+      (ge float-factory [[1 2 3] [4 5] [] [6 7 8 9]])
   "
   ([factory m n source options]
    (if (and (<= 0 ^long m) (<= 0 ^long n))
