@@ -1,5 +1,5 @@
-#ifndef REAL
-#define REAL float
+#ifndef REAL#
+define REAL float
 #endif
 
 #ifndef WGS

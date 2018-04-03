@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.block
   (:require [uncomplicate.neanderthal.internal.api :as api])
-  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor]))
+  (:import [uncomplicate.neanderthal.internal.api Block DataAccessor LayoutNavigator DenseStorage]))
 
 (defn buffer [^Block x]
   (.buffer x))
@@ -18,6 +18,18 @@
 
 (defn stride ^long [^Block x]
   (.stride x))
+
+(defn column? [a]
+  (.isColumnMajor (api/navigator a)))
+
+(defn row? [a]
+  (.isRowMajor (api/navigator a)))
+
+(defn gapless? [a]
+  (.isGapless (api/storage a)))
+
+(defn capacity [a]
+  (.capacity (api/storage a)))
 
 (defn wrap-prim [^DataAccessor accessor ^double v]
   (.wrapPrim accessor v))
