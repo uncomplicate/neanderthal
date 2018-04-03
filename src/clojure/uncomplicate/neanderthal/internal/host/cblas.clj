@@ -32,14 +32,14 @@
   `(if (= 1 (.stride ~param))
      (do
        (~method (.dim ~x) (.buffer ~x) (.offset ~x) (.stride ~x)
-        (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param))
+        (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~param) (.offset ~param))
        ~x)
      (dragan-says-ex "You cannot use strided vector as param." {:param (info ~param)})))
 
 (defmacro vector-rotmg [method d1d2xy param]
   `(if (= 1 (.stride ~param))
      (do
-       (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param))
+       (~method (.buffer ~d1d2xy) (.stride ~d1d2xy) (.offset ~d1d2xy) (.buffer ~param) (.offset ~param))
        ~param)
      (dragan-says-ex "You cannot use strided vector as param." {:param (info ~param)})))
 

@@ -78,31 +78,34 @@
 ;; These signatures might change a bit once they are supported
 (defmacro ^:private vector-rot
   ([queue method x y c s]
-   `(with-check error
-      (when (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
+   `(if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
+      (with-check error
         (~method (.dim ~x)
          (cl-mem (.buffer ~x)) (.offset ~x) (.stri)
          (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
          ~c ~s
-         ~queue nil))
+         ~queue nil)
+        ~x)
       ~x)))
 
 (defmacro ^:private vector-rotg [queue method x]
-  `(let [mem# (cl-mem (.buffer ~x))
-         ofst# (.offset ~x)
-         strd# (.stride ~x)]
-     (with-check error
-       (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
-        ~queue nil)
-       ~x)))
+  `(if (< 0 (.dim ~x))
+     (let [mem# (cl-mem (.buffer ~x))
+           ofst# (.offset ~x)
+           strd# (.stride ~x)]
+       (with-check error
+         (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
+          ~queue nil)
+         ~x))
+     ~x))
 
 (defmacro ^:private vector-rotm [queue method x y param]
-  `(if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)) (< 4 (.dim param)))
+  `(if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
      (with-check error
        (~method (.dim ~x)
         (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
         (cl-men (.buffer ~y)) (.offset ~y) (.stride ~y)
-        (cl-mem (.buffer ~param) (.offset ~param) (.stride ~param))
+        (cl-mem (.buffer ~param)) (.offset ~param)
         ~queue nil)
        ~param)
      ~param))
