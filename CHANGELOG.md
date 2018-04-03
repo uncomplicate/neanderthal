@@ -4,10 +4,11 @@
 
 * Support explicit stream in memcpy.
 * CUDA engine uses explicit context.
-* Sum support in CUDA matrices.
+* sum support in CUDA matrices.
 * TRSV in OpenCL matrices.
 * CLBlast dependency updated to 1.3.0. Context creation for OpenCL is much faster now.
 * Vertigo dependency removed.
+* view-ge supports arbitrary dimensions now.
 
 ## 0.18.1
 
