@@ -248,7 +248,7 @@
    (ge factory (.mrows a) (.ncols a) a nil)))
 
 (defn view-ge
-  "Attach a GE matrix to the raw data of `a`, with optional stride multiplicator.
+  "Attach a GE matrix to the raw data of `a`, with optional dimensions and/or stride multiplicator.
 
   Changes to the resulting object affect the source `a`, even the parts of data that might not
   be accessible by a. Use with caution!
@@ -260,7 +260,16 @@
   ([a ^long stride-mult]
    (if (< 0 stride-mult)
      (api/view-ge a stride-mult)
-     (dragan-says-ex "You cannot use a negative stride multiplier." {:stirde-mult stride-mult}))))
+     (dragan-says-ex "You cannot use a negative stride multiplier." {:stirde-mult stride-mult})))
+  ([^VectorSpace a ^long m ^long n]
+   (if (and (<= 0 m) (<= 0 n) (<= (* m n) (.dim a)))
+     (api/view-ge a m n)
+     (dragan-says-ex "You cannot generate a GE view with incompatible or ill-fitting dimension."
+                     {:m m :n n :dim (.dim a) :errors
+                      (cond-into []
+                                 (not (< (* m n) (.dim a))) "source is smaller than destination"
+                                 (not (< 0 m)) "m is negative"
+                                 (not (< 0 n)) "n is negative")}))))
 
 (defn tr
   "Creates a dense triangular matrix (TR) in the context of `factory`, with `n` rows and `n` columns.

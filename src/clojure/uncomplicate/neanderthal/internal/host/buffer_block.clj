@@ -13,7 +13,7 @@
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
             [uncomplicate.neanderthal
-             [core :refer [transfer! copy! subvector]]
+             [core :refer [transfer! copy! subvector] :as core]
              [real :refer [entry entry!]]
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
@@ -570,6 +570,8 @@
     (real-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
     (view-ge (view-ge x) stride-mult))
+  (view-ge [x m n]
+    (view-ge (view-ge x) m n))
   (view-tr [x uplo diag]
     (view-tr (view-ge x) uplo diag))
   (view-sy [x uplo]
@@ -842,6 +844,10 @@
       (real-ge-matrix fact false buf m n ofst nav
                       (full-storage column-major m n (* ^long stride-mult (.ld stor)))
                       (ge-region m n))))
+  (view-ge [a m n]
+    (if (.isGapless stor)
+      (real-ge-matrix fact false buf m n ofst nav (full-storage (.isColumnMajor nav) m n) (ge-region m n))
+      (throw (ex-info "Strided GE matrix cannot be viewed through different dimensions." {:a (info a)}))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
       (real-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld stor))
@@ -1078,6 +1084,8 @@
     (view-vctr (view-ge a) stride-mult))
   (view-ge [_]
     (real-ge-matrix fact false buf n n ofst nav stor (ge-region n n) ))
+  (view-ge [a m n]
+    (view-ge (view-ge a) m n))
   (view-ge [a stride-mult]
     (view-ge (view-ge a) stride-mult))
   (view-tr [_ lower? diag-unit?]
@@ -1367,6 +1375,10 @@
       (real-ge-matrix fact false buf m n ofst nav
                       (full-storage (.isColumnMajor nav) m n (.ld stor))
                       (ge-region m n))))
+  (view-ge [a m n]
+    (if (<= (* (long m) (long n)) (.capacity stor))
+      (view-ge (view-ge a) m n)
+      (dragan-says-ex "This GB does not have sufficient storage space for required m and n dimensions.")))
   (view-tr [_ _ diag-unit?]
     (if-not (= :gb matrix-type)
       (let [k (max (.kl reg) (.ku reg))]
@@ -1678,6 +1690,8 @@
     (view-vctr (view-vctr a) stride-mult))
   (view-ge [_]
     (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix."))
+  (view-ge [_ m n]
+    (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix."))
   (view-tr [_ _ diag-unit?]
     (real-packed-matrix fact false buf n ofst nav stor (band-region n (.isLower reg) diag-unit?)
                         :tp (real-default :tp diag-unit?) (tp-engine fact)))
@@ -1939,6 +1953,8 @@
   (view-vctr [_ _]
     (dragan-says-ex "TD cannot be viewed as a strided vector."))
   (view-ge [_]
+    (dragan-says-ex "TD cannot be viewed as a GE matrix."))
+  (view-ge [_ m n]
     (dragan-says-ex "TD cannot be viewed as a GE matrix."))
   (view-tr [_ _ diag-unit?]
     (dragan-says-ex "TD cannot be viewed as a TR matrix."))

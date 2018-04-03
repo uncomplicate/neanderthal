@@ -286,6 +286,7 @@
   (facts "Create a GE matrix."
          (with-release [a (ge factory 2 4 [1 2 5 6 9 10 13 14])
                         a1 (ge factory 2 4 [1 2 5 6 9 10 13 14])
+                        a2 (ge factory 4 2 [1 2 5 6 9 10 13 14])
                         v (vctr factory [1 2 5 6 9 10 13 14])
                         b (tr factory 2 [1 2 6])
                         c (ge factory 2 7 (range 1 15))]
@@ -294,6 +295,7 @@
            (view-vctr a) => v
            (view-ge a) => a
            (view-ge c 2) => a
+           (view-ge a2 2 4) => a
            (view-tr a) => b)))
 
 (defn test-ge [factory]

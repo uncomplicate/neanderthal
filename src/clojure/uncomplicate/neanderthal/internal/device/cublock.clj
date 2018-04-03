@@ -242,6 +242,8 @@
     (cu-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
     (view-ge (view-ge x) stride-mult))
+  (view-ge [x m n]
+    (view-ge (view-ge x) m n))
   (view-tr [x uplo diag]
     (view-tr (view-ge x) uplo diag))
   (view-sy [x uplo]
@@ -446,6 +448,10 @@
       (cu-ge-matrix fact false buf m n ofst nav
                     (full-storage column-major m n (* ^long stride-mult (.ld stor)))
                     (ge-region m n))))
+  (view-ge [a m n]
+    (if (.isGapless stor)
+      (cu-ge-matrix fact false buf m n ofst nav (full-storage (.isColumnMajor nav) m n) (ge-region m n))
+      (throw (ex-info "Strided GE matrix cannot be viewed through different dimensions." {:a (info a)}))))
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
       (cu-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld  stor))
@@ -622,6 +628,8 @@
     (cu-ge-matrix fact false buf n n ofst nav stor (ge-region n n)))
   (view-ge [a stride-mult]
     (view-ge (view-ge a) stride-mult))
+  (view-ge [a m n]
+    (view-ge (view-ge a) m n))
   (view-tr [_ lower? diag-unit?]
     (cu-uplo-matrix fact false buf n ofst nav stor (band-region n lower? diag-unit?)
                     :tr (real-default :tr diag-unit?) (tr-engine fact)))

@@ -232,7 +232,7 @@
   (native [this]))
 
 (defprotocol DenseContainer
-  (view-ge [this] [this stride-mult])
+  (view-ge [this] [this stride-mult] [this m n])
   (view-tr [this lower? diag-unit?])
   (view-sy [this lower?])
   (view-vctr [this] [this stride-mult]))
