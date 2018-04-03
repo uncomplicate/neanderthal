@@ -217,6 +217,11 @@
   [x]
   (instance? Matrix x))
 
+(defn matrix-type
+  "Returns the type of the matrix implementation represented by keyword (:ge, :tr, :sy, etc.)."
+  [^MatrixImplementation a]
+  (.matrixType a))
+
 (defn ge
   "Creates a dense matrix (GE) in the context of `factory`, with `m` rows and `n` columns.
 
