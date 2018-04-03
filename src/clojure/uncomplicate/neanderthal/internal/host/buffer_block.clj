@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.internal.host.buffer-block
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release double-fn wrap-float wrap-double wrap-int wrap-long]]
-             [utils :refer [direct-buffer slice-buffer]]]
+             [utils :refer [direct-buffer slice-buffer dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
             [uncomplicate.neanderthal
@@ -20,7 +20,7 @@
              [api :refer :all]
              [common :refer [dense-rows dense-cols dense-dias region-dias region-cols region-rows
                              lu-factorization pivotless-lu-factorization dual-lu-factorization
-                             dragan-says-ex real-accessor require-trf]]
+                             real-accessor require-trf]]
              [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])

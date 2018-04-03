@@ -10,7 +10,8 @@
     uncomplicate.neanderthal.internal.device.clblock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Mappable mmap unmap
-                           wrap-float wrap-double wrap-int wrap-long]]]
+                           wrap-float wrap-double wrap-int wrap-long]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal
@@ -19,8 +20,7 @@
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [dense-rows dense-cols dense-dias region-dias dragan-says-ex
-                             require-trf]]
+             [common :refer [dense-rows dense-cols dense-dias region-dias require-trf]]
              [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host

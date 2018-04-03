@@ -7,7 +7,9 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.lapack
-  (:require [uncomplicate.commons.core :refer [with-release let-release]]
+  (:require [uncomplicate.commons
+             [core :refer [with-release let-release]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride]]
              [math :refer [pow sqrt abs f=]]]
@@ -15,8 +17,7 @@
              [api :refer [factory index-factory engine data-accessor info raw mm scal flip
                           create-vector create-ge create-gb create-sb create-sy fits-navigation?
                           nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage]]
-             [common :refer [check-stride real-accessor dragan-says-ex
-                             ->LUFactorization ->PivotlessLUFactorization]]
+             [common :refer [check-stride real-accessor ->LUFactorization ->PivotlessLUFactorization]]
              [navigation :refer [dostripe-layout full-storage]]]
             [uncomplicate.neanderthal.internal.host.cblas
              :refer [band-storage-reduce band-storage-map full-storage-map]])

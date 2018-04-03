@@ -34,11 +34,11 @@
   "
   (:require [uncomplicate.commons
              [core :refer [let-release with-release release]]
-             [utils :refer [cond-into]]]
+             [utils :refer [cond-into dragan-says-ex]]]
             [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy gd raw]]
             [uncomplicate.neanderthal.internal
              [api :as api]
-             [common :refer [dragan-says-ex ->SVDecomposition qr-factorization qp-factorization
+             [common :refer [->SVDecomposition qr-factorization qp-factorization
                              rq-factorization ql-factorization lq-factorization]]])
   (:import [uncomplicate.neanderthal.internal.api Vector Matrix Changeable]))
 

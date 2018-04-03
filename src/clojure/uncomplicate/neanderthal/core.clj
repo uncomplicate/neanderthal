@@ -82,11 +82,9 @@
   "
   (:require [uncomplicate.commons
              [core :refer [release let-release with-release]]
-             [utils :refer [cond-into]]]
+             [utils :refer [cond-into dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
-            [uncomplicate.neanderthal.internal
-             [api :as api]
-             [common :refer [dragan-says-ex]]])
+            [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix Changeable GEMatrix
             MatrixImplementation Region]))
 

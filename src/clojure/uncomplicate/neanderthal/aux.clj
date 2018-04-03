@@ -19,11 +19,11 @@
   - Interchanges: [[swap-rows!]], [[swap-rows]], [[swap-cols!]], [[swap-cols]].
   - Permutations: [[permute-rows!]], [[permute-rows]], [[permute-cols!]], [[permute-cols]].
   "
-  (:require [uncomplicate.commons.core :refer [let-release]]
+  (:require [uncomplicate.commons
+             [core :refer [let-release]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.core :refer [copy]]
-            [uncomplicate.neanderthal.internal
-             [api :as api]
-             [common :refer [dragan-says-ex]]])
+            [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api IntegerVector Matrix]))
 
 (defn sort!

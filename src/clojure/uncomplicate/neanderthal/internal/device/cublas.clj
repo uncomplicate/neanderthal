@@ -11,7 +11,7 @@
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release wrap-int wrap-double wrap-float]]
-             [utils :refer [with-check]]]
+             [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.clojurecuda
              [protocols :refer [cu-ptr ptr]]
              [core :refer :all :as cuda :exclude [device]]
@@ -25,7 +25,7 @@
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage]]
-             [common :refer [dragan-says-ex check-eq-navigators]]]
+             [common :refer [check-eq-navigators]]]
             [uncomplicate.neanderthal.internal.device
              [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [cublock :refer :all]])

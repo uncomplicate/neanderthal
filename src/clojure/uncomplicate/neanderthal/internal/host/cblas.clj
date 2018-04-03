@@ -8,9 +8,10 @@
 
 (ns uncomplicate.neanderthal.internal.host.cblas
   (:require [uncomplicate.neanderthal.math :refer [f=]]
+            [uncomplicate.commons.utils :refer [dragan-says-ex]]
             [uncomplicate.neanderthal.internal
              [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage info]]
-             [common :refer [dragan-says-ex real-accessor check-eq-navigators]]
+             [common :refer [real-accessor check-eq-navigators]]
              [navigation :refer [accu-layout full-storage]]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
            [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))

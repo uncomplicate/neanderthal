@@ -11,7 +11,7 @@
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release
                            wrap-float wrap-double wrap-int wrap-long]]
-             [utils :refer [with-check]]]
+             [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecuda
              [protocols :refer :all]
@@ -22,7 +22,7 @@
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
-             [common :refer [dense-rows dense-cols dense-dias region-dias dragan-says-ex require-trf]]
+             [common :refer [dense-rows dense-cols dense-dias region-dias require-trf]]
              [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host

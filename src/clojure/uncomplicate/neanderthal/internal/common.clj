@@ -8,17 +8,13 @@
 
 (ns uncomplicate.neanderthal.internal.common
   (:require [uncomplicate.fluokitten.core :refer [fold]]
-            [uncomplicate.commons.core :refer [Releaseable release let-release double-fn]]
+            [uncomplicate.commons
+             [core :refer [Releaseable release let-release double-fn]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor
             MatrixImplementation LayoutNavigator Block DiagonalMatrix]))
-
-(defn dragan-says-ex
-  ([message data]
-   (throw (ex-info (format "Dragan says: %s" message) data)))
-  ([message]
-   (dragan-says-ex message {})))
 
 (defn check-stride
   (^Block [^Block x]

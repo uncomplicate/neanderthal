@@ -7,12 +7,14 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.host.mkl
-  (:require [uncomplicate.commons.core :refer [with-release let-release]]
+  (:require [uncomplicate.commons
+             [core :refer [with-release let-release]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage]]
-             [common :refer [dragan-says-ex check-stride check-eq-navigators real-accessor]]]
+             [common :refer [check-stride check-eq-navigators real-accessor]]]
             [uncomplicate.neanderthal.internal.host
              [buffer-block :refer :all]
              [cblas :refer :all]
