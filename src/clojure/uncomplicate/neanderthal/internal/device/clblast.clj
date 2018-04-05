@@ -104,7 +104,7 @@
      (with-check error
        (~method (.dim ~x)
         (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-        (cl-men (.buffer ~y)) (.offset ~y) (.stride ~y)
+        (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
         (cl-mem (.buffer ~param)) (.offset ~param)
         ~queue nil)
        ~param)
