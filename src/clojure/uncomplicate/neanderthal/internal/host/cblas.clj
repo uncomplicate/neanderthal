@@ -8,9 +8,11 @@
 
 (ns uncomplicate.neanderthal.internal.host.cblas
   (:require [uncomplicate.neanderthal.math :refer [f=]]
-            [uncomplicate.commons.utils :refer [dragan-says-ex]]
+            [uncomplicate.commons
+             [core :refer [info]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage info]]
+             [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage]]
              [common :refer [real-accessor check-eq-navigators]]
              [navigation :refer [accu-layout full-storage]]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS

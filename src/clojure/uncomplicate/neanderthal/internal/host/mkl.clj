@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.internal.host.mkl
   (:require [uncomplicate.commons
-             [core :refer [with-release let-release]]
+             [core :refer [with-release let-release info]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal

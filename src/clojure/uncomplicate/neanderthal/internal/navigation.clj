@@ -7,7 +7,9 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.navigation
-  (:require [uncomplicate.commons.utils :refer [dragan-says-ex]]
+  (:require [uncomplicate.commons
+             [core :refer [Info info]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [signum]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang IFn$LLDD]

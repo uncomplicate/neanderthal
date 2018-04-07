@@ -10,7 +10,8 @@
     uncomplicate.neanderthal.internal.device.clblast
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
-             [core :refer [Releaseable release let-release with-release wrap-int wrap-double wrap-float]]
+             [core :refer [Releaseable release let-release with-release info
+                           wrap-int wrap-double wrap-float]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.clojurecl
              [core :refer :all]

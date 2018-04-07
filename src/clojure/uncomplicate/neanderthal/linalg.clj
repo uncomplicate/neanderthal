@@ -33,7 +33,7 @@
   - Other LAPACK documentation, as needed.
   "
   (:require [uncomplicate.commons
-             [core :refer [let-release with-release release]]
+             [core :refer [let-release with-release release info]]
              [utils :refer [cond-into dragan-says-ex]]]
             [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy gd raw]]
             [uncomplicate.neanderthal.internal
@@ -135,7 +135,7 @@
   (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
     (api/trtrs! a b)
     (dragan-says-ex "Dimensions and orientation of a and b do not fit."
-                    {:a  (api/info a) :b (api/info b) :errors
+                    {:a  (info a) :b (info b) :errors
                      (cond-into []
                                 (not (api/compatible? a b)) "incompatible a and b"
                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
@@ -153,7 +153,7 @@
   (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
     (api/trtrs a b)
     (dragan-says-ex "Dimensions and orientation of a and b do not fit."
-                    {:a  (api/info a) :b (api/info b) :errors
+                    {:a  (info a) :b (info b) :errors
                      (cond-into []
                                 (not (api/compatible? a b)) "incompatible a and b"
                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
@@ -175,7 +175,7 @@
   (if (and (api/compatible? a b) (and (= (.ncols a) (.mrows b))))
     (api/sv (api/engine a) a b false)
     (dragan-says-ex "You cannot solve incompatible or ill-fitting structures."
-                    {:a  (api/info a) :b (api/info b) :errors
+                    {:a  (info a) :b (info b) :errors
                      (cond-into []
                                 (not (api/compatible? a b)) "incompatible a and b"
                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
@@ -195,7 +195,7 @@
   (if (and (api/compatible? a b) (and (= (.ncols a) (.mrows b))))
     (api/sv (api/engine a) a b)
     (dragan-says-ex "You cannot solve incompatible or ill-fitting structures."
-                    {:a  (api/info a) :b (api/info b) :errors
+                    {:a  (info a) :b (info b) :errors
                      (cond-into []
                                 (not (api/compatible? a b)) "incompatible a and b"
                                 (not (= (.ncols a) (.mrows b))) "a and b dimensions do not fit")})))
@@ -441,7 +441,7 @@
            (api/compatible? a b) (api/fits-navigation? a b))
     (api/ls (api/engine a) a b)
     (throw (ex-info "You cannot solve least squares described by incompatible or ill-fitting matrices."
-                    {:a (api/info a) :b (api/info b) :errors
+                    {:a (info a) :b (info b) :errors
                      (cond-into []
                                 (not (<= (max 1 (.mrows a) (.ncols a)) (.mrows b)))
                                 "dimensions of a and b do not fit"
@@ -496,7 +496,7 @@
              (api/fits-navigation? a b))
       (api/lse (api/engine a) a b c d x)
       (throw (ex-info "You cannot solve least squares with equality constraints described by incompatible or ill-fitting structures."
-                      {:a (api/info a) :b (api/info b) :c (api/info c) :d (api/info d) :errors
+                      {:a (info a) :b (info b) :c (info c) :d (info d) :errors
                        (cond-into []
                                   (not (<= 0 p n m (+ m p))) "dimensions of a and b do not fit"
                                   (not (= n (.ncols b))) "a and be should have the same number of columns"
@@ -546,7 +546,7 @@
         (api/gls (api/engine a) a b d x y)
         [x y])
       (throw (ex-info "You cannot solve generalized least squares described by incompatible or ill-fitting structures."
-                      {:a (api/info a) :b (api/info b) :d (api/info d) :x (api/info x) :y (api/info y) :errors
+                      {:a (info a) :b (info b) :d (info d) :x (info x) :y (info y) :errors
                        (cond-into []
                                   (not (<= 0 (- m n) p (+ m p))) "dimensions of a and b do not fit"
                                   (not (= m (.mrows b))) "a and be should have the same number of rows"
@@ -600,7 +600,7 @@
                                (api/compatible? a vr)(api/fits-navigation? a vr))))
      (api/ev (api/engine a) a w vl vr)
      (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
-                     {:a (api/info a) :w (api/info w) :vl (api/info vl) :vr (api/info vr) :errors
+                     {:a (info a) :w (info w) :vl (info vl) :vr (info vr) :errors
                       (cond-into []
                                  (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
                                  (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
@@ -641,7 +641,7 @@
                                (api/compatible? a vs) (api/fits-navigation? a vs))))
      (api/es (api/engine a) a w vs)
      (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
-                     {:a (api/info a) :w (api/info w) :vs (api/info vs) :errors
+                     {:a (info a) :w (info w) :vs (info vs) :errors
                       (cond-into []
                                  (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
                                  (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
@@ -685,7 +685,7 @@
               (= min-mn (.mrows sigma) (.mrows superb) (.ncols sigma) (.ncols superb)))
        (api/svd (api/engine a) a sigma u vt superb)
        (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
-                       {:a (api/info a) :s (api/info sigma) :u (api/info u) :vt (api/info vt) :superb (api/info superb)
+                       {:a (info a) :s (info sigma) :u (info u) :vt (info vt) :superb (info superb)
                         :errors
                         (cond-into []
                                    (not (= min-mn (.mrows sigma))) "mrows of sigma is not (min m n)"
@@ -706,7 +706,7 @@
               (api/compatible? a sigma) (api/compatible? a superb))
        (api/svd (api/engine a) a sigma superb)
        (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
-                       {:a (api/info a) :s (api/info sigma) :superb (api/info superb) :errors
+                       {:a (info a) :s (info sigma) :superb (info superb) :errors
                         (cond-into []
                                    (not (= min-mn (.mrows sigma))) "mrows of sigma is not m"
                                    (not (= min-mn (.ncols sigma))) "ncols of sigma is not n"

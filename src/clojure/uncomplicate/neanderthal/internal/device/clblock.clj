@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.internal.device.clblock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Mappable mmap unmap
-                           wrap-float wrap-double wrap-int wrap-long]]
+                           Info info wrap-float wrap-double wrap-int wrap-long]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]

@@ -216,9 +216,6 @@
 (defprotocol FlowProvider
   (flow [this]))
 
-(defprotocol Info
-  (info [this]))
-
 (defprotocol MemoryContext
   (compatible? [this other])
   (device [this])

@@ -8,7 +8,8 @@
 
 (ns uncomplicate.neanderthal.internal.host.buffer-block
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release double-fn wrap-float wrap-double wrap-int wrap-long]]
+             [core :refer [Releaseable release let-release Info info
+                           double-fn wrap-float wrap-double wrap-int wrap-long]]
              [utils :refer [direct-buffer slice-buffer dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]

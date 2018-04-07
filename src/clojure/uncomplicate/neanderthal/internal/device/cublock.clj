@@ -9,7 +9,7 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.device.cublock
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release with-release
+             [core :refer [Releaseable release let-release with-release Info info
                            wrap-float wrap-double wrap-int wrap-long]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]

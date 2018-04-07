@@ -81,27 +81,12 @@
 
   "
   (:require [uncomplicate.commons
-             [core :refer [release let-release with-release]]
+             [core :refer [release let-release with-release info]]
              [utils :refer [cond-into dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [f= pow sqrt]]
             [uncomplicate.neanderthal.internal.api :as api])
   (:import [uncomplicate.neanderthal.internal.api VectorSpace Vector Matrix Changeable GEMatrix
             MatrixImplementation Region]))
-
-(defn info
-  "Displays the details of any data structure internals."
-  [x]
-  (api/info x))
-
-(extend-type Object
-  api/Info
-  (api/info [this]
-    (str this)))
-
-(extend-type nil
-  api/Info
-  (api/info [this]
-    (str this)))
 
 (defmulti transfer!
   "Transfers the data from source to destination regardless of the structure type or memory context.
@@ -871,7 +856,7 @@
   (if (and (api/compatible? x y) (api/fits? x y))
     (api/dot (api/engine x) x y)
     (dragan-says-ex "You cannot compute dot of incompatible or ill-fitting vectors."
-                    {:x (api/info x) :y (api/info y)})))
+                    {:x (info x) :y (info y)})))
 
 (defn nrm1
   "Computes the 1-norm of vector or matrix `x`."
@@ -977,7 +962,7 @@
         (api/swap (api/engine x) x y)
         x)
       (dragan-says-ex "You cannot swap data of incompatible or ill-fitting structures."
-                      {:x (api/info x) :y (api/info y)}))
+                      {:x (info x) :y (info y)}))
     x))
 
 (defn copy!
@@ -996,7 +981,7 @@
          (api/copy (api/engine x) x y)
          y)
        (dragan-says-ex "You cannot copy data of incompatible or ill-fitting structures."
-                       {:x (api/info x) :y (api/info y)}))
+                       {:x (info x) :y (info y)}))
      y))
   ([^Vector x ^Vector y offset-x length offset-y]
    (if (not (identical? x y))
@@ -1007,7 +992,7 @@
          (api/subcopy (api/engine x) x y ^long offset-x ^long length ^long offset-y)
          y)
        (dragan-says-ex "You cannot copy data of incompatible vectors"
-                       {:x (api/info x) :y (api/info y) :length length}))
+                       {:x (info x) :y (info y) :length length}))
      y)))
 
 (defn copy
@@ -1057,7 +1042,7 @@
                                    (not (<= -1.0 c 1.0)) "c is not between -1.0 and 1.0"
                                    (not (<= -1.0 s 1.0)) "s is not between -1.0 and 1.0"
                                    (not (f= 1.0 (+ (pow c 2) (pow s 2)))) "s^2 + c^2 is not 1.0")}))
-     (dragan-says-ex "You cannot rotate incompatible vectors." {:x (api/info x) :y (api/info y)})))
+     (dragan-says-ex "You cannot rotate incompatible vectors." {:x (info x) :y (info y)})))
   ([x y ^double c]
    (rot! x y c (sqrt (- 1.0 (pow c 2))))))
 
@@ -1086,7 +1071,7 @@
     (if (and (api/compatible? x y) (api/compatible? x param) (api/fits? x y) (< 4 (.dim param)))
       (api/rotm (api/engine x) x y param)
       (dragan-says-ex "You cannot apply modified plane rotation with incompatible or ill-fitting vectors."
-                      {:x (api/info x) :y (api/info y) :param (api/info param) :errors
+                      {:x (info x) :y (info y) :param (info param) :errors
                        (cond-into []
                                   (not (api/compatible? x y)) "incompatible x and y"
                                   (not (api/compatible? x param)) "incompatible x and param"
@@ -1106,7 +1091,7 @@
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
     (api/rotmg (api/engine param) d1d2xy param)
     (dragan-says-ex "You cannot generate modified plane rotation with incompatible or ill-fitting vectors."
-                    {:d1d2xy (api/info d1d2xy) :param (api/info param) :errors
+                    {:d1d2xy (info d1d2xy) :param (info param) :errors
                      (cond-into []
                                 (not (api/compatible? d1d2xy param)) "incompatible d2d2xy and param"
                                 (not (< 3 (.dim param))) "d1d2xy is shorter than 3"
@@ -1136,7 +1121,7 @@
        (api/axpy (api/engine x) alpha x y)
        y)
      (dragan-says-ex "You cannot add incompatible or ill-fitting structures."
-                     {:x (api/info x) :y (api/info y)})))
+                     {:x (info x) :y (info y)})))
   ([x y]
    (axpy! 1.0 x y))
   ([alpha x y & zs]
@@ -1216,7 +1201,7 @@
        (api/axpby (api/engine x) alpha x beta y)
        y)
      (dragan-says-ex "You cannot add incompatible or ill-fitting structures."
-                     {:x (api/info x) :y (api/info y)})))
+                     {:x (info x) :y (info y)})))
   ([x beta y]
    (axpby! 1.0 x beta y))
   ([x y]
@@ -1257,7 +1242,7 @@
             (= (.ncols a) (.dim x)) (= (.mrows a) (.dim y)))
      (api/mv (api/engine a) alpha a x beta y)
      (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
-                     {:a (api/info a) :x (api/info x) :y (api/info y) :errors
+                     {:a (info a) :x (info x) :y (info y) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (api/compatible? a y)) "incompatible a and y"
@@ -1271,7 +1256,7 @@
    (if (and (api/compatible? a x) (= (.ncols a) (.dim x)))
      (api/mv (api/engine a) a x)
      (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
-                     {:a (api/info a) :x (api/info x) :errors
+                     {:a (info a) :x (info x) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")}))))
@@ -1310,7 +1295,7 @@
    (if (and (api/compatible? a x) (api/compatible? a y) (= (.mrows a) (.dim x)) (= (.ncols a) (.dim y)))
      (api/rk (api/engine a) alpha x y a)
      (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
-                     {:a (api/info a) :x (api/info x) :y (api/info y) :errors
+                     {:a (info a) :x (info x) :y (info y) :errors
                       (cond-into []
                                  (not (api/compatible? a x)) "incompatible a and x"
                                  (not (api/compatible? a y)) "incompatible a and y"
@@ -1362,7 +1347,7 @@
             (= (.ncols a) (.mrows b)) (= (.mrows a) (.mrows c)) (= (.ncols b) (.ncols c)))
      (api/mm (api/engine a) alpha a b beta c true)
      (dragan-says-ex "You cannot multiply incompatible or ill-fitting matrices."
-                     {:a (api/info a) :b (api/info b) :c (api/info c) :errors
+                     {:a (info a) :b (info b) :c (info c) :errors
                       (cond-into []
                                  (not (api/compatible? a b)) "incompatible a and b"
                                  (not (api/compatible? a c)) "incompatible a and c"
@@ -1375,7 +1360,7 @@
    (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
      (api/mm (api/engine a) alpha a b true)
      (dragan-says-ex "You cannot multiply incompatible or ill-fitting matrices."
-                     {:a (api/info a) :b (api/info b) :errors
+                     {:a (info a) :b (info b) :errors
                       (cond-into []
                                  (not (api/compatible? a b)) "incompatible a and b"
                                  (not (= (.ncols a) (.mrows b))) "(ncols a) is not equals to (mrows b)")})))

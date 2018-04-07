@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.internal.common
   (:require [uncomplicate.fluokitten.core :refer [fold]]
             [uncomplicate.commons
-             [core :refer [Releaseable release let-release double-fn]]
+             [core :refer [Releaseable release let-release double-fn Info info]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal.api :refer :all])

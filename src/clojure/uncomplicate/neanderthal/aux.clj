@@ -20,7 +20,7 @@
   - Permutations: [[permute-rows!]], [[permute-rows]], [[permute-cols!]], [[permute-cols]].
   "
   (:require [uncomplicate.commons
-             [core :refer [let-release]]
+             [core :refer [let-release info]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.core :refer [copy]]
             [uncomplicate.neanderthal.internal.api :as api])
@@ -55,7 +55,7 @@
    (if (and (<= 1 k1 k2 (.dim ipiv)) (<= (- k2 k1) (.dim ipiv)))
      (api/laswp (api/engine a) a ipiv k1 k2)
      (dragan-says-ex "There is not enough indices in ipiv. Check the ipiv and k1 and k2."
-                     {:a (api/info a) :ipiv (api/info ipiv)})))
+                     {:a (info a) :ipiv (info ipiv)})))
   ([a ^IntegerVector ipiv]
    (swap-rows! a ipiv 1 (.dim ipiv))))
 
@@ -95,7 +95,7 @@
    (if (and (= (.mrows a) (.dim ipiv)))
      (api/lapmr (api/engine a) a ipiv forward)
      (dragan-says-ex "Ipiv dimension must be mrows of a."
-                     {:a (api/info a) :ipiv (api/info ipiv)})))
+                     {:a (info a) :ipiv (info ipiv)})))
   ([a ipiv]
    (permute-rows! a ipiv true)))
 
@@ -115,7 +115,7 @@
    (if (and (= (.ncols a) (.dim jpiv)))
      (api/lapmt (api/engine a) a jpiv forward)
      (dragan-says-ex "Jpiv dimension must be ncols of a."
-                     {:a (api/info a) :jpiv (api/info jpiv)})))
+                     {:a (info a) :jpiv (info jpiv)})))
   ([a jpiv]
    (permute-cols! a jpiv true)))
 
