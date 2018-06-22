@@ -195,6 +195,11 @@
   [x]
   (instance? Vector x))
 
+(defn vspace?
+  "Tests if x is a vector space."
+  [x]
+  (instance? VectorSpace x))
+
 (defn matrix?
   "Tests if x is a matrix of any kind."
   [x]
