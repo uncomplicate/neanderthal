@@ -8,7 +8,7 @@
   (:import org.nd4j.linalg.factory.Nd4j
            org.nd4j.linalg.api.ndarray.INDArray
            org.nd4j.linalg.cpu.nativecpu.NDArray
-           java.util.SplittableRandom.))
+           java.util.SplittableRandom))
 
 (def m1 (Nd4j/rand 4 4))
 (def m2 (Nd4j/rand 4 4))
