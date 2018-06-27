@@ -13,7 +13,6 @@
                  [clatrix/clatrix "0.5.0"]
                  [uncomplicate/fluokitten "0.6.1"]
                  [uncomplicate/neanderthal "0.19.0"]
-                 [hswick/jutsu.matrix "0.0.15"]
                  [org.nd4j/nd4j-api "1.0.0-beta"]
                  #_[org.nd4j/nd4j-cuda-9.1 "1.0.0-beta"]
                  [org.nd4j/nd4j-native-platform "1.0.0-beta"]]

@@ -20,9 +20,17 @@
 (defn bench-nd4j-mmuli-float [^long m ^long k ^long n]
   (let [m1 (Nd4j/rand m k)
         m2 (Nd4j/rand k n)
-        result (Nd4j/createUninitialized m n)]
+        result (Nd4j/createUninitialized (int-array [m n]) \f)]
     (quick-bench
      (do (.mmuli ^INDArray m1 ^INDArray m2 ^INDArray result)
+         true))))
+
+(defn bench-nd4j-gemm-float [^long m ^long k ^long n]
+  (let [m1 (Nd4j/rand m k)
+        m2 (Nd4j/rand k n)
+        result (Nd4j/createUninitialized (int-array [m n]) \f)]
+    (quick-bench
+     (do (Nd4j/gemm ^INDArray m1 ^INDArray m2 ^INDArray result false false 1.0 0.0)
          true))))
 
 (let [splittable-random (SplittableRandom.)]
