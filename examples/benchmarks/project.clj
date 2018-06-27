@@ -17,8 +17,10 @@
                  #_[org.nd4j/nd4j-cuda-9.1 "1.0.0-beta"]
                  [org.nd4j/nd4j-native-platform "1.0.0-beta"]]
 
+  ;;:repositories [["snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots"}]]
   :jvm-opts ^:replace ["-Dserver -Dclojure.compiler.direct-linking=true"
-                       "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"]
+                       "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
+                       #_"-Dorg.bytedeco.javacpp.openblas.load=mkl_rt"]
 
   :global-vars {*warn-on-reflection* true
                 *assert* false
