@@ -10,9 +10,12 @@ The focus of this article is Neanderthal's performance on the CPU. Since Neander
 
 ### TL;DR Results
 
+* Neanderthal seems to be the fastest library available on the Java platform. Read detailed comparisons with ND4J: [Neanderthal vs. ND4J – Native Performance, Java and CPU](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol1) and [Neanderthal vs ND4J - vol 2 - The Same Native MKL Backend, 1000 x Speedup](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol2).
+
 * **Even for very small matrices**, Neanderthal is faster than core.matrix's [Vectorz](https://github.com/mikera/vectorz) (except for matrices smaller than 6x6, and even that is easily fixable by adding a naive Clojure operations for tiny structures). For large matrices, Neanderthal is **much** faster than  Vectorz: **more than 100x faster** (floats) and 50x faster (doubles).
 
 * Neanderthal is **several times faster** than the jBlas-based multithreaded [Clatrix](https://github.com/tel/clatrix) implementation of core.matrix. That does not take into account that [Clatrix has been abandoned](https://github.com/tel/clatrix/issues/62#issuecomment-71420404) by the original author and barely supports core.matrix API, and that Neanderhtal also offers many other features ([GPU computing](tutorial_opencl) being one of them relevant to raw speed).
+
 
 ### What is Being Measured
 
