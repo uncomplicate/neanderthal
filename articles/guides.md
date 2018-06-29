@@ -14,10 +14,12 @@ layout: article
 * [EuroClojure 2016 - Clojure is Not Afraid of the GPU](https://2016.euroclojure.org/speakers#ddjuric): Take a look at the [video](https://www.youtube.com/watch?v=bEOOYbscyTs) and [slides](https://dragan.rocks/talks/EuroClojure2016/clojure-is-not-afraid-of-the-gpu.html). Please note that Neanderthal became much faster in later releases than it was in this presentation.
 * [Bob Konferenz 2017 - Bayadera: Bayes + Clojure + GPU](https://bobkonf.de/2017/djuric.html): Take a look at the [video](https://www.youtube.com/watch?v=TGxYfi3Vi3s) and [slides](https://dragan.rocks/talks/Bobkonferenz2017/bayadera-bob.html). Bayadera is a cool library that uses Neanderthal.
 
-## Performance comparisons
+## Performance comparisons with other fast libraries
 
 * [Neanderthal vs. ND4J – Native Performance, Java and CPU](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol1)
 * [Neanderthal vs ND4J - vol 2 - The Same Native MKL Backend, 1000 x Speedup](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol2).
+
+* [Neanderthal vs ND4J - vol 3 - Clojure Beyond Fast Native MKL Backend](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol3).
 
 ## General and native engine tutorials
 
