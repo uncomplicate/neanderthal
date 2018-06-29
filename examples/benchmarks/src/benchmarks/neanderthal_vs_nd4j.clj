@@ -84,12 +84,12 @@
       (do (.mmul ^INDArray m1 ^INDArray m2)
           true))))
   ([m k1 k2 k3 k4 k5 n]
-   (with-release [m1 (Nd4j/rand ^int m ^int k1)
-                  m2 (Nd4j/rand ^int k1 ^int k2)
-                  m3 (Nd4j/rand ^int k2 ^int k3)
-                  m4 (Nd4j/rand ^int k3 ^int k4)
-                  m5 (Nd4j/rand ^int k4 ^int k5)
-                  m6 (Nd4j/rand ^int k5 ^int n)]
+   (let [m1 (Nd4j/rand ^int m ^int k1)
+         m2 (Nd4j/rand ^int k1 ^int k2)
+         m3 (Nd4j/rand ^int k2 ^int k3)
+         m4 (Nd4j/rand ^int k3 ^int k4)
+         m5 (Nd4j/rand ^int k4 ^int k5)
+         m6 (Nd4j/rand ^int k5 ^int n)]
      (quick-bench
       (do (.mmul ^INDArray m1
                  (.mmul ^INDArray m2
@@ -99,16 +99,50 @@
           true)))))
 
 (defn time-nd4j-mmul [m k1 k2 k3 k4 k5 n]
-  (with-release [m1 (Nd4j/rand \f ^int m ^int k1)
-                 m2 (Nd4j/rand \f ^int k1 ^int k2)
-                 m3 (Nd4j/rand \f ^int k2 ^int k3)
-                 m4 (Nd4j/rand \f ^int k3 ^int k4)
-                 m5 (Nd4j/rand \f ^int k4 ^int k5)
-                 m6 (Nd4j/rand \f ^int k5 ^int n)]
+  (let [m1 (Nd4j/rand \f ^int m ^int k1)
+        m2 (Nd4j/rand \f ^int k1 ^int k2)
+        m3 (Nd4j/rand \f ^int k2 ^int k3)
+        m4 (Nd4j/rand \f ^int k3 ^int k4)
+        m5 (Nd4j/rand \f ^int k4 ^int k5)
+        m6 (Nd4j/rand \f ^int k5 ^int n)]
     (time
      (do (.mmul ^INDArray m1
                 (.mmul ^INDArray m2
                        (.mmul ^INDArray m3
                               (.mmul ^INDArray m4
                                      (.mmul ^INDArray m5 ^INDArray m6)) )))
+         true))))
+
+;; Vol 3
+
+(defn bench-nd4j-mm-forwards [m k1 k2 k3 k4 k5 n]
+  (let [m1 (Nd4j/rand ^int m ^int k1)
+        m2 (Nd4j/rand ^int k1 ^int k2)
+        m3 (Nd4j/rand ^int k2 ^int k3)
+        m4 (Nd4j/rand ^int k3 ^int k4)
+        m5 (Nd4j/rand ^int k4 ^int k5)
+        m6 (Nd4j/rand ^int k5 ^int n)]
+    (quick-bench
+     (do (-> ^INDArray m1
+             (.mmul ^INDArray m2)
+             (.mmul ^INDArray m3)
+             (.mmul ^INDArray m4)
+             (.mmul ^INDArray m5)
+             (.mmul ^INDArray m6))
+         true))))
+
+(defn time-nd4j-mm-forwards [m k1 k2 k3 k4 k5 n]
+  (let [m1 (Nd4j/rand ^int m ^int k1)
+        m2 (Nd4j/rand ^int k1 ^int k2)
+        m3 (Nd4j/rand ^int k2 ^int k3)
+        m4 (Nd4j/rand ^int k3 ^int k4)
+        m5 (Nd4j/rand ^int k4 ^int k5)
+        m6 (Nd4j/rand ^int k5 ^int n)]
+    (time
+     (do (-> ^INDArray m1
+             (.mmul ^INDArray m2)
+             (.mmul ^INDArray m3)
+             (.mmul ^INDArray m4)
+             (.mmul ^INDArray m5)
+             (.mmul ^INDArray m6))
          true))))
