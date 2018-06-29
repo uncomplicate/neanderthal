@@ -76,7 +76,7 @@
      (quick-bench
       (release (apply mm ms))))))
 
-(defn bench-nd4j-mmul
+(defn bench-nd4j-mmul-backward
   ([^long m ^long k ^long n]
    (let [m1 (Nd4j/rand m k)
          m2 (Nd4j/rand k n)]
@@ -97,6 +97,22 @@
                                (.mmul ^INDArray m4
                                       (.mmul ^INDArray m5 ^INDArray m6)) )))
           true)))))
+
+(defn bench-nd4j-mmul-forward [m k1 k2 k3 k4 k5 n]
+  (with-release [m1 (Nd4j/rand ^int m ^int k1)
+                 m2 (Nd4j/rand ^int k1 ^int k2)
+                 m3 (Nd4j/rand ^int k2 ^int k3)
+                 m4 (Nd4j/rand ^int k3 ^int k4)
+                 m5 (Nd4j/rand ^int k4 ^int k5)
+                 m6 (Nd4j/rand ^int k5 ^int n)]
+                (quick-bench
+                  (do (-> ^INDArray m1
+                          (.mmul ^INDArray m2)
+                          (.mmul ^INDArray m3)
+                          (.mmul ^INDArray m4)
+                          (.mmul ^INDArray m5)
+                          (.mmul ^INDArray m6))
+                      true))))
 
 (defn time-nd4j-mmul [m k1 k2 k3 k4 k5 n]
   (with-release [m1 (Nd4j/rand \f ^int m ^int k1)
