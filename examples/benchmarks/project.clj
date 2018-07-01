@@ -1,4 +1,4 @@
-(defproject benchmarks "0.17.2"
+(defproject benchmarks "0.19.0"
   :description "Benchmarks and comparisons between Neanderthal and other Java matrix libraries."
   :url "https://github.com/uncomplicate/neanderthal/tree/master/examples/benchmarks"
   :license {:name "Eclipse Public License"
