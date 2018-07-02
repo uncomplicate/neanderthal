@@ -167,7 +167,7 @@
   "
   ([factory source]
    (cond
-     (integer? source) (if (<= 0 ^long source)
+     (integer? source) (if (<= 0 (long source))
                          (api/create-vector (api/factory factory) source true)
                          (dragan-says-ex  "Vector cannot have a negative dimension." {:source (info source)}))
      (number? source) (.setBoxed ^Changeable (vctr factory 1) 0 source)
@@ -233,7 +233,7 @@
       (ge float-factory [[1 2 3] [4 5] [] [6 7 8 9]])
   "
   ([factory m n source options]
-   (if (and (<= 0 ^long m) (<= 0 ^long n))
+   (if (and (<= 0 (long m)) (<= 0 (long n)))
      (let-release [res (api/create-ge (api/factory factory) m n (api/options-column? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
@@ -382,7 +382,7 @@
       (gb float-factory 4 3 1 2 (range 20) {:layout :row})
   "
   ([factory m n kl ku source options]
-   (if (and (or (= 0 kl m) (< -1 ^long kl ^long m)) (or (= 0 ku n) (< -1 ^long ku ^long n)))
+   (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
      (let-release [res (api/create-gb (api/factory factory) m n kl ku
                                       (api/options-column? options) (not (:raw options)))]
        (if source (transfer! source res) res))
@@ -418,7 +418,7 @@
       (sb float-factory 4 2 (range 20) {:layout :row})
   "
   ([factory n k source options]
-   (if (or (< -1 ^long k ^long n) (= 0 k n))
+   (if (or (< -1 (long k) (long n)) (= 0 k n))
      (let-release [res (api/create-sb (api/factory factory) n k (api/options-column? options)
                                       (api/options-lower? options) (not (:raw options)))]
        (if source
@@ -426,7 +426,7 @@
          res))
      (dragan-says-ex "SB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k})))
   ([factory n source arg]
-   (let [[k src] (if (number? source) [source nil] [(max 0 (dec ^long n)) source])]
+   (let [[k src] (if (number? source) [source nil] [(max 0 (dec (long n))) source])]
      (if (or (not arg) (map? arg))
        (sb factory n k src arg)
        (sb factory n k arg nil))))
@@ -437,7 +437,7 @@
      :default (sb factory n (max 0 (dec n)) arg nil)))
   ([factory source]
    (if (number? source)
-     (sb factory source (max 0 (dec ^long source)) nil nil)
+     (sb factory source (max 0 (dec (long source))) nil nil)
      (let [n (min (.mrows ^Matrix source) (.ncols ^Matrix source))
            reg (api/region source)]
        (sb factory n (max 0 (min (dec n) (max (.kl reg) (.ku reg))))  source nil)))))
@@ -458,14 +458,14 @@
       (tb float-factory 4 2 (range 20) {:layout :row})
   "
   ([factory n k source options]
-   (if (or (< -1 ^long k ^long n) (= 0 k n))
+   (if (or (< -1 (long k) (long n)) (= 0 k n))
      (let-release [res (api/create-tb (api/factory factory) n k (api/options-column? options)
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
        (if source (transfer! source res) res))
      (dragan-says-ex "TB matrix cannot have a negative dimension nor overflow diagonals." {:n n :k k})))
   ([factory n source arg]
-   (let [[k src] (if (number? source) [source nil] [(max 0 (dec ^long n)) source])]
+   (let [[k src] (if (number? source) [source nil] [(max 0 (dec (long n))) source])]
      (if (or (not arg) (map? arg))
        (tb factory n k src arg)
        (tb factory n k arg nil))))
@@ -476,7 +476,7 @@
      :default (tb factory n (max 0 (dec n)) arg nil)))
   ([factory source]
    (if (number? source)
-     (tb factory source (max 0 (dec ^long source)) nil nil)
+     (tb factory source (max 0 (dec (long source))) nil nil)
      (let [n (min (.mrows ^Matrix source) (.ncols ^Matrix source))
            reg (api/region source)]
        (tb factory n (min (max 0 (dec n)) (max (.kl reg) (.ku reg))) source nil)))))
@@ -496,7 +496,7 @@
       (tp float-factory 4 2 (range 20) {:uplo :upper :diag :unit})
   "
   ([factory n source options]
-   (if  (< -1 ^long n)
+   (if  (< -1 (long n))
      (let-release [res (api/create-tp (api/factory factory) n (api/options-column? options)
                                       (api/options-lower? options) (api/options-diag-unit? options)
                                       (not (:raw options)))]
@@ -737,12 +737,12 @@
       (submatrix (ge double-factroy 4 3 (range 12)) 1 1 2 1)
   "
   ([^Matrix a i j k l]
-   (if (and (<= 0 ^long i (+ ^long i ^long k) (.mrows a))
-            (<= 0 ^long j (+ ^long j ^long l) (.ncols a)))
+   (if (and (<= 0 (long i) (+ (long i) (long k)) (.mrows a))
+            (<= 0 (long j) (+ (long j) (long l)) (.ncols a)))
      (.submatrix a i j k l)
      (throw (ex-info "Requested submatrix is out of bounds."
                      {:i i :j j :k k :l l :mrows (.mrows a) :ncols (.ncols a)
-                      :i+k (+ ^long i ^long k) :j+l (+ ^long j ^long l)}))))
+                      :i+k (+ (long i) (long k)) :j+l (+ (long j) (long l))}))))
   ([^Matrix a k l]
    (submatrix a 0 0 k l)))
 
@@ -991,10 +991,10 @@
   ([^Vector x ^Vector y offset-x length offset-y]
    (if (not (identical? x y))
      (if (and (api/compatible? x y)
-              (<= (+ ^long offset-x ^long length) (.dim x))
-              (<= (+ ^long offset-y ^long length) (.dim y)))
+              (<= (+ (long offset-x) (long length)) (.dim x))
+              (<= (+ (long offset-y) (long length)) (.dim y)))
        (if (< 0 (.dim x))
-         (api/subcopy (api/engine x) x y ^long offset-x ^long length ^long offset-y)
+         (api/subcopy (api/engine x) x y (long offset-x) (long length) (long offset-y))
          y)
        (dragan-says-ex "You cannot copy data of incompatible vectors"
                        {:x (info x) :y (info y) :length length}))

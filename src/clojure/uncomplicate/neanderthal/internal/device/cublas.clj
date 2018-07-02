@@ -58,11 +58,11 @@
       (= 0 (.dim y)))))
 
 (defn ^:private vector-subcopy [modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky]
-  (when (< 0 ^long lx)
+  (when (< 0 (long lx))
     (with-release [copy-kernel (function modl "vector_copy")]
       (launch! copy-kernel (grid-1d lx) hstream
-               (parameters ^long lx (.buffer x) (+ (.offset x) (* ^long kx (.stride x))) (.stride x)
-                           (.buffer y) (+ (.offset y) (* ^long ky (.stride y))) (.stride y)))))
+               (parameters (long lx) (.buffer x) (+ (.offset x) (* (long kx) (.stride x))) (.stride x)
+                           (.buffer y) (+ (.offset y) (* (long ky) (.stride y))) (.stride y)))))
   y)
 
 (defn ^:private vector-sum [modl hstream ^CUBlockVector x]

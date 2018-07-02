@@ -70,7 +70,7 @@
   (entryWidth [_]
     w)
   (count [_ b]
-    (quot ^long (size b) w))
+    (quot (long (size b)) w))
   (createDataSource [_ n]
     (mem-alloc (* w (max 1 (long n)))))
   (initialize [_ buf]
@@ -88,9 +88,9 @@
     hstream)
   CUAccessor
   (offset [_ buf-ptr ofst]
-    (if (= 0 ^long ofst)
+    (if (= 0 (long ofst))
       buf-ptr
-      (with-offset buf-ptr (* ^long ofst w))))
+      (with-offset buf-ptr (* (long ofst) w))))
   (active? [_]
     @active)
   DataAccessorProvider
@@ -237,7 +237,7 @@
   (view-vctr [_]
     (cu-block-vector fact false buf n ofst strd))
   (view-vctr [_ stride-mult]
-    (cu-block-vector fact false buf (ceil (/ n ^long stride-mult)) ofst (* ^long stride-mult strd)))
+    (cu-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
     (cu-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
@@ -442,11 +442,11 @@
   (view-ge [a]
     a)
   (view-ge [_ stride-mult]
-    (let [shrinked (ceil (/ (.fd stor) ^long stride-mult))
+    (let [shrinked (ceil (/ (.fd stor) (long stride-mult)))
           column-major (.isColumnMajor nav)
           [m n] (if column-major [m shrinked] [shrinked n])]
       (cu-ge-matrix fact false buf m n ofst nav
-                    (full-storage column-major m n (* ^long stride-mult (.ld stor)))
+                    (full-storage column-major m n (* (long stride-mult) (.ld stor)))
                     (ge-region m n))))
   (view-ge [a m n]
     (if (.isGapless stor)

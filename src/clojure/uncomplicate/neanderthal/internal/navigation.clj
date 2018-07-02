@@ -342,17 +342,17 @@
 
 (defn band-storage
   ([^Boolean column? m n ld kl ku]
-   (let [m ^long m
-         n ^long n
-         kl (max 0 ^long kl)
-         ku (max 0 ^long ku)
+   (let [m (long m)
+         n (long n)
+         kl (max 0 (long kl))
+         ku (max 0 (long ku))
          h (inc (+ kl ku))
-         ld (max h ^long ld)]
+         ld (max h (long ld))]
      (if column?
        (BandStorage. h (min n (+ (min m n) ku)) ld kl ku)
        (BandStorage. h (min m (+ (min m n) kl)) ld ku kl))))
   ([^Boolean column? m n kl ku]
-   (band-storage column? m n (inc (+ ^long kl ^long ku)) kl ku)))
+   (band-storage column? m n (inc (+ (long kl) (long ku))) kl ku)))
 
 (defn uplo-storage [^Boolean column? ^long n ^long k lower?]
   (if lower?

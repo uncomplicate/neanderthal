@@ -294,8 +294,8 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/dcopy lx (.buffer ^IntegerBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^IntegerBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/dcopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -343,8 +343,8 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^IntegerBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -405,8 +405,8 @@
   (amax [_ x]
     (vector-amax ^RealBlockVector x))
   (subcopy [_ x y kx lx ky]
-    (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^RealBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/dcopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (vector-method CBLAS/dsum ^RealBlockVector x))
@@ -574,8 +574,8 @@
   (amax [_ x]
     (vector-amax ^RealBlockVector x))
   (subcopy [_ x y kx lx ky]
-    (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ ^long kx (.offset ^Block x)) (.stride ^Block x)
-                 (.buffer ^RealBlockVector y) (+ ^long ky (.offset ^Block y)) (.stride ^Block y))
+    (CBLAS/scopy lx (.buffer ^RealBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                 (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
     (vector-method CBLAS/ssum ^RealBlockVector x))

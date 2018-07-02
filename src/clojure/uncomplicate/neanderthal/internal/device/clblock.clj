@@ -91,7 +91,7 @@
   (entryWidth [_]
     w)
   (count [_ b]
-    (quot ^long (size b) w))
+    (quot (long (size b)) w))
   (createDataSource [_ n]
     (cl-buffer ctx (* w (max 1 (long n))) :read-write))
   (initialize [_ buf]
@@ -182,7 +182,7 @@
   (view-vctr [_]
     (cl-block-vector fact false buf n ofst strd))
   (view-vctr [_ stride-mult]
-    (cl-block-vector fact false buf (ceil (/ n ^long stride-mult)) ofst (* ^long stride-mult strd)))
+    (cl-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
     (cl-ge-matrix fact false buf n 1 ofst (layout-navigator true) (full-storage true n 1) (ge-region n 1)))
   (view-ge [x stride-mult]
@@ -399,11 +399,11 @@
   (view-ge [a]
     a)
   (view-ge [_ stride-mult]
-    (let [shrinked (ceil (/ (.fd stor) ^long stride-mult))
+    (let [shrinked (ceil (/ (.fd stor) (long stride-mult)))
           column-major (.isColumnMajor nav)
           [m n] (if column-major [m shrinked] [shrinked n])]
       (cl-ge-matrix fact false buf m n ofst nav
-                    (full-storage column-major m n (* ^long stride-mult (.ld stor)))
+                    (full-storage column-major m n (* (long stride-mult) (.ld stor)))
                     (ge-region m n))))
   (view-ge [a m n]
     (if (.isGapless stor)
