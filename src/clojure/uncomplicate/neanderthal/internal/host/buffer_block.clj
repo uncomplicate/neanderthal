@@ -664,15 +664,15 @@
     (real-block-vector fact 0))
   PseudoFunctor
   (fmap! [x f]
-    (vector-fmap* ^IFn$DD f x))
+    (vector-fmap* RealBlockVector double f x))
   (fmap! [x f y]
-    (vector-fmap* ^IFn$DDD f x ^RealVector y))
+    (vector-fmap* RealBlockVector double f x y))
   (fmap! [x f y z]
-    (vector-fmap* ^IFn$DDDD f x ^RealVector y ^RealVector z))
+    (vector-fmap* RealBlockVector double f x y z))
   (fmap! [x f y z v]
-    (vector-fmap* ^IFn$DDDDD f x ^RealVector y ^RealVector z ^RealVector v))
+    (vector-fmap* RealBlockVector double f x y z v))
   (fmap! [x f y z v ws]
-    (vector-fmap* f x y z v ws))
+    (vector-fmap* RealBlockVector double f x y z v ws))
   Foldable
   (fold [x]
     (sum (engine x) x))
@@ -684,12 +684,12 @@
     (vector-reduce f init x y z))
   (fold [x f init y z v]
     (vector-reduce f init x y z v))
-  (fold [x f init y z v ws]
-    (vector-reduce* nil i j nil nil nil nil nil nil nil))
+  (fold [_ _ _ _ _ _ _]
+    (dragan-says-ex "fold with more than four arguments is not available for RealBlockVector"))
   (foldmap [x g]
     (loop [i 0 acc 0.0]
       (if (< i n)
-        (recur (inc i) (+ acc (.invokePrim ^IFn$DD g (.entry x i))))
+        (recur (inc i) (+ acc (double (g (.entry x i)))))
         acc)))
   (foldmap[x g f init]
     (vector-map-reduce f init g x))
@@ -700,7 +700,7 @@
   (foldmap[x g f init y z v]
     (vector-map-reduce f init g x y z v))
   (foldmap [_ _ _ _ _ _ _ _]
-    (vector-map-reduce* nil i j nil nil  nil nil nil nil nil nil)))
+    (dragan-says-ex "foldmap with more than four arguments is not available for RealBlockVector")))
 
 (defn real-block-vector
   ([fact master ^ByteBuffer buf n ofst strd]

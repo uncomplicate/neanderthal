@@ -8,7 +8,9 @@
 
 (ns uncomplicate.neanderthal.internal.host.fluokitten
   (:refer-clojure :exclude [accessor])
-  (:require [uncomplicate.commons.core :refer [let-release double-fn]]
+  (:require [uncomplicate.commons
+             [core :refer [let-release double-fn]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal
              [core :refer [vctr copy dim ncols transfer!]]
@@ -31,6 +33,10 @@
 (def ^{:no-doc true :const true} DIMENSIONS_MSG
   "Vectors should have fitting dimensions.")
 
+;; ==================== New Vector Fluokitten Functions ====================
+
+;; =========================================================================
+
 (defn copy-fmap
   ([x f]
    (let-release [res (copy x)]
@@ -51,62 +57,67 @@
   ([^Vector x ^Vector y ^Vector z ^Vector v]
    (<= (.dim x) (min (.dim y) (.dim z) (.dim v)))))
 
-(defmacro map-entries-i [f i & xs]
-  `(.invokePrim ~f ~@(map #(list `.entry % i) xs)))
+(defmacro entry*
+  ([vtype v i]
+   `(.entry ~(with-meta v {:tag vtype}) ~i))
+  ([vtype v i e]
+   `(entry* ~vtype ~v ~i double ~e))
+  ([vtype v i etype e]
+   `(.set ~(with-meta v {:tag vtype}) ~i (~etype ~e))))
 
-(defmacro add-entries-i [i & xs]
-  `(+ ~@(map #(list `.entry % i) xs)))
+(defmacro map-entries-i [vtype etype f i & xs]
+  `(~f ~@(map #(list `entry* vtype % i) xs)))
 
-(defmacro vector-fmap* [f & xs]
+(defmacro vector-fmap* [vtype etype f & xs]
   (if (< (count xs) 5)
     `(do
        (if (check-vector-dimensions ~@xs)
          (dotimes [i# (dim ~(first xs))]
-           (.set ~(first xs) i# (map-entries-i ~f i# ~@xs)))
+           (entry* ~vtype ~(first xs) i# (~etype (map-entries-i ~vtype ~etype ~f i# ~@xs))))
          (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)})))
        ~(first xs))
     `(throw (UnsupportedOperationException. "Vector fmap supports up to 4 vectors."))))
 
-(defmacro vector-reduce* [f init & xs]
+(defmacro vector-reduce* [vtype etype acctype f init & xs]
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]
-         (loop [i# 0 acc# ~init]
+         (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (.invokePrim ~f acc# (add-entries-i i# ~@xs)))
+             (recur (inc i#) (~acctype (~f acc# (map-entries-i ~vtype ~etype + i# ~@xs))))
              acc#)))
        (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)})))
     `(throw (UnsupportedOperationException. "Vector fold supports up to 4 vectors."))))
 
-(defmacro vector-map-reduce* [f init g & xs]
+(defmacro vector-map-reduce* [vtype etype acctype f init g & xs]
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]
-         (loop [i# 0 acc# ~init]
+         (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (.invokePrim ~f acc# (map-entries-i ~g i# ~@xs)))
+             (recur (inc i#) (~acctype (~f acc# (map-entries-i ~vtype ~etype ~g i# ~@xs))))
              acc#)))
        (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)})))
     `(throw (UnsupportedOperationException. "Vector foldmap supports up to 4 vectors."))))
 
-(defmacro ^:private vector-reduce-indexed* [f init & xs]
+(defmacro ^:private vector-reduce-indexed* [vtype etype acctype f init & xs]
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]
-         (loop [i# 0 acc# ~init]
+         (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (.invokePrim ~f acc# i# (add-entries-i i# ~@xs)))
+             (recur (inc i#) (~acctype (~f acc# i# (map-entries-i ~vtype ~etype + i# ~@xs))))
              acc#)))
        (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)})))
     `(throw (UnsupportedOperationException. "Vector fold supports up to 4 vectors."))))
 
-(defmacro ^:private vector-map-reduce-indexed* [f init g & xs]
+(defmacro ^:private vector-map-reduce-indexed* [vtype etype acctype f init g & xs]
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]
-         (loop [i# 0 acc# ~init]
+         (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (.invokePrim ~f acc# i# (map-entries-i ~g i# ~@xs)))
+             (recur (inc i#) (~acctype (~f acc# i# (map-entries-i ~vtype ~etype ~g i# ~@xs))))
              acc#)))
        (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)})))
     `(throw (UnsupportedOperationException. "Vector foldmap supports up to 4 vectors."))))
@@ -123,9 +134,9 @@
 
 (defn vector-pure
   ([x ^double v]
-   (.set ^RealChangeable (raw x) v))
+   (.set ^RealChangeable (raw x) v));;TODO fix this. it probably creates dim long vector instead of 1
   ([x ^double v ws]
-   (throw (UnsupportedOperationException. "This operation would be slow on primitive vectors."))))
+   (dragan-says-ex "This operation would be slow on primitive vectors.")))
 
 ;; ==================== Matrix Fluokitten funcitions ========================
 
@@ -158,10 +169,7 @@
    (throw (UnsupportedOperationException. "This operation would be slow on primitive matrices."))))
 
 (defmacro map-entries-ij [nav f i j & xs]
-  `(.invokePrim ~f ~@(map #(list `.get nav % i j) xs)))
-
-(defmacro add-entries-ij [nav i j & xs]
-  `(+ ~@(map #(list `.get nav % i j) xs)))
+  `(~f ~@(map #(list `.get nav % i j) xs)))
 
 (defmacro ^:private matrix-fmap* [f & as]
   (if (< (count as) 5)
@@ -179,7 +187,7 @@
        (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
     `(throw (UnsupportedOperationException. "Matrix fmap supports up to 4 matrices."))))
 
-(defmacro ^:private matrix-reduce* [loop-unboxer f init & as]
+(defmacro ^:private matrix-reduce* [acctype f init & as]
   (if (< (count as) 5)
     `(if (check-matrix-dimensions ~@as)
        (let [nav# (real-navigator ~(first as))
@@ -189,17 +197,17 @@
          (loop [j# 0 acc# ~init]
            (if (< j# fd#)
              (recur (inc j#)
-                    (~loop-unboxer
+                    (~acctype
                      (let [end# (.end nav# reg# j#)]
                        (loop [i# (.start nav# reg# j#) acc# acc#]
                          (if (< i# end#)
-                           (recur (inc i#) (.invokePrim ~f acc# (add-entries-ij nav# i# j# ~@as)))
+                           (recur (inc i#) (.invokePrim ~f acc# (map-entries-ij nav# + i# j# ~@as)))
                            acc#)))))
              acc#)))
        (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
     `(throw (UnsupportedOperationException. "Matrix fold supports up to 4 matrices."))))
 
-(defmacro ^:private  matrix-map-reduce* [loop-unboxer f init g & as]
+(defmacro ^:private  matrix-map-reduce* [acctype f init g & as]
   (if (< (count as) 5)
     `(if (check-matrix-dimensions ~@as)
        (let [nav# (real-navigator ~(first as))
@@ -210,7 +218,7 @@
            (if (< j# fd#)
              (recur
               (inc j#)
-              (~loop-unboxer
+              (~acctype
                (let [end# (.end nav# reg# j#)]
                  (loop [i# (.start nav# reg# j#) acc# acc#]
                    (if (< i# end#)
@@ -221,11 +229,11 @@
     `(throw (UnsupportedOperationException. "Matrix foldmap supports up to 4 matrices."))))
 
 (defn matrix-fmap!
-  ([^RealMatrix a ^IFn$DD f]
+  ([^RealMatrix a f]
    (matrix-fmap* f a))
-  ([^RealMatrix a ^IFn$DDD f ^RealMatrix b]
+  ([^RealMatrix a f ^RealMatrix b]
    (matrix-fmap* f a b))
-  ([^RealMatrix a ^IFn$DDDD f ^RealMatrix b ^RealMatrix c]
+  ([^RealMatrix a f ^RealMatrix b ^RealMatrix c]
    (matrix-fmap* f a b c))
   ([^RealMatrix a ^IFn$DDDDD f ^RealMatrix b ^RealMatrix c  ^RealMatrix d]
    (matrix-fmap* f a b c d))
@@ -378,22 +386,22 @@
   ReductionFunction
   (vector-reduce
     ([this init x]
-     (vector-reduce* this (double init) ^RealVector x))
+     (vector-reduce* RealVector double double this init x))
     ([this init x y]
-     (vector-reduce* this (double init) ^RealVector x ^RealVector y))
+     (vector-reduce* RealVector double double this init x y))
     ([this init x y z]
-     (vector-reduce* this (double init) ^RealVector x ^RealVector y ^RealVector z))
+     (vector-reduce* RealVector double double this init x y z))
     ([this init x y z v]
-     (vector-reduce* this (double init) ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-reduce* RealVector double double this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce* this (double init) ^IFn$DD g ^RealVector x))
+     (vector-map-reduce* RealVector double double this init ^IFn$DD g x))
     ([this init g x y]
-     (vector-map-reduce* this (double init) ^IFn$DDD g ^RealVector x ^RealVector y))
+     (vector-map-reduce* RealVector double double this init ^IFn$DDD g x y))
     ([this init g x y z]
-     (vector-map-reduce* this (double init) ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
+     (vector-map-reduce* RealVector double double this init ^IFn$DDDD g x y z))
     ([this init g x y z v]
-     (vector-map-reduce* this (double init) ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-map-reduce* RealVector double double this init ^IFn$DDDDD g x y z v)))
   (matrix-reduce
     ([this init a]
      (matrix-reduce* double this (double init) a))
@@ -417,22 +425,22 @@
   ReductionFunction
   (vector-reduce
     ([this init x]
-     (vector-reduce* this init ^RealVector x))
+     (vector-reduce* RealVector double identity this init x))
     ([this init x y]
-     (vector-reduce* this init ^RealVector x ^RealVector y))
+     (vector-reduce* RealVector double identity this init x y))
     ([this init x y z]
-     (vector-reduce* this init ^RealVector x ^RealVector y ^RealVector z))
+     (vector-reduce* RealVector double identity this init x y z))
     ([this init x y z v]
-     (vector-reduce* this init ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-reduce* RealVector double identity this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce* this init ^IFn$DD g ^RealVector x))
+     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x))
     ([this init g x y]
-     (vector-map-reduce* this init ^IFn$DDD g ^RealVector x ^RealVector y))
+     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x y))
     ([this init g x y z]
-     (vector-map-reduce* this init ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
+     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x y z))
     ([this init g x y z v]
-     (vector-map-reduce* this init ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x y z v)))
   (matrix-reduce
     ([this init a]
      (matrix-reduce* identity this init a))
@@ -456,40 +464,40 @@
   ReductionFunction
   (vector-reduce
     ([this init x]
-     (vector-reduce-indexed* this (double init) ^RealVector x))
+     (vector-reduce-indexed* RealVector double double this init x))
     ([this init x y]
-     (vector-reduce-indexed* this (double init) ^RealVector x ^RealVector y))
+     (vector-reduce-indexed* RealVector double double this init x y))
     ([this init x y z]
-     (vector-reduce-indexed* this (double init) ^RealVector x ^RealVector y ^RealVector z))
+     (vector-reduce-indexed* RealVector double double this init x y z))
     ([this init x y z v]
-     (vector-reduce-indexed* this (double init) ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-reduce-indexed* RealVector double double this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DD g ^RealVector x))
+     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x))
     ([this init g x y]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DDD g ^RealVector x ^RealVector y))
+     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x y))
     ([this init g x y z]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
+     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x y z))
     ([this init g x y z v]
-     (vector-map-reduce-indexed* this (double init) ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v))))
+     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x y z v))))
 
 (extend-type IFn$OLDO
   ReductionFunction
   (vector-reduce
     ([this init x]
-     (vector-reduce-indexed* this init ^RealVector x))
+     (vector-reduce-indexed* RealVector double identity this init x))
     ([this init x y]
-     (vector-reduce-indexed* this init ^RealVector x ^RealVector y))
+     (vector-reduce-indexed* RealVector double identity this init x y))
     ([this init x y z]
-     (vector-reduce-indexed* this init ^RealVector x ^RealVector y ^RealVector z))
+     (vector-reduce-indexed* RealVector double identity this init x y z))
     ([this init x y z v]
-     (vector-reduce-indexed* this init ^RealVector x ^RealVector y ^RealVector z ^RealVector v)))
+     (vector-reduce-indexed* RealVector double identity this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce-indexed* this init ^IFn$DD g ^RealVector x))
+     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x))
     ([this init g x y]
-     (vector-map-reduce-indexed* this init ^IFn$DDD g ^RealVector x ^RealVector y))
+     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x y))
     ([this init g x y z]
-     (vector-map-reduce-indexed* this init ^IFn$DDDD g ^RealVector x ^RealVector y ^RealVector z))
+     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x y z))
     ([this init g x y z v]
-     (vector-map-reduce-indexed* this init ^IFn$DDDDD g ^RealVector x ^RealVector y ^RealVector z ^RealVector v))))
+     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x y z v))))

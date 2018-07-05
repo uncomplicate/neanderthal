@@ -49,6 +49,9 @@
 
 ;; ==================== Fluokitten & Neanderthal ===================
 
+(with-progress-reporting (quick-bench (foldmap + 0.0 * cax cay)))
+;; Execution time mean : 80.978520 µs
+
 (def nx (dv (range n)))
 (def ny (dv (range n)))
 
@@ -65,7 +68,7 @@
 ;; Execution time mean : 2.595561 ms
 
 (with-progress-reporting (quick-bench (foldmap p+ 0.0 p* nx ny)))
-;; Execution time mean : 206.636721 µs
+;; Execution time mean : 198.744652 µs
 
 (with-progress-reporting (quick-bench (fold nx)))
 ;; Execution time mean : 74.933079 µs
@@ -74,3 +77,9 @@
   (quick-bench
    (sqrt (- (/ (foldmap p+ 0.0 sqr nx) n) (pow (/ (fold nx) n) 2)))))
 ;; Execution time mean : 192.752880 µs
+
+(def mx (dge 316 316 (range n)))
+(def my (dge 316 316 (range n)))
+
+(with-progress-reporting (quick-bench (foldmap p+ 0.0 p* mx my)))
+;; Execution time mean : 210.489030 µs
