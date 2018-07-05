@@ -552,7 +552,7 @@
      (dragan-says-ex "Unknown default. This part should not depend on your code. Please send me a bug report."
                      {:type type}))))
 
-;; ======================= Layout utillities ==============================
+;; ======================= Layout utilities ==============================
 
 (defmacro doall-layout
   ([nav stor region i j idx cnt expr]

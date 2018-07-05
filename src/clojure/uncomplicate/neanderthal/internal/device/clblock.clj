@@ -15,7 +15,7 @@
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.neanderthal
-             [core :refer [transfer! copy!]]
+             [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
@@ -24,7 +24,7 @@
              [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host
-             [fluokitten :refer [vector-op matrix-op vector-pure matrix-pure]]
+             [fluokitten :refer [vector-op matrix-op]]
              [buffer-block :refer [real-block-vector real-ge-matrix real-uplo-matrix]]]
             [uncomplicate.neanderthal.internal.device.common :refer [device-vector-equals device-matrix-equals]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
@@ -255,6 +255,12 @@
   Monoid
   (id [x]
     (cl-block-vector fact 0))
+  Applicative
+  (pure [_ v]
+    (let-release [res (cl-block-vector fact 1)]
+      (.set ^CLBlockVector res 0 v)))
+  (pure [_ v vs]
+    (vctr fact (cons v vs)))
   Foldable
   (fold [x]
     (sum eng x))
@@ -282,8 +288,6 @@
      (cl-block-vector fact true (atom buf) n 0 1))))
 
 (extend CLBlockVector
-  Applicative
-  {:pure vector-pure}
   Magma
   {:op (constantly vector-op)})
 
@@ -430,6 +434,12 @@
   Monoid
   (id [a]
     (cl-ge-matrix fact 0 0 (.isColumnMajor nav)))
+  Applicative
+  (pure [_ v]
+    (let-release [res (cl-ge-matrix fact 1 1 (.isColumnMajor nav))]
+      (.set ^CLGEMatrix res 0 0 v)))
+  (pure [_ v vs]
+    (ge fact (cons v vs)))
   IFn$LLD
   (invokePrim [a i j]
     (entry a i j))
@@ -520,8 +530,6 @@
    (cl-ge-matrix fact m n true)))
 
 (extend CLGEMatrix
-  Applicative
-  {:pure matrix-pure}
   Magma
   {:op (constantly matrix-op)})
 
@@ -641,6 +649,15 @@
   Monoid
   (id [a]
     (cl-uplo-matrix fact 0 (.isColumnMajor nav) matrix-type))
+  Applicative
+  (pure [_ v]
+    (let-release [res (cl-uplo-matrix fact 1 (.isColumnMajor nav) matrix-type)]
+      (.set ^CLUploMatrix res 0 0 v)))
+  (pure [_ v vs]
+    (let [source (cons v vs)]
+      (let-release [res (cl-uplo-matrix fact (long (Math/sqrt (count source)))
+                                        (.isColumnMajor nav) matrix-type)]
+        (transfer! source res))))
   IFn$LLD
   (invokePrim [a i j]
     (entry a i j))
@@ -768,8 +785,6 @@
     (dragan-says-ex UNAVAILABLE_OPENCL_MSG)))
 
 (extend CLUploMatrix
-  Applicative
-  {:pure matrix-pure}
   Magma
   {:op (constantly matrix-op)})
 

@@ -14,7 +14,7 @@
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
             [uncomplicate.neanderthal
-             [core :refer [transfer! copy! subvector] :as core]
+             [core :refer [transfer! copy! subvector vctr ge]]
              [real :refer [entry entry!]]
              [math :refer [ceil]]]
             [uncomplicate.neanderthal.internal
@@ -662,17 +662,12 @@
   Monoid
   (id [x]
     (real-block-vector fact 0))
-  PseudoFunctor
-  (fmap! [x f]
-    (vector-fmap* RealBlockVector double f x))
-  (fmap! [x f y]
-    (vector-fmap* RealBlockVector double f x y))
-  (fmap! [x f y z]
-    (vector-fmap* RealBlockVector double f x y z))
-  (fmap! [x f y z v]
-    (vector-fmap* RealBlockVector double f x y z v))
-  (fmap! [x f y z v ws]
-    (vector-fmap* RealBlockVector double f x y z v ws))
+  Applicative
+  (pure [_ v]
+    (let-release [res (real-block-vector fact 1)]
+      (.set ^RealBlockVector res 0 v)))
+  (pure [_ v vs]
+    (vctr fact (cons v vs)))
   Foldable
   (fold [x]
     (sum (engine x) x))
@@ -714,9 +709,9 @@
 
 (extend RealBlockVector
   Functor
-  {:fmap copy-fmap}
-  Applicative
-  {:pure vector-pure}
+  {:fmap (vector-fmap RealBlockVector double)}
+  PseudoFunctor
+  {:fmap! (vector-fmap identity RealBlockVector double)}
   Magma
   {:op (constantly vector-op)})
 
@@ -876,8 +871,14 @@
   (device [_]
     :cpu)
   Monoid
-  (id [a]
+  (id [_]
     (real-ge-matrix fact 0 0 (.isColumnMajor nav)))
+  Applicative
+  (pure [_ v]
+    (let-release [res (real-ge-matrix fact 1 1 (.isColumnMajor nav))]
+      (.set ^RealGEMatrix res 0 0 v)))
+  (pure [_ v vs]
+    (ge fact (cons v vs)))
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 (.fd stor))))
@@ -998,11 +999,9 @@
 
 (extend RealGEMatrix
   Functor
-  {:fmap copy-fmap}
+  {:fmap (matrix-fmap double)}
   PseudoFunctor
-  {:fmap! matrix-fmap!}
-  Applicative
-  {:pure matrix-pure}
+  {:fmap! (matrix-fmap identity double)}
   Foldable
   {:fold matrix-fold
    :foldmap matrix-foldmap}
@@ -1121,6 +1120,15 @@
   Monoid
   (id [a]
     (real-uplo-matrix fact 0 (.isColumnMajor nav) matrix-type))
+  Applicative
+  (pure [_ v]
+    (let-release [res (real-uplo-matrix fact 1 (.isColumnMajor nav) matrix-type)]
+      (.set ^RealUploMatrix res 0 0 v)))
+  (pure [_ v vs]
+    (let [source (cons v vs)]
+      (let-release [res (real-uplo-matrix fact (long (Math/sqrt (count source)))
+                                          (.isColumnMajor nav) matrix-type)]
+        (transfer! source res))))
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 n)))
@@ -1261,11 +1269,9 @@
 
 (extend RealUploMatrix
   Functor
-  {:fmap copy-fmap}
+  {:fmap (matrix-fmap double)}
   PseudoFunctor
-  {:fmap! matrix-fmap!}
-  Applicative
-  {:pure matrix-pure}
+  {:fmap! (matrix-fmap identity double)}
   Foldable
   {:fold matrix-fold
    :foldmap matrix-foldmap}
@@ -1420,6 +1426,12 @@
   Monoid
   (id [a]
     (real-banded-matrix fact 0 (.isColumnMajor nav) matrix-type))
+  Applicative
+  (pure [_ v]
+    (let-release [res (real-banded-matrix fact 1 1 nav stor reg matrix-type default eng)]
+      (.set ^RealBandedMatrix res 0 0 v)))
+  (pure [_ v vs]
+    (dragan-says-ex "Vararg pure is not available for banded matrices."))
   Seqable
   (seq [a]
     (map seq (.dias a)))
@@ -1576,11 +1588,9 @@
 
 (extend RealBandedMatrix
   Functor
-  {:fmap copy-fmap}
+  {:fmap (matrix-fmap double)}
   PseudoFunctor
-  {:fmap! matrix-fmap!}
-  Applicative
-  {:pure matrix-pure}
+  {:fmap! (matrix-fmap identity double)}
   Foldable
   {:fold matrix-fold
    :foldmap matrix-foldmap}
@@ -1717,6 +1727,16 @@
   Monoid
   (id [a]
     (real-packed-matrix fact 0 (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) matrix-type))
+  Applicative
+  (pure [_ v]
+    (let-release [res (real-packed-matrix fact 1 (.isColumnMajor nav) (.isLower reg)
+                                          (.isDiagUnit reg) matrix-type)]
+      (.set ^RealPackedMatrix res 0 0 v)))
+  (pure [_ v vs]
+    (let [source (cons v vs)]
+      (let-release [res (real-packed-matrix fact (long (Math/sqrt (count source)))
+                                            (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) matrix-type)]
+        (transfer! source res))))
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 n)))
@@ -1850,11 +1870,9 @@
 
 (extend RealPackedMatrix
   Functor
-  {:fmap copy-fmap}
+  {:fmap (matrix-fmap double)}
   PseudoFunctor
-  {:fmap! matrix-fmap!}
-  Applicative
-  {:pure matrix-pure}
+  {:fmap! (matrix-fmap identity double)}
   Foldable
   {:fold matrix-fold
    :foldmap matrix-foldmap}
@@ -1981,6 +1999,14 @@
   Monoid
   (id [a]
     (real-diagonal-matrix fact 0 matrix-type))
+  Applicative
+  (pure [_ v]
+    (let-release [res (real-diagonal-matrix fact 1 matrix-type)]
+      (.set ^RealUploMatrix res 0 0 v)))
+  (pure [_ v vs]
+    (let [source (cons v vs)]
+      (let-release [res (real-diagonal-matrix fact (count source) matrix-type)]
+        (transfer! source res))))
   Seqable
   (seq [a]
     (map seq (.dias a)))
@@ -2117,11 +2143,9 @@
 
 (extend RealDiagonalMatrix
   Functor
-  {:fmap copy-fmap}
+  {:fmap (diagonal-fmap RealBlockVector double)}
   PseudoFunctor
-  {:fmap! diagonal-fmap!}
-  Applicative
-  {:pure matrix-pure}
+  {:fmap! (diagonal-fmap identity RealBlockVector double)}
   Foldable
   {:fold diagonal-fold
    :foldmap diagonal-foldmap}

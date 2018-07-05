@@ -13,18 +13,17 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [fmap!]]
             [uncomplicate.neanderthal
-             [core :refer [vctr copy dim ncols transfer!]]
+             [core :refer [copy dim ncols transfer! vctr ge dia]]
              [block :refer [buffer offset]]]
             [uncomplicate.neanderthal.internal
              [api :refer [factory compatible? engine raw subcopy sum ReductionFunction
                           vector-reduce vector-map-reduce matrix-reduce matrix-map-reduce
-                          data-accessor create-ge navigator storage region view-vctr]]
-             [common :refer [real-accessor]]]
-            [uncomplicate.neanderthal.internal.navigation :refer [doall-layout real-navigator]])
-  (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD
-            IFn$DLDD IFn$ODO IFn$OLDO]
+                          data-accessor create-ge navigator storage region view-vctr create-vector]]
+             [common :refer [real-accessor]]
+             [navigation :refer [doall-layout real-navigator]]])
+  (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$DLDD IFn$ODO IFn$OLDO]
            [uncomplicate.neanderthal.internal.api RealBufferAccessor RealVector RealMatrix
-            Vector Matrix DiagonalMatrix RealChangeable LayoutNavigator RealLayoutNavigator
+            Vector Matrix DiagonalMatrix Changeable LayoutNavigator RealLayoutNavigator
             DenseStorage Region]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
@@ -32,18 +31,6 @@
 
 (def ^{:no-doc true :const true} DIMENSIONS_MSG
   "Vectors should have fitting dimensions.")
-
-;; ==================== New Vector Fluokitten Functions ====================
-
-;; =========================================================================
-
-(defn copy-fmap
-  ([x f]
-   (let-release [res (copy x)]
-     (fmap! res f)))
-  ([x f xs]
-   (let-release [res (copy x)]
-     (apply fmap! res f xs))))
 
 ;; ==================== Vector Fluokitten funcitions =======================
 
@@ -68,14 +55,14 @@
 (defmacro map-entries-i [vtype etype f i & xs]
   `(~f ~@(map #(list `entry* vtype % i) xs)))
 
-(defmacro vector-fmap* [vtype etype f & xs]
+(defmacro vector-fmap* [vtype etype res f & xs]
   (if (< (count xs) 5)
     `(do
        (if (check-vector-dimensions ~@xs)
-         (dotimes [i# (dim ~(first xs))]
-           (entry* ~vtype ~(first xs) i# (~etype (map-entries-i ~vtype ~etype ~f i# ~@xs))))
+         (dotimes [i# (dim ~res)]
+           (entry* ~vtype ~res i# (~etype (map-entries-i ~vtype ~etype ~f i# ~@xs))))
          (throw (ex-info DIMENSIONS_MSG {:xs (map str ~xs)})))
-       ~(first xs))
+       ~res)
     `(throw (UnsupportedOperationException. "Vector fmap supports up to 4 vectors."))))
 
 (defmacro vector-reduce* [vtype etype acctype f init & xs]
@@ -123,7 +110,7 @@
     `(throw (UnsupportedOperationException. "Vector foldmap supports up to 4 vectors."))))
 
 (defn vector-op [^Vector x & ws]
-  (let-release [res (vctr (factory x) (transduce (map dim) + (.dim x) ws))]
+  (let-release [res (create-vector (factory x) (transduce (map dim) + (.dim x) ws) false)]
     (loop [pos 0 w x ws ws]
       (when w
         (if (compatible? res w)
@@ -132,11 +119,30 @@
         (recur (+ pos (dim w)) (first ws) (next ws))))
     res))
 
-(defn vector-pure
-  ([x ^double v]
-   (.set ^RealChangeable (raw x) v));;TODO fix this. it probably creates dim long vector instead of 1
-  ([x ^double v ws]
-   (dragan-says-ex "This operation would be slow on primitive vectors.")))
+(defmacro vector-fmap
+  ([creator vtype etype]
+   `(fn
+      ([x# f#]
+       (let-release [res# (~creator x#)]
+         (vector-fmap* ~vtype ~etype res# f# x#)))
+      ([x# f# y#]
+       (let-release [res# (~creator x#)]
+         (vector-fmap* ~vtype ~etype res# f# x# y#)))
+      ([x# f# y# z#]
+       (let-release [res# (~creator x#)]
+         (vector-fmap* ~vtype ~etype res# f# x# y# z#)))
+      ([x# f# y# z# v#]
+       (let-release [res# (~creator x#)]
+         (vector-fmap* ~vtype ~etype res# f# x# y# z# v#)))
+      ([x# f# y# z# v# es#]
+       (throw (UnsupportedOperationException. "Vector fmap supports up to 4 arrays.")))))
+  ([vtype etype]
+   `(let [fmap-fn# (vector-fmap raw ~vtype ~etype)]
+      (fn
+        ([x# f#]
+         (fmap-fn# x# f#))
+        ([x# f# xs#]
+         (apply fmap-fn# x# f# xs#))))))
 
 ;; ==================== Matrix Fluokitten funcitions ========================
 
@@ -162,28 +168,22 @@
         (recur (+ pos (.ncols w)) (first ws) (next ws))))
     res))
 
-(defn matrix-pure
-  ([a ^double v]
-   (.set ^RealChangeable (raw a) v))
-  ([a ^double v cs]
-   (throw (UnsupportedOperationException. "This operation would be slow on primitive matrices."))))
-
 (defmacro map-entries-ij [nav f i j & xs]
   `(~f ~@(map #(list `.get nav % i j) xs)))
 
-(defmacro ^:private matrix-fmap* [f & as]
+(defmacro matrix-fmap* [etype res f & as]
   (if (< (count as) 5)
     `(if (check-matrix-dimensions ~@as)
-       (let [nav# (real-navigator ~(first as))
-             stor# (storage ~(first as))
-             reg# (region ~(first as))
-             da# (real-accessor ~(first as))
-             buff# (buffer ~(first as))
-             ofst# (offset ~(first as))]
+       (let [nav# (real-navigator ~res)
+             stor# (storage ~res)
+             reg# (region ~res)
+             da# (real-accessor ~res)
+             buff# (buffer ~res)
+             ofst# (offset ~res)]
          (doall-layout nav# stor# reg# i# j#
                        (.set da# buff# (+ ofst# (.index stor# i# j#))
-                             (map-entries-ij nav# ~f i# j# ~@as)))
-         ~(first as))
+                             (~etype (map-entries-ij nav# ~f i# j# ~@as))))
+         ~res)
        (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
     `(throw (UnsupportedOperationException. "Matrix fmap supports up to 4 matrices."))))
 
@@ -194,14 +194,14 @@
              stor# (storage ~(first as))
              reg# (region ~(first as))
              fd# (.fd stor#)]
-         (loop [j# 0 acc# ~init]
+         (loop [j# 0 acc# (~acctype ~init)]
            (if (< j# fd#)
              (recur (inc j#)
                     (~acctype
                      (let [end# (.end nav# reg# j#)]
                        (loop [i# (.start nav# reg# j#) acc# acc#]
                          (if (< i# end#)
-                           (recur (inc i#) (.invokePrim ~f acc# (map-entries-ij nav# + i# j# ~@as)))
+                           (recur (inc i#) (~acctype (~f acc# (map-entries-ij nav# + i# j# ~@as))))
                            acc#)))))
              acc#)))
        (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
@@ -214,7 +214,7 @@
              stor# (storage ~(first as))
              reg# (region ~(first as))
              fd# (.fd stor#)]
-         (loop [j# 0 acc# ~init]
+         (loop [j# 0 acc# (~acctype ~init)]
            (if (< j# fd#)
              (recur
               (inc j#)
@@ -222,67 +222,100 @@
                (let [end# (.end nav# reg# j#)]
                  (loop [i# (.start nav# reg# j#) acc# acc#]
                    (if (< i# end#)
-                     (recur (inc i#) (.invokePrim ~f acc# (map-entries-ij nav# ~g i# j# ~@as)))
+                     (recur (inc i#) (~acctype (~f acc# (map-entries-ij nav# ~g i# j# ~@as))))
                      acc#)))))
              acc#)))
        (throw (ex-info FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)})))
     `(throw (UnsupportedOperationException. "Matrix foldmap supports up to 4 matrices."))))
 
-(defn matrix-fmap!
-  ([^RealMatrix a f]
-   (matrix-fmap* f a))
-  ([^RealMatrix a f ^RealMatrix b]
-   (matrix-fmap* f a b))
-  ([^RealMatrix a f ^RealMatrix b ^RealMatrix c]
-   (matrix-fmap* f a b c))
-  ([^RealMatrix a ^IFn$DDDDD f ^RealMatrix b ^RealMatrix c  ^RealMatrix d]
-   (matrix-fmap* f a b c d))
-  ([a f b c d es]
-   (throw (UnsupportedOperationException. "Matrix fmap! supports up to 4 matrices."))))
+(defmacro matrix-fmap
+  ([creator etype]
+   `(fn
+      ([a# f#]
+       (let-release [res# (~creator a#)]
+         (matrix-fmap* ~etype res# f# a#)))
+      ([a# f# b#]
+       (let-release [res# (~creator a#)]
+         (matrix-fmap* ~etype res# f# a# b#)))
+      ([a# f# b# c#]
+       (let-release [res# (~creator a#)]
+         (matrix-fmap* ~etype res# f# a# b# c#)))
+      ([a# f# b# c# d#]
+       (let-release [res# (~creator a#)]
+         (matrix-fmap* ~etype res# f# a# b# c# d#)))
+      ([a# f# b# c# d# es#]
+       (throw (UnsupportedOperationException. "Matrix fmap! supports up to 4 matrices.")))))
+  ([etype]
+   `(let [fmap-fn# (matrix-fmap raw ~etype)]
+      (fn
+        ([a# f#]
+         (fmap-fn# a# f#))
+        ([a# f# as#]
+         (apply fmap-fn# a# f# as#))))))
 
-(defn diagonal-fmap!
-  ([a ^IFn$DD f]
-   (let [va ^RealVector (view-vctr a)]
-     (fmap! va f)
-     a))
-  ([^Matrix a ^IFn$DDD f ^Matrix b]
-   (if (instance? DiagonalMatrix b)
-     (let [va ^RealVector (view-vctr a)
-           vb ^RealVector (view-vctr b)]
-       (fmap! va f vb))
-     (dotimes [i 3]
-       (let [va ^RealVector (.dia a (dec i))
-             vb ^RealVector (.dia b (dec i))]
-         (fmap! va f vb))))
-   a)
-  ([^Matrix a ^IFn$DDDD f ^Matrix b ^Matrix c]
-   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c))
-     (let [va ^RealVector (view-vctr a)
-           vb ^RealVector (view-vctr b)
-           vc ^RealVector (view-vctr c)]
-       (fmap! va f vb vc))
-     (dotimes [i 3]
-       (let [va ^RealVector (.dia a (dec i))
-             vb ^RealVector (.dia b (dec i))
-             vc ^RealVector (.dia c (dec i))]
-         (fmap! va f vb vc))))
-   a)
-  ([^Matrix a ^IFn$DDDDD f ^Matrix b ^Matrix c ^Matrix d]
-   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
-     (let [va ^RealVector (view-vctr a)
-           vb ^RealVector (view-vctr b)
-           vc ^RealVector (view-vctr c)
-           vd ^RealVector (view-vctr d)]
-       (fmap! va f vb vc vd))
-     (dotimes [i 3]
-       (let [va ^RealVector (.dia a (dec i))
-             vb ^RealVector (.dia b (dec i))
-             vc ^RealVector (.dia c (dec i))
-             vd ^RealVector (.dia d (dec i))]
-         (fmap! va f vb vc vd))))
-   a)
-  ([a f b c d es]
-   (throw (UnsupportedOperationException. "Matrix fmap! supports up to 4 matrices."))))
+(defmacro diagonal-fmap
+  ([creator vtype etype]
+   `(fn
+      ([a# f#]
+       (let-release [res# (~creator a#)]
+         (let [vr# (view-vctr res#)
+               va# (view-vctr a#)]
+           (vector-fmap* ~vtype ~etype vr# f# va#))
+         res#))
+      ([a# f# b#]
+       (let-release [res# (~creator a#)]
+         (if (instance? DiagonalMatrix b#)
+           (let [vr# (view-vctr res#)
+                 va# (view-vctr a#)
+                 vb# (view-vctr b#)]
+             (vector-fmap* ~vtype ~etype vr# f# va# vb#))
+           (dotimes [i# 3]
+             (let [vr# (dia res# (dec i#))
+                   va# (dia a# (dec i#))
+                   vb# (dia b# (dec i#))]
+               (vector-fmap* ~vtype ~etype vr# f# va# vb#))))
+         res#))
+      ([a# f# b# c#]
+       (let-release [res# (~creator (view-vctr a#))]
+         (if (instance? DiagonalMatrix b#)
+           (let [vr# (view-vctr res#)
+                 va# (view-vctr a#)
+                 vb# (view-vctr b#)
+                 vc# (view-vctr c#)]
+             (vector-fmap* ~vtype ~etype vr# f# va# vb# vc#))
+           (dotimes [i# 3]
+             (let [vr# (dia res# (dec i#))
+                   va# (dia a# (dec i#))
+                   vb# (dia b# (dec i#))
+                   vc# (dia c# (dec i#))]
+               (vector-fmap* ~vtype ~etype vr# f# va# vb# vc#))))
+         res#))
+      ([a# f# b# c# d#]
+       (let-release [res# (~creator (view-vctr a#))]
+         (if (instance? DiagonalMatrix b#)
+           (let [vr# (view-vctr res#)
+                 va# (view-vctr a#)
+                 vb# (view-vctr b#)
+                 vc# (view-vctr c#)
+                 vd# (view-vctr d#)]
+             (vector-fmap* ~vtype ~etype vr# f# va# vb# vc# vd#))
+           (dotimes [i# 3]
+             (let [vr# (dia res# (dec i#))
+                   va# (dia a# (dec i#))
+                   vb# (dia b# (dec i#))
+                   vc# (dia c# (dec i#))
+                   vd# (dia d# (dec i#))]
+               (vector-fmap* ~vtype ~etype vr# f# va# vb# vc# vd#))))
+         res#))
+      ([a# f# b# c# d# es#]
+       (throw (UnsupportedOperationException. "Matrix fmap! supports up to 4 matrices.")))))
+  ([vtype etype]
+   `(let [fmap-fn# (diagonal-fmap raw ~vtype ~etype)]
+      (fn
+        ([a# f#]
+         (fmap-fn# a# f#))
+        ([a# f# as#]
+         (apply fmap-fn# a# f# as#))))))
 
 (defn matrix-fold
   ([a]
@@ -335,7 +368,7 @@
 
   (defn matrix-foldmap
     ([a g]
-     (matrix-map-reduce* double ^IFn$DDD p+ 0.0 ^IFn$DD g a))
+     (matrix-map-reduce* double p+ 0.0 g a))
     ([a g f init]
      (matrix-map-reduce f init g a))
     ([a g f init b]
@@ -404,22 +437,22 @@
      (vector-map-reduce* RealVector double double this init ^IFn$DDDDD g x y z v)))
   (matrix-reduce
     ([this init a]
-     (matrix-reduce* double this (double init) a))
+     (matrix-reduce* double this init a))
     ([this init a b]
-     (matrix-reduce* double this (double init) a b))
+     (matrix-reduce* double this init a b))
     ([this init a b c]
-     (matrix-reduce* double this (double init) a b c))
+     (matrix-reduce* double this init a b c))
     ([this init a b c d]
-     (matrix-reduce* double this (double init) a b c d)))
+     (matrix-reduce* double this init a b c d)))
   (matrix-map-reduce
     ([this init g a]
-     (matrix-map-reduce* double this (double init) ^IFn$DD g a))
+     (matrix-map-reduce* double this init ^IFn$DD g a))
     ([this init g a b]
-     (matrix-map-reduce* double this (double init) ^IFn$DDD g a b))
+     (matrix-map-reduce* double this init ^IFn$DDD g a b))
     ([this init g a b c]
-     (matrix-map-reduce* double this (double init) ^IFn$DDDD g a b c))
+     (matrix-map-reduce* double this init ^IFn$DDDD g a b c))
     ([this init g a b c d]
-     (matrix-map-reduce* double this (double init) ^IFn$DDDDD g a b c d))))
+     (matrix-map-reduce* double this init ^IFn$DDDDD g a b c d))))
 
 (extend-type IFn$ODO
   ReductionFunction
