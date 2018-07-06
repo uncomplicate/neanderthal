@@ -86,6 +86,24 @@
           min-idx))
       0)))
 
+(defmacro dot-ones [dot buff n ofst strd ones n1]
+  `(let [remain# (rem ~n ~n1)
+         ni# (- ~n remain#)]
+     (loop [i# 0 res# (~dot remain# ~buff (+ ni# ~ofst) ~strd ~ones 0 1)]
+       (if (< i# ni#)
+         (recur (+ i# ~n1)
+                (+ res# (~dot ~n1 ~buff (+ i# ~ofst) ~strd ~ones 0 1)))
+         res#))))
+
+(defmacro vector-sum [dot x ones]
+  `(let [n# (.dim ~x)
+         n1# (.dim ~ones)
+         buff# (.buffer ~x)
+         ofst# (.offset ~x)
+         strd# (.stride ~x)
+         ones# (.buffer ~ones)]
+     (dot-ones ~dot buff# n# ofst# strd# ones# n1#)))
+
 ;; =============== Common GE matrix macros and functions =======================
 
 (defmacro full-storage-reduce
@@ -247,14 +265,26 @@
                            (~method len# ~alpha buff-a# offset-a# ld-a# ~beta buff-b# offset-b# 1))))
      ~b))
 
-(defmacro matrix-sum [method a]
-  `(if (< 0 (.dim ~a))
-     (let [buff# (.buffer ~a)
-           offset# (.offset ~a)]
-       (if (.isGapless (storage ~a))
-         (~method (.dim ~a) buff# offset# 1)
-         (accu-layout ~a len# idx# acc# 0.0 (+ acc# (~method len# buff# (+ offset# idx#) 1)))))
-     0.0))
+(defmacro matrix-sum
+  ([method a]
+    `(if (< 0 (.dim ~a))
+       (let [buff# (.buffer ~a)
+             offset# (.offset ~a)]
+         (if (.isGapless (storage ~a))
+           (~method (.dim ~a) buff# offset# 1)
+           (accu-layout ~a len# idx# acc# 0.0 (+ acc# (~method len# buff# (+ offset# idx#) 1)))))
+       0.0))
+  ([dot a ones]
+   `(if (< 0 (.dim ~a))
+      (let [buff# (.buffer ~a)
+            ofst# (.offset ~a)
+            ones# (.buffer ~ones)
+            n1# (.dim ~ones)]
+        (if (.isGapless (storage ~a))
+          (let [n# (.dim ~a)]
+            (dot-ones ~dot buff# n# ofst# 1 ones# n1#))
+          (accu-layout ~a len# idx# acc# 0.0 (+ acc# (double (dot-ones ~dot buff# len# (+ ofst# idx#) 1 ones# n1#))))))
+      0.0)))
 
 (defmacro ge-mv
   ([method alpha a x beta y]

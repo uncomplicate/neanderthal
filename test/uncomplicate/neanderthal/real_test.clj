@@ -98,6 +98,14 @@
          (sum (vctr factory [1 2 -5]))  => -2.0
          (sum (vctr factory [])) => 0.0))
 
+(defn test-sum-asum [factory]
+  (with-release [x (vctr factory (range 1 100 0.001))
+                 y (vctr factory [1 2 4 9])
+                 z (entry! (vctr factory 1000000) 1.0)]
+    (sum x) => (asum x)
+    (sum y) => (asum y)
+    (sum x) => (asum x)))
+
 (defn test-iamax [factory]
   (facts "BLAS 1 iamax"
          (iamax (vctr factory [1 2 7 7 6 2 -12 10])) => 6
@@ -383,6 +391,14 @@
   (facts "BLAS 1 GE sum."
          (sum (ge factory 2 3 (range -3 3))) => -3.0
          (sum (ge factory 0 0 [])) => 0.0))
+
+(defn test-ge-sum-asum [factory]
+  (with-release [a (ge factory 1234 32 (range 1 1000 0.001))
+                 b (ge factory 2 3 [1 2 4 9 19 89])
+                 c (entry! (ge factory 32 1234 (range 1 1000 0.001)) 1.0)]
+    (sum a) => (asum a)
+    (sum b) => (asum b)
+    (sum c) => (asum c)))
 
 (defn test-ge-amax [factory]
   (facts "BLAS 1 GE amax."
@@ -2741,6 +2757,7 @@
   (test-rotg factory)
   (test-rotm factory)
   (test-rotmg factory)
+  (test-sum-asum factory)
   (test-vctr-entry factory)
   (test-vctr-entry! factory)
   (test-vctr-alter! factory)
@@ -2750,6 +2767,7 @@
   (test-ge-alter! factory)
   (test-ge-amax factory)
   (test-ge-sum factory)
+  (test-ge-sum-asum factory)
   (test-ge-dot-strided factory)
   (test-ge-trans! factory)
   (test-tr-entry factory tr)

@@ -65,7 +65,7 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v ^double v
+    (let [v (float v)
           strd Float/BYTES]
       (dotimes [i (.count this b)]
         (.putFloat ^ByteBuffer b (* strd i) v))
@@ -105,7 +105,7 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v ^double v
+    (let [v (double v)
           strd Double/BYTES]
       (dotimes [i (.count this b)]
         (.putDouble ^ByteBuffer b (* strd i) v))

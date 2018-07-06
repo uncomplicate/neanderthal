@@ -8,9 +8,11 @@
 
 (ns uncomplicate.neanderthal.internal.host.mkl
   (:require [uncomplicate.commons
-             [core :refer [with-release let-release info]]
+             [core :refer [with-release let-release info Releaseable release]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.neanderthal.math :refer [f=]]
+            [uncomplicate.neanderthal
+             [math :refer [f=]]
+             [block :refer [create-data-source initialize]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage]]
@@ -359,6 +361,12 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
 
 ;; ============ Real Vector Engines ============================================
+(def ^:private ones-double (->RealBlockVector nil nil nil true
+                                              (initialize double-accessor (create-data-source double-accessor 1024) 1.0)
+                                              1024 0 1))
+(def ^:private ones-float (->RealBlockVector nil nil nil true
+                                             (initialize float-accessor (create-data-source float-accessor 1024) 1.0)
+                                             1024 0 1))
 
 (deftype DoubleVectorEngine []
   Blas
@@ -409,7 +417,7 @@
                  (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
-    (vector-method CBLAS/dsum ^RealBlockVector x))
+    (vector-sum CBLAS/ddot ^RealBlockVector x ^RealBlockVector ones-double))
   (imax [_ x]
     (vector-imax ^RealBlockVector x))
   (imin [_ x]
@@ -578,7 +586,7 @@
                  (.buffer ^RealBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
     y)
   (sum [_ x]
-    (vector-method CBLAS/ssum ^RealBlockVector x))
+    (vector-sum CBLAS/sdot ^RealBlockVector x ^RealBlockVector ones-float))
   (imax [_ x]
     (vector-imax ^RealBlockVector x))
   (imin [_ x]
@@ -739,7 +747,7 @@
   (amax [_ a]
     (ge-lan LAPACK/dlange (int \M) ^RealGEMatrix a))
   (sum [_ a]
-    (matrix-sum CBLAS/dsum ^RealGEMatrix a))
+    (matrix-sum CBLAS/ddot ^RealGEMatrix a ^RealBlockVector ones-double))
   (set-all [_ alpha a]
     (ge-laset LAPACK/dlaset alpha alpha ^RealGEMatrix a))
   (axpby [_ alpha a beta b]
@@ -959,7 +967,7 @@
   (amax [_ a]
     (ge-lan LAPACK/slange (int \M) ^RealGEMatrix a))
   (sum [_ a]
-    (matrix-sum CBLAS/ssum ^RealGEMatrix a))
+    (matrix-sum CBLAS/sdot ^RealGEMatrix a ^RealBlockVector ones-float))
   (set-all [_ alpha a]
     (ge-laset LAPACK/slaset alpha alpha ^RealGEMatrix a))
   (axpby [_ alpha a beta b]
@@ -4203,22 +4211,20 @@
 
 (let [index-fact (volatile! nil)]
 
-  (def mkl-int
-    (->MKLIntegerFactory index-fact int-accessor (->IntVectorEngine)))
+  (def mkl-int (->MKLIntegerFactory index-fact int-accessor (->IntVectorEngine)))
 
-  (def mkl-long
-    (->MKLIntegerFactory index-fact long-accessor (->LongVectorEngine)))
+  (def mkl-long (->MKLIntegerFactory index-fact long-accessor (->LongVectorEngine)))
 
   (def mkl-float
-    (->MKLRealFactory index-fact float-accessor
-                      (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
+    (->MKLRealFactory index-fact float-accessor (->FloatVectorEngine)
+                      (->FloatGEEngine) (->FloatTREngine) (->FloatSYEngine)
                       (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
                       (->FloatSPEngine) (->FloatTPEngine)
                       (->FloatGDEngine) (->FloatGTEngine) (->FloatDTEngine) (->FloatSTEngine)))
 
   (def mkl-double
-    (->MKLRealFactory index-fact double-accessor
-                      (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
+    (->MKLRealFactory index-fact double-accessor (->DoubleVectorEngine)
+                      (->DoubleGEEngine) (->DoubleTREngine) (->DoubleSYEngine)
                       (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
                       (->DoubleSPEngine) (->DoubleTPEngine)
                       (->DoubleGDEngine) (->DoubleGTEngine) (->DoubleDTEngine) (->DoubleSTEngine)))
