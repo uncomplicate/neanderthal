@@ -8,8 +8,10 @@
 
 (ns uncomplicate.neanderthal.block-test
   (:require [midje.sweet :refer [facts throws => roughly]]
-            [uncomplicate.commons.core :refer [release with-release]]
-            [uncomplicate.fluokitten.core :refer [fmap! fold foldmap op]]
+            [uncomplicate.commons.core :refer [release with-release double-fn]]
+            [uncomplicate.fluokitten
+             [core :refer [fmap! fold foldmap op]]
+             [test :refer :all]]
             [uncomplicate.neanderthal.core :refer :all])
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD ExceptionInfo]))
 
@@ -399,6 +401,37 @@
          (seq (tr factory 3 (range 1 7) {:layout :row :uplo :lower :diag :unit}))
          => (list (list) (list 1.0) (list 2.0 3.0))))
 
+(defn test-vctr-functor-laws [factory]
+  (let [pinc (double-fn (partial + 1))
+        p*100 (double-fn (partial * 100))
+        p+ (double-fn +)]
+    (facts "Monadic laws for vector."
+           (functor-law2 pinc p*100 (vctr factory [1 -199 9]))
+           (functor-law2 pinc p*100 (vctr factory [1 -199 9] (vctr factory [1 -66 9])))
+           (fmap-keeps-type pinc (vctr factory [100 0 -999]))
+           (fmap-keeps-type p+ (vctr factory [100 0 -999]) (vctr factory (list 44 0 -54))))))
+
+(defn test-ge-functor-laws [factory creator]
+  (let [pinc (double-fn (partial + 1))
+        p*100 (double-fn (partial * 100))
+        p+ (double-fn +)]
+    (facts "Monadic laws for GE matrices."
+           (functor-law2 pinc p*100 (creator factory 3 2 [1 -199 9 7 8 19]))
+           (functor-law2 pinc p*100 (creator factory 2 3 [1 -199 9 8 -7 -1])
+                         (creator factory 2 3 [9 8 -7 1 -66 9]))
+           (fmap-keeps-type pinc (creator factory 1 9 [1 2 3 4 5 6 100 0 -999]))
+           (fmap-keeps-type p+ (creator factory 0 0) (ge factory 0 0)))))
+
+(defn test-sspar-mat-functor-laws [factory creator]
+  (let [pinc (double-fn (partial + 1))
+        p*100 (double-fn (partial * 100))
+        p+ (double-fn +)]
+    (facts "Monadic laws for UPLO and packed matrices."
+           (functor-law2 pinc p*100 (creator factory 3 [1 -199 9 7 8 19]))
+           (functor-law2 pinc p*100 (creator factory 2 [1 -199 9] (creator factory 2 [9 8 -7])))
+           (fmap-keeps-type pinc (creator factory 5 [1 2 3 4 5 6 100 0 -999]))
+           (fmap-keeps-type p+ (creator factory 0) (creator factory 0)))))
+
 (defn test-all [factory]
   (test-create factory)
   (test-equality factory)
@@ -425,4 +458,15 @@
   (test-tr-functor factory)
   (test-tr-fold factory)
   (test-tr-reducible factory)
-  (test-tr-seq factory))
+  (test-tr-seq factory)
+  (test-vctr-functor-laws factory)
+  (test-ge-functor-laws factory ge)
+  (test-ge-functor-laws factory gb)
+  (test-sspar-mat-functor-laws factory tr)
+  (test-sspar-mat-functor-laws factory sy)
+  (test-sspar-mat-functor-laws factory sb)
+  (test-sspar-mat-functor-laws factory sp)
+  (test-sspar-mat-functor-laws factory tp)
+  (test-sspar-mat-functor-laws factory gd)
+  (test-sspar-mat-functor-laws factory gt)
+  (test-sspar-mat-functor-laws factory st))
