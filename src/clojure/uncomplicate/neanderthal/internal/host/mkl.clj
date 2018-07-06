@@ -2194,7 +2194,7 @@
   (amax [_ a]
     (tp-lan LAPACK/dlantp (int \M) ^RealPackedMatrix a))
   (sum [_ a]
-    (tp-sum CBLAS/dsum double ^RealPackedMatrix a))
+    (tp-sum CBLAS/ddot double ^RealPackedMatrix a ^RealBlockVector ones-double))
   (set-all [_ alpha a]
     (packed-laset LAPACK/dlaset alpha ^RealPackedMatrix a))
   (axpby [_ alpha a beta b]
@@ -2352,7 +2352,7 @@
   (amax [_ a]
     (tp-lan LAPACK/slantp (int \M) ^RealPackedMatrix a))
   (sum [_ a]
-    (tp-sum CBLAS/ssum double ^RealPackedMatrix a))
+    (tp-sum CBLAS/sdot double ^RealPackedMatrix a ^RealBlockVector ones-float))
   (set-all [_ alpha a]
     (packed-laset LAPACK/slaset alpha ^RealPackedMatrix a))
   (axpby [_ alpha a beta b]
@@ -2510,7 +2510,7 @@
   (amax [_ a]
     (sp-lan LAPACK/dlansp (int \M) ^RealPackedMatrix a))
   (sum [_ a]
-    (sp-sum CBLAS/dsum double ^RealPackedMatrix a))
+    (sp-sum CBLAS/ddot double ^RealPackedMatrix a ^RealBlockVector ones-double))
   (set-all [_ alpha a]
     (packed-laset LAPACK/dlaset alpha ^RealPackedMatrix a))
   (axpby [_ alpha a beta b]
@@ -2680,7 +2680,7 @@
   (amax [_ a]
     (sp-lan LAPACK/slansp (int \M) ^RealPackedMatrix a))
   (sum [_ a]
-    (sp-sum CBLAS/ssum double ^RealPackedMatrix a))
+    (sp-sum CBLAS/sdot double ^RealPackedMatrix a ^RealBlockVector ones-float))
   (set-all [_ alpha a]
     (packed-laset LAPACK/slaset alpha ^RealPackedMatrix a))
   (axpby [_ alpha a beta b]

@@ -86,7 +86,7 @@
           min-idx))
       0)))
 
-(defmacro dot-ones [dot buff n ofst strd ones n1]
+(defmacro dot-ones [dot n buff ofst strd n1 ones]
   `(let [remain# (rem ~n ~n1)
          ni# (- ~n remain#)]
      (loop [i# 0 res# (~dot remain# ~buff (+ ni# ~ofst) ~strd ~ones 0 1)]
@@ -102,7 +102,7 @@
          ofst# (.offset ~x)
          strd# (.stride ~x)
          ones# (.buffer ~ones)]
-     (dot-ones ~dot buff# n# ofst# strd# ones# n1#)))
+     (dot-ones ~dot n# buff# ofst# strd# n1# ones#)))
 
 ;; =============== Common GE matrix macros and functions =======================
 
@@ -282,8 +282,8 @@
             n1# (.dim ~ones)]
         (if (.isGapless (storage ~a))
           (let [n# (.dim ~a)]
-            (dot-ones ~dot buff# n# ofst# 1 ones# n1#))
-          (accu-layout ~a len# idx# acc# 0.0 (+ acc# (double (dot-ones ~dot buff# len# (+ ofst# idx#) 1 ones# n1#))))))
+            (dot-ones ~dot n# buff# ofst# 1 n1# ones#))
+          (accu-layout ~a len# idx# acc# 0.0 (+ acc# (double (dot-ones ~dot len# buff# (+ ofst# idx#) 1 n1# ones#))))))
       0.0)))
 
 (defmacro ge-mv
@@ -914,20 +914,37 @@
      (~method (.surface (region ~a)) ~alpha (.buffer ~a) (.offset ~a) 1 ~beta (.buffer ~b) (.offset ~b) 1)
      ~b))
 
-(defmacro tp-sum [method transform a]
-  `(if (< 0 (.dim ~a))
-     (let [stor# (storage ~a)
-           da# (real-accessor ~a)
-           n# (.ncols ~a)
-           buff# (.buffer ~a)
-           ofst# (.offset ~a)]
-       (if-not (.isDiagUnit (region ~a))
-         (~method (.surface (region ~a)) buff# ofst# 1)
-         (loop [i# 0 acc# (+ n# (~method (+ n# (.surface (region ~a))) buff# ofst# 1))]
-           (if (< i# n#)
-             (recur (inc i#) (- acc# (~transform (.get da# buff# (+ ofst# (.index stor# i# i#))))))
-             acc#))))
-     0.0))
+(defmacro tp-sum
+  ([method etype a]
+   `(if (< 0 (.dim ~a))
+      (let [stor# (storage ~a)
+            da# (real-accessor ~a)
+            n# (.ncols ~a)
+            buff# (.buffer ~a)
+            ofst# (.offset ~a)]
+        (if-not (.isDiagUnit (region ~a))
+          (~method (.surface (region ~a)) buff# ofst# 1)
+          (loop [i# 0 acc# (+ n# (~method (+ n# (.surface (region ~a))) buff# ofst# 1))]
+            (if (< i# n#)
+              (recur (inc i#) (- acc# (~etype (.get da# buff# (+ ofst# (.index stor# i# i#))))))
+              acc#))))
+      0.0))
+  ([dot etype a ones]
+   `(if (< 0 (.dim ~a))
+      (let [stor# (storage ~a)
+            da# (real-accessor ~a)
+            n# (.ncols ~a)
+            buff# (.buffer ~a)
+            ofst# (.offset ~a)
+            n1# (.dim ~ones)
+            ones# (.buffer ~ones)]
+        (if-not (.isDiagUnit (region ~a))
+          (dot-ones ~dot (.surface (region ~a)) buff# ofst# 1 n1# ones#)
+          (loop [i# 0 acc# (+ n# (~etype (dot-ones ~dot (+ n# (.surface (region ~a))) buff# ofst# 1 n1# ones#)))]
+            (if (< i# n#)
+              (recur (inc i#) (- acc# (~etype (.get da# buff# (+ ofst# (.index stor# i# i#))))))
+              acc#))))
+      0.0)))
 
 (defmacro tp-dot [method a b]
   `(do
@@ -1005,18 +1022,33 @@
 
 ;; ============================ Symmetric Packed Matrix ================================
 
-(defmacro sp-sum [method transform a]
-  `(if (< 0 (.dim ~a))
-     (let [da# (real-accessor ~a)
-           n# (.ncols ~a)
-           buff# (.buffer ~a)
-           ofst# (.offset ~a)
-           stor# (storage ~a)]
-       (loop [i# 0 acc# (* 2.0 (~method (.surface (region ~a)) buff# ofst# 1))]
-         (if (< i# n#)
-           (recur (inc i#) (- acc# (~transform (.get da# buff# (+ ofst# (.index stor# i# i#))))))
-           acc#)))
-     0.0))
+(defmacro sp-sum
+  ([method etype a]
+   `(if (< 0 (.dim ~a))
+      (let [da# (real-accessor ~a)
+            n# (.ncols ~a)
+            buff# (.buffer ~a)
+            ofst# (.offset ~a)
+            stor# (storage ~a)]
+        (loop [i# 0 acc# (* 2.0 (~method (.surface (region ~a)) buff# ofst# 1))]
+          (if (< i# n#)
+            (recur (inc i#) (- acc# (~etype (.get da# buff# (+ ofst# (.index stor# i# i#))))))
+            acc#)))
+      0.0))
+  ([dot etype a ones]
+   `(if (< 0 (.dim ~a))
+      (let [da# (real-accessor ~a)
+            n# (.ncols ~a)
+            buff# (.buffer ~a)
+            ofst# (.offset ~a)
+            stor# (storage ~a)
+            n1# (.dim ~ones)
+            ones# (.buffer ~ones)]
+        (loop [i# 0 acc# (* 2.0 (~etype (dot-ones ~dot (.surface (region ~a)) buff# ofst# 1 n1# ones#)))]
+          (if (< i# n#)
+            (recur (inc i#) (- acc# (~etype (.get da# buff# (+ ofst# (.index stor# i# i#))))))
+            acc#)))
+      0.0)))
 
 (defmacro sp-dot [method a b]
   `(do
