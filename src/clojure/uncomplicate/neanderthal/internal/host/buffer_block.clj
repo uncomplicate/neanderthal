@@ -476,7 +476,24 @@
     (integer-block-vector fact false buf l (+ ofst (* k strd)) strd))
   Monoid
   (id [x]
-    (integer-block-vector fact 0)))
+    (integer-block-vector fact 0))
+  Applicative
+  (pure [_ v]
+    (let-release [res (integer-block-vector fact 1)]
+      (.set ^IntegerBlockVector res 0 v)))
+  (pure [_ v vs]
+    (vctr fact (cons v vs))))
+
+(extend IntegerBlockVector
+  Functor
+  {:fmap (vector-fmap IntegerBlockVector long)}
+  PseudoFunctor
+  {:fmap! (vector-fmap identity IntegerBlockVector long)}
+  Foldable
+  {:fold vector-fold
+   :foldmap (vector-foldmap IntegerBlockVector long)}
+  Magma
+  {:op (constantly vector-op)})
 
 (defn integer-block-vector
   ([fact master ^ByteBuffer buf n ofst strd]
@@ -667,35 +684,7 @@
     (let-release [res (real-block-vector fact 1)]
       (.set ^RealBlockVector res 0 v)))
   (pure [_ v vs]
-    (vctr fact (cons v vs)))
-  Foldable
-  (fold [x]
-    (sum (engine x) x))
-  (fold [x f init]
-    (vector-reduce f init x))
-  (fold [x f init y]
-    (vector-reduce f init x y))
-  (fold [x f init y z]
-    (vector-reduce f init x y z))
-  (fold [x f init y z v]
-    (vector-reduce f init x y z v))
-  (fold [_ _ _ _ _ _ _]
-    (dragan-says-ex "fold with more than four arguments is not available for RealBlockVector"))
-  (foldmap [x g]
-    (loop [i 0 acc 0.0]
-      (if (< i n)
-        (recur (inc i) (+ acc (double (g (.entry x i)))))
-        acc)))
-  (foldmap[x g f init]
-    (vector-map-reduce f init g x))
-  (foldmap[x g f init y]
-    (vector-map-reduce f init g x y))
-  (foldmap[x g f init y z]
-    (vector-map-reduce f init g x y z))
-  (foldmap[x g f init y z v]
-    (vector-map-reduce f init g x y z v))
-  (foldmap [_ _ _ _ _ _ _ _]
-    (dragan-says-ex "foldmap with more than four arguments is not available for RealBlockVector")))
+    (vctr fact (cons v vs))))
 
 (defn real-block-vector
   ([fact master ^ByteBuffer buf n ofst strd]
@@ -712,6 +701,9 @@
   {:fmap (vector-fmap RealBlockVector double)}
   PseudoFunctor
   {:fmap! (vector-fmap identity RealBlockVector double)}
+  Foldable
+  {:fold vector-fold
+   :foldmap (vector-foldmap RealBlockVector double)}
   Magma
   {:op (constantly vector-op)})
 

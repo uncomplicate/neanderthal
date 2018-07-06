@@ -184,7 +184,7 @@
            (fmap! f x (fy) (fy) (fy)) => x
 
            (fmap! + (fx) (fy) (fy) (fy) [(fy)])
-           => (throws UnsupportedOperationException))))
+           => (throws ExceptionInfo))))
 
 (defn test-vctr-fold [factory]
   (let [x (vctr factory [1 2 3 4])
@@ -281,7 +281,7 @@
            (fmap! f (fx) (fy) (fy) (fy)) => (ge factory 2 3 [7 11 15 19 23 27])
            (fmap! f x (fy) (fy) (fy)) => x
 
-           (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws UnsupportedOperationException))))
+           (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws ExceptionInfo))))
 
 (defn test-ge-fold [factory]
   (let [x (ge factory 2 3 [1 2 3 4 5 6])
@@ -346,7 +346,7 @@
            (fmap! f (fx) (fy) (fy) (fy)) => (tr factory 3 [7 11 15 19 23 27])
            (fmap! f x (fy) (fy) (fy)) => x
 
-           (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws UnsupportedOperationException))))
+           (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws ExceptionInfo))))
 
 (defn test-tr-fold [factory]
   (let [x (tr factory 3 [1 2 3 4 5 6])
