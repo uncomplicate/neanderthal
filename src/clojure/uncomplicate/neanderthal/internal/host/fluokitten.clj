@@ -21,8 +21,7 @@
                           data-accessor create-ge navigator storage region view-vctr create-vector]]
              [common :refer [real-accessor]]
              [navigation :refer [doall-layout real-navigator]]])
-  (:import [clojure.lang IFn IFn$D IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$DLDD IFn$ODO IFn$OLDO
-            IFn$LL IFn$LLL IFn$LLLL IFn$LLLLL IFn$OLO IFn$OLLO]
+  (:import [clojure.lang IFn IFn$DLDD IFn$ODO IFn$OLDO]
            [uncomplicate.neanderthal.internal.api RealBufferAccessor RealVector RealMatrix
             Vector Matrix DiagonalMatrix Changeable LayoutNavigator RealLayoutNavigator
             DenseStorage Region]))
@@ -445,7 +444,7 @@
 
 ;; ============================ Primitive function extensions ==================
 
-(extend-type IFn$DDD
+(extend-type IFn
   ReductionFunction
   (vector-reduce
     ([this init x]
@@ -458,13 +457,13 @@
      (vector-reduce* RealVector double double this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce* RealVector double double this init ^IFn$DD g x))
+     (vector-map-reduce* RealVector double double this init g x))
     ([this init g x y]
-     (vector-map-reduce* RealVector double double this init ^IFn$DDD g x y))
+     (vector-map-reduce* RealVector double double this init g x y))
     ([this init g x y z]
-     (vector-map-reduce* RealVector double double this init ^IFn$DDDD g x y z))
+     (vector-map-reduce* RealVector double double this init g x y z))
     ([this init g x y z v]
-     (vector-map-reduce* RealVector double double this init ^IFn$DDDDD g x y z v)))
+     (vector-map-reduce* RealVector double double this init g x y z v)))
   (matrix-reduce
     ([this init a]
      (matrix-reduce* double this init a))
@@ -476,13 +475,13 @@
      (matrix-reduce* double this init a b c d)))
   (matrix-map-reduce
     ([this init g a]
-     (matrix-map-reduce* double this init ^IFn$DD g a))
+     (matrix-map-reduce* double this init g a))
     ([this init g a b]
-     (matrix-map-reduce* double this init ^IFn$DDD g a b))
+     (matrix-map-reduce* double this init g a b))
     ([this init g a b c]
-     (matrix-map-reduce* double this init ^IFn$DDDD g a b c))
+     (matrix-map-reduce* double this init g a b c))
     ([this init g a b c d]
-     (matrix-map-reduce* double this init ^IFn$DDDDD g a b c d))))
+     (matrix-map-reduce* double this init g a b c d))))
 
 (extend-type IFn$ODO
   ReductionFunction
@@ -497,13 +496,13 @@
      (vector-reduce* RealVector double identity this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x))
+     (vector-map-reduce* RealVector double identity this init g x))
     ([this init g x y]
-     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x y))
+     (vector-map-reduce* RealVector double identity this init g x y))
     ([this init g x y z]
-     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x y z))
+     (vector-map-reduce* RealVector double identity this init g x y z))
     ([this init g x y z v]
-     (vector-map-reduce* RealVector double identity this init ^IFn$DD g x y z v)))
+     (vector-map-reduce* RealVector double identity this init g x y z v)))
   (matrix-reduce
     ([this init a]
      (matrix-reduce* identity this init a))
@@ -515,13 +514,13 @@
      (matrix-reduce* identity this init a b c d)))
   (matrix-map-reduce
     ([this init g a]
-     (matrix-map-reduce* identity this init ^IFn$DD g a))
+     (matrix-map-reduce* identity this init g a))
     ([this init g a b]
-     (matrix-map-reduce* identity this init ^IFn$DDD g a b))
+     (matrix-map-reduce* identity this init g a b))
     ([this init g a b c]
-     (matrix-map-reduce* identity this init ^IFn$DDDD g a b c))
+     (matrix-map-reduce* identity this init g a b c))
     ([this init g a b c d]
-     (matrix-map-reduce* identity this init ^IFn$DDDDD g a b c d))))
+     (matrix-map-reduce* identity this init g a b c d))))
 
 (extend-type IFn$DLDD
   ReductionFunction
@@ -536,13 +535,13 @@
      (vector-reduce-indexed* RealVector double double this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x))
+     (vector-map-reduce-indexed* RealVector double double this init g x))
     ([this init g x y]
-     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x y))
+     (vector-map-reduce-indexed* RealVector double double this init g x y))
     ([this init g x y z]
-     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x y z))
+     (vector-map-reduce-indexed* RealVector double double this init g x y z))
     ([this init g x y z v]
-     (vector-map-reduce-indexed* RealVector double double this init ^IFn$DD g x y z v))))
+     (vector-map-reduce-indexed* RealVector double double this init g x y z v))))
 
 (extend-type IFn$OLDO
   ReductionFunction
@@ -557,88 +556,10 @@
      (vector-reduce-indexed* RealVector double identity this init x y z v)))
   (vector-map-reduce
     ([this init g x]
-     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x))
+     (vector-map-reduce-indexed* RealVector double identity this init g x))
     ([this init g x y]
-     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x y))
+     (vector-map-reduce-indexed* RealVector double identity this init g x y))
     ([this init g x y z]
-     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x y z))
+     (vector-map-reduce-indexed* RealVector double identity this init g x y z))
     ([this init g x y z v]
-     (vector-map-reduce-indexed* RealVector double identity this init ^IFn$DD g x y z v))))
-
-(extend-type IFn$LLL
-  ReductionFunction
-  (vector-reduce
-    ([this init x]
-     (vector-reduce* RealVector long long this init x))
-    ([this init x y]
-     (vector-reduce* RealVector long long this init x y))
-    ([this init x y z]
-     (vector-reduce* RealVector long long this init x y z))
-    ([this init x y z v]
-     (vector-reduce* RealVector long long this init x y z v)))
-  (vector-map-reduce
-    ([this init g x]
-     (vector-map-reduce* RealVector long long this init ^IFn$LL g x))
-    ([this init g x y]
-     (vector-map-reduce* RealVector long long this init ^IFn$LLL g x y))
-    ([this init g x y z]
-     (vector-map-reduce* RealVector long long this init ^IFn$LLLL g x y z))
-    ([this init g x y z v]
-     (vector-map-reduce* RealVector long long this init ^IFn$LLLLL g x y z v)))
-  (matrix-reduce
-    ([this init a]
-     (matrix-reduce* long this init a))
-    ([this init a b]
-     (matrix-reduce* long this init a b))
-    ([this init a b c]
-     (matrix-reduce* long this init a b c))
-    ([this init a b c d]
-     (matrix-reduce* long this init a b c d)))
-  (matrix-map-reduce
-    ([this init g a]
-     (matrix-map-reduce* long this init ^IFn$LL g a))
-    ([this init g a b]
-     (matrix-map-reduce* long this init ^IFn$LLL g a b))
-    ([this init g a b c]
-     (matrix-map-reduce* long this init ^IFn$LLLL g a b c))
-    ([this init g a b c d]
-     (matrix-map-reduce* long this init ^IFn$LLLLL g a b c d))))
-
-(extend-type IFn$OLO
-  ReductionFunction
-  (vector-reduce
-    ([this init x]
-     (vector-reduce* RealVector long identity this init x))
-    ([this init x y]
-     (vector-reduce* RealVector long identity this init x y))
-    ([this init x y z]
-     (vector-reduce* RealVector long identity this init x y z))
-    ([this init x y z v]
-     (vector-reduce* RealVector long identity this init x y z v)))
-  (vector-map-reduce
-    ([this init g x]
-     (vector-map-reduce* RealVector long identity this init ^IFn$LL g x))
-    ([this init g x y]
-     (vector-map-reduce* RealVector long identity this init ^IFn$LL g x y))
-    ([this init g x y z]
-     (vector-map-reduce* RealVector long identity this init ^IFn$LL g x y z))
-    ([this init g x y z v]
-     (vector-map-reduce* RealVector long identity this init ^IFn$LL g x y z v)))
-  (matrix-reduce
-    ([this init a]
-     (matrix-reduce* identity this init a))
-    ([this init a b]
-     (matrix-reduce* identity this init a b))
-    ([this init a b c]
-     (matrix-reduce* identity this init a b c))
-    ([this init a b c d]
-     (matrix-reduce* identity this init a b c d)))
-  (matrix-map-reduce
-    ([this init g a]
-     (matrix-map-reduce* identity this init ^IFn$LL g a))
-    ([this init g a b]
-     (matrix-map-reduce* identity this init ^IFn$LLL g a b))
-    ([this init g a b c]
-     (matrix-map-reduce* identity this init ^IFn$LLLL g a b c))
-    ([this init g a b c d]
-     (matrix-map-reduce* identity this init ^IFn$LLLLL g a b c d))))
+     (vector-map-reduce-indexed* RealVector double identity this init g x y z v))))

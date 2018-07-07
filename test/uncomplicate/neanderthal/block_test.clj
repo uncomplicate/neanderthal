@@ -219,7 +219,7 @@
            (fold pf1 1.0 x y y y) => 53.0
            (fold pf1o [] x y y y) => [7.0 11.0 15.0 19.0]
 
-           (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
+           (fold + 1.0 x y y y) => 53.0)))
 
 (defn test-vctr-seq [factory]
   (facts "Vector as a sequence"
@@ -310,7 +310,7 @@
            (fold pf1 1.0 x y y) => 76.0
            (fold pf1o [] x y y) => [5.0 8.0 11.0 14.0 17.0 20.0]
 
-           (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
+           (fold + 1.0 x y y y) => 103.0)))
 
 
 (defn test-ge-seq [factory]
@@ -375,7 +375,7 @@
            (fold pf1 1.0 x y y) => 76.0
            (fold pf1o [] x y y) => [5.0 8.0 11.0 14.0 17.0 20.0]
 
-           (fold + 1.0 x y y y) => (throws IllegalArgumentException))))
+           (fold + 1.0 x y y y) => 103.0)))
 
 (defn test-tr-seq [factory]
   (facts "TR matrix as a sequence"

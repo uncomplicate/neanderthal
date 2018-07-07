@@ -1,5 +1,12 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.20.0
+
+* Fluokitten performance regression (0.18.0) fixed.
+* Fluokitten support for non-double functions.
+* Fluokitten accepts non-primitive function for Neanderthal objects.
+* Custom non-blas sum function sped up on CPU.
+
 # 0.19.0
 
 * Support explicit stream in memcpy.
