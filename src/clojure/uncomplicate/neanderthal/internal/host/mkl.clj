@@ -361,12 +361,16 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
 
 ;; ============ Real Vector Engines ============================================
-(def ^:private ones-double (->RealBlockVector nil nil nil true
-                                              (initialize double-accessor (create-data-source double-accessor 1024) 1.0)
-                                              1024 0 1))
-(def ^:private ones-float (->RealBlockVector nil nil nil true
-                                             (initialize float-accessor (create-data-source float-accessor 1024) 1.0)
-                                             1024 0 1))
+
+(def ^:private ones-double
+  (->RealBlockVector nil nil nil true
+                     (initialize double-accessor (create-data-source double-accessor 1024) 1.0)
+                     1024 0 1))
+
+(def ^:private ones-float
+  (->RealBlockVector nil nil nil true
+                     (initialize float-accessor (create-data-source float-accessor 1024) 1.0)
+                     1024 0 1))
 
 (deftype DoubleVectorEngine []
   Blas
