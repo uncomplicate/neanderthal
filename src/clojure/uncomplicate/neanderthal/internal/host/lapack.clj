@@ -1045,17 +1045,21 @@
 (defmacro ge-svd
   ([method a sigma u vt superb]
    `(let [m# (.mrows ~a)
-          n# (.ncols ~a)]
+          n# (.ncols ~a)
+          mu# (.mrows ~u)
+          nu# (.ncols ~u)
+          mvt# (.mrows ~vt)
+          nvt# (.ncols ~vt)]
       (with-svd-check ~sigma
         (~method (.layout (navigator  ~a))
-         (int (cond (= m# (.mrows ~u) (.ncols ~u)) \A
-                    (and (= m# (.mrows ~u)) (= (min m# n#) (.ncols ~u))) \S
-                    (nil? ~u) \O
-                    :else \N))
-         (int (cond (= n# (.mrows ~vt) (.ncols ~vt)) \A
-                    (and (= (min m# n#) (.mrows ~vt)) (= n# (.ncols ~vt))) \S
+         (int (cond (and ~u (= m# mu# nu#)) \A
+                    (and ~u (= m# mu#) (= (min m# n#) nu#)) \S
+                    (and (nil? ~u) ~vt) \O
+                    :default \N))
+         (int (cond (and ~vt (= n# mvt# nvt#)) \A
+                    (and ~vt (= n# nvt#) (= (min m# n#) mvt#)) \S
                     (and ~u (nil? ~vt)) \O
-                    :else \N))
+                    :default \N))
          m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~sigma) (.offset ~sigma)
          (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)
          (.buffer ~superb) (.offset ~superb)))))
@@ -1066,3 +1070,27 @@
        (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
        (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
        (.buffer ~superb) (.offset ~superb)))))
+
+(defmacro ge-sdd
+  ([method a sigma u vt]
+   `(let [m# (.mrows ~a)
+          n# (.ncols ~a)
+          mu# (.mrows ~u)
+          nu# (.ncols ~u)
+          mvt# (.mrows ~vt)
+          nvt# (.ncols ~vt)]
+      (with-svd-check ~sigma
+        (~method (.layout (navigator  ~a))
+         (int (cond (and ~u ~vt (= m# mu# nu#) (= n# mvt# nvt#)) \A
+                    (and ~u ~vt (= m# mu#) (= n# nvt#) (= (min m# n#) nu# mvt#)) \S
+                    (or (and ~u (nil? ~vt) (< m# n#) (= m# mu# nu#))
+                        (and (nil? ~u) ~vt (<= n# m#) (= n# mvt# nvt#))) \O
+                    :default \N))
+         m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~sigma) (.offset ~sigma)
+         (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)))))
+  ([method a sigma zero-uvt]
+   `(with-svd-check ~sigma
+      (~method (.layout (navigator  ~a)) (int \N) (.mrows ~a) (.ncols ~a)
+       (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~sigma) (.offset ~sigma)
+       (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)
+       (.buffer ~zero-uvt) (.offset ~zero-uvt) (.stride ~zero-uvt)))))

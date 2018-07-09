@@ -830,6 +830,13 @@
   (svd [_ a sigma superb]
     (ge-svd LAPACK/dgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
             ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
+  (sdd [_ a sigma u vt]
+    (let [u (or u zero-matrix)
+          vt (or vt zero-matrix)]
+      (ge-sdd LAPACK/dgesdd ^RealGEMatrix a ^RealDiagonalMatrix sigma ^RealGEMatrix u ^RealGEMatrix vt)))
+  (sdd [_ a sigma]
+    (ge-sdd LAPACK/dgesdd ^RealGEMatrix a ^RealDiagonalMatrix sigma
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix))
   VectorMath
   (sqr [_ a y]
     (matrix-math MKL/vdSqr ^RealGEMatrix a ^RealGEMatrix y))
@@ -1036,7 +1043,7 @@
     (ge-gls LAPACK/sggglm ^RealGEMatrix a ^RealGEMatrix b
             ^RealBlockVector d ^RealBlockVector x ^RealBlockVector y))
   (ev [_ a w vl vr]
-    (let [vl (or vl zero-matrix)
+    (let [vl (or vl zero-matrix);;TODO with newest changes this will not be needed. nil is handled? if void is not allowed, give a pointer to other arrays since they are not touched anyway!
           vr (or vr zero-matrix)]
       (ge-ev LAPACK/sgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
   (es [_ a w vs]
@@ -1050,6 +1057,13 @@
   (svd [_ a sigma superb]
     (ge-svd LAPACK/sgesvd ^RealGEMatrix a ^RealDiagonalMatrix sigma
             ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix ^RealDiagonalMatrix superb))
+  (sdd [_ a sigma u vt]
+    (let [u (or u zero-matrix)
+          vt (or vt zero-matrix)]
+      (ge-sdd LAPACK/sgesdd ^RealGEMatrix a ^RealDiagonalMatrix sigma ^RealGEMatrix u ^RealGEMatrix vt)))
+  (sdd [_ a sigma]
+    (ge-sdd LAPACK/sgesdd ^RealGEMatrix a ^RealDiagonalMatrix sigma
+            ^RealGEMatrix zero-matrix ^RealGEMatrix zero-matrix))
   VectorMath
   (sqr [_ a y]
     (matrix-math MKL/vsSqr ^RealGEMatrix a ^RealGEMatrix y))

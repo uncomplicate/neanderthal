@@ -660,6 +660,8 @@
 (defn svd!
   "Computes the singular value decomposition of a matrix `a`.
 
+  If `superb` is not provided, uses faster but slightly less precise divide and conquer method (SDD).
+
   On exit, `a`'s contents is destroyed, or, if `u` or `vt` are `nil`, overwritten with U or transposed V
   singular vectors of `a`. `s` is a diagonal matrix populated with sorted singular values.
   If the factorization does not converge, a diagonal matrix `superb` is populated with
@@ -700,6 +702,32 @@
                                    (not (or (nil? vt) (= n (.mrows vt) (.ncols vt)))) "vt is not a nxn matrix"
                                    (not (or (nil? vt) (= min-mn (.mrows vt)))) "mrows of vt is not equals (min m n)"
                                    (not (or (nil? vt) (= n (.ncols vt)))) "ncols of vt is not equals n")})))))
+  ([^Matrix a ^Matrix sigma ^Matrix u ^Matrix vt]
+   (let [m (.mrows a)
+         n (.ncols a)
+         min-mn (min m n)]
+     (if (and (or (nil? u) (and (or (= m (.mrows u) (.ncols u))
+                                    (and (= m (.mrows u)) (= min-mn (.ncols u))))
+                                (api/compatible? a u) (api/fits-navigation? a u)))
+              (or (nil? vt) (and (or (= n (.mrows vt) (.ncols vt))
+                                     (and (= min-mn (.mrows vt)) (= n (.ncols vt))))
+                                 (api/compatible? a vt) (api/fits-navigation? a vt)))
+              (= min-mn (.mrows sigma) (.ncols sigma)))
+       (api/sdd (api/engine a) a sigma u vt)
+       (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
+                       {:a (info a) :s (info sigma) :u (info u) :vt (info vt)
+                        :errors
+                        (cond-into []
+                                   (not (= min-mn (.mrows sigma))) "mrows of sigma is not (min m n)"
+                                   (not (= min-mn (.ncols sigma))) "ncols of sigma is not (min m n)"
+                                   (not (or (nil? u) (= m (.mrows u) (.ncols u)))) "u is not a mxm matrix"
+                                   (not (or (nil? u) (= min-mn (.ncols u)))) "ncols of u is not equals (min m n)"
+                                   (not (or (nil? u) (= n (.mrows u)))) "mrows of vt is not equals n"
+                                   (not (or (nil? u) (api/fits-navigation? a u))) "a and u do not have the same layout"
+                                   (not (or (nil? vt) (api/fits-navigation? a vt))) "a and vt do not have the same layout"
+                                   (not (or (nil? vt) (= n (.mrows vt) (.ncols vt)))) "vt is not a nxn matrix"
+                                   (not (or (nil? vt) (= min-mn (.mrows vt)))) "mrows of vt is not equals (min m n)"
+                                   (not (or (nil? vt) (= n (.ncols vt)))) "ncols of vt is not equals n")})))))
   ([^Matrix a ^Matrix sigma ^Matrix superb]
    (let [min-mn (min (.mrows a) (.ncols a))]
      (if (and (= min-mn (.mrows sigma) (.ncols sigma) (.mrows superb) (.ncols superb))
@@ -711,11 +739,24 @@
                                    (not (= min-mn (.mrows sigma))) "mrows of sigma is not m"
                                    (not (= min-mn (.ncols sigma))) "ncols of sigma is not n"
                                    (not (= min-mn (.mrows superb))) "mrows of superb is not m"
-                                   (not (= min-mn (.ncols superb))) "ncols of superb is not n")}))))))
+                                   (not (= min-mn (.ncols superb))) "ncols of superb is not n")})))))
+  ([^Matrix a ^Matrix sigma]
+   (let [min-mn (min (.mrows a) (.ncols a))]
+     (if (and (= min-mn (.mrows sigma) (.ncols sigma))
+              (api/compatible? a sigma))
+       (api/sdd (api/engine a) a sigma)
+       (throw (ex-info "You can not do a singular value decomposition with incompatible or ill-fitting arguments."
+                       {:a (info a) :s (info sigma) :errors
+                        (cond-into []
+                                   (not (= min-mn (.mrows sigma))) "mrows of sigma is not m"
+                                   (not (= min-mn (.ncols sigma))) "ncols of sigma is not n")}))))))
 
 (defn svd
   "Computes the singular value decomposition of a matrix `a`, and returns a SVD record containing
   `:sigma` (the singular values), `u` (if `u?` is true) and `vt` (if `vt?` is true).
+
+  Uses the faster divide and conquer SVD method. If you need ordinary SVD, call [[svd!]] and provide
+  the `superb` argument.
 
   If the reduction to bidiagonal form failed to converge, throws ExceptionInfo, with the information
   on the number of converged superdiagonals.
@@ -729,10 +770,8 @@
      (let-release [u (if u? (ge fact (.mrows a) min-mn) nil)
                    vt (if vt? (ge fact min-mn (.ncols a)) nil)
                    sigma (gd fact min-mn)]
-       (with-release [a-copy (copy a)
-                      superb (raw sigma)]
-         (api/svd (api/engine a-copy) a-copy sigma u vt superb)
-         (release superb)
+       (with-release [a-copy (copy a)]
+         (api/sdd (api/engine a-copy) a-copy sigma u vt)
          (->SVDecomposition sigma u vt true)))))
   ([a]
    (svd a false false)))

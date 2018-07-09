@@ -69,6 +69,7 @@
   (det [this lu ipiv] [this a])
   (sv [this a b pure] [this a b])
   (svd [this a s superb] [this a s u vt superb])
+  (sdd [this a s] [this a s u vt])
   (qrf [this a tau])
   (qrfp [this a tau])
   (qp3 [this a jpiv tau])

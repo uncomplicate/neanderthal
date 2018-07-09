@@ -15,12 +15,13 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [uncomplicate/commons "0.5.0"]
-                 [uncomplicate/fluokitten "0.7.0"]
-                 [uncomplicate/neanderthal-native "0.19.0"]
+                 [uncomplicate/fluokitten "0.8.0"]
+                 [uncomplicate/neanderthal-native "0.20.0-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.9.0"]
                  [org.jocl/jocl-blast "1.3.0"]
                  [uncomplicate/clojurecuda "0.4.0"]
-                 [org.jcuda/jcublas "0.9.0"]
+                 [org.jcuda/jcuda "0.9.2"]
+                 [org.jcuda/jcublas "0.9.2"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :codox {:metadata {:doc/format :markdown}
