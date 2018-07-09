@@ -1052,13 +1052,13 @@
           nvt# (.ncols ~vt)]
       (with-svd-check ~sigma
         (~method (.layout (navigator  ~a))
-         (int (cond (and ~u (= m# mu# nu#)) \A
-                    (and ~u (= m# mu#) (= (min m# n#) nu#)) \S
-                    (and (nil? ~u) ~vt) \O
+         (int (cond (= m# mu# nu#) \A
+                    (and (= m# mu#) (= (min m# n#) nu#)) \S
+                    (and (= 0 mu#) (< 0 nvt#)) \O
                     :default \N))
-         (int (cond (and ~vt (= n# mvt# nvt#)) \A
-                    (and ~vt (= n# nvt#) (= (min m# n#) mvt#)) \S
-                    (and ~u (nil? ~vt)) \O
+         (int (cond (and (= n# mvt# nvt#)) \A
+                    (and (= n# nvt#) (= (min m# n#) mvt#)) \S
+                    (and (= 0 nvt#) (< 0 mu#)) \O
                     :default \N))
          m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~sigma) (.offset ~sigma)
          (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)
@@ -1081,10 +1081,10 @@
           nvt# (.ncols ~vt)]
       (with-svd-check ~sigma
         (~method (.layout (navigator  ~a))
-         (int (cond (and ~u ~vt (= m# mu# nu#) (= n# mvt# nvt#)) \A
-                    (and ~u ~vt (= m# mu#) (= n# nvt#) (= (min m# n#) nu# mvt#)) \S
-                    (or (and ~u (nil? ~vt) (< m# n#) (= m# mu# nu#))
-                        (and (nil? ~u) ~vt (<= n# m#) (= n# mvt# nvt#))) \O
+         (int (cond (and (= m# mu# nu#) (= n# mvt# nvt#)) \A
+                    (and (= m# mu#) (= n# nvt#) (= (min m# n#) nu# mvt#)) \S
+                    (or (and (= 0 mu#) (<= n# m#) (= n# mvt# nvt#))
+                        (and (= 0 nvt#) (< m# n#) (= m# mu# nu#))) \O
                     :default \N))
          m# n# (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~sigma) (.offset ~sigma)
          (.buffer ~u) (.offset ~u) (.stride ~u) (.buffer ~vt) (.offset ~vt) (.stride ~vt)))))

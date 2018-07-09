@@ -755,8 +755,8 @@
   "Computes the singular value decomposition of a matrix `a`, and returns a SVD record containing
   `:sigma` (the singular values), `u` (if `u?` is true) and `vt` (if `vt?` is true).
 
-  Uses the faster divide and conquer SVD method. If you need ordinary SVD, call [[svd!]] and provide
-  the `superb` argument.
+  If `sdd?` is true, uses the faster divide and conquer SVD method unless. If `sdd?` is not provided,
+  uses ordinary SVD if both `u?` and `vt?` are false.
 
   If the reduction to bidiagonal form failed to converge, throws ExceptionInfo, with the information
   on the number of converged superdiagonals.
@@ -764,14 +764,21 @@
 
   See related info about [[svd!]]
   "
-  ([^Matrix a ^Boolean u? ^Boolean vt?]
+  ([^Matrix a ^Boolean u? ^Boolean vt? sdd?]
    (let [fact (api/factory a)
          min-mn (min (.mrows a) (.ncols a))]
      (let-release [u (if u? (ge fact (.mrows a) min-mn) nil)
                    vt (if vt? (ge fact min-mn (.ncols a)) nil)
                    sigma (gd fact min-mn)]
        (with-release [a-copy (copy a)]
-         (api/sdd (api/engine a-copy) a-copy sigma u vt)
+         (if sdd?
+           (api/sdd (api/engine a-copy) a-copy sigma u vt)
+           (with-release [superb (raw sigma)]
+             (api/svd (api/engine a-copy) a-copy sigma u vt superb)))
          (->SVDecomposition sigma u vt true)))))
+  ([a u? vt?]
+   (svd a u? vt? (or u? vt?)))
+  ([a sdd?]
+   (svd a false false sdd?))
   ([a]
-   (svd a false false)))
+   (svd a false false false)))
