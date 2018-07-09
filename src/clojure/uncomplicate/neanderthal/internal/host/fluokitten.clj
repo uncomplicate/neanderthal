@@ -47,12 +47,10 @@
 (defmacro entry*
   ([vtype v i]
    `(.entry ~(with-meta v {:tag vtype}) ~i))
-  ([vtype v i e]
-   `(entry* ~vtype ~v ~i double ~e))
   ([vtype v i etype e]
    `(.set ~(with-meta v {:tag vtype}) ~i (~etype ~e))))
 
-(defmacro map-entries-i [vtype etype f i & xs]
+(defmacro map-entries-i [vtype f i & xs]
   `(~f ~@(map #(list `entry* vtype % i) xs)))
 
 (defmacro vector-fmap* [vtype etype res f & xs]
@@ -60,7 +58,7 @@
     `(do
        (if (check-vector-dimensions ~@xs)
          (dotimes [i# (dim ~res)]
-           (entry* ~vtype ~res i# (~etype (map-entries-i ~vtype ~etype ~f i# ~@xs))))
+           (entry* ~vtype ~res i# ~etype (map-entries-i ~vtype ~f i# ~@xs)))
          (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
        ~res)
     `(dragan-says-ex "Vector fmap supports up to 4 vectors.")))
@@ -71,7 +69,7 @@
        (let [dim-x# (dim ~(first xs))]
          (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (~acctype (~f acc# (~etype (map-entries-i ~vtype ~etype + i# ~@xs)))))
+             (recur (inc i#) (~acctype (~f acc# (~etype (map-entries-i ~vtype + i# ~@xs)))))
              acc#)))
        (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
     `(dragan-says-ex "Vector fold supports up to 4 vectors.")))
@@ -82,7 +80,7 @@
        (let [dim-x# (dim ~(first xs))]
          (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (~acctype (~f acc# (~etype (map-entries-i ~vtype ~etype ~g i# ~@xs)))))
+             (recur (inc i#) (~acctype (~f acc# (~etype (map-entries-i ~vtype ~g i# ~@xs)))))
              acc#)))
        (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
     `(dragan-says-ex "Vector foldmap supports up to 4 vectors.")))
@@ -93,7 +91,7 @@
        (let [dim-x# (dim ~(first xs))]
          (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (~acctype (~f acc# i# (~etype (map-entries-i ~vtype ~etype + i# ~@xs)))))
+             (recur (inc i#) (~acctype (~f acc# i# (~etype (map-entries-i ~vtype + i# ~@xs)))))
              acc#)))
        (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
     `(dragan-says-ex "Vector fold supports up to 4 vectors.")))
@@ -104,7 +102,7 @@
        (let [dim-x# (dim ~(first xs))]
          (loop [i# 0 acc# (~acctype ~init)]
            (if (< i# dim-x#)
-             (recur (inc i#) (~acctype (~f acc# i# (~etype (map-entries-i ~vtype ~etype ~g i# ~@xs)))))
+             (recur (inc i#) (~acctype (~f acc# i# (~etype (map-entries-i ~vtype ~g i# ~@xs)))))
              acc#)))
        (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
     `(dragan-says-ex "Vector foldmap supports up to 4 vectors.")))
