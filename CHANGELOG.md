@@ -2,10 +2,12 @@
 
 # 0.20.0
 
-* Fluokitten performance regression (0.18.0) fixed.
+* SDD available as a SVD implementation.
+* Fluokitten performance regression (introduced in 0.18.0) fixed.
 * Fluokitten support for non-double functions.
 * Fluokitten accepts non-primitive function for Neanderthal objects.
 * Custom non-blas sum function sped up on CPU.
+* JCublas upgraded to 0.9.2.
 
 # 0.19.0
 

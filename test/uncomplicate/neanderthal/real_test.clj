@@ -2713,11 +2713,9 @@
                      u (ge factory 6 5)
                      vt (ge factory 5 5)]
 
-
-
         (nrm2 (axpy! -1 s-res (svd! a0 s))) => (roughly 0.007526)
         (nrm2 (axpy! -1 s-res (svd! a1 s u vt))) => (roughly 0.007526)
-        (svd! a2 s) => (:sigma (svd a3))
+        (svd! a2 s) => (:sigma (svd a3 true))
         (nrm2 (axpy! -1 u-res u)) => (roughly 0.01586)
         (nrm2 (axpy! -1 vt-res vt)) => (roughly 0.012377)))))
 
