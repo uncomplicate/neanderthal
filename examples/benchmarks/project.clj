@@ -10,7 +10,7 @@
                  [net.mikera/core.matrix "0.58.0"]
                  [net.mikera/vectorz-clj "0.46.0"]
                  [clatrix/clatrix "0.5.0"]
-                 [uncomplicate/fluokitten "0.7.0"]
+                 [uncomplicate/fluokitten "0.8.0-SNAPSHOT"]
                  [uncomplicate/neanderthal "0.20.0-SNAPSHOT"]
                  [org.nd4j/nd4j-api "1.0.0-beta"]
                  #_[org.nd4j/nd4j-cuda-9.1 "1.0.0-beta"]

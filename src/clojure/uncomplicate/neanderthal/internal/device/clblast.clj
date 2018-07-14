@@ -13,11 +13,12 @@
              [core :refer [Releaseable release let-release with-release info
                            wrap-int wrap-double wrap-float]]
              [utils :refer [with-check dragan-says-ex]]]
+            [uncomplicate.fluokitten.core :refer [extract]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device]]
-             [constants :refer [dec-error]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
+            [uncomplicate.clojurecl.internal.constants :refer [dec-error]]
             [uncomplicate.neanderthal
              [core :refer [transfer!]]
              [native :refer [native-float native-double]]]
@@ -59,7 +60,7 @@
                    (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                    (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
                    eq-flag-buf)
-        (enq-nd! queue vector-equals-kernel (work-size-1d (.dim x)))
+        (enq-kernel! queue vector-equals-kernel (work-size-1d (.dim x)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.dim y))))
@@ -72,7 +73,7 @@
         (with-release [vector-set-kernel (kernel prog "vector_set")]
           (set-args! vector-set-kernel (.wrapPrim da alpha)
                      (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
-          (enq-nd! queue vector-set-kernel (work-size-1d (.dim x)))))))
+          (enq-kernel! queue vector-set-kernel (work-size-1d (.dim x)))))))
   x)
 
 ;; NOTE: rotXX methods are not supported by CLBlast yet
@@ -82,21 +83,21 @@
    `(if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
       (with-check error
         (~method (.dim ~x)
-         (cl-mem (.buffer ~x)) (.offset ~x) (.stri)
-         (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
+         (extract (.buffer ~x)) (.offset ~x) (.stri)
+         (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
          ~c ~s
-         ~queue nil)
+         (extract ~queue) nil)
         ~x)
       ~x)))
 
 (defmacro ^:private vector-rotg [queue method x]
   `(if (< 0 (.dim ~x))
-     (let [mem# (cl-mem (.buffer ~x))
+     (let [mem# (extract (.buffer ~x))
            ofst# (.offset ~x)
            strd# (.stride ~x)]
        (with-check error
          (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
-          ~queue nil)
+          (extract ~queue) nil)
          ~x))
      ~x))
 
@@ -104,21 +105,21 @@
   `(if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
      (with-check error
        (~method (.dim ~x)
-        (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-        (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
-        (cl-mem (.buffer ~param)) (.offset ~param)
-        ~queue nil)
+        (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+        (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+        (extract (.buffer ~param)) (.offset ~param)
+        (extract ~queue) nil)
        ~param)
      ~param))
 
 (defmacro ^:private vector-rotmg [queue method ^CLBlockVector d1d2xy ^CLBlockVector param]
   `(if (= 1 (.stride ~param))
-     (let [mem# (cl-mem (.buffer ~d1d2xy))
+     (let [mem# (extract (.buffer ~d1d2xy))
            ofst# (.offset ~d1d2xy)
            strd# (.stride ~d1d2xy)]
        (with-check error
          (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
-          (cl-mem (.buffer ~param)) (.offset ~param) ~queue nil)
+          (extract (.buffer ~param)) (.offset ~param) (extract ~queue) nil)
          ~param))
      (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
 
@@ -126,26 +127,26 @@
   ([queue method x]
    `(if (< 0 (.dim ~x))
       (with-check error
-        (~method (.dim ~x) (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
+        (~method (.dim ~x) (extract (.buffer ~x)) (.offset ~x) (.stride ~x) (extract ~queue) nil)
         ~x)
       ~x))
   ([queue method x y]
    `(if (< 0 (.dim ~x))
       (with-check error
         (~method (.dim ~x)
-         (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-         (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
-         ~queue nil)
+         (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+         (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+         (extract ~queue) nil)
         ~y)
       ~y))
   ([queue method x y z]
    `(if (< 0 (.dim x))
       (with-check error
         (~method (.dim ~x)
-         (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-         (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
-         (cl-mem (.buffer ~z)) (.offset ~z) (.stride ~z)
-         ~queue nil)
+         (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+         (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+         (extract (.buffer ~z)) (.offset ~z) (.stride ~z)
+         (extract ~queue) nil)
         ~z)
       ~z)))
 
@@ -153,10 +154,10 @@
   `(if (< 0 (.dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
        (with-check error
-         (~method (.dim ~x) (cl-mem res-buffer#) 0
-          (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-          (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
-          ~queue nil)
+         (~method (.dim ~x) (extract res-buffer#) 0
+          (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+          (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+          (extract ~queue) nil)
          (~read-method ~queue res-buffer#)))
      0.0))
 
@@ -164,7 +165,8 @@
   `(if (< 0 (.dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
        (with-check error
-         (~method (.dim ~x) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
+         (~method (.dim ~x) (extract res-buffer#) 0 (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+          (extract ~queue) nil)
          (~read-method ~queue res-buffer#)))
      0.0))
 
@@ -172,22 +174,24 @@
   `(if (< 0 (.dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx Integer/BYTES :read-write)]
        (with-check error
-         (~method (.dim ~x) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
+         (~method (.dim ~x) (extract res-buffer#) 0 (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+          (extract ~queue) nil)
          (enq-read-int ~queue res-buffer#)))
      0))
 
 (defmacro ^:private vector-scal-set [queue method alpha x]
   `(if (< 0 (.dim ~x))
      (with-check error
-       (~method (.dim ~x) ~alpha (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x) ~queue nil)
+       (~method (.dim ~x) ~alpha (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+        (extract ~queue) nil)
        ~x)
      ~x))
 
 (defmacro ^:private vector-axpy [queue method alpha x y]
   `(if (< 0 (.dim ~x))
      (with-check error
-       (~method (.dim ~x) ~alpha (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-        (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y) ~queue nil)
+       (~method (.dim ~x) ~alpha (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+        (extract (.buffer ~y)) (.offset ~y) (.stride ~y) (extract ~queue) nil)
        ~y)
      ~y))
 
@@ -198,14 +202,14 @@
         (set-args! vector-axpby-kernel 0
                    (.wrapPrim da alpha) (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                    (.wrapPrim da beta) (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-        (enq-nd! queue vector-axpby-kernel (work-size-1d (.dim x))))))
+        (enq-kernel! queue vector-axpby-kernel (work-size-1d (.dim x))))))
   y)
 
 (defmacro ^:private vector-subcopy [queue method x y kx lx ky]
   `(if (< 0 (long ~lx))
      (with-check error
-       (~method ~lx (cl-mem (.buffer ~x)) ~kx (.stride ~x) (cl-mem (.buffer ~y)) ~ky (.stride ~y)
-        ~queue nil)
+       (~method ~lx (extract (.buffer ~x)) ~kx (.stride ~x) (extract (.buffer ~y)) ~ky (.stride ~y)
+        (extract ~queue) nil)
        ~y)
      ~y))
 
@@ -222,7 +226,7 @@
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                    eq-flag-buf)
-        (enq-nd! queue ge-equals-kernel (work-size-2d (.sd stor) (.fd stor)))
+        (enq-kernel! queue ge-equals-kernel (work-size-2d (.sd stor) (.fd stor)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.dim b))))
@@ -237,7 +241,7 @@
         (with-release [ge-set-kernel (kernel prog "ge_set")]
           (set-args! ge-set-kernel 0 (.wrapPrim da alpha)
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor)))
-          (enq-nd! queue ge-set-kernel (work-size-2d (.sd stor) (.fd stor)))))))
+          (enq-kernel! queue ge-set-kernel (work-size-2d (.sd stor) (.fd stor)))))))
   a)
 
 (defmacro ^:private ge-swap [queue prog method a b]
@@ -246,13 +250,13 @@
        (if (and (= (navigator ~a) (navigator ~b)) (.isGapless stor#) (.isGapless (storage ~b)))
          (with-check error
            (~method (.dim ~a)
-            (cl-mem (.buffer ~a)) (.offset ~a) 1 (cl-mem (.buffer ~b)) (.offset ~b) 1
-            ~queue nil)
+            (extract (.buffer ~a)) (.offset ~a) 1 (extract (.buffer ~b)) (.offset ~b) 1
+            (extract ~queue) nil)
            ~a)
          (with-release [ge-swap-kernel# (kernel ~prog (name-transp "ge_swap" ~a ~b))]
            (set-args! ge-swap-kernel# (.buffer ~a) (wrap-int (.offset ~a)) (wrap-int (.ld stor#))
                       (.buffer ~b) (wrap-int (.offset ~b)) (wrap-int (.stride ~b)))
-           (enq-nd! ~queue ge-swap-kernel# (work-size-2d (.sd stor#) (.fd stor#)))
+           (enq-kernel! ~queue ge-swap-kernel# (work-size-2d (.sd stor#) (.fd stor#)))
            ~a)))
      ~a))
 
@@ -261,7 +265,8 @@
      (if (.isGapless (storage ~a))
        (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
          (with-check error
-           (~method (.dim ~a) (cl-mem res-buffer#) 0 (cl-mem (.buffer ~a)) (.offset ~a) 1 ~queue nil)
+           (~method (.dim ~a) (extract res-buffer#) 0 (extract (.buffer ~a)) (.offset ~a) 1
+            (extract ~queue) nil)
            (~read-method ~queue res-buffer#)))
        (not-available))
      0.0))
@@ -271,10 +276,10 @@
      (if (and (.isGapless (storage ~a)) (.isGapless (storage ~b)) (= (navigator ~a) (navigator ~b)))
        (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
          (with-check error
-           (~method (.dim ~a) (cl-mem res-buffer#) 0
-            (cl-mem (.buffer ~a)) (.offset ~a) 1
-            (cl-mem (.buffer ~b)) (.offset ~b) 1
-            ~queue nil)
+           (~method (.dim ~a) (extract res-buffer#) 0
+            (extract (.buffer ~a)) (.offset ~a) 1
+            (extract (.buffer ~b)) (.offset ~b) 1
+            (extract ~queue) nil)
            (~read-method ~queue res-buffer#)))
        (not-available))
      0.0))
@@ -288,9 +293,9 @@
            (if (= nav-a# (navigator ~b))
              CLBlastTranspose/CLBlastTransposeNo
              CLBlastTranspose/CLBlastTransposeYes)
-           (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-           (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-           ~queue nil)
+           (.mrows ~a) (.ncols ~a) ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+           (extract (.buffer ~b)) (.offset ~b) (.stride ~b)
+           (extract ~queue) nil)
           ~b)
         ~b)))
   ([queue method alpha a]
@@ -298,9 +303,9 @@
       (if (< 0 (.dim ~a))
         (with-check error
           (~method (.layout (navigator ~a)) CLBlastTranspose/CLBlastTransposeNo
-           (.mrows ~a) (.ncols ~a) ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
-           (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
-           ~queue nil)
+           (.mrows ~a) (.ncols ~a) ~alpha (extract (.buffer ~a)) (.offset ~a) (.ld stor#)
+           (extract (.buffer ~a)) (.offset ~a) (.ld stor#)
+           (extract ~queue) nil)
           ~a)
         ~a)))
   ([queue method a]
@@ -309,9 +314,9 @@
         (if (.isGapless stor#)
           (with-check error
             (~method CBLAS/ORDER_COLUMN_MAJOR CLBlastTranspose/CLBlastTransposeYes
-             (.sd stor#) (.fd stor#) 1.0 (cl-mem (.buffer ~a)) (.offset ~a) (.ld stor#)
-             (cl-mem (.buffer ~a)) (.offset ~a) (.fd stor#)
-             ~queue nil)
+             (.sd stor#) (.fd stor#) 1.0 (extract (.buffer ~a)) (.offset ~a) (.ld stor#)
+             (extract (.buffer ~a)) (.offset ~a) (.fd stor#)
+             (extract ~queue) nil)
             ~a)
           (dragan-says-ex "You can not hard-transpose the content of a matrix with a gap in memory. Sorry."
                           {:a (info ~a)}))
@@ -325,7 +330,7 @@
         (set-args! ge-axpby-kernel 0
                    (.wrapPrim da alpha) (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.wrapPrim da beta) (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-        (enq-nd! queue ge-axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-kernel! queue ge-axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
   b)
 
 (defmacro ^:private ge-axpy [queue prog method alpha a b]
@@ -333,8 +338,8 @@
      (if (and (= (navigator ~a) (navigator ~b)) (.isGapless (storage ~a)) (.isGapless (storage ~b)))
        (with-check error
          (~method (.dim ~a) ~alpha
-          (cl-mem (.buffer ~a)) (.offset ~a) 1 (cl-mem (.buffer ~b)) (.offset ~b) 1
-          ~queue nil)
+          (extract (.buffer ~a)) (.offset ~a) 1 (extract (.buffer ~b)) (.offset ~b) 1
+          (extract ~queue) nil)
          ~b)
        (ge-axpby ~queue ~prog ~alpha ~a 1.0 ~b))
      ~b))
@@ -344,10 +349,10 @@
    `(if (< 0 (.dim ~a))
       (with-check error
         (~method (.layout (navigator ~a)) CLBlastTranspose/CLBlastTransposeNo (.mrows ~a) (.ncols ~a)
-         ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-         (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-         ~beta (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
-         ~queue nil)
+         ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+         (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+         ~beta (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+         (extract ~queue) nil)
         ~y)
       ~y))
   ([a]
@@ -357,10 +362,10 @@
   `(if (< 0 (.dim ~a))
      (with-check error
        (~method (.layout (navigator ~a)) (.mrows ~a) (.ncols ~a)
-        ~alpha (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-        (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
-        (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-        ~queue nil)
+        ~alpha (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+        (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+        (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+        (extract ~queue) nil)
        ~a)
      ~a))
 
@@ -383,10 +388,10 @@
                CLBlastTranspose/CLBlastTransposeNo
                CLBlastTranspose/CLBlastTransposeYes)
              (.mrows ~a) (.ncols ~b) (.ncols ~a)
-             ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-             (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-             ~beta (cl-mem (.buffer ~c)) (.offset ~c) (.stride ~c)
-             ~queue nil))
+             ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+             (extract (.buffer ~b)) (.offset ~b) (.stride ~b)
+             ~beta (extract (.buffer ~c)) (.offset ~c) (.stride ~c)
+             (extract ~queue) nil))
           ~c)
         (mm (engine ~b) ~alpha ~b ~a ~beta ~c false))
       ~c)))
@@ -404,7 +409,7 @@
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                    eq-flag-buf)
-        (enq-nd! queue equals-kernel (work-size-2d (.sd stor) (.fd stor)))
+        (enq-kernel! queue equals-kernel (work-size-2d (.sd stor) (.fd stor)))
         (enq-read! queue eq-flag-buf res)
         (= 0 (aget res 0))))
     (= 0 (.mrows b) (.ncols b))))
@@ -416,7 +421,7 @@
         (set-args! map-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-        (enq-nd! queue map-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-kernel! queue map-kernel (work-size-2d (.sd stor) (.fd stor))))))
   b)
 
 (defn ^:private uplo-axpby [queue prog transpf alpha ^CLUploMatrix a beta ^CLUploMatrix b]
@@ -427,7 +432,7 @@
         (set-args! axpby-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.wrapPrim da alpha) (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor))
                    (.wrapPrim da beta) (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-        (enq-nd! queue axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-kernel! queue axpby-kernel (work-size-2d (.sd stor) (.fd stor))))))
   b)
 
 (defn ^:private uplo-set-scal [queue prog op-name alpha ^CLUploMatrix a]
@@ -437,7 +442,7 @@
         (set-args! op-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.wrapPrim (data-accessor a) alpha)
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.ld stor)))
-        (enq-nd! queue op-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-kernel! queue op-kernel (work-size-2d (.sd stor) (.fd stor))))))
   a)
 
 (defmacro ^:private tr-mv
@@ -445,9 +450,9 @@
    `(with-check error
       (~method (.layout (navigator ~a)) (.uplo (region ~a)) CLBlastTranspose/CLBlastTransposeNo
        (.diag (region ~a)) (.ncols ~a)
-       (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-       (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-       ~queue nil)
+       (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+       (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+       (extract ~queue) nil)
       ~x))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
@@ -463,9 +468,9 @@
            CLBlastTranspose/CLBlastTransposeNo
            CLBlastTranspose/CLBlastTransposeYes)
          (.diag reg#) (.mrows ~b) (.ncols ~b)
-         ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-         (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-         ~queue nil))
+         ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+         (extract (.buffer ~b)) (.offset ~b) (.stride ~b)
+         (extract ~queue) nil))
       ~b))
   ([a]
    `(throw (ex-info "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)}))))
@@ -474,10 +479,10 @@
   ([queue method alpha a x beta y]
    `(with-check error
       (~method (.layout (navigator ~a)) (.uplo (region ~a)) (.ncols ~a)
-       ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-       (cl-mem (.buffer ~x)) (.offset ~x) (.stride ~x)
-       ~beta (cl-mem (.buffer ~y)) (.offset ~y) (.stride ~y)
-       ~queue nil)
+       ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+       (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+       ~beta (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+       (extract ~queue) nil)
       ~y))
   ([a]
    `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
@@ -490,10 +495,10 @@
           (~method (.layout nav-c#)
            (if ~left CLBlastSide/CLBlastSideLeft CLBlastSide/CLBlastSideRight)
            (.uplo (region ~a)) (.mrows ~c) (.ncols ~c)
-           ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-           (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-           ~beta (cl-mem (.buffer ~c)) (.offset ~c) (.stride ~c)
-           ~queue nil)
+           ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+           (extract (.buffer ~b)) (.offset ~b) (.stride ~b)
+           ~beta (extract (.buffer ~c)) (.offset ~c) (.stride ~c)
+           (extract ~queue) nil)
           (dragan-says-ex "Both GE matrices in symmetric multiplication must have the same orientation."
                           {:b (info ~b) :c (info ~c)})))
       ~c))
@@ -511,9 +516,9 @@
             CLBlastTranspose/CLBlastTransposeNo
             CLBlastTranspose/CLBlastTransposeYes)
           (.diag reg#) (.sd stor-b#) (.fd stor-b#)
-          ~alpha (cl-mem (.buffer ~a)) (.offset ~a) (.stride ~a)
-          (cl-mem (.buffer ~b)) (.offset ~b) (.stride ~b)
-          ~queue nil))
+          ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+          (extract (.buffer ~b)) (.offset ~b) (.stride ~b)
+          (extract ~queue) nil))
        ~b)))
 
 ;; =============== Common vectorized math functions ============================
@@ -525,7 +530,7 @@
        (set-args! math-kernel 0
                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-       (enq-nd! queue math-kernel (work-size-1d (.dim x)))))
+       (enq-kernel! queue math-kernel (work-size-1d (.dim x)))))
    y)
   ([queue prog kernel-name ^CLBlockVector x ^CLBlockVector y ^CLBlockVector z]
    (when (< 0 (.dim x))
@@ -534,7 +539,7 @@
                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                   (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
                   (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
-       (enq-nd! queue math-kernel (work-size-1d (.dim x)))))
+       (enq-kernel! queue math-kernel (work-size-1d (.dim x)))))
    z))
 
 (defn ^:private vector-linear-frac [queue prog ^CLBlockVector x ^CLBlockVector y
@@ -547,14 +552,14 @@
                      (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                      (.wrapPrim da scalea) (.wrapPrim da shifta)
                      (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-          (enq-nd! queue math-kernel (work-size-1d (.dim x))))
+          (enq-kernel! queue math-kernel (work-size-1d (.dim x))))
         (with-release [math-kernel (kernel prog "vector_linear_frac")]
           (set-args! math-kernel 0
                      (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                      (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y))
                      (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                      (.buffer z) (wrap-int (.offset z)) (wrap-int (.stride z)))
-          (enq-nd! queue math-kernel (work-size-1d (.dim x)))))))
+          (enq-kernel! queue math-kernel (work-size-1d (.dim x)))))))
   z)
 
 (defn ^:private vector-powx [queue prog ^CLBlockVector x b ^CLBlockVector y]
@@ -564,7 +569,7 @@
                  (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
                  (.wrapPrim (data-accessor x) b)
                  (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
-      (enq-nd! queue math-kernel (work-size-1d (.dim x)))))
+      (enq-kernel! queue math-kernel (work-size-1d (.dim x)))))
   y)
 
 (defn ^:private ge-math
@@ -576,7 +581,7 @@
          (set-args! math-kernel 0
                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                     (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-         (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+         (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
    b)
   ([queue prog kernel-name ^CLGEMatrix a ^CLGEMatrix b ^CLGEMatrix c]
    (when (< 0 (.dim a))
@@ -587,7 +592,7 @@
                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                     (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                     (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-         (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+         (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
    c))
 
 (defn ^:private ge-linear-frac [queue prog ^CLGEMatrix a ^CLGEMatrix b
@@ -602,14 +607,14 @@
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                      (.wrapPrim da scalea) (.wrapPrim da shifta)
                      (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-          (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))
+          (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))
         (with-release [math-kernel (kernel prog "ge_linear_frac")]
           (set-args! math-kernel 0
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                      (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                      (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                      (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-          (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor)))))))
+          (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor)))))))
   c)
 
 (defn ^:private ge-powx [queue prog ^CLGEMatrix a b ^CLGEMatrix c]
@@ -621,7 +626,7 @@
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                    (.wrapPrim (data-accessor a) b)
                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-        (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
   c)
 
 (defn ^:private uplo-math
@@ -633,7 +638,7 @@
          (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                     (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b)))
-         (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+         (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
    b)
   ([queue prog kernel-name ^CLUploMatrix a ^CLUploMatrix b ^CLUploMatrix c]
    (when (< 0 (.dim a))
@@ -644,7 +649,7 @@
                     (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                     (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                     (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-         (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+         (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
    c))
 
 (defn ^:private uplo-linear-frac [queue prog ^CLUploMatrix a ^CLUploMatrix b
@@ -659,14 +664,14 @@
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                      (.wrapPrim da scalea) (.wrapPrim da shifta)
                      (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-          (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))
+          (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))
         (with-release [math-kernel (kernel prog "uplo_linear_frac")]
           (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                      (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                      (.buffer b) (wrap-int (.offset b)) (wrap-int (.stride b))
                      (.wrapPrim da scalea) (.wrapPrim da shifta) (.wrapPrim da scaleb) (.wrapPrim da shiftb)
                      (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-          (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor)))))))
+          (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor)))))))
   c)
 
 (defn ^:private uplo-powx [queue prog ^CLUploMatrix a b ^CLUploMatrix c]
@@ -678,7 +683,7 @@
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                    (.wrapPrim (data-accessor a) b)
                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
-        (enq-nd! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+        (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
   c)
 
 ;; =============== CLBlast based engines =======================================

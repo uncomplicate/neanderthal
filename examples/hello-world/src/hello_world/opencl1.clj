@@ -10,8 +10,8 @@
   (:require [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl
              [core :refer [with-platform platforms with-context context
-                           with-queue sort-by-cl-version devices ]]
-             [legacy :refer [with-default-1 command-queue-1]]]
+                           with-queue sort-by-cl-version devices
+                           with-default-1 command-queue-1]]]
             [uncomplicate.neanderthal
              [core :refer [asum]]
              [opencl :refer [clv with-default-engine]]]))

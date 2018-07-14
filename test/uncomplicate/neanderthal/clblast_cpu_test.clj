@@ -2,8 +2,8 @@
   (:require [midje.sweet :refer :all]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl
-             [core :refer [*command-queue* with-platform platforms devices with-queue with-context context]]
-             [legacy :refer [command-queue-1]]]
+             [core :refer [*command-queue* with-platform platforms devices with-queue with-context
+                           context command-queue-1]]]
             [uncomplicate.neanderthal
              [core :refer [tr]]
              [opencl :refer [with-engine *opencl-factory*]]

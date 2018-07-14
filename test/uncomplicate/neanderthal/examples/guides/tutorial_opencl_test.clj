@@ -91,8 +91,7 @@ $code"
             #_[criterium.core :refer [quick-bench with-progress-reporting]]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl
-             [core :refer [finish!]]
-             [legacy :refer [with-default-1]]]
+             [core :refer [finish! with-default-1]]]
             [uncomplicate.neanderthal
              [core :refer [asum dot axpy! mv! mm! transfer! copy]]
              [native :refer [fv fge]]

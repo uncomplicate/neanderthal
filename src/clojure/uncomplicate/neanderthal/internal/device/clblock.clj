@@ -14,6 +14,7 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
+            [uncomplicate.clojurecl.internal.api :refer [size]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -28,7 +29,6 @@
              [buffer-block :refer [real-block-vector real-ge-matrix real-uplo-matrix]]]
             [uncomplicate.neanderthal.internal.device.common :refer [device-vector-equals device-matrix-equals]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
-           [uncomplicate.clojurecl.core CLBuffer]
            [uncomplicate.neanderthal.internal.api DataAccessor VectorSpace Vector CLVector Matrix
             CLMatrix GEMatrix RealChangeable LayoutNavigator RealLayoutNavigator Region MatrixImplementation
             NativeBlock FullStorage RealDefault UploMatrix RealNativeMatrix]
@@ -110,9 +110,6 @@
   FlowProvider
   (flow [_]
     queue)
-  Contextual
-  (cl-context [_]
-    ctx)
   DataAccessorProvider
   (data-accessor [this]
     this)
