@@ -35,7 +35,7 @@
   (:require [uncomplicate.commons
              [core :refer [let-release with-release release info]]
              [utils :refer [cond-into dragan-says-ex]]]
-            [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy gd raw]]
+            [uncomplicate.neanderthal.core :refer [vctr vctr? ge copy gd raw symmetric?]]
             [uncomplicate.neanderthal.internal
              [api :as api]
              [common :refer [->SVDecomposition qr-factorization qp-factorization
@@ -577,7 +577,8 @@
 ;; =============================== Eigenproblems =================================================
 
 (defn ev!
-  "Computes the eigenvalues and left and right eigenvectors of a matrix `a`.
+  "TODO update
+  Computes the eigenvalues and left and right eigenvectors of a matrix `a`.
 
   On exit, `a` is overwritten with QR factors. The first 2 columns of a column-oriented GE matrix
   `w` are overwritten with eigenvalues of `a`. If `vl` and `vr` GE matrices are provided, they will
@@ -592,35 +593,41 @@
   See related info about [lapacke_?geev](https://software.intel.com/en-us/node/521147).
   "
   ([^Matrix a ^Matrix w ^Matrix vl ^Matrix vr]
-   (if (and (= (.mrows a) (.ncols a))
-            (= (.mrows a) (.mrows w)) (= 2 (.ncols w))
-            (or (nil? vl) (and (= (.mrows a) (.mrows vl) (.ncols vl))
-                               (api/compatible? a vl) (api/fits-navigation? a vl)))
-            (or (nil? vr) (and (= (.mrows a) (.mrows vr) (.ncols vr))
-                               (api/compatible? a vr)(api/fits-navigation? a vr))))
-     (api/ev (api/engine a) a w vl vr)
-     (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
-                     {:a (info a) :w (info w) :vl (info vl) :vr (info vr) :errors
-                      (cond-into []
-                                 (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
-                                 (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
-                                 (not (< 1 (.ncols w))) "w does not have 2 columns"
-                                 (not (or (nil? vl) (= (.mrows a) (.mrows vl) (.ncols vl))))
-                                 "a and vl dimensions do not fit"
-                                 (not (or (nil? vr) (= (.mrows a) (.mrows vr) (.ncols vr))))
-                                 "a and vr dimensions do not fit"
-                                 (and vl (not (api/fits-navigation? a vl))) "a and vl do not have the same layout"
-                                 (and vr (not (api/fits-navigation? a vr))) "a and vr do not have the same layout")}))))
+   (let [ncols-w (long (if (symmetric? a) 1 2))]
+     (if (and (= (.mrows a) (.ncols a)) (= ncols-w (.ncols w))
+              (= (.mrows a) (.mrows w)) (= (long (if (symmetric? a) 1 2)) (.ncols w))
+              (or (nil? vl) (and (= (.mrows a) (.mrows vl) (.ncols vl))
+                                 (api/compatible? a vl) (api/fits-navigation? a vl)))
+              (or (nil? vr) (and (= (.mrows a) (.mrows vr) (.ncols vr))
+                                 (api/compatible? a vr)(api/fits-navigation? a vr))))
+       (api/ev (api/engine a) a w vl vr)
+       (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
+                       {:a (info a) :w (info w) :vl (info vl) :vr (info vr) :errors
+                        (cond-into []
+                                   (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
+                                   (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
+                                   (not (= ncols-w (.ncols w))) (format "w does not have %d columns" ncols-w)
+                                   (not (or (nil? vl) (= (.mrows a) (.mrows vl) (.ncols vl))))
+                                   "a and vl dimensions do not fit"
+                                   (not (or (nil? vr) (= (.mrows a) (.mrows vr) (.ncols vr))))
+                                   "a and vr dimensions do not fit"
+                                   (and vl (not (api/fits-navigation? a vl))) "a and vl do not have the same layout"
+                                   (and vr (not (api/fits-navigation? a vr))) "a and vr do not have the same layout")})))))
   ([a w]
    (ev! a w nil nil))
-  ([^Matrix a vl vr]
-   (let-release [w (ge (api/factory a) (.ncols a) 2)]
-     (ev! a w vl vr)))
   ([^Matrix a]
-   (ev! a nil nil)))
+   (let-release [w (api/create-ge (api/factory a) (.mrows a) (if (symmetric? a) 1 2) true false)]
+     (ev! a w))))
+
+(defn ev
+  "TODO"
+  ([a]
+   (with-release [a-copy (copy a)]
+     (ev! a-copy))))
 
 (defn es!
-  "Computes the eigenvalues and Schur factorization of a matrix `a`.
+  "TODO update
+  Computes the eigenvalues and Schur factorization of a matrix `a`.
 
   On exit, `a` is overwritten with the Schur form T. The first 2 columns of a column-oriented GE matrix
   `w` are overwritten with eigenvalues of `a`. If `v` GE matrice is provided, it will be overwritten
@@ -649,11 +656,17 @@
                                  (not (or (nil? vs) (= (.mrows a) (.mrows vs) (.ncols vs))))
                                  "a and vs dimensions do not fit"
                                  (and vs (not (api/fits-navigation? a vs))) "a and vs do not have the same layout")}))))
-  ([^Matrix a vs]
-   (let-release [w (ge (api/factory a) (.ncols a) 2)]
-     (es! a w vs)))
+  ([^Matrix a w]
+   (es! a w nil))
   ([^Matrix a]
-   (es! a nil)))
+   (let-release [w (api/create-ge (api/factory a) (.mrows a) 2 true false)]
+     (es! a w nil))))
+
+(defn es
+  "TODO"
+  ([a]
+   (with-release [a-copy (copy a)]
+     (es! a-copy))))
 
 ;; ================= Singular Value Decomposition ================================================
 

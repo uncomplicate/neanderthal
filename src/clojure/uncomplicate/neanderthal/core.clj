@@ -205,6 +205,16 @@
   [x]
   (instance? Matrix x))
 
+(defn symmetric?
+  "Tests if x is a symmetric matrix of any kind."
+  [^MatrixImplementation a]
+  (.isSymmetric a))
+
+(defn triangular?
+  "Tests if x is a triangular matrix of any kind."
+  [^MatrixImplementation a]
+  (.isTriangular a))
+
 (defn matrix-type
   "Returns the type of the matrix implementation represented by keyword (:ge, :tr, :sy, etc.)."
   [^MatrixImplementation a]
@@ -248,7 +258,7 @@
    (cond
      (instance? Matrix a) (ge factory (.mrows ^Matrix a) (.ncols ^Matrix a) a nil)
      (sequential? a) (ge factory (count a) (apply max (map count a)) a nil)
-     :default (dragan-says-ex "%s source not supported without specifying matrix dimensions."))))
+     :default (dragan-says-ex "This type of source is not supported without specifying matrix dimensions."))))
 
 (defn view-ge
   "Attach a GE matrix to the raw data of `a`, with optional dimensions and/or stride multiplicator.
@@ -1277,8 +1287,8 @@
   ([alpha ^Matrix a x]
    (let-release [res (vctr (api/factory a) (.mrows a))]
      (mv! alpha a x 0.0 res)))
-  ([^MatrixImplementation a x]
-   (if-not (.isTriangular a)
+  ([a x]
+   (if-not (triangular? a)
      (mv 1.0 a x)
      (let-release [res (copy x)]
        (mv! a x)))))
@@ -1412,8 +1422,8 @@
 
 (defn ^:private mm*
   ([alpha ^Matrix a ^Matrix b]
-   (if-not (.isTriangular ^MatrixImplementation b)
-     (if-not (.isTriangular ^MatrixImplementation a)
+   (if-not (triangular? b)
+     (if-not (triangular? a)
        (let-release [res (ge (api/factory b) (.mrows a) (.ncols b))]
          (mm! alpha a b 1.0 res))
        (let-release [res (copy b)]

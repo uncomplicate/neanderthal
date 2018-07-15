@@ -19,8 +19,7 @@
                  [uncomplicate/neanderthal-native "0.20.0-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.10.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.3.0"]
-                 [uncomplicate/clojurecuda "0.4.0"]
-                 [org.jcuda/jcuda "0.9.2"]
+                 [uncomplicate/clojurecuda "0.5.0-SNAPSHOT"]
                  [org.jcuda/jcublas "0.9.2"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 

@@ -2610,6 +2610,7 @@
                                       3.31,  5.29,  8.20, -7.33,  2.47,
                                       -4.81,  3.55, -1.51,  6.18,  5.58])
                   a1 (copy a0)
+                  w (ge factory 5 2)
                   eigenvalues (ge factory 5 2 [2.86  10.76
                                                2.86 -10.76
                                                -0.69   4.70
@@ -2631,10 +2632,32 @@
                   vl (ge factory 5 5)
                   vr (ge factory 5 5)]
 
-     (nrm2 (axpy! -1 eigenvalues (ev! a0))) => (roughly 0.00943)
-     (ev! a1 vl vr) = truthy
+     (ev! a1 w vl vr) = truthy
+     (nrm2 (axpy! -1 eigenvalues (ev! a0 w))) => (roughly 0.00943)
      (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl))) => (roughly 0.01378)
      (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr))) => (roughly 0.010403))))
+
+(defn test-sy-ev [factory]
+  (facts
+   "LAPACK SY ev!"
+
+   (with-release [s (sy factory 5 [-1.01,
+                                   3.98, 0.53,,
+                                   3.30, 8.26, -3.89,
+                                   4.43, 4.96, -7.66, -7.33,
+                                   7.31, -6.43, -6.16, 2.47,  5.58])
+                  w-res (ge factory 5 1 [-16.90 -12.11 -5.92 7.56 14.57])
+                  v-res (ge factory 5 5 [0.20   -0.48   -0.53    0.59   -0.32
+                                         -0.33    0.63   -0.38    0.47    0.36
+                                         -0.58   -0.49    0.44    0.36    0.32
+                                         0.58    0.23    0.57    0.53    0.05
+                                         -0.41    0.29    0.24    0.15   -0.81]
+                            {:layout :row})
+                  w (ge factory 5 1)
+                  v (ge factory 5 5)]
+
+     (nrm2 (axpy! -1 w-res (ev! s w nil v))) => (roughly 0 0.01)
+     (nrm2 (axpy! -1 v-res v)) => (roughly 0 0.02))))
 
 (defn test-ge-es [factory]
   (facts
@@ -2647,6 +2670,8 @@
                          {:layout :row})
                   a1 (copy a0)
                   a2 (copy a0)
+                  w0 (ge factory 4 2)
+                  w1 (ge factory 4 2)
                   vs (ge factory 4 4 {:layout :row})
                   eigenvalues (ge factory 4 2 [2.86  10.76
                                                2.86 -10.76
@@ -2664,7 +2689,7 @@
                                           -0.0956 -0.7215 -0.3482 -0.5908]
                              {:layout :row})]
 
-     (es! a0 vs) => (ev! a1)
+     (es! a0 w0 vs) => (ev! a1 w1)
      (nrm2 (axpy! -1 (mm vs a0 (trans vs)) a2)) => (roughly 0.0 0.000001))))
 
 (defn test-ge-svd [factory]
@@ -2846,6 +2871,7 @@
   (test-ge-lse factory)
   (test-ge-gls factory)
   (test-ge-ev factory)
+  (test-sy-ev factory)
   (test-ge-es factory)
   (test-ge-svd factory))
 

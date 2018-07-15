@@ -16,7 +16,8 @@
             [uncomplicate.neanderthal.internal
              [api :refer [factory index-factory engine data-accessor raw mm scal flip
                           create-vector create-ge create-gb create-sb create-sy fits-navigation?
-                          nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage]]
+                          nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage
+                          view-ge]]
              [common :refer [check-stride real-accessor ->LUFactorization ->PivotlessLUFactorization]]
              [navigation :refer [dostripe-layout full-storage]]]
             [uncomplicate.neanderthal.internal.host.cblas
@@ -1003,7 +1004,7 @@
        (= 0 info#) ~res
        (< info# 0) (throw (ex-info "There has been an illegal argument in the native function call."
                                    {:arg-index (- info#)}))
-       :else (throw (ex-info "The QR algorithm failed to compute all the eigenvalues."
+       :else (throw (ex-info "The algorithm failed to compute all the eigenvalues."
                              {:first-converged (inc info#)})))))
 
 (defmacro ge-ev [method a w vl vr]
@@ -1011,7 +1012,7 @@
      (let [wr# (.col ~w 0)
            wi# (.col ~w 1)]
        (with-eigen-check ~w
-         (~method (.layout (navigator  ~a))
+         (~method (.layout (navigator ~a))
           (int (if (< 0 (.dim ~vl)) \V \N)) (int (if (< 0 (.dim ~vr)) \V \N))
           (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
           (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
@@ -1030,6 +1031,15 @@
           (.buffer ~vs) (.offset ~vs) (.stride ~vs))))
      (throw (ex-info "You cannot use w that is not column-oriented"
                      {:column-major? (.isColumnMajor (navigator  ~w))}))))
+
+;; ------------- Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
+
+(defmacro sy-ev [method a w vl vr]
+  `(let [v# (or ~vl ~vr)
+         a# (if v# (let [ga# (view-ge ~a)] (copy (engine ga#) ga# v#)) ~a)]
+     (with-eigen-check ~w
+       (~method (.layout (navigator ~a)) (int (if v# \V \N)) (int (if (.isLower (region ~a)) \L \U))
+        (.ncols ~a) (buffer a#) (offset a#) (stride a#) (.buffer ~w) (.offset ~w)))))
 
 ;; ------------- Singular Value Decomposition Routines LAPACK -------------------------------
 

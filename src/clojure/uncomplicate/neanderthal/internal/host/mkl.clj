@@ -1557,6 +1557,8 @@
     (sy-con LAPACK/dsycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
     (sy-con LAPACK/dpocon ^RealUploMatrix gg nrm))
+  (ev [_ a w vl vr]
+    (sy-ev LAPACK/dsyevd ^RealUploMatrix a ^RealGEMatrix w vl vr))
   VectorMath
   (sqr [_ a y]
     (matrix-math MKL/vdSqr ^RealUploMatrix a ^RealUploMatrix y))
@@ -1728,6 +1730,8 @@
     (sy-con LAPACK/ssycon ^RealUploMatrix ldl ^IntegerBlockVector ipiv nrm))
   (con [_ gg nrm _]
     (sy-con LAPACK/spocon ^RealUploMatrix gg nrm))
+  (ev [_ a w vl vr]
+    (sy-ev LAPACK/ssyevd ^RealUploMatrix a ^RealGEMatrix w vl vr))
   VectorMath
   (sqr [_ a y]
     (matrix-math MKL/vsSqr ^RealUploMatrix a ^RealUploMatrix y))
