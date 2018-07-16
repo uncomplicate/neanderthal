@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.internal.host.lapack
   (:require [uncomplicate.commons
              [core :refer [with-release let-release info]]
-             [utils :refer [dragan-says-ex]]]
+             [utils :refer [dragan-says-ex cond-into]]]
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride]]
              [math :refer [pow sqrt abs f=]]]
@@ -1008,7 +1008,7 @@
                              {:first-converged (inc info#)})))))
 
 (defmacro ge-ev [method a w vl vr]
-  `(if (.isColumnMajor (navigator ~w))
+  `(if (and (.isColumnMajor (navigator ~w)) (= 2 (.ncols ~w)) (= (.mrows ~a) (.mrows ~w)))
      (let [wr# (.col ~w 0)
            wi# (.col ~w 1)]
        (with-eigen-check ~w
@@ -1017,11 +1017,15 @@
           (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
           (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
           (.buffer ~vl) (.offset ~vl) (.stride ~vl) (.buffer ~vr) (.offset ~vr) (.stride ~vr))))
-     (throw (ex-info "You cannot use w that is not column-oriented"
-                     {:column-major? (.isColumnMajor (navigator  ~w))}))))
+     (dragan-says-ex "Matrix w is not properly formatted to hold eigenvalues."
+                     {:w (info ~w) :errors
+                      (cond-into []
+                                 (not (.isColumnMajor (navigator  ~w))) "w is not column-major"
+                                 (not (= 2 (.ncols ~w))) "w does not have 2 columns"
+                                 (not (= (.mrows ~a) (.mrows ~w))) "w does not have equal number of rows with a")})))
 
 (defmacro ge-es [method a w vs]
-  `(if (.isColumnMajor (navigator ~w))
+  `(if (and (.isColumnMajor (navigator ~w)) (= 2 (.ncols ~w)) (= (.mrows ~a) (.mrows ~w)))
      (let [wr# (.col ~w 0)
            wi# (.col ~w 1)]
        (with-eigen-check ~w
@@ -1029,17 +1033,55 @@
           (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a)
           (buffer wr#) (offset wr#) (buffer wi#) (offset wi#)
           (.buffer ~vs) (.offset ~vs) (.stride ~vs))))
-     (throw (ex-info "You cannot use w that is not column-oriented"
-                     {:column-major? (.isColumnMajor (navigator  ~w))}))))
+     (dragan-says-ex "Matrix w is not properly formatted to hold eigenvalues."
+                     {:w (info ~w) :errors
+                      (cond-into []
+                                 (not (.isColumnMajor (navigator  ~w))) "w is not column-major"
+                                 (not (= 2 (.ncols ~w))) "w does not have 2 columns"
+                                 (not (= (.mrows ~a) (.mrows ~w))) "w does not have equal number of rows with a")})))
 
 ;; ------------- Symmetric Eigenvalue Problem Routines LAPACK -------------------------------
 
-(defmacro sy-ev [method a w vl vr]
-  `(let [v# (or ~vl ~vr)
-         a# (if v# (let [ga# (view-ge ~a)] (copy (engine ga#) ga# v#)) ~a)]
-     (with-eigen-check ~w
-       (~method (.layout (navigator ~a)) (int (if v# \V \N)) (int (if (.isLower (region ~a)) \L \U))
-        (.ncols ~a) (buffer a#) (offset a#) (stride a#) (.buffer ~w) (.offset ~w)))))
+(defmacro sy-evr [method a w z]
+  `(if (or (= 0 (.ncols ~z)) (= (.mrows ~w) (.ncols ~z)))
+     (let [jobz# (< 0 (.ncols ~z))
+           abstol# -1.0
+           vl# -1.0
+           vu# 0.0
+           il# 1
+           iu# (.mrows ~w)
+           dummy# (.buffer ~z)]
+       (with-eigen-check ~w
+         (~method (.layout (navigator ~a)) (int (if jobz# \V \N))
+          (int (if (< 0 iu# (.mrows ~a)) \I \A)) (int (if (.isLower (region ~a)) \L \U))
+          (.ncols ~a) (.buffer ~a) (.offset ~a) (.stride ~a) vl# vu# il# iu# abstol# dummy#
+          (.buffer ~w) (.offset ~w) (.buffer ~z) (.offset ~z) (.stride ~z) dummy# 0)))
+     (dragan-says-ex "Eigenvalue matrix w and eigenvector matrix dimensions do not match."
+                     {:mrows-w (.mrows ~w) :ncols-z (.ncols ~z)})))
+
+(defmacro sy-evd [method a w v]
+  `(if (= (.mrows ~a) (.mrows ~w))
+     (let [jobz# (= (.ncols ~a) (.ncols ~v))
+           a# (if (and jobz# (not (identical? (.buffer ~a) (.buffer ~v))))
+                (let [ga# (view-ge ~a)] (copy (engine ga#) ga# ~v) ~v)
+                ~a)]
+       (with-eigen-check ~w
+         (~method (.layout (navigator ~a))
+          (int (if jobz# \V \N)) (int (if (.isLower (region ~a)) \L \U))
+          (.ncols ~a) (buffer a#) (offset a#) (stride a#) (.buffer ~w) (.offset ~w))))
+     (dragan-says-ex "Matrix w of eigenvalues must have the same number of rows as a."
+                     {:mrows-w (.mrows ~w) :mrows-a (.mrows ~a)})))
+
+(defmacro sy-ev [evd-method evr-method a w v]
+  `(if (and (= 1 (.ncols ~w)) (<= 0 (.mrows ~w) (.mrows ~a)))
+     (if (= (.mrows ~w) (.mrows ~a))
+       (sy-evd ~evd-method ~a ~w ~v)
+       (sy-evr ~evr-method ~a ~w ~v))
+     (dragan-says-ex "Eigenvalue matrix for symmetric matrices must have proper dimensions."
+                     {:w (info ~w) :a (info ~a) :errors
+                      (cond-into []
+                                 (not (= 1 (.ncols ~w))) "w does not have 1 column"
+                                 (< (.mrows ~a) (.mrows ~w)) "w has too many rows")})))
 
 ;; ------------- Singular Value Decomposition Routines LAPACK -------------------------------
 

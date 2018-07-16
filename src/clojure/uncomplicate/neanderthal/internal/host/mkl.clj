@@ -713,9 +713,9 @@
 
 ;; ================= General Matrix Engines ====================================
 
-(let [zero-storage (full-storage true 0 0 Integer/MAX_VALUE)]
-  (def ^:private zero-matrix ^RealGEMatrix
-    (->RealGEMatrix nil zero-storage nil nil nil nil true (ByteBuffer/allocateDirect 0) 0 0 0)))
+(def ^:private zero-matrix ^RealGEMatrix
+  (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE) nil nil nil nil true
+                  (ByteBuffer/allocateDirect 0) 0 0 0))
 
 (deftype DoubleGEEngine []
   Blas
@@ -1558,7 +1558,8 @@
   (con [_ gg nrm _]
     (sy-con LAPACK/dpocon ^RealUploMatrix gg nrm))
   (ev [_ a w vl vr]
-    (sy-ev LAPACK/dsyevd ^RealUploMatrix a ^RealGEMatrix w vl vr))
+    (let [v (or vl vr zero-matrix)]
+      (sy-ev LAPACK/dsyevd LAPACK/dsyevr ^RealUploMatrix a ^RealGEMatrix w ^RealGEMatrix v)))
   VectorMath
   (sqr [_ a y]
     (matrix-math MKL/vdSqr ^RealUploMatrix a ^RealUploMatrix y))
@@ -1731,7 +1732,8 @@
   (con [_ gg nrm _]
     (sy-con LAPACK/spocon ^RealUploMatrix gg nrm))
   (ev [_ a w vl vr]
-    (sy-ev LAPACK/ssyevd ^RealUploMatrix a ^RealGEMatrix w vl vr))
+    (let [v (or vl vr zero-matrix)]
+      (sy-ev LAPACK/ssyevd LAPACK/ssyevr ^RealUploMatrix a ^RealGEMatrix w ^RealGEMatrix v)))
   VectorMath
   (sqr [_ a y]
     (matrix-math MKL/vsSqr ^RealUploMatrix a ^RealUploMatrix y))

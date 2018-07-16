@@ -88,7 +88,8 @@
   (lse [this a b c d x])
   (gls [this a b d x y])
   (ev [this a w vl vr])
-  (es [this a w vs]))
+  (es [this a w vs])
+  (evr [this a w vl vr]))
 
 (defprotocol VectorMath
   (sqr [this a y])

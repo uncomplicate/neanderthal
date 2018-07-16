@@ -593,26 +593,23 @@
   See related info about [lapacke_?geev](https://software.intel.com/en-us/node/521147).
   "
   ([^Matrix a ^Matrix w ^Matrix vl ^Matrix vr]
-   (let [ncols-w (long (if (symmetric? a) 1 2))]
-     (if (and (= (.mrows a) (.ncols a)) (= ncols-w (.ncols w))
-              (= (.mrows a) (.mrows w)) (= (long (if (symmetric? a) 1 2)) (.ncols w))
-              (or (nil? vl) (and (= (.mrows a) (.mrows vl) (.ncols vl))
-                                 (api/compatible? a vl) (api/fits-navigation? a vl)))
-              (or (nil? vr) (and (= (.mrows a) (.mrows vr) (.ncols vr))
-                                 (api/compatible? a vr)(api/fits-navigation? a vr))))
-       (api/ev (api/engine a) a w vl vr)
-       (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
-                       {:a (info a) :w (info w) :vl (info vl) :vr (info vr) :errors
-                        (cond-into []
-                                   (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
-                                   (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
-                                   (not (= ncols-w (.ncols w))) (format "w does not have %d columns" ncols-w)
-                                   (not (or (nil? vl) (= (.mrows a) (.mrows vl) (.ncols vl))))
-                                   "a and vl dimensions do not fit"
-                                   (not (or (nil? vr) (= (.mrows a) (.mrows vr) (.ncols vr))))
-                                   "a and vr dimensions do not fit"
-                                   (and vl (not (api/fits-navigation? a vl))) "a and vl do not have the same layout"
-                                   (and vr (not (api/fits-navigation? a vr))) "a and vr do not have the same layout")})))))
+   (if (and (= (.mrows a) (.ncols a)) (< 0 (.mrows w))
+            (or (nil? vl) (and (= (.mrows a) (.mrows vl)) (= (.mrows w) (.ncols vl))
+                               (api/compatible? a vl) (api/fits-navigation? a vl)))
+            (or (nil? vr) (and (= (.mrows a) (.mrows vr)) (= (.mrows w) (.ncols vr))
+                               (api/compatible? a vr)(api/fits-navigation? a vr))))
+     (api/ev (api/engine a) a w vl vr)
+     (dragan-says-ex "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
+                     {:a (info a) :w (info w) :vl (info vl) :vr (info vr) :errors
+                      (cond-into []
+                                 (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
+                                 (not (< 0 (.mrows w))) "w does not have at least one row"
+                                 (and vl (not (= (.mrows w) (.ncols vl)))) "mrows of w and ncols of vl do not match"
+                                 (and vr (not (= (.mrows w) (.ncols vr)))) "mrows of w and ncols of vl do not match"
+                                 (and vl (not (= (.mrows a) (.mrows vl)))) "a and vl have different row dimensions"
+                                 (and vr (not (= (.mrows a) (.mrows vr)))) "a and vr have different row dimensions"
+                                 (and vl (not (api/fits-navigation? a vl))) "a and vl do not have the same layout"
+                                 (and vr (not (api/fits-navigation? a vr))) "a and vr do not have the same layout")})))
   ([a w]
    (ev! a w nil nil))
   ([^Matrix a]
@@ -647,15 +644,16 @@
             (or (nil? vs) (and (= (.mrows a) (.mrows vs) (.ncols vs))
                                (api/compatible? a vs) (api/fits-navigation? a vs))))
      (api/es (api/engine a) a w vs)
-     (throw (ex-info "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
+     (dragan-says-ex "You cannot compute eigenvalues of a non-square matrix or with the provided destinations."
                      {:a (info a) :w (info w) :vs (info vs) :errors
                       (cond-into []
                                  (not (= (.mrows a) (.ncols a))) "a is not a square matrix"
                                  (not (= (.mrows a) (.mrows w))) "a and w have different row dimensions"
                                  (not (< 1 (.ncols w))) "w does not have 2 columns"
-                                 (not (or (nil? vs) (= (.mrows a) (.mrows vs) (.ncols vs))))
+                                 (and vs (not (= (.mrows a) (.mrows vs) (.ncols vs))))
                                  "a and vs dimensions do not fit"
-                                 (and vs (not (api/fits-navigation? a vs))) "a and vs do not have the same layout")}))))
+                                 (and vs (not (api/fits-navigation? a vs)))
+                                 "a and vs do not have the same layout")})))
   ([^Matrix a w]
    (es! a w nil))
   ([^Matrix a]
