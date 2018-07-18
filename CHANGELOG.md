@@ -3,8 +3,9 @@
 # 0.20.0
 
 * SDD available as a SVD implementation.
+* Eigenvalues and eigenvectors computing available for symmetric matrices.
 * Fluokitten performance regression (introduced in 0.18.0) fixed.
-* Fluokitten support for non-double functions.
+* Fluokitten support in non-double objects.
 * Fluokitten accepts non-primitive function for Neanderthal objects.
 * Custom non-blas sum function sped up on CPU.
 * JCublas upgraded to 0.9.2.

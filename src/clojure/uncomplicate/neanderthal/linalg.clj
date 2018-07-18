@@ -577,12 +577,16 @@
 ;; =============================== Eigenproblems =================================================
 
 (defn ev!
-  "TODO update
-  Computes the eigenvalues and left and right eigenvectors of a matrix `a`.
+  "Computes the eigenvalues and left and right eigenvectors of a matrix `a`.
+
+  `a` - source matrix and computed orthogonal factorization (m x m).
+  `w` - computed eigenvalues (m x 2 or k x 1 for symmetric matrices).
+  `vl` and/or `vr` - left and right eigenvectors (m x m or m x k for symmetric matrices).
 
   On exit, `a` is overwritten with QR factors. The first 2 columns of a column-oriented GE matrix
   `w` are overwritten with eigenvalues of `a`. If `vl` and `vr` GE matrices are provided, they will
-  be overwritten with left and right eigenvectors.
+  be overwritten with left and right eigenvectors. For symmetric matrices, computes the first k
+  eigenvalues (k <= m). If `vl` and/or `vr` are nil, eigenvectors are not computed.
 
   If the QR algorithm failed to compute all the eigenvalues, throws ExceptionInfo, with the information
   on the index of the first eigenvalue that converged.
@@ -617,18 +621,17 @@
      (ev! a w))))
 
 (defn ev
-  "TODO"
+  "Computes eigenvalues without destroying `a`'s data."
   ([a]
    (with-release [a-copy (copy a)]
      (ev! a-copy))))
 
 (defn es!
-  "TODO update
-  Computes the eigenvalues and Schur factorization of a matrix `a`.
+  "Computes the eigenvalues and Schur factorization of a matrix `a`.
 
   On exit, `a` is overwritten with the Schur form T. The first 2 columns of a column-oriented GE matrix
   `w` are overwritten with eigenvalues of `a`. If `v` GE matrice is provided, it will be overwritten
-  by the orthogonal matrix Z of Schur vectors.
+  by the orthogonal matrix Z of Schur vectors. If `vs` is nil, only eigenvalues are computed.
 
   If the QR algorithm failed to compute all the eigenvalues, throws ExceptionInfo, with the information
   on the index of the first eigenvalue that converged.
@@ -661,7 +664,7 @@
      (es! a w nil))))
 
 (defn es
-  "TODO"
+  "Computes eigenvalues using Schur factorization without destroying `a`'s data."
   ([a]
    (with-release [a-copy (copy a)]
      (es! a-copy))))
