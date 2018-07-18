@@ -15,6 +15,7 @@
              [linalg :refer :all]
              [aux :refer :all]
              [math :refer :all]
+             [vect-math :refer [linear-frac!]]
              [real :refer [ls-residual]]]
             [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]])
   (:import clojure.lang.ExceptionInfo
@@ -2637,9 +2638,9 @@
      (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl))) => (roughly 0.01378)
      (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr))) => (roughly 0.010403))))
 
-(defn test-sy-ev [factory]
+(defn test-sy-evd [factory]
   (facts
-   "LAPACK SY ev!"
+   "LAPACK SY ev! with syevd"
 
    (with-release [s (sy factory 5 [-1.01,
                                    3.98, 0.53,,
@@ -2658,6 +2659,29 @@
 
      (nrm2 (axpy! -1 w-res (ev! s w nil v))) => (roughly 0 0.01)
      (nrm2 (axpy! -1 v-res v)) => (roughly 0 0.02))))
+
+(defn test-sy-evr [factory]
+  (facts
+   "LAPACK SY ev! with syevr algorithm"
+
+   (with-release [s (sy factory 5 [ 0.67
+                                   -0.20   3.82
+                                   0.19  -0.13   3.27
+                                   -1.06   1.06   0.11   5.86
+                                   0.46  -0.48   1.10  -0.98   3.54]
+                        {:layout :row})
+                  w-res (ge factory 3 1 [0.43   2.14   3.37])
+                  z-res (ge factory 5 3 [-0.98  -0.01  -0.08
+                                         0.01   0.02  -0.93
+                                         0.04  -0.69  -0.07
+                                         -0.18   0.19   0.31
+                                         0.07   0.69  -0.13]
+                            {:layout :row})
+                  w (ge factory 3 1)
+                  z (ge factory 5 3 {:layout :row})]
+
+     (nrm2 (axpy! -1 w-res (ev! s w nil z))) => (roughly 0 0.007)
+     (nrm2 z) => (roughly (nrm2 z-res) 0.01))))
 
 (defn test-ge-es [factory]
   (facts
@@ -2871,7 +2895,8 @@
   (test-ge-lse factory)
   (test-ge-gls factory)
   (test-ge-ev factory)
-  (test-sy-ev factory)
+  (test-sy-evd factory)
+  (test-sy-evr factory)
   (test-ge-es factory)
   (test-ge-svd factory))
 
