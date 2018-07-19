@@ -13,12 +13,13 @@
              [core :refer [Releaseable release let-release with-release info
                            wrap-int wrap-double wrap-float]]
              [utils :refer [with-check dragan-says-ex]]]
-            [uncomplicate.fluokitten.core :refer [extract]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
-            [uncomplicate.clojurecl.internal.constants :refer [dec-error]]
+            [uncomplicate.clojurecl.internal
+             [api :refer [extract]]
+             [constants :refer [dec-error]]]
             [uncomplicate.neanderthal
              [core :refer [transfer!]]
              [native :refer [native-float native-double]]]
