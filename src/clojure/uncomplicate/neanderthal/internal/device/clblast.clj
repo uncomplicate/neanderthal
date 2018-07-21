@@ -18,7 +18,7 @@
              [info :refer [max-work-group-size queue-device]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
             [uncomplicate.clojurecl.internal
-             [api :refer [extract]]
+             [protocols :refer [extract]]
              [constants :refer [dec-error]]]
             [uncomplicate.neanderthal
              [core :refer [transfer!]]

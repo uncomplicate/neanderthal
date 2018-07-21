@@ -14,7 +14,7 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.clojurecl.internal.api :refer [size]]
+            [uncomplicate.clojurecl.internal.protocols :refer [size]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]

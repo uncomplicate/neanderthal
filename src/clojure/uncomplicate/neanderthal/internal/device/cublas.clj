@@ -14,10 +14,10 @@
                            wrap-int wrap-double wrap-float]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.clojurecuda
-             [protocols :refer [cu-ptr ptr]]
              [core :refer :all :as cuda :exclude [device]]
-             [toolbox :refer [launch-reduce! read-int]]
-             [nvrtc :refer [program compile!]]
+             [toolbox :refer [launch-reduce! read-int]]]
+            [uncomplicate.clojurecuda.internal
+             [protocols :refer [extract wrap ptr]]
              [utils :refer [error]]]
             [uncomplicate.neanderthal
              [core :refer [transfer!]]
@@ -101,7 +101,7 @@
    `(if (< 0 (.dim ~x))
       (with-check cublas-error
         (~method ~cublas-handle (.dim ~x)
-         (offset (data-accessor ~x) (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x))
+         (offset (data-accessor ~x) (extract (.buffer ~x)) (.offset ~x)) (.stride ~x))
         ~x)
       ~x))
   ([cublas-handle method x y]
@@ -109,8 +109,8 @@
       (let [da# (data-accessor ~x)]
         (with-check cublas-error
           (~method ~cublas-handle (.dim ~x)
-           (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-           (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y))
+           (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+           (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y))
           ~y))
       ~y))
   ([cublas-handle method x y z]
@@ -118,9 +118,9 @@
       (let [da# (data-accessor ~x)]
         (with-check cublas-error
           (~method ~cublas-handle (.dim ~x)
-           (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-           (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
-           (offset da# (cu-ptr (.buffer ~z)) (.offset ~z)) (.stride ~z)))
+           (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+           (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y)
+           (offset da# (extract (.buffer ~z)) (.offset ~z)) (.stride ~z)))
         ~z)
       ~z)))
 
@@ -130,8 +130,8 @@
            res# (~array-fn 1)]
        (with-check cublas-error
          (~method ~cublas-handle (.dim ~x)
-          (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-          (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
+          (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+          (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y)
           (ptr res#))
          (first res#)))
      0.0))
@@ -141,7 +141,7 @@
      (let [res# (~array-fn 1)]
        (with-check cublas-error
          (~method ~cublas-handle (.dim ~x)
-          (offset (data-accessor ~x) (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x) (ptr res#))
+          (offset (data-accessor ~x) (extract (.buffer ~x)) (.offset ~x)) (.stride ~x) (ptr res#))
          (first res#)))
      0.0))
 
@@ -149,7 +149,7 @@
   `(if (< 0 (.dim ~x))
      (with-check cublas-error
        (~method ~cublas-handle (.dim ~x) (ptr ~alpha)
-        (offset (data-accessor ~x) (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x))
+        (offset (data-accessor ~x) (extract (.buffer ~x)) (.offset ~x)) (.stride ~x))
        ~x)
      ~x))
 
@@ -158,8 +158,8 @@
      (let [da# (data-accessor ~x)]
        (with-check cublas-error
          (~method ~cublas-handle (.dim ~x) (ptr ~alpha)
-          (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-          (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y))
+          (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+          (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y))
          ~y))
      ~y))
 
@@ -168,8 +168,8 @@
      (if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
        (with-check cublas-error
          (~method ~cublas-handle (.dim ~x)
-          (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-          (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
+          (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+          (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y)
           (ptr ~c) (ptr ~s))
          ~x)
        ~x)))
@@ -180,8 +180,8 @@
        (if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
          (with-check cublas-error
            (~method ~cublas-handle (.dim ~x)
-            (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-            (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y)
+            (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+            (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y)
             (ptr (.buffer ~param)))
            ~param)
          ~param))
@@ -217,8 +217,8 @@
        (if (and (= (navigator ~a) (navigator ~b)) (.isGapless stor#) (.isGapless (storage ~b)))
          (with-check cublas-error
            (~method ~cublas-handle (.dim ~a)
-            (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) 1
-            (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) 1)
+            (offset da# (extract (.buffer ~a)) (.offset ~a)) 1
+            (offset da# (extract (.buffer ~b)) (.offset ~b)) 1)
            ~a)
          (with-release [ge-swap-kernel# (function ~modl (name-transp "ge_swap" ~a ~b))]
            (launch! ge-swap-kernel# (grid-2d (.sd stor#) (.fd stor#)) ~hstream
@@ -234,8 +234,8 @@
              res# (~array-fn 1)]
          (with-check cublas-error
            (~method ~cublas-handle (.dim ~a)
-            (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) 1
-            (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) 1
+            (offset da# (extract (.buffer ~a)) (.offset ~a)) 1
+            (offset da# (extract (.buffer ~b)) (.offset ~b)) 1
             (ptr res#))
            (first res#)))
        (not-available))
@@ -247,7 +247,7 @@
        (if (.isGapless (storage ~a))
          (with-check cublas-error
            (~method ~cublas-handle (.dim ~a)
-            (offset (data-accessor ~a) (cu-ptr (.buffer ~a)) (.offset ~a)) 1 (ptr res#))
+            (offset (data-accessor ~a) (extract (.buffer ~a)) (.offset ~a)) 1 (ptr res#))
            (first res#))
          (not-available)))
      0.0))
@@ -280,20 +280,20 @@
   ([cublas-handle method alpha a beta b]
    `(if (< 0 (.dim ~a))
       (let [da# (data-accessor ~a)
-            b# (offset da# (cu-ptr (.buffer ~b)) (.offset ~b))
+            b# (offset da# (extract (.buffer ~b)) (.offset ~b))
             stor-b# (full-storage ~b)]
         (with-check cublas-error
           (~method ~cublas-handle
            (if (= (navigator ~a) (navigator ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
            cublasOperation/CUBLAS_OP_N (.sd stor-b#) (.fd stor-b#)
-           (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
+           (ptr ~alpha) (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a)
            (ptr ~beta) b# (.stride ~b) b# (.ld stor-b#))
           ~b))
       ~b))
   ([cublas-handle method alpha a]
    `(if (< 0 (.dim ~a))
       (let [da# (data-accessor ~a)
-            a# (offset da# (cu-ptr (.buffer ~a)) (.offset ~a))
+            a# (offset da# (extract (.buffer ~a)) (.offset ~a))
             stor# (full-storage ~a)
             ld-a# (.ld stor#)]
         (with-check cublas-error
@@ -311,9 +311,9 @@
           (~method ~cublas-handle
            (if (.isColumnMajor (navigator ~a)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
            (.sd stor#) (.fd stor#)
-           (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld stor#)
-           (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-           (ptr ~beta) (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y))
+           (ptr ~alpha) (offset da# (extract (.buffer ~a)) (.offset ~a)) (.ld stor#)
+           (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+           (ptr ~beta) (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y))
           ~y))
       ~y))
   ([a]
@@ -326,9 +326,9 @@
        (with-check cublas-error
          (let [[v# w#] (if (.isColumnMajor (navigator ~a)) [~x ~y] [~y ~x])]
            (~method ~cublas-handle (.sd stor#) (.fd stor#)
-            (ptr ~alpha) (offset da# (cu-ptr (block/buffer v#)) (block/offset v#)) (block/stride v#)
-            (offset da# (cu-ptr (block/buffer w#)) (block/offset w#)) (block/stride w#)
-            (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.ld stor#)))
+            (ptr ~alpha) (offset da# (extract (block/buffer v#)) (block/offset v#)) (block/stride v#)
+            (offset da# (extract (block/buffer w#)) (block/offset w#)) (block/stride w#)
+            (offset da# (extract (.buffer ~a)) (.offset ~a)) (.ld stor#)))
          ~a))
      ~a))
 
@@ -353,9 +353,9 @@
                (if trans-x# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
                (if trans-y# cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
                (.sd stor-c#) (.fd stor-c#) (.ncols ~a)
-               (ptr ~alpha) (offset da# (cu-ptr (block/buffer x#)) (block/offset x#)) (block/stride x#)
-               (offset da# (cu-ptr (block/buffer y#)) (block/offset y#)) (block/stride y#)
-               (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.ld stor-c#)))
+               (ptr ~alpha) (offset da# (extract (block/buffer x#)) (block/offset x#)) (block/stride x#)
+               (offset da# (extract (block/buffer y#)) (block/offset y#)) (block/stride y#)
+               (ptr ~beta) (offset da# (extract (.buffer ~c)) (.offset ~c)) (.ld stor-c#)))
             ~c))
         (mm (engine ~b) ~alpha ~b ~a ~beta ~c false))
       ~c)))
@@ -441,8 +441,8 @@
            (if (.isColumnMajor (navigator ~a)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
            (if (.isDiagUnit (region ~a)) cublasDiagType/CUBLAS_DIAG_UNIT cublasDiagType/CUBLAS_DIAG_NON_UNIT)
            (.ncols ~a)
-           (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
-           (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x))
+           (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a)
+           (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x))
           ~x))
       ~x))
   ([a]
@@ -460,9 +460,9 @@
            (if (= (navigator ~a) (navigator ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
            (if (.isDiagUnit (region ~a)) cublasDiagType/CUBLAS_DIAG_UNIT cublasDiagType/CUBLAS_DIAG_NON_UNIT)
            (.sd stor-b#) (.fd stor-b#)
-           (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
-           (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.ld stor-b#)
-           (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.ld stor-b#))
+           (ptr ~alpha) (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a)
+           (offset da# (extract (.buffer ~b)) (.offset ~b)) (.ld stor-b#)
+           (offset da# (extract (.buffer ~b)) (.offset ~b)) (.ld stor-b#))
           ~b))
       ~b))
   ([a]
@@ -476,9 +476,9 @@
           (~method ~cublas-handle
            (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
            (.ncols ~a)
-           (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
-           (offset da# (cu-ptr (.buffer ~x)) (.offset ~x)) (.stride ~x)
-           (ptr ~beta) (offset da# (cu-ptr (.buffer ~y)) (.offset ~y)) (.stride ~y))
+           (ptr ~alpha) (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a)
+           (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+           (ptr ~beta) (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y))
           ~y))
       ~y))
   ([a]
@@ -496,9 +496,9 @@
              (if ~left cublasSideMode/CUBLAS_SIDE_LEFT cublasSideMode/CUBLAS_SIDE_RIGHT)
              (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
              (.sd stor-c#) (.fd stor-c#)
-             (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
-             (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.stride ~b)
-             (ptr ~beta) (offset da# (cu-ptr (.buffer ~c)) (.offset ~c)) (.stride ~c))
+             (ptr ~alpha) (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a)
+             (offset da# (extract (.buffer ~b)) (.offset ~b)) (.stride ~b)
+             (ptr ~beta) (offset da# (extract (.buffer ~c)) (.offset ~c)) (.stride ~c))
             ~c)
           (dragan-says-ex "Both GE matrices in symmetric multiplication must have the same orientation."
                           {:b (info ~b) :c (info ~c)})))
@@ -517,8 +517,8 @@
           (if (= (navigator ~a) (navigator ~b)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
           (if (.isDiagUnit (region ~a)) cublasDiagType/CUBLAS_DIAG_UNIT cublasDiagType/CUBLAS_DIAG_NON_UNIT)
           (.sd stor-b#) (.fd stor-b#)
-          (ptr ~alpha) (offset da# (cu-ptr (.buffer ~a)) (.offset ~a)) (.stride ~a)
-          (offset da# (cu-ptr (.buffer ~b)) (.offset ~b)) (.ld stor-b#))
+          (ptr ~alpha) (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a)
+          (offset da# (extract (.buffer ~b)) (.offset ~b)) (.ld stor-b#))
          ~b))
      ~b))
 
@@ -1989,14 +1989,14 @@
 
 (defn ^:private get-cublas-stream [handle]
   (let [res (cudaStream_t.)]
-    (with-check cublas-error (JCublas2/cublasGetStream handle res) (CUstream. res))))
+    (with-check cublas-error (JCublas2/cublasGetStream handle res) (wrap (CUstream. res)))))
 
 (defn ^:private cublas-handle
   "Creates a cuBLAS context handler on the specific `device-id` (default `0`) and `stream`
   (default is a per-thread cuda stream)"
-  [ctx ^CUstream hstream]
+  [hstream]
   (let [handle (cublasHandle.)
-        cuda-stream (cudaStream_t. ^CUStream hstream)]
+        cuda-stream (cudaStream_t. ^CUStream (extract hstream))]
     (with-check cublas-error (JCublas2/cublasCreate handle)
       (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream) handle))))
 
@@ -2012,7 +2012,7 @@
      (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double"
                                                   "-DCAST(fun)=fun" "-arch=compute_30"])]
        (let-release [modl (module prog)
-                     handle (cublas-handle ctx hstream)
+                     handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)]
          (->CUFactory modl hstream (cu-double-accessor (current-context) hstream) native-double
                       (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
@@ -2024,7 +2024,7 @@
      (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=float"
                                                   "-DCAST(fun)=fun##f" "-arch=compute_30"])]
        (let-release [modl (module prog)
-                     handle (cublas-handle ctx hstream)
+                     handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)]
          (->CUFactory modl hstream (cu-float-accessor (current-context) hstream) native-float
                       (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)

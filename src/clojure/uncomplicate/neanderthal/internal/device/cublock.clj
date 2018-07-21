@@ -13,9 +13,8 @@
                            wrap-float wrap-double wrap-int wrap-long]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
-            [uncomplicate.clojurecuda
-             [protocols :refer :all]
-             [core :refer :all :exclude [device]]]
+            [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
+            [uncomplicate.clojurecuda.internal.protocols :refer :all]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -96,9 +95,6 @@
   DataAccessorProvider
   (data-accessor [this]
     this)
-  Contextual
-  (cu-context [_]
-    ctx)
   MemoryContext
   (compatible? [this o]
     (let [da (data-accessor o)]
@@ -135,7 +131,7 @@
       (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
         (with-check cublas-error
           (JCublas2/cublasGetVector (.dim cu) width
-                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu)
+                                    (offset da (extract (.buffer cu)) (.offset cu)) (.stride cu)
                                     (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
           host)
         (throw (ex-info "You cannot get incompatible or ill-fitting vector."
@@ -150,7 +146,7 @@
         (with-check cublas-error
           (JCublas2/cublasSetVector (.dim ^Vector cu) width
                                     (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
-                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.stride cu))
+                                    (offset da (extract (.buffer cu)) (.offset cu)) (.stride cu))
           cu)
         (throw (ex-info "You cannot set incompatible or ill-fitting vector."
                         {:cu (info cu) :host (info host)}))))
@@ -165,7 +161,7 @@
                (= (navigator cu) (navigator host)))
         (with-check cublas-error
           (JCublas2/cublasGetMatrix (.sd stor) (.fd stor) width
-                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.ld stor)
+                                    (offset da (extract (.buffer cu)) (.offset cu)) (.ld stor)
                                     (offset da (ptr (.buffer host)) (.offset host)) (.stride host))
           host)
         (throw (ex-info "You cannot get an incompatible or ill-fitting matrix."
@@ -182,7 +178,7 @@
         (with-check cublas-error
           (JCublas2/cublasSetMatrix (.sd stor) (.fd stor) width
                                     (offset da (ptr (.buffer host)) (.offset host)) (.stride host)
-                                    (offset da (cu-ptr (.buffer cu)) (.offset cu)) (.ld stor))
+                                    (offset da (extract (.buffer cu)) (.offset cu)) (.ld stor))
           cu)
         (throw (ex-info "You cannot set an incompatible or ill-fitting matrix."
                         {:cu (info cu) :host (info host)}))))
