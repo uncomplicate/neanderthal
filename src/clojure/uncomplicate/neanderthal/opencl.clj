@@ -28,6 +28,17 @@
 (def ^{:doc "Constructor of a double-precision floating point OpenCL factory."}
   opencl-double clblast-double)
 
+(defn set-engine!
+  "Creates an OpenCL factory using the provided `factory` constructor function. The created factory
+  will work using the provided queue and its context, and will be bound to the root of
+  [[*opencl-factory*]]. Enables the use of [[clv]], [[clge]], [[cltr]], etc. globally."
+  ([factory queue]
+   (alter-var-root (var *opencl-factory*) (constantly (factory (queue-context queue) queue))))
+  ([factory]
+   (set-engine! factory *command-queue*))
+  ([]
+   (set-engine! opencl-float *command-queue*)))
+
 (defmacro with-engine
   "Creates an OpenCL factory using the provided `factory` constructor function. The created factory
   will work using the provided queue and its context, and will be bound to [[*opencl-factory*]].

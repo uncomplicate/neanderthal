@@ -26,6 +26,17 @@
 (def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
   cuda-double cublas-double)
 
+(defn set-engine!
+  "Creates an CUDA factory using the provided `factory` constructor function. The created factory
+  will work using the provided stream and the current context, and will be bound to the root of
+  [[*cuda-factory*]]. Enables the use of [[cuv]], [[cuge]], [[cutr]], etc. globally."
+  ([factory hstream]
+   (alter-var-root (var *cuda-factory*) (constantly (factory (current-context) hstream))))
+  ([factory]
+   (set-engine! factory default-stream))
+  ([]
+   (set-engine! cuda-float default-stream)))
+
 (defmacro with-engine
   "Creates a CUDA factory using the provided `factory` constructor function and a `handle` cuBLAS
   context handler. The created factory will work using the provided cuBLAS `handle` and its context,

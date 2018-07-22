@@ -18,14 +18,14 @@
 
 (def ^:private compile-format #'clojure.pprint/compile-format)
 
-(def format-g (compile-format "~6,2,,1G"))
-(def format-f (compile-format "~7,2F"))
-(def format-a (compile-format "~4@A~8T"))
-(def format-a7 (compile-format "~4@A~7T"))
-(def format-a8 (compile-format "~4@A~8T"))
-(def format-seq (compile-format "~{~8A~}"))
-(def format-header-row (compile-format "~{~7A~}~%"))
-(def format-header-col (compile-format "~{~8A~}~%"))
+(def ^:const format-g (compile-format "~6,2,,1G"))
+(def ^:const format-f (compile-format "~7,2F"))
+(def ^:const format-a (compile-format "~4@A~8T"))
+(def ^:const format-a7 (compile-format "~4@A~7T"))
+(def ^:const format-a8 (compile-format "~4@A~8T"))
+(def ^:const format-seq (compile-format "~{~8A~}"))
+(def ^:const format-header-row (compile-format "~{~7A~}~%"))
+(def ^:const format-header-col (compile-format "~{~8A~}~%"))
 
 (let [default-settings {:matrix-width 5
                         :matrix-height 5}

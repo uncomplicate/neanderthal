@@ -68,8 +68,8 @@
 
 ;; ======================== LU factorization ==========================================
 
-(def ^:private f* (double-fn *))
-(def ^:private falsify (constantly false))
+(def ^{:private true :const true} f* (double-fn *))
+(def ^{:private true :const true} falsify (constantly false))
 
 (defn require-trf []
   (dragan-says-ex "Please do the triangular factorization of this matrix first."))

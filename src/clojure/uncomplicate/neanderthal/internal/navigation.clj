@@ -155,8 +155,8 @@
 
 ;; =================== Navigator ==========================================
 
-(def ^:private real-column-navigator (atom nil))
-(def ^:private real-row-navigator (atom nil))
+(def ^:private real-column-navigator (volatile! nil))
+(def ^:private real-row-navigator (volatile! nil))
 
 (deftype RealColumnNavigator []
   Info
@@ -243,9 +243,10 @@
   (invokePrimitive [_ f i j val]
     (.invokePrim ^IFn$LLDD f i j val)))
 
-(reset! real-column-navigator (RealColumnNavigator.))
-(reset! real-row-navigator (RealRowNavigator.))
-(def diagonal-navigator (RealDiagonalNavigator.))
+(vreset! real-column-navigator (RealColumnNavigator.))
+(vreset! real-row-navigator (RealRowNavigator.))
+
+(def  diagonal-navigator (RealDiagonalNavigator.))
 
 (defn layout-navigator [^Boolean column?]
   (if column? @real-column-navigator @real-row-navigator))
@@ -515,11 +516,11 @@
   (entry [_ _ _ _ _ _ i j]
     (if (= i j) 1.0 0.0)))
 
-(def sy-default (SYDefault.))
-(def sb-default (SBDefault.))
-(def st-default (STDefault.))
-(def zero-default (ZeroDefault.))
-(def unit-default (UnitDefault.))
+(def ^:const sy-default (SYDefault.))
+(def ^:const sb-default (SBDefault.))
+(def ^:const st-default (STDefault.))
+(def ^:const zero-default (ZeroDefault.))
+(def ^:const unit-default (UnitDefault.))
 
 (defn real-default
   ([type diag-unit]
