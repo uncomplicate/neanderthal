@@ -100,8 +100,10 @@
       (trs (engine lu) lu b ipiv)
       (stale-factorization)))
   (trtri! [_]
-    (if (compare-and-set! fresh true false)
-      (tri (engine lu) lu ipiv)
+    (if @fresh
+      (locking fresh
+        (vreset! fresh false)
+        (tri (engine lu) lu ipiv))
       (stale-factorization)))
   (trtri [_]
     (if @fresh
@@ -144,10 +146,10 @@
         (let-release [a-copy (raw a)]
           (copy eng a a-copy)
           (trf eng a-copy ipiv)
-          (->LUFactorization a-copy ipiv true (atom true)))
+          (->LUFactorization a-copy ipiv true (volatile! true)))
         (do
           (trf eng a ipiv)
-          (->LUFactorization a ipiv false (atom true)))))))
+          (->LUFactorization a ipiv false (volatile! true)))))))
 
 (defrecord PivotlessLUFactorization [^Matrix lu ^Boolean master fresh]
   Releaseable
@@ -172,8 +174,10 @@
       (trs (engine lu) lu b)
       (stale-factorization)))
   (trtri! [_]
-    (if (compare-and-set! fresh true false)
-      (tri (engine lu) lu)
+    (if @fresh
+      (locking fresh
+        (vreset! fresh false)
+        (tri (engine lu) lu))
       (stale-factorization)))
   (trtri [_]
     (if @fresh
@@ -215,10 +219,10 @@
       (let-release [a-copy (raw a)]
         (copy eng a a-copy)
         (trf eng a-copy)
-        (->PivotlessLUFactorization a-copy true (atom true)))
+        (->PivotlessLUFactorization a-copy true (volatile! true)))
       (do
         (trf eng a)
-        (->PivotlessLUFactorization a false (atom true))))))
+        (->PivotlessLUFactorization a false (volatile! true))))))
 
 (defn dual-lu-factorization [^Matrix a pure]
   (if pure
@@ -226,11 +230,11 @@
       (let-release [a-copy (raw a)]
         (copy eng a a-copy)
         (if (= 0 (trfx eng a-copy))
-          (->PivotlessLUFactorization a-copy true (atom true))
+          (->PivotlessLUFactorization a-copy true (volatile! true))
           (let-release [ipiv (create-vector (index-factory a) (min (.mrows a) (.ncols a)) false)]
             (copy eng a a-copy)
             (trf eng a-copy ipiv)
-            (->LUFactorization a-copy ipiv true (atom true))))))
+            (->LUFactorization a-copy ipiv true (volatile! true))))))
     (lu-factorization a false)))
 
 (defrecord SVDecomposition [^DiagonalMatrix sigma ^Matrix u ^Matrix vt ^Boolean master]
@@ -272,8 +276,10 @@
       (stale-factorization)))
   ORF
   (org! [_]
-    (if (compare-and-set! fresh true false)
-      (api-org eng or tau)
+    (if @fresh
+      (locking fresh
+        (vreset! fresh false)
+        (api-org eng or tau))
       (stale-factorization)))
   (org [_]
     (if @fresh
@@ -287,7 +293,7 @@
   (ncols [_]
     n)
   (transpose [_]
-    (->OrthogonalFactorization eng (.transpose or) jpiv tau false (atom true) n m or-type api-orm api-org))
+    (->OrthogonalFactorization eng (.transpose or) jpiv tau false (volatile! true) n m or-type api-orm api-org))
   DataAccessorProvider
   (data-accessor [_]
     (data-accessor or))
@@ -306,29 +312,29 @@
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
       (qrf-fn eng a tau)
-      (OrthogonalFactorization. eng a nil tau master (atom true) (.mrows a) (.mrows a) :qr mqr gqr))))
+      (->OrthogonalFactorization eng a nil tau master (volatile! true) (.mrows a) (.mrows a) :qr mqr gqr))))
 
 (defn qp-factorization [^Matrix a master]
   (let [eng (engine a)]
     (let-release [jpiv (create-vector (index-factory a) (.ncols a) true)
                   tau (create-vector (factory a) (min-mn a) false)]
       (qp3 eng a jpiv tau)
-      (OrthogonalFactorization. eng a jpiv tau master (atom true) (.mrows a) (.mrows a) :qp mqr gqr))))
+      (->OrthogonalFactorization eng a jpiv tau master (volatile! true) (.mrows a) (.mrows a) :qp mqr gqr))))
 
 (defn rq-factorization [^Matrix a master]
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
       (rqf eng a tau)
-      (OrthogonalFactorization. eng a nil tau master (atom true) (.ncols a) (.ncols a) :rq mrq grq))))
+      (->OrthogonalFactorization eng a nil tau master (volatile! true) (.ncols a) (.ncols a) :rq mrq grq))))
 
 (defn ql-factorization [^Matrix a master]
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
       (qlf eng a tau)
-      (OrthogonalFactorization. eng a nil tau master (atom true) (.mrows a) (.ncols a) :ql mql gql))))
+      (->OrthogonalFactorization eng a nil tau master (volatile! true) (.mrows a) (.ncols a) :ql mql gql))))
 
 (defn lq-factorization [^Matrix a master]
   (let [eng (engine a)]
     (let-release [tau (create-vector (factory a) (min-mn a) false)]
       (lqf eng a tau)
-      (OrthogonalFactorization. eng a nil tau master (atom true) (.ncols a) (.ncols a) :lq mlq glq))))
+      (->OrthogonalFactorization eng a nil tau master (volatile! true) (.ncols a) (.ncols a) :lq mlq glq))))
