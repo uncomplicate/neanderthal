@@ -8,10 +8,22 @@
 
 (ns hello-world.opencl2
   (:require [uncomplicate.commons.core :refer [with-release]]
-            [uncomplicate.clojurecl.core :refer [with-default]]
+            [uncomplicate.clojurecl.core :refer [with-default set-default! release-context!]]
             [uncomplicate.neanderthal
              [core :refer [asum]]
-             [opencl :refer [clv with-default-engine]]]))
+             [opencl :refer [clv with-default-engine set-engine!]]]))
+
+;; Conveniently in interactive REPL sessions (but don't do this in production code):
+
+(set-default!)
+(set-engine!)
+
+(def gpu-x (clv 1 -2 5))
+(asum gpu-x)
+
+(release-context!)
+
+;; Use dynamic bindings or explicit factories in production code:
 
 (with-default
   (with-default-engine

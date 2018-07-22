@@ -9,21 +9,33 @@
 (ns hello-world.opencl1
   (:require [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl
-             [core :refer [with-platform platforms with-context context
-                           with-queue sort-by-cl-version devices
-                           with-default-1 command-queue-1]]]
+             [core :refer [with-platform platforms with-context context with-queue
+                           sort-by-cl-version devices with-default-1 command-queue-1
+                           set-default-1! release-context!]]]
             [uncomplicate.neanderthal
              [core :refer [asum]]
-             [opencl :refer [clv with-default-engine]]]))
+             [opencl :refer [clv with-default-engine set-engine!]]]))
 
-;; Important note: this will use the default device, whatever it is
-;; on your machine. This device might be old and not very capable,
-;; especially if it's a CPU on your not-very-recent Mac.
+;; Conveniently in interactive REPL sessions (but don't do this in production code):
+
+(set-default-1!)
+(set-engine!)
+
+(def gpu-x (clv 1 -2 5))
+(asum gpu-x)
+
+(release-context!)
+
+;; Use dynamic bindings or explicit factories in production code:
 
 (with-default-1
   (with-default-engine
     (with-release [gpu-x (clv 1 -2 5)]
       (asum gpu-x))))
+
+;; Important note: this will use the default device, whatever it is
+;; on your machine. This device might be old and not very capable,
+;; especially if it's a CPU on your not-very-recent Mac.
 
 ;; In that case, try something like this:
 (with-platform (first (platforms))
