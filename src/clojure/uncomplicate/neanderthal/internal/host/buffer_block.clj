@@ -42,13 +42,8 @@
 
 ;; ================== Declarations ============================================
 
-(declare integer-block-vector)
-(declare real-block-vector)
-(declare real-ge-matrix)
-(declare real-uplo-matrix)
-(declare real-banded-matrix)
-(declare real-packed-matrix)
-(declare real-diagonal-matrix)
+(declare integer-block-vector real-block-vector real-ge-matrix real-uplo-matrix
+         real-banded-matrix real-packed-matrix real-diagonal-matrix)
 
 ;; ============ Real Buffer ====================================================
 
@@ -2093,12 +2088,12 @@
       :gt (lu-factorization a pure)
       :dt (pivotless-lu-factorization a pure)
       :st (pivotless-lu-factorization a pure)
-      (dragan-says-ex "Triangular factorization is not available for this matrix type"
+      (dragan-says-ex "Triangular factorization is not available for this matrix type."
                       {:matrix-type matrix-type})))
   (create-ptrf [a]
     (if (= :sp matrix-type)
       (pivotless-lu-factorization a false)
-      (dragan-says-ex "Pivotless factorization is not available for this matrix type"
+      (dragan-says-ex "Pivotless factorization is not available for this matrix type."
                       {:matrix-type matrix-type})))
   TRF
   (trtrs [a b]

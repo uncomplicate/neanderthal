@@ -42,16 +42,15 @@
   "This operation would be inefficient when stride is not 1.")
 
 (def ^{:private true :const true} INEFFICIENT_OPERATION_MSG
-  "This operation would be inefficient because it uses memory transfer. Please use transfer! to be reminded of that.")
+  "This operation would be inefficient because it uses memory transfer.
+  Please use transfer! to be reminded of that.")
 
 (def ^{:private true :const true} UNAVAILABLE_CUDA_MSG
   "This operation is not available in CUDA (yet).")
 
 ;; ================== Declarations ============================================
 
-(declare cu-block-vector)
-(declare cu-ge-matrix)
-(declare cu-uplo-matrix)
+(declare cu-block-vector cu-ge-matrix cu-uplo-matrix)
 
 ;; ================== Accessors ================================================
 

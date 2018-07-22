@@ -39,7 +39,8 @@
   "This operation would be inefficient when stride is not 1.")
 
 (def ^{:private true :const true} INEFFICIENT_OPERATION_MSG
-  "This operation would be inefficient because it uses memory transfer. Please use transfer! of map-memory to be reminded of that.")
+  "This operation would be inefficient because it uses memory transfer.
+  Please use transfer! of map-memory to be reminded of that.")
 
 (def ^{:private true :const true} UNAVAILABLE_OPENCL_MSG
   "This operation is not available in OpenCL (yet).")
@@ -75,9 +76,7 @@
 
 ;; ================== Declarations ============================================
 
-(declare cl-block-vector)
-(declare cl-ge-matrix)
-(declare cl-uplo-matrix)
+(declare cl-block-vector cl-ge-matrix cl-uplo-matrix)
 
 ;; ================== Accessors ================================================
 
