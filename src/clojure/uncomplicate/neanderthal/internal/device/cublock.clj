@@ -14,7 +14,7 @@
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
-            [uncomplicate.clojurecuda.internal.protocols :refer :all]
+            [uncomplicate.clojurecuda.internal.protocols :refer [size extract ptr with-offset]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -62,7 +62,8 @@
 (deftype TypedCUAccessor [active ctx hstream et ^long w wrap-fn cast-fn]
   Releaseable
   (release [_]
-    (vreset! active false))
+    (vreset! active false)
+    true)
   DataAccessor
   (entryType [_]
     et)
@@ -330,7 +331,7 @@
 (defmethod print-method CUBlockVector
   [^CUBlockVector x ^java.io.Writer w]
   (.write w (str x))
-  (when (and (< 0 (.dim x)) (.buffer x) (active? (.da x)))
+  (when (and (< 0 (.dim x)) (extract (.buffer x)) (active? (.da x)))
     (with-release [host-x (host x)]
       (print-vector w host-x))))
 
@@ -556,7 +557,7 @@
 
 (defmethod print-method CUGEMatrix [^CUGEMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
+  (when (and (< 0 (.dim a)) (extract (.buffer a)) (active? (.da a)))
     (with-release [host-a (host a)]
       (print-ge w host-a))))
 
@@ -801,7 +802,7 @@
 
 (defmethod print-method CUUploMatrix [^CUUploMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
+  (when (and (< 0 (.dim a)) (extract (.buffer a)) (active? (.da a)))
     (with-release [host-a (host a)]
       (print-uplo w host-a "*"))))
 

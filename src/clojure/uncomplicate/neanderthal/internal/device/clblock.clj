@@ -14,7 +14,7 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.clojurecl.internal.protocols :refer [size]]
+            [uncomplicate.clojurecl.internal.protocols :refer [size extract]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -84,7 +84,8 @@
 (deftype TypedCLAccessor [active ctx queue et ^long w array-fn wrap-fn cast-fn]
   Releaseable
   (release [this]
-    (vreset! active false))
+    (vreset! active false)
+    true)
   DataAccessor
   (entryType [_]
     et)
@@ -288,7 +289,7 @@
 (defmethod print-method CLBlockVector
   [^CLBlockVector x ^java.io.Writer w]
   (.write w (str x))
-  (when (and (< 0 (.dim x)) (.buffer x) (active? (.da x)));;TODO don't need active now. Use extract
+  (when (and (< 0 (.dim x)) (extract (.buffer x)) (active? (.da x)))
     (let [mapped-x (mmap x :read)]
       (try
         (print-vector w mapped-x)
@@ -526,7 +527,7 @@
 
 (defmethod print-method CLGEMatrix [^CLGEMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
+  (when (and (< 0 (.dim a)) (extract (.buffer a)) (active? (.da a)))
     (let [mapped-a (mmap a :read)]
       (try
         (print-ge w mapped-a)
@@ -801,7 +802,7 @@
 
 (defmethod print-method CLUploMatrix [^CLUploMatrix a ^java.io.Writer w]
   (.write w (str a))
-  (when (and (< 0 (.dim a)) (.buffer a) (active? (.da a)))
+  (when (and (< 0 (.dim a)) (extract (.buffer a)) (active? (.da a)))
     (let [mapped-a (mmap a :read)]
       (try
         (print-uplo w mapped-a "*")
