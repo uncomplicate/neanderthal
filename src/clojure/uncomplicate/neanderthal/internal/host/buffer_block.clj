@@ -356,7 +356,7 @@
 
 ;; ============ Integer Vector =================================================
 
-(deftype IntegerBlockVector [fact ^IntegerBufferAccessor da eng ^Boolean master ^ByteBuffer buf
+(deftype IntegerBlockVector [fact ^IntegerBufferAccessor da eng master ^ByteBuffer buf
                              ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
@@ -540,7 +540,7 @@
 
 ;; ============ Real Vector ====================================================
 
-(deftype RealBlockVector [fact ^RealBufferAccessor da eng ^Boolean master ^ByteBuffer buf
+(deftype RealBlockVector [fact ^RealBufferAccessor da eng master ^ByteBuffer buf
                           ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
@@ -754,7 +754,7 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGEMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg
-                       fact ^RealBufferAccessor da eng ^Boolean master
+                       fact ^RealBufferAccessor da eng master
                        ^ByteBuffer buf ^long m ^long n ^long ofst]
   Object
   (hashCode [a]
@@ -1007,7 +1007,7 @@
 ;; =================== Real Uplo Matrix ==================================
 
 (deftype RealUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
-                         fact ^RealBufferAccessor da eng matrix-type ^Boolean master
+                         fact ^RealBufferAccessor da eng matrix-type master
                          ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
@@ -1301,7 +1301,7 @@
 
 (deftype RealBandedMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
                            fact ^RealBufferAccessor da eng matrix-type
-                           ^Boolean master ^ByteBuffer buf ^long m ^long n ^long ofst]
+                           master ^ByteBuffer buf ^long m ^long n ^long ofst]
   Object
   (hashCode [a]
     (-> (hash :RealBandedMatrix) (hash-combine matrix-type) (hash-combine m) (hash-combine n)
@@ -1625,7 +1625,7 @@
 
 (deftype RealPackedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
                            fact ^RealBufferAccessor da eng matrix-type
-                           ^Boolean master ^ByteBuffer buf ^long n ^long ofst]
+                           master ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
     (-> (hash :RealPackedMatrix) (hash-combine matrix-type) (hash-combine n)
@@ -1891,7 +1891,7 @@
 
 (deftype RealDiagonalMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
                              fact ^RealBufferAccessor da eng matrix-type
-                             ^Boolean master ^ByteBuffer buf ^long n ^long ofst]
+                             master ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
     (-> (hash :RealDiagonalMatrix) (hash-combine n) (hash-combine (nrm2 eng a))))

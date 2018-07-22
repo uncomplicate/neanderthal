@@ -157,10 +157,7 @@
      :engine eng})
   Releaseable
   (release [_]
-    (when (compare-and-set! master true false)
-      (release @buf)
-      (reset! buf nil))
-    true)
+    (if master (release buf) true))
   Container
   (raw [_]
     (cl-block-vector fact n))
@@ -238,7 +235,7 @@
     (dragan-says-ex INEFFICIENT_OPERATION_MSG))
   CLVector
   (buffer [_]
-    @buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -265,24 +262,24 @@
   (mmap [_ flags]
     (let [host-fact (native-factory fact)
           queue (flow da)
-          mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
+          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
                                       (* strd n (.entryWidth da)) flags nil nil)]
       (try
         (real-block-vector host-fact true mapped-buf n 0 strd)
-        (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
+        (catch Exception e (enq-unmap! queue buf mapped-buf)))));;TODO rethrow
   (unmap [x mapped]
-    (enq-unmap! (flow da) @buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
     x))
 
 (defn cl-block-vector
-  ([fact ^Boolean master buf-atom n ofst strd]
+  ([fact master buf n ofst strd]
    (let [da (data-accessor fact)]
-     (if (and (<= 0 n (.count da @buf-atom)))
-       (->CLBlockVector fact da (vector-engine fact) (atom master) buf-atom n ofst strd)
-       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da @buf-atom)})))))
+     (if (and (<= 0 n (.count da buf)))
+       (->CLBlockVector fact da (vector-engine fact) master buf n ofst strd)
+       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da buf)})))))
   ([fact n]
    (let-release [buf (.createDataSource (data-accessor fact) n)]
-     (cl-block-vector fact true (atom buf) n 0 1))))
+     (cl-block-vector fact true buf n 0 1))))
 
 (extend CLBlockVector
   Magma
@@ -291,7 +288,7 @@
 (defmethod print-method CLBlockVector
   [^CLBlockVector x ^java.io.Writer w]
   (.write w (str x))
-  (when (and (< 0 (.dim x)) (.buffer x) (active? (.da x)))
+  (when (and (< 0 (.dim x)) (.buffer x) (active? (.da x)));;TODO don't need active now. Use extract
     (let [mapped-x (mmap x :read)]
       (try
         (print-vector w mapped-x)
@@ -347,10 +344,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (when (compare-and-set! master true false)
-      (release @buf)
-      (reset! buf nil))
-    true)
+    (if master (release buf) true))
   GEMatrix
   (matrixType [_]
     :ge)
@@ -466,7 +460,7 @@
     (dragan-says-ex INEFFICIENT_OPERATION_MSG))
   CLMatrix
   (buffer [_]
-    @buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -506,21 +500,21 @@
   (mmap [a flags]
     (let [host-fact (native-factory fact)
           queue (flow da)
-          mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
+          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
         (real-ge-matrix host-fact true mapped-buf m n 0 nav stor reg)
-        (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
+        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (flow da) @buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
     this))
 
 (defn cl-ge-matrix
-  ([fact master buf-atom m n ofst nav stor reg]
-   (->CLGEMatrix nav stor reg fact (data-accessor fact) (ge-engine fact) (atom master) buf-atom m n ofst))
+  ([fact master buf m n ofst nav stor reg]
+   (->CLGEMatrix nav stor reg fact (data-accessor fact) (ge-engine fact) master buf m n ofst))
   ([fact m n nav ^FullStorage stor reg]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
-     (cl-ge-matrix fact true (atom buf) m n 0 nav stor reg)))
+     (cl-ge-matrix fact true buf m n 0 nav stor reg)))
   ([fact ^long m ^long n column?]
    (cl-ge-matrix fact m n (layout-navigator column?) (full-storage column? m n) (ge-region m n)))
   ([fact ^long m ^long n]
@@ -541,7 +535,7 @@
 ;; ============ OpenCL Uplo Matrix =======================================
 
 (deftype CLUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
-                       fact ^DataAccessor da eng matrix-type ^Boolean master buf ^long n ^long ofst]
+                       fact ^DataAccessor da eng matrix-type master buf ^long n ^long ofst]
   Object
   (hashCode [this]
     (-> (hash :CLLUploMatrix) (hash-combine n) (hash-combine (nrm2 eng this))))
@@ -568,10 +562,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (when (compare-and-set! master true false)
-      (release @buf)
-      (reset! buf nil))
-    true)
+    (if master (release buf) true))
   UploMatrix
   (matrixType [_]
     matrix-type)
@@ -683,7 +674,7 @@
     (dragan-says-ex INEFFICIENT_OPERATION_MSG))
   CLMatrix
   (buffer [_]
-    @buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -733,13 +724,13 @@
   (mmap [a flags]
     (let [host-fact (native-factory fact)
           queue (flow da)
-          mapped-buf (enq-map-buffer! queue @buf true (* ofst (.entryWidth da))
+          mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
         (real-uplo-matrix host-fact true mapped-buf n 0 nav stor reg matrix-type default (tr-engine host-fact))
-        (catch Exception e (enq-unmap! queue @buf mapped-buf)))))
+        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
   (unmap [this mapped]
-    (enq-unmap! (flow da) @buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
     this)
   Triangularizable
   (create-trf [a pure]
@@ -786,12 +777,12 @@
   {:op (constantly matrix-op)})
 
 (defn cl-uplo-matrix
-  ([fact master buf-atom n ofst nav stor reg matrix-type default engine]
+  ([fact master buf n ofst nav stor reg matrix-type default engine]
    (->CLUploMatrix nav stor reg default fact (data-accessor fact) engine matrix-type
-                   (atom master) buf-atom n ofst))
+                   master buf n ofst))
   ([fact n nav ^FullStorage stor reg matrix-type default engine]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
-     (cl-uplo-matrix fact true (atom buf) n 0 nav stor reg matrix-type default engine)))
+     (cl-uplo-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
   ([fact n column? lower? diag-unit? matrix-type]
    (cl-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
                    (band-region n lower? diag-unit?) matrix-type (real-default matrix-type diag-unit?)

@@ -211,10 +211,7 @@
      :engine eng})
   Releaseable
   (release [_]
-    (when (compare-and-set! master true false)
-      (release @buf)
-      (reset! buf nil))
-    true)
+    (if master (release buf) true))
   Container
   (raw [_]
     (cu-block-vector fact n))
@@ -292,7 +289,7 @@
     (dragan-says-ex INEFFICIENT_OPERATION_MSG))
   CUVector
   (buffer [_]
-    @buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -302,7 +299,7 @@
   (boxedEntry [x i]
     (dragan-says-ex INEFFICIENT_OPERATION_MSG))
   (subvector [_ k l]
-    (cu-block-vector fact (atom false) buf l (+ ofst (* k strd)) strd))
+    (cu-block-vector fact false buf l (+ ofst (* k strd)) strd))
   Monoid
   (id [x]
     (cu-block-vector fact 0))
@@ -317,14 +314,14 @@
     (sum eng x)))
 
 (defn cu-block-vector
-  ([fact ^Boolean master buf-atom n ofst strd]
+  ([fact master buf n ofst strd]
    (let [da (data-accessor fact)]
-     (if (and (<= 0 n (.count da @buf-atom)))
-       (->CUBlockVector fact da (vector-engine fact) (atom master) buf-atom n ofst strd)
-       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da @buf-atom)})))))
+     (if (and (<= 0 n (.count da buf)))
+       (->CUBlockVector fact da (vector-engine fact) master buf n ofst strd)
+       (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da buf)})))))
   ([fact n]
    (let-release [buf (.createDataSource (data-accessor fact) n)]
-     (cu-block-vector fact true (atom buf) n 0 1))))
+     (cu-block-vector fact true buf n 0 1))))
 
 (extend CUBlockVector
   Magma
@@ -389,10 +386,7 @@
      :engine (info eng)})
   Releaseable
   (release [_]
-    (when (compare-and-set! master true false)
-      (release @buf)
-      (reset! buf nil))
-    true)
+    (if master (release buf) true))
   GEMatrix
   (matrixType [_]
     :ge)
@@ -508,7 +502,7 @@
     (dragan-says-ex INEFFICIENT_OPERATION_MSG))
   CUMatrix
   (buffer [_]
-    @buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -546,11 +540,11 @@
     (cu-ge-matrix fact false buf n m ofst (flip nav) stor (flip reg))))
 
 (defn cu-ge-matrix
-  ([fact ^Boolean master buf-atom m n ofst nav stor reg]
-   (->CUGEMatrix nav stor reg fact (data-accessor fact) (ge-engine fact) (atom master) buf-atom m n ofst))
+  ([fact master buf m n ofst nav stor reg]
+   (->CUGEMatrix nav stor reg fact (data-accessor fact) (ge-engine fact) master buf m n ofst))
   ([fact m n nav ^FullStorage stor reg]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
-     (cu-ge-matrix fact true (atom buf) m n 0 nav stor reg)))
+     (cu-ge-matrix fact true buf m n 0 nav stor reg)))
   ([fact ^long m ^long n column?]
    (cu-ge-matrix fact m n (layout-navigator column?) (full-storage column? m n) (ge-region m n)))
   ([fact ^long m ^long n]
@@ -569,7 +563,7 @@
 ;; ============ CUDA Triangular Matrix =======================================
 
 (deftype CUUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
-                       fact ^DataAccessor da eng matrix-type ^Boolean master buf ^long n ^long ofst]
+                       fact ^DataAccessor da eng matrix-type master buf ^long n ^long ofst]
   Object
   (hashCode [this]
     (-> (hash :CUUploMatrix) (hash-combine n) (hash-combine (nrm2 eng this))))
@@ -580,10 +574,7 @@
             (.entryType da) matrix-type n n (dec-property (.layout nav)) ofst))
   Releaseable
   (release [_]
-    (when (compare-and-set! master true false)
-      (release @buf)
-      (reset! buf nil))
-    true)
+    (if master (release buf) true))
   UploMatrix
   (matrixType [_]
     matrix-type)
@@ -695,7 +686,7 @@
     (dragan-says-ex INEFFICIENT_OPERATION_MSG))
   CUMatrix
   (buffer [_]
-    @buf)
+    buf)
   (offset [_]
     ofst)
   (stride [_]
@@ -786,12 +777,12 @@
   {:op (constantly matrix-op)})
 
 (defn cu-uplo-matrix
-  ([fact ^Boolean master buf-atom n ofst nav stor reg matrix-type default engine]
+  ([fact master buf n ofst nav stor reg matrix-type default engine]
    (->CUUploMatrix nav stor reg default fact (data-accessor fact) engine matrix-type
-                   (atom master) buf-atom n ofst))
+                   master buf n ofst))
   ([fact n nav ^FullStorage stor reg matrix-type default engine]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
-     (cu-uplo-matrix fact true (atom buf) n 0 nav stor reg matrix-type default engine)))
+     (cu-uplo-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
   ([fact n column? lower? diag-unit? matrix-type]
    (cu-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
                    (band-region n lower? diag-unit?) matrix-type (real-default matrix-type diag-unit?)
