@@ -1,4 +1,4 @@
-(defproject benchmarks "0.20.0-SNAPSHOT"
+(defproject benchmarks "0.20.3-SNAPSHOT"
   :description "Benchmarks and comparisons between Neanderthal and other Java matrix libraries."
   :url "https://github.com/uncomplicate/neanderthal/tree/master/examples/benchmarks"
   :license {:name "Eclipse Public License"
@@ -10,11 +10,11 @@
                  [net.mikera/core.matrix "0.58.0"]
                  [net.mikera/vectorz-clj "0.46.0"]
                  [clatrix/clatrix "0.5.0"]
-                 [uncomplicate/fluokitten "0.8.0-SNAPSHOT"]
-                 [uncomplicate/neanderthal "0.20.0-SNAPSHOT"]
+                 [uncomplicate/fluokitten "0.9.0"]
+                 [uncomplicate/neanderthal "0.20.3"]
                  [org.nd4j/nd4j-api "1.0.0-beta"]
-                 #_[org.nd4j/nd4j-cuda-9.1 "1.0.0-beta"]
-                 [org.nd4j/nd4j-native-platform "1.0.0-beta"]]
+                 [org.nd4j/nd4j-cuda-9.1 "1.0.0-beta"]
+                 #_[org.nd4j/nd4j-native-platform "1.0.0-beta"]]
 
   ;;:repositories [["snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots"}]]
   :jvm-opts ^:replace ["-Dserver -Dclojure.compiler.direct-linking=true"
