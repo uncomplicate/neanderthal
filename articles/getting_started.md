@@ -52,7 +52,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 * Data structures: double and single precision vectors, dense matrices (GE), triangular matrices (TR), symmetric matrices (SY), banded, diagonal, etc.;
 * BLAS Level 1, 2, and 3 routines;
-* Major LAPACK routines;
+* Lots of (but not all) LAPACK routines;
 * Various Clojure vector and matrix functions (transpositions, submatrices etc.);
 * Easy and efficient data mapping and transfer to and from GPUs;
 * Fast map, reduce and fold implementations for the provided structures.
@@ -127,11 +127,11 @@ Works on Linux, Windows, and OS X!
 
 Follow the [ClojureCL getting started guide](https://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
-**If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` from the [ClojureCL's legacy namespace](https://github.com/uncomplicate/clojurecl/blob/master/src/clojure/uncomplicate/clojurecl/legacy.clj) instead of `command-queue` and `with-default` that are used in the examples.**
+**If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` instead of `command-queue` and `with-default` that are used in the examples.**
 
 ### GPU drivers for the CUDA GPU engine
 
-Everything will magically work (no need to compile anything) on Nvidia, provided that you **installed Nvidia's CUDA Toolkit**.
+Everything will magically work (no need to compile anything) on Nvidia, provided that you **installed the latest Nvidia's CUDA Toolkit**.
 
 Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
