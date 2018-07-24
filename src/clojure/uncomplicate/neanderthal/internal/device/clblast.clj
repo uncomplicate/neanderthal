@@ -63,7 +63,7 @@
                    eq-flag-buf)
         (enq-kernel! queue vector-equals-kernel (work-size-1d (.dim x)))
         (enq-read! queue eq-flag-buf res)
-        (= 0 (aget res 0))))
+        (= 0 (aget (ints res) 0))))
     (= 0 (.dim y))))
 
 (defn ^:private vector-set [ctx queue prog alpha ^CLBlockVector x]
@@ -229,7 +229,7 @@
                    eq-flag-buf)
         (enq-kernel! queue ge-equals-kernel (work-size-2d (.sd stor) (.fd stor)))
         (enq-read! queue eq-flag-buf res)
-        (= 0 (aget res 0))))
+        (= 0 (aget (ints res) 0))))
     (= 0 (.dim b))))
 
 (defn ^:private ge-set [queue prog alpha ^CLGEMatrix a]
@@ -412,7 +412,7 @@
                    eq-flag-buf)
         (enq-kernel! queue equals-kernel (work-size-2d (.sd stor) (.fd stor)))
         (enq-read! queue eq-flag-buf res)
-        (= 0 (aget res 0))))
+        (= 0 (aget (ints res) 0))))
     (= 0 (.mrows b) (.ncols b))))
 
 (defn ^:private uplo-map [queue prog transpf op-name ^CLUploMatrix a ^CLUploMatrix b]
