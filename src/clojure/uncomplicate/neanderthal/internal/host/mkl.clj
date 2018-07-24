@@ -1043,7 +1043,7 @@
     (ge-gls LAPACK/sggglm ^RealGEMatrix a ^RealGEMatrix b
             ^RealBlockVector d ^RealBlockVector x ^RealBlockVector y))
   (ev [_ a w vl vr]
-    (let [vl (or vl zero-matrix);;TODO with newest changes this will not be needed. nil is handled? if void is not allowed, give a pointer to other arrays since they are not touched anyway!
+    (let [vl (or vl zero-matrix)
           vr (or vr zero-matrix)]
       (ge-ev LAPACK/sgeev ^RealGEMatrix a ^RealGEMatrix w ^RealGEMatrix vl ^RealGEMatrix vr)))
   (es [_ a w vs]

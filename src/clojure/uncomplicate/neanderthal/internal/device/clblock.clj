@@ -266,7 +266,9 @@
                                       (* strd n (.entryWidth da)) flags nil nil)]
       (try
         (real-block-vector host-fact true mapped-buf n 0 strd)
-        (catch Exception e (enq-unmap! queue buf mapped-buf)))));;TODO rethrow
+        (catch Exception e
+          (enq-unmap! queue buf mapped-buf)
+          (throw e)))))
   (unmap [x mapped]
     (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
     x))
@@ -504,7 +506,9 @@
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
         (real-ge-matrix host-fact true mapped-buf m n 0 nav stor reg)
-        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
+        (catch Exception e
+          (enq-unmap! queue buf mapped-buf)
+          (throw e)))))
   (unmap [this mapped]
     (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
     this))
@@ -728,7 +732,9 @@
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
         (real-uplo-matrix host-fact true mapped-buf n 0 nav stor reg matrix-type default (tr-engine host-fact))
-        (catch Exception e (enq-unmap! queue buf mapped-buf)))))
+        (catch Exception e
+          (enq-unmap! queue buf mapped-buf)
+          (throw e)))))
   (unmap [this mapped]
     (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
     this)
