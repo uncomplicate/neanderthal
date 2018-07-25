@@ -64,7 +64,6 @@
 (with-progress-reporting (quick-bench (dot nx ny)))
 ;; Execution time mean : 8.472175 µs
 
-
 (with-progress-reporting (quick-bench (foldmap p+ 0.0 p* cvx cvy)))
 ;; Execution time mean : 2.595561 ms
 
@@ -72,12 +71,12 @@
 ;; Execution time mean : 198.744652 µs
 
 (with-progress-reporting (quick-bench (fold nx)))
-;; Execution time mean : 74.933079 µs
+;; Execution time mean : 20.372299 µs
 
 (with-progress-reporting
   (quick-bench
-   (sqrt (- (/ (foldmap p+ 0.0 sqr nx) n) (pow (/ (fold nx) n) 2)))))
-;; Execution time mean : 192.752880 µs
+   (sqrt (- (/ (foldmap sqr nx) n) (pow (/ (fold nx) n) 2)))))
+;; Execution time mean : 129.750104 µs
 
 (def mx (dge 316 316 (range n)))
 (def my (dge 316 316 (range n)))
