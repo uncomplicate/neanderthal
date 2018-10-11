@@ -1283,7 +1283,7 @@
    (let-release [res (copy y)]
      (mv! alpha a x beta res)))
   ([alpha a x y]
-   (mv 1.0 a x 1.0 y))
+   (mv alpha a x 1.0 y))
   ([alpha ^Matrix a x]
    (let-release [res (vctr (api/factory a) (.mrows a))]
      (mv! alpha a x 0.0 res)))

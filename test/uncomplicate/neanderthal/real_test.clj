@@ -524,7 +524,7 @@
          => (mv! (ge factory 2 3 [1 2 3 4 5 6] {:layout :column}) (vctr factory 1 2 3) (vctr factory 0 0))
 
          (mv 2.0 (ge factory 2 3 [1 3 5 2 4 6] {:layout :row}) (vctr factory 1 2 3) (vctr factory 0 0))
-         => (vctr factory 22 28)))
+         => (vctr factory 44 56)))
 
 (defn test-rk [factory]
   (facts "BLAS 2 rk!"
