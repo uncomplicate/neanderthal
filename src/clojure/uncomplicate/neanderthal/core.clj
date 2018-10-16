@@ -660,12 +660,10 @@
 
   If the requested region is not within the dimensions of `x`, throws ExceptionInfo.
   "
-  ([^Vector x ^long k ^long l]
-   (if (<= (+ k l) (.dim x))
-     (.subvector x k l)
-     (throw (ex-info "Requested subvector is out of bounds." {:k k :l l :k+l (+ k l) :dim (.dim x)}))))
-  ([^Vector x ^long k]
-   (subvector x k (- (.dim x) k))))
+  [^Vector x ^long k ^long l]
+  (if (<= (+ k l) (.dim x))
+    (.subvector x k l)
+    (throw (ex-info "Requested subvector is out of bounds." {:k k :l l :k+l (+ k l) :dim (.dim x)}))))
 
 ;; ================= Matrix =======================
 
