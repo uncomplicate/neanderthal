@@ -28,3 +28,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Johnny Eradus
 - Matthew Chadwick
 - Leon Mergen
+- Nicolas Kassis
