@@ -795,6 +795,8 @@
   function from `uncomplicate.neanderthal.real` namespace.
 
   If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
+
+  Arthur Maciejewicz's pet function.
   "
   ([^Vector x ^long i]
    (try

@@ -29,3 +29,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Matthew Chadwick
 - Leon Mergen
 - Nicolas Kassis
+- Arthur Maciejewicz
