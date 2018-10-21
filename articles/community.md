@@ -3,7 +3,7 @@ title: "Neanderthal: Community"
 layout: article
 ---
 
-## Mailing List
+## Where to contact me
 
 ~~[I hang around at Slack Clojurians Uncomplicate](https://clojurians.slack.com/messages/uncomplicate/details/)~~
 <p><a href="https://patreon.com/draganrocks">Please support my work on Patreon</a>. I'll intive you to a dedicated <a href="https://discordapp.com">Discord</a> discussion server. Can't afford to donate? Ask for a free invite.</p>
