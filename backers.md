@@ -30,3 +30,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Leon Mergen
 - Nicolas Kassis
 - Arthur Maciejewicz
+- Felix Dahlke
