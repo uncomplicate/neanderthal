@@ -6,8 +6,8 @@ Thank you all who support my work on Uncomplicate!
 
 ## Early Birds
 
-The list of people who pledged monthly support on the first day when I announced donations:
-(in order of pledging)
+The list of people who pledged monthly support on the first day when I announced donations
+(in order of pledging):
 
 1. Rich Hickey
 2. Daniel Slutsky
@@ -33,3 +33,5 @@ The list of people who pledged monthly support on the first day when I announced
 - Felix Dahlke
 - Matthew F Marks
 - Thom Lawrence
+- Fed Reggiardo
+- Gurvesh Sanghera
