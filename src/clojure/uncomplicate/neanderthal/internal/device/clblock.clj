@@ -14,7 +14,7 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.clojurecl.internal.protocols :refer [size extract]]
+            [uncomplicate.clojurecl.internal.protocols :refer [size extract Wrapper extract]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -79,6 +79,11 @@
 (declare cl-block-vector cl-ge-matrix cl-uplo-matrix)
 
 ;; ================== Accessors ================================================
+
+(extend-type Object
+  Wrapper
+  (extract [_]
+    nil))
 
 (deftype TypedCLAccessor [active ctx queue et ^long w array-fn wrap-fn cast-fn]
   Releaseable

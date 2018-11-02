@@ -14,7 +14,7 @@
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
-            [uncomplicate.clojurecuda.internal.protocols :refer [size extract ptr with-offset]]
+            [uncomplicate.clojurecuda.internal.protocols :refer [size Wrapper extract ptr with-offset]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -53,6 +53,11 @@
 (declare cu-block-vector cu-ge-matrix cu-uplo-matrix)
 
 ;; ================== Accessors ================================================
+
+(extend-type Object
+  Wrapper
+  (extract [_]
+    nil))
 
 (defprotocol CUAccessor
   (offset [this buf ofst])
