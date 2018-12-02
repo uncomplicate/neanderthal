@@ -36,3 +36,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Fed Reggiardo
 - Gurvesh Sanghera
 - Bernard Hugueney
+- Jesse Eisses
