@@ -13,13 +13,13 @@
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.9.0"]
-                 [uncomplicate/commons "0.7.0"]
-                 [uncomplicate/fluokitten "0.9.0"]
+  :dependencies [[org.clojure/clojure "1.10.0"]
+                 [uncomplicate/commons "0.7.1-SNAPSHOT"]
+                 [uncomplicate/fluokitten "0.9.1-SNAPSHOT"]
                  [uncomplicate/neanderthal-native "0.21.0-SNAPSHOT"]
-                 [uncomplicate/clojurecl "0.10.4"]
+                 [uncomplicate/clojurecl "0.10.5-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.4.1"]
-                 [uncomplicate/clojurecuda "0.6.0"]
+                 [uncomplicate/clojurecuda "0.6.1-SNAPSHOT"]
                  [org.jcuda/jcublas "10.0.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
