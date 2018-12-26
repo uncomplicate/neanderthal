@@ -2,7 +2,7 @@
 
 Thank you all who support my work on Uncomplicate!
 
-[Adopt your pet function](https://dragan.rocks/articles/18/Patreon-Announcement-Adopt-a-Function) and [become a patron](https://patreon.com/draganrocks). Backers from Europe may prefer to send me direct IBAN transfers; in this way less money is spilled by various fees (contact me via email for arranging transfers).
+[Adopt your pet function](https://dragan.rocks/articles/18/Patreon-Announcement-Adopt-a-Function) and [become a patron](https://patreon.com/draganrocks).
 
 ## Early Birds
 
