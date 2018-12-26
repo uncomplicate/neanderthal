@@ -27,7 +27,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Robert Luo
 - Johnny Eradus
 - Matthew Chadwick
-- Leon Mergen
 - Nicolas Kassis
 - Arthur Maciejewicz
 - Felix Dahlke
