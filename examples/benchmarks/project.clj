@@ -4,14 +4,14 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :dependencies [[org.clojure/clojure "1.10.0"]
                  [criterium "0.4.4"]
                  [prismatic/hiphip "0.2.1"]
                  [net.mikera/core.matrix "0.58.0"]
                  [net.mikera/vectorz-clj "0.46.0"]
                  [clatrix/clatrix "0.5.0"]
                  [uncomplicate/fluokitten "0.9.0"]
-                 [uncomplicate/neanderthal "0.20.4"]
+                 [uncomplicate/neanderthal "0.21.4"]
                  [org.nd4j/nd4j-api "1.0.0-beta"]
                  #_[org.nd4j/nd4j-cuda-9.1 "1.0.0-beta"]
                  [org.nd4j/nd4j-native-platform "1.0.0-beta"]]
