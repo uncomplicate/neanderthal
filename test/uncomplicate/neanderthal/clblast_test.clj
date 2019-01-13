@@ -9,7 +9,8 @@
              [real-test :as real-test]
              [device-test :as device-test]
              [math-test :as math-test]]
-            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-float clblast-double]]))
+            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-float clblast-double]])
+  (:import clojure.lang.ExceptionInfo))
 
 (defn test-blas-clblast [factory]
   (real-test/test-imin factory)
@@ -24,8 +25,8 @@
 (with-default-1
 
   (facts "factory-by-type test"
-         (= opencl-float (factory-by-type :float)) => true
-         (= opencl-double (factory-by-type :double)) => true
+         (= clblast-float (factory-by-type :float)) => true
+         (= clblast-double (factory-by-type :double)) => true
          (factory-by-type :int) => (throws ExceptionInfo)
          (factory-by-type :long) => (throws ExceptionInfo))
 
