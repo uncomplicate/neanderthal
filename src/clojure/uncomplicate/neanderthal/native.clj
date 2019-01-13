@@ -10,7 +10,8 @@
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
+  (:require [uncomplicate.commons.utils :refer [dragan-says-ex]]
+            [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 ;; ============ Creating real constructs  ==============
@@ -26,6 +27,26 @@
 
 (def ^{:doc "Default long native factory"}
   native-long mkl-long)
+
+(defn factory-by-type [data-type]
+  (case data-type
+    :float native-float
+    :int native-int
+    :double native-double
+    :long native-long
+    (cond
+      (= Float/TYPE data-type) native-float
+      (= Double/TYPE data-type) native-double
+      (= Integer/TYPE data-type) native-int
+      (= Long/TYPE data-type) native-long
+      (= float data-type) native-float
+      (= double data-type) native-double
+      (= int data-type) native-int
+      (= long data-type) native-long
+      :default (dragan-says-ex "You requested a factory for and unsupported data type."
+                               {:requested data-type :available [:float :int :double :long
+                                                                 Float/TYPE Double/TYPE
+                                                                 Integer/TYPE Long/TYPE]}))))
 
 (defn iv
   "Creates a vector using integer native CPU engine (see [[uncomplicate.neanderthal.core/vctr]])."

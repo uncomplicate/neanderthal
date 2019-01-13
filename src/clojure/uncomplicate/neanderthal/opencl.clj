@@ -11,7 +11,9 @@
   "Specialized constructors that use OpenCL engine by default, and convenient macros for
   creating and maintaining engines in appropriate OpenCL context. A convenience over agnostic
   [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.commons.core :refer [release]]
+  (:require [uncomplicate.commons
+             [core :refer [release]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.clojurecl
              [core :refer [*context* *command-queue*]]
              [info :refer [queue-context]]]
@@ -27,6 +29,18 @@
 
 (def ^{:doc "Constructor of a double-precision floating point OpenCL factory."}
   opencl-double clblast-double)
+
+(defn factory-by-type [data-type]
+  (case data-type
+    :float opencl-float
+    :double opencl-double
+    (cond
+      (= Float/TYPE data-type) opencl-float
+      (= Double/TYPE data-type) opencl-double
+      (= float data-type) opencl-float
+      (= double data-type) opencl-double
+      :default (dragan-says-ex "You requested a factory for and unsupported data type."
+                               {:requested data-type :available [:float :double Float/TYPE Double/TYPE]}))))
 
 (defn set-engine!
   "Creates an OpenCL factory using the provided `factory` constructor function. The created factory

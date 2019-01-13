@@ -4,11 +4,12 @@
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
              [core :refer [tr sy]]
-             [cuda :refer [with-engine *cuda-factory* cuda-float cuda-double]]
+             [cuda :refer [with-engine *cuda-factory* cuda-float cuda-double factory-by-type]]
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
-             [math-test :as math-test]]))
+             [math-test :as math-test]])
+  (:import clojure.lang.ExceptionInfo))
 
 (defn test-blas-cublas [factory]
   (real-test/test-iamin factory)
@@ -28,6 +29,12 @@
   (math-test/test-math-inv factory (partial math-test/diff-square-1 tr) (partial math-test/diff-square-2 tr)))
 
 (with-default
+
+  (facts "factory-by-type test"
+         (= cuda-float (factory-by-type :float)) => true
+         (= cuda-double (factory-by-type :double)) => true
+         (factory-by-type :int) => (throws ExceptionInfo)
+         (factory-by-type :long) => (throws ExceptionInfo))
 
   (with-engine cuda-float default-stream
     (block-test/test-all *cuda-factory*)

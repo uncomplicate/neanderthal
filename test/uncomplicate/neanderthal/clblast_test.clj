@@ -4,7 +4,7 @@
              [core :refer [*command-queue* with-default-1]]]
             [uncomplicate.neanderthal
              [core :refer [tr]]
-             [opencl :refer [with-engine *opencl-factory*]]
+             [opencl :refer [with-engine *opencl-factory* factory-by-type]]
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
@@ -22,6 +22,12 @@
   (real-test/test-tr-sv factory tr))
 
 (with-default-1
+
+  (facts "factory-by-type test"
+         (= opencl-float (factory-by-type :float)) => true
+         (= opencl-double (factory-by-type :double)) => true
+         (factory-by-type :int) => (throws ExceptionInfo)
+         (factory-by-type :long) => (throws ExceptionInfo))
 
   (with-engine clblast-float *command-queue*
     (block-test/test-all *opencl-factory*)

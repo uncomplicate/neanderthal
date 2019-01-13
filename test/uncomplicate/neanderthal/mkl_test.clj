@@ -7,11 +7,19 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.mkl-test
-  (:require [uncomplicate.neanderthal
+  (:require [midje.sweet :refer [facts throws =>]]
+            [uncomplicate.neanderthal
+             [native :refer [factory-by-type]]
              [block-test :as block-test]
              [real-test :as real-test]
              [math-test :as math-test]]
-            [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double]]))
+            [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
+
+(facts "factory-by-type test"
+       (factory-by-type :float) => mkl-float
+       (factory-by-type :double) => mkl-double
+       (factory-by-type :int) => mkl-int
+       (factory-by-type :long) => mkl-long)
 
 (block-test/test-all mkl-double)
 (block-test/test-all mkl-float)

@@ -11,7 +11,9 @@
   "Specialized constructors that use CUDA engine by default, and convenient macros for
   creating and maintaining engines in appropriate CUDA and cuBLAS context.
   A convenience over agnostic [[uncomplicate.neanderthal.core]] functions."
-  (:require [uncomplicate.commons.core :refer [release with-release]]
+  (:require [uncomplicate.commons
+             [core :refer [release with-release]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
             [uncomplicate.neanderthal.internal.device.cublas :refer [cublas-double cublas-float]]))
@@ -25,6 +27,18 @@
 
 (def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
   cuda-double cublas-double)
+
+(defn factory-by-type [data-type]
+  (case data-type
+    :float cuda-float
+    :double cuda-double
+    (cond
+      (= Float/TYPE data-type) cuda-float
+      (= Double/TYPE data-type) cuda-double
+      (= float data-type) cuda-float
+      (= double data-type) cuda-double
+      :default (dragan-says-ex "You requested a factory for and unsupported data type."
+                               {:requested data-type :available [:float :double Float/TYPE Double/TYPE]}))))
 
 (defn set-engine!
   "Creates an CUDA factory using the provided `factory` constructor function. The created factory
