@@ -76,7 +76,7 @@
 
 ;; ================== Declarations ============================================
 
-(declare cl-block-vector cl-ge-matrix cl-uplo-matrix)
+(declare cl-block-vector cl-ge-matrix cl-uplo-matrix ->CLUploMatrix)
 
 ;; ================== Accessors ================================================
 
@@ -177,6 +177,9 @@
       (cl-to-host x res)))
   (native [x]
     (host x))
+  Viewable
+  (view [x]
+    (view-vctr x))
   DenseContainer
   (view-vctr [_]
     (cl-block-vector fact false buf n ofst strd))
@@ -391,6 +394,9 @@
       (cl-to-host a res)))
   (native [a]
     (host a))
+  Viewable
+  (view [a]
+    (view-ge a))
   DenseContainer
   (view-vctr [a]
     (if (.isGapless stor)
@@ -611,6 +617,9 @@
       (cl-to-host a res)))
   (native [a]
     (host a))
+  Viewable
+  (view [a]
+    (->CLUploMatrix nav stor reg default fact da eng matrix-type false buf n ofst))
   DenseContainer
   (view-vctr [a]
     (view-vctr (view-ge a)))

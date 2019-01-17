@@ -150,6 +150,18 @@
       (release x))
     native-x))
 
+(defn view
+  "Attach a default dense structure to the raw data of `x`. `x` can be anything that implements
+  Viewable, such as DirectByteBuffer.
+
+  Changes to the resulting object affect the source `x`, even the parts of data that might not
+  be accessible by `x`. Use with caution!
+
+      (view (buffer (vctr float-factory 1 2 3)))
+  "
+  ([x]
+   (api/view x)))
+
 (defn vctr
   "Creates a dense vector in the context of `factory`, from the provided `source`.
 

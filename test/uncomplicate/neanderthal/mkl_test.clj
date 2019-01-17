@@ -27,6 +27,9 @@
 (block-test/test-host mkl-float)
 (block-test/test-both-factories mkl-float mkl-double)
 (block-test/test-both-factories mkl-double mkl-float)
+
+(block-test/test-extend-buffer mkl-float)
+
 (real-test/test-blas mkl-double)
 (real-test/test-blas mkl-float)
 (real-test/test-blas-host mkl-double)

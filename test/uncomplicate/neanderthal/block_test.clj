@@ -12,7 +12,9 @@
             [uncomplicate.fluokitten
              [core :refer [fmap! fold foldmap op]]
              [test :refer :all]]
-            [uncomplicate.neanderthal.core :refer :all])
+            [uncomplicate.neanderthal
+             [core :refer :all]
+             [block :refer [buffer]]])
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD ExceptionInfo]))
 
 (defn test-create [factory]
@@ -431,6 +433,11 @@
            (functor-law2 pinc p*100 (creator factory 2 [1 -199 9] (creator factory 2 [9 8 -7])))
            (fmap-keeps-type pinc (creator factory 5 [1 2 3 4 5 6 100 0 -999]))
            (fmap-keeps-type p+ (creator factory 0) (creator factory 0)))))
+
+(defn test-extend-buffer [factory]
+  (with-release [x (vctr factory (range 16))
+                 y (vctr factory (range 16))]
+    (view (buffer x)) => y))
 
 (defn test-all [factory]
   (test-create factory)

@@ -50,7 +50,7 @@
 
 ;; ================== Declarations ============================================
 
-(declare cu-block-vector cu-ge-matrix cu-uplo-matrix)
+(declare cu-block-vector cu-ge-matrix cu-uplo-matrix ->CUUploMatrix)
 
 ;; ================== Accessors ================================================
 
@@ -231,6 +231,9 @@
       (get-vector! x res)))
   (native [x]
     (host x))
+  Viewable
+  (view [x]
+    (view-vctr x))
   DenseContainer
   (view-vctr [_]
     (cu-block-vector fact false buf n ofst strd))
@@ -431,6 +434,9 @@
       (get-matrix! a res)))
   (native [a]
     (host a))
+  Viewable
+  (view [a]
+    (view-ge a))
   DenseContainer
   (view-vctr [a]
     (if (.isGapless stor)
@@ -619,6 +625,9 @@
       (get-matrix! a res)))
   (native [a]
     (host a))
+  Viewable
+  (view [a]
+    (->CUUploMatrix nav stor reg default fact da eng matrix-type false buf n ofst))
   DenseContainer
   (view-vctr [a]
     (view-vctr (view-ge a)))

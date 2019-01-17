@@ -22,7 +22,8 @@
              [cblas :refer :all]
              [lapack :refer :all]])
   (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
-           [java.nio ByteBuffer DirectByteBuffer]
+           [java.nio ByteBuffer FloatBuffer DoubleBuffer LongBuffer IntBuffer DirectByteBuffer
+            DirectFloatBufferU DirectDoubleBufferU DirectLongBufferU DirectIntBufferU]
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
             Block RealVector Region LayoutNavigator DenseStorage RealNativeMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
@@ -4254,3 +4255,8 @@
                       (->DoubleGDEngine) (->DoubleGTEngine) (->DoubleDTEngine) (->DoubleSTEngine)))
 
   (vreset! index-fact mkl-int))
+
+(extend-buffer FloatBuffer mkl-float java.nio.DirectFloatBufferU)
+(extend-buffer DoubleBuffer mkl-double java.nio.DirectDoubleBufferU)
+(extend-buffer LongBuffer mkl-long java.nio.DirectLongBufferU)
+(extend-buffer IntBuffer mkl-int java.nio.DirectIntBufferU)

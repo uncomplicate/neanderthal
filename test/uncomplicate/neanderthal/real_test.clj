@@ -41,6 +41,7 @@
          (vctr? (vctr factory [1 2 3])) => true
          (vctr factory 1 2 3) => (vctr factory [1 2 3])
          (vctr factory 3) => (vctr factory [0 0 0])
+         (view (vctr factory 1 2 3)) => (vctr factory 1 2 3)
          (view-vctr (vctr factory (range 8))) => (vctr factory (range 8))
          (view-vctr (vctr factory (range 8)) 3) => (vctr factory [0 3 6])
          (view-ge (vctr factory 1 2 3 4)) => (ge factory 4 1 [1 2 3 4])
@@ -302,6 +303,7 @@
            a1 => a
            (ge factory 2 4 nil) => (zero a)
            (ge factory [[1 2] [5 6] [9 10] [13 14]]) => (trans a)
+           (view a) => a
            (view-vctr a) => v
            (view-ge a) => a
            (view-ge c 2) => a
@@ -596,6 +598,7 @@
   (facts "Create a triangular matrix."
          (with-release [a (tr factory 3 (range 6))
                         b (ge factory 3 3 [0 1 2 0 3 4 0 0 5])]
+           (view a) => a
            (view-tr b) => a
            (view-ge (view-tr b)) => b
            (tr factory 3 nil) => (zero a))))
@@ -803,6 +806,7 @@
   (facts "Create a SY matrix."
          (with-release [a (sy factory 3 [1 2 3 4 5 6])
                         b (ge factory 3 3 [1 2 3 2 4 5 3 5 6])]
+           (view a) => a
            (view-sy b) => a
            (view-ge (view-sy b)) => b
            (sy factory 3 nil) => (zero a)
@@ -996,6 +1000,7 @@
                                                7.00    8.00    0.00    0.00    0.00
                                                9.00    0.00    0.00    0.00    0.00]
                                   {:layout :row})]
+           (view a) => a
            (view-ge a) => a-ge
            (view-ge b) => b-ge
            (view-ge c) => c-ge
@@ -1157,6 +1162,7 @@
   (facts "Create a banded uplo matrix."
          (with-release [a (uplo factory 4 2 [1 2 3 4 5 6 7 8 9])
                         b (ge factory 3 4 [1 2 3 4 5 6 7 8 0 9 0 0])]
+           (view a) => a
            (view-ge a) => b
            (uplo factory 4 2 nil) => (zero a))))
 

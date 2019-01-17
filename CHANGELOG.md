@@ -1,5 +1,14 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.22.0
+
+* Introduced the Viewable/view protocol and view function (interop).
+
+# 0.21.0
+
+* Clojure upgraded to 1.10.
+* Misc bugfixes.
+
 # 0.20.0
 
 * SDD available as a SVD implementation.

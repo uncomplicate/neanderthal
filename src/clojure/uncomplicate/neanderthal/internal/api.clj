@@ -236,6 +236,9 @@
   (view-sy [this lower?])
   (view-vctr [this] [this stride-mult]))
 
+(defprotocol Viewable
+  (view [this]))
+
 (defprotocol Subband
   (subband [this kl ku]))
 

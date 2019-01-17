@@ -43,7 +43,8 @@
 ;; ================== Declarations ============================================
 
 (declare integer-block-vector real-block-vector real-ge-matrix real-uplo-matrix
-         real-banded-matrix real-packed-matrix real-diagonal-matrix)
+         real-banded-matrix real-packed-matrix real-diagonal-matrix
+         ->RealUploMatrix ->RealBandedMatrix ->RealPackedMatrix ->RealDiagonalMatrix)
 
 ;; ============ Real Buffer ====================================================
 
@@ -582,6 +583,9 @@
       (copy eng x res)))
   (native [x]
     x)
+  Viewable
+  (view [x]
+    (view-vctr x))
   DenseContainer
   (view-vctr [_]
     (real-block-vector fact false buf n ofst strd))
@@ -819,6 +823,9 @@
       (copy eng a res)))
   (native [a]
     a)
+  Viewable
+  (view [a]
+    (view-ge a))
   DenseContainer
   (view-vctr [a]
     (if (.isGapless stor)
@@ -1072,6 +1079,9 @@
       (copy eng a res)))
   (native [a]
     a)
+  Viewable
+  (view [a]
+    (->RealUploMatrix nav stor reg default fact da eng matrix-type false buf n ofst))
   DenseContainer
   (view-vctr [a]
     (view-vctr (view-ge a)))
@@ -1366,6 +1376,9 @@
       (copy eng a res)))
   (native [a]
     a)
+  Viewable
+  (view [_]
+    (->RealBandedMatrix nav stor reg default fact da eng matrix-type false buf m n ofst))
   DenseContainer
   (view-vctr [a]
     (view-vctr (view-ge a)))
@@ -1689,6 +1702,9 @@
       (copy eng a res)))
   (native [a]
     a)
+  Viewable
+  (view [_]
+    (->RealPackedMatrix nav stor reg default fact da eng matrix-type false buf n ofst))
   DenseContainer
   (view-vctr [a]
     (real-block-vector fact false buf (.surface reg) ofst 1))
@@ -1961,6 +1977,9 @@
       (copy eng a res)))
   (native [a]
     a)
+  Viewable
+  (view [_]
+    (->RealDiagonalMatrix nav stor reg default fact da eng matrix-type false buf n ofst))
   DenseContainer
   (view-vctr [a]
     (real-block-vector fact false buf (.surface reg) ofst 1))
@@ -2239,3 +2258,21 @@
 (defmethod transfer! [RealNativeMatrix (Class/forName "[F")]
   [^RealNativeMatrix source ^floats destination]
   (transfer-matrix-array source destination))
+
+(defn buf-capacity ^long [^java.nio.Buffer buf]
+  (.capacity buf))
+
+(defmacro buf-attachment [type buf]
+  `(.attachment ~(with-meta buf {:tag type})))
+
+(defmacro extend-buffer [t fact buf-type]
+  `(extend ~t
+     Viewable
+     {:view
+      (fn [buf#]
+        (real-block-vector ~fact false (buf-attachment ~buf-type buf#) (buf-capacity buf#) 0 1))}))
+
+(extend-type ByteBuffer
+  Viewable
+  (view [b]
+    (view (.asFloatBuffer b))))
