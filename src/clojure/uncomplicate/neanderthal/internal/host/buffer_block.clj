@@ -2265,12 +2265,14 @@
 (defmacro buf-attachment [type buf]
   `(.attachment ~(with-meta buf {:tag type})))
 
-(defmacro extend-buffer [t fact buf-type]
+(defmacro extend-buffer [t fact buf-type direct?]
   `(extend ~t
      Viewable
      {:view
       (fn [buf#]
-        (real-block-vector ~fact false (buf-attachment ~buf-type buf#) (buf-capacity buf#) 0 1))}))
+        (if (or (not ~direct?) (.isDirect buf#))
+          (real-block-vector ~fact false (buf-attachment ~buf-type buf#) (buf-capacity buf#) 0 1)
+          (dragan-says-ex "This engine only supports direct buffers." {:buffer buf#})))}))
 
 (extend-type ByteBuffer
   Viewable

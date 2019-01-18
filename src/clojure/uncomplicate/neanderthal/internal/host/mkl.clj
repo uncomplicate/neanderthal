@@ -4256,7 +4256,7 @@
 
   (vreset! index-fact mkl-int))
 
-(extend-buffer FloatBuffer mkl-float java.nio.DirectFloatBufferU)
-(extend-buffer DoubleBuffer mkl-double java.nio.DirectDoubleBufferU)
-(extend-buffer LongBuffer mkl-long java.nio.DirectLongBufferU)
-(extend-buffer IntBuffer mkl-int java.nio.DirectIntBufferU)
+(extend-buffer FloatBuffer mkl-float DirectFloatBufferU true)
+(extend-buffer DoubleBuffer mkl-double DirectDoubleBufferU true)
+(extend-buffer LongBuffer mkl-long DirectLongBufferU true)
+(extend-buffer IntBuffer mkl-int DirectIntBufferU true)
