@@ -25,7 +25,7 @@
              [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
-  (:import [java.nio ByteBuffer DirectByteBuffer]
+  (:import [java.nio Buffer ByteBuffer DirectByteBuffer]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
@@ -2259,18 +2259,21 @@
   [^RealNativeMatrix source ^floats destination]
   (transfer-matrix-array source destination))
 
-(defn buf-capacity ^long [^java.nio.Buffer buf]
+(defn buf-capacity ^long [^Buffer buf]
   (.capacity buf))
+
+(defn buf-direct? [^Buffer buf]
+  (.isDirect buf))
 
 (defmacro buf-attachment [type buf]
   `(.attachment ~(with-meta buf {:tag type})))
 
-(defmacro extend-buffer [t fact buf-type direct?]
+(defmacro extend-buffer [t fact buf-type only-direct]
   `(extend ~t
      Viewable
      {:view
       (fn [buf#]
-        (if (or (not ~direct?) (.isDirect buf#))
+        (if (or (not ~only-direct) (buf-direct? buf#))
           (real-block-vector ~fact false (buf-attachment ~buf-type buf#) (buf-capacity buf#) 0 1)
           (dragan-says-ex "This engine only supports direct buffers." {:buffer buf#})))}))
 
