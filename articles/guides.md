@@ -11,21 +11,35 @@ layout: article
 
 ## Presentations (Slides & Videos)
 
-* [EuroClojure 2016 - Clojure is Not Afraid of the GPU](https://2016.euroclojure.org/speakers#ddjuric): Take a look at the [video](https://www.youtube.com/watch?v=bEOOYbscyTs) and [slides](https://dragan.rocks/talks/EuroClojure2016/clojure-is-not-afraid-of-the-gpu.html). Please note that Neanderthal became much faster in later releases than it was in this presentation.
+* [ClojuTRE & SmallFP 2018 - Interactive, Functional, GPU Accelerated Programming in Clojure](https://clojutre.org/2018/#dragandjuric): Take a look at the [video](https://www.youtube.com/watch?v=ZVnbNLks2Ow). Neanderthal, CUDA, etc.
+
 * [Bob Konferenz 2017 - Bayadera: Bayes + Clojure + GPU](https://bobkonf.de/2017/djuric.html): Take a look at the [video](https://www.youtube.com/watch?v=TGxYfi3Vi3s) and [slides](https://dragan.rocks/talks/Bobkonferenz2017/bayadera-bob.html). Bayadera is a cool library that uses Neanderthal.
+
+* [EuroClojure 2016 - Clojure is Not Afraid of the GPU](https://2016.euroclojure.org/speakers#ddjuric): Take a look at the [video](https://www.youtube.com/watch?v=bEOOYbscyTs) and [slides](https://dragan.rocks/talks/EuroClojure2016/clojure-is-not-afraid-of-the-gpu.html). Please note that Neanderthal became much faster in later releases than it was in this presentation.
 
 ## Performance comparisons with other fast libraries
 
-* [Neanderthal vs. ND4J – Native Performance, Java and CPU](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol1)
+* [Neanderthal vs ND4J - vol 1 – Native Performance, Java and CPU](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol1)
 * [Neanderthal vs ND4J - vol 2 - The Same Native MKL Backend, 1000 x Speedup](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol2).
 
 * [Neanderthal vs ND4J - vol 3 - Clojure Beyond Fast Native MKL Backend](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol3).
+
+* [Neanderthal vs ND4J - vol 4 - Fast Vector Broadcasting in Java, CPU and CUDA](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol4).
+
+* [Neanderthal vs ND4J - vol 5 - Why are native map and reduce up to 100x faster in Clojure?](https://dragan.rocks/articles/18/Neanderthal-vs-ND4J-vol5).
 
 ## General and native engine tutorials
 
 * [Fast, Native Speed, Vector Computations in Clojure](/articles/tutorial_native.html), and the [source code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_native_test.clj) for this tutorial.
 * [Fast Map and Reduce for Primitive Vectors and Matrices](/articles/fast-map-and-reduce-for-primitive-vectors.html), which also comes with [source code](https://github.com/uncomplicate/neanderthal/blob/master/examples/benchmarks/map_reduce.clj) for this tutorial.
 * [Neanderthal API Reference](/codox) contains the desrciption of each function, and also comes with mini examples. **There actually is helpful stuff there. Do not skip it!**
+
+## Deep Learning From Scratch To GPU
+
+* [Part 0 - Why Bother?](http://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-0-Why-Bother)
+
+* [Part 1 - Representing Layers and Connections](http://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-1-Representing-Layers-and-Connections)
+
 
 ## GPU computation tutorials
 
