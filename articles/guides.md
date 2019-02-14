@@ -40,6 +40,10 @@ layout: article
 
 * [Part 1 - Representing Layers and Connections](http://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-1-Representing-Layers-and-Connections)
 
+* [Part 2 - Bias and Activation Function](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-2-Bias-and-Activation-Function)
+
+* [Part 3 - Fully Connected Inference Layers](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-3-Fully-Connected-Inference-Layers)
+
 
 ## GPU computation tutorials
 
