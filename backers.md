@@ -38,3 +38,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Jesse Eisses
 - Otis Clark
 - Ghufran Syed
+- the-alchemist
