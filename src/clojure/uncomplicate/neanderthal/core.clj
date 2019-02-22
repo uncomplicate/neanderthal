@@ -898,6 +898,8 @@
   See related info about [cblas_?nrm2](https://software.intel.com/en-us/node/520738).
 
       (nrm2 (dv 1 2 3)) => 3.7416573867739413
+
+  Ghufran Syed's pet function.
   "
   [x]
   (api/nrm2 (api/engine x) x))

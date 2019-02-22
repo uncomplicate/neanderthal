@@ -36,3 +36,5 @@ The list of people who pledged monthly support on the first day when I announced
 - Gurvesh Sanghera
 - Bernard Hugueney
 - Jesse Eisses
+- Otis Clark
+- Ghufran Syed

@@ -10,6 +10,6 @@ Read the documentation at [Neanderthal Web Site](https://neanderthal.uncomplicat
 
 ## License
 
-Copyright © 2014-2018 Dragan Djuric
+Copyright © 2014-2019 Dragan Djuric
 
 Distributed under the Eclipse Public License either version 1.0 or (at your option) any later version.
