@@ -39,3 +39,5 @@ The list of people who pledged monthly support on the first day when I announced
 - Otis Clark
 - Ghufran Syed
 - the-alchemist
+- Richard K. Belew
+- Huahai Yang
