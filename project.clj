@@ -14,12 +14,12 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [uncomplicate/commons "0.7.1-SNAPSHOT"]
+                 [uncomplicate/commons "0.7.2"]
                  [uncomplicate/fluokitten "0.9.1"]
                  [uncomplicate/neanderthal-native "0.21.0"]
-                 [uncomplicate/clojurecl "0.10.5"]
+                 [uncomplicate/clojurecl "0.10.6"]
                  [org.jocl/jocl-blast "1.5.0"]
-                 [uncomplicate/clojurecuda "0.6.1"]
+                 [uncomplicate/clojurecuda "0.6.2"]
                  [org.jcuda/jcublas "10.0.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
@@ -48,7 +48,7 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.9.5"]]}}
+                   :dependencies [[midje "1.9.6"]]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :source-paths ["src/clojure" "src/opencl" "src/cuda"]
