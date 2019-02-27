@@ -3,6 +3,7 @@
 # 0.22.0
 
 * Introduced the Viewable/view protocol and view function (interop).
+* CLBlast bumped to 1.5.0/
 
 # 0.21.0
 
