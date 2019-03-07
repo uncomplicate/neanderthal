@@ -68,6 +68,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 ## Installation
 
 1. Add Neanderthal jars to your classpath ([from the Clojars](https://clojars.org/uncomplicate/neanderthal)).
+1a. If you are running on Java 9 or higher, you need to enable the `java.base` module. Add this to your JVM options (:jvm-opts in leiningen): `"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"`.
 2. To use the native engine: install Intel's MKL on your system following [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine)).
 3. To use the GPU engine: install the drivers and a CUDA and/or OpenCL platform software provided by the vendor of your graphic card (you probably already have that; see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
 
