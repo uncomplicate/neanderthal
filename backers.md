@@ -42,3 +42,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Richard K. Belew
 - Huahai Yang
 - Niko Nyrhilä
+- Erwin Rooijakkers
