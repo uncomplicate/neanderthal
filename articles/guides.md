@@ -44,6 +44,15 @@ layout: article
 
 * [Part 3 - Fully Connected Inference Layers](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-3-Fully-Connected-Inference-Layers)
 
+* [Part 4 - Increasing Performance with Batch Processing](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-4-Increasing-Performance-with-Batch-Processing)
+
+* [Part 5 - Sharing Memory](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-5-Sharing-Memory)
+
+* [Part 6 - CUDA and OpenCL](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-6-CUDA-and-OpenCL)
+
+* [Part 7 - Learning and Backpropagation](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-7-Learning-and-Backpropagation)
+
+* [Part 8 - The Forward Pass (CUDA, OpenCL, Nvidia, AMD, Intel)](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-8-The-Forward-Pass-CPU-GPU-CUDA-OpenCL-Nvidia-AMD-Intel)
 
 ## GPU computation tutorials
 
