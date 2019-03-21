@@ -22,25 +22,25 @@
   ([^double x ^double y ^double nepsilons]
    (< (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-   (< (Precision/compareTo x y Precision/EPSILON))))
+   (< (Precision/compareTo x y Precision/EPSILON) 0)))
 
 (defn f<=
   ([^double x ^double y ^double nepsilons]
    (<= (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-   (<= (Precision/compareTo x y Precision/EPSILON))))
+   (<= (Precision/compareTo x y Precision/EPSILON) 0)))
 
 (defn f>
   ([^double x ^double y ^double nepsilons]
    (> (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-   (> (Precision/compareTo x y Precision/EPSILON))))
+   (> (Precision/compareTo x y Precision/EPSILON) 0)))
 
 (defn f>=
   ([^double x ^double y ^double nepsilons]
    (>= (Precision/compareTo x y (* Precision/EPSILON nepsilons)) 0))
   ([^double x ^double y]
-   (>= (Precision/compareTo x y Precision/EPSILON))))
+   (>= (Precision/compareTo x y Precision/EPSILON) 0)))
 
 (defn pow-of-2? [^long n]
   (= 0 (bit-and n (- n 1))))
