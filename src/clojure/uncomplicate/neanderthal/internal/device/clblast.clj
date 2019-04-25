@@ -573,6 +573,16 @@
       (enq-kernel! queue math-kernel (work-size-1d (.dim x)))))
   y)
 
+(defn ^:private vector-relu [queue prog kernel-name alpha ^CLBlockVector x ^CLBlockVector y]
+  (when (< 0 (.dim x))
+    (with-release [math-kernel (kernel prog kernel-name)]
+      (set-args! math-kernel 0
+                 (.wrapPrim (data-accessor x) alpha)
+                 (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
+                 (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+      (enq-kernel! queue math-kernel (work-size-1d (.dim x)))))
+  y)
+
 (defn ^:private ge-math
   ([queue prog kernel-name ^CLGEMatrix a ^CLGEMatrix b]
    (when (< 0 (.dim a))
@@ -630,6 +640,18 @@
         (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
   c)
 
+(defn ^:private ge-relu [queue prog kernel-name alpha ^CLGEMatrix a ^CLGEMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a c)
+    (let [stor (full-storage a)]
+      (with-release [math-kernel (kernel prog kernel-name)]
+        (set-args! math-kernel 0
+                   (.wrapPrim (data-accessor a) alpha)
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
+                   (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
+        (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+  c)
+
 (defn ^:private uplo-math
   ([queue prog kernel-name ^CLUploMatrix a ^CLUploMatrix b]
    (when (< 0 (.dim a))
@@ -683,6 +705,18 @@
         (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
                    (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                    (.wrapPrim (data-accessor a) b)
+                   (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
+        (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
+  c)
+
+(defn ^:private uplo-relu [queue prog kernel-name alpha ^CLUploMatrix a ^CLUploMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a c)
+    (let [stor (full-storage a)]
+      (with-release [math-kernel (kernel prog kernel-name)]
+        (set-args! math-kernel 0 (wrap-int (.diag (region a))) (wrap-int (if (uplo-bottom? a) 1 -1))
+                   (.wrapPrim (data-accessor a) alpha)
+                   (.buffer a) (wrap-int (.offset a)) (wrap-int (.stride a))
                    (.buffer c) (wrap-int (.offset c)) (wrap-int (.stride c)))
         (enq-kernel! queue math-kernel (work-size-2d (.sd stor) (.fd stor))))))
   c)
@@ -845,7 +879,17 @@
   (fmin [_ a b y]
     (vector-math queue prog "vector_fmin" a b y))
   (fmax [_ a b y]
-    (vector-math queue prog "vector_fmax" a b y)))
+    (vector-math queue prog "vector_fmax" a b y))
+  (copy-sign [_ a b y]
+    (vector-math queue prog "vector_copysign" a b y))
+  (sigmoid [this a y]
+    (vector-math queue prog "vector_sigmoid" a y))
+  (ramp [this a y]
+    (vector-math queue prog "vector_ramp" a y))
+  (relu [this alpha a y]
+    (vector-relu queue prog "vector_relu" alpha a y))
+  (elu [this alpha a y]
+    (vector-relu queue prog "vector_elu" alpha a y)))
 
 (deftype FloatVectorEngine [ctx queue prog]
   BlockEngine
@@ -1002,7 +1046,17 @@
   (fmin [_ a b y]
     (vector-math queue prog "vector_fmin" a b y))
   (fmax [_ a b y]
-    (vector-math queue prog "vector_fmax" a b y)))
+    (vector-math queue prog "vector_fmax" a b y))
+  (copy-sign [_ a b y]
+    (vector-math queue prog "vector_copysign" a b y))
+  (sigmoid [this a y]
+    (vector-math queue prog "vector_sigmoid" a y))
+  (ramp [this a y]
+    (vector-math queue prog "vector_ramp" a y))
+  (relu [this alpha a y]
+    (vector-relu queue prog "vector_relu" alpha a y))
+  (elu [this alpha a y]
+    (vector-relu queue prog "vector_elu" alpha a y)))
 
 (deftype DoubleGEEngine [ctx queue prog]
   BlockEngine
@@ -1152,7 +1206,17 @@
   (fmin [_ a b y]
     (ge-math queue prog "ge_fmin" a b y))
   (fmax [_ a b y]
-    (ge-math queue prog "ge_fmax" a b y)))
+    (ge-math queue prog "ge_fmax" a b y))
+  (copy-sign [_ a b y]
+    (ge-math queue prog "ge_copysign" a b y))
+  (sigmoid [this a y]
+    (ge-math queue prog "ge_sigmoid" a y))
+  (ramp [this a y]
+    (ge-math queue prog "ge_ramp" a y))
+  (relu [this alpha a y]
+    (ge-relu queue prog "ge_relu" alpha a y))
+  (elu [this alpha a y]
+    (ge-relu queue prog "ge_elu" alpha a y)))
 
 (deftype FloatGEEngine [ctx queue prog]
   BlockEngine
@@ -1302,7 +1366,17 @@
   (fmin [_ a b y]
     (ge-math queue prog "ge_fmin" a b y))
   (fmax [_ a b y]
-    (ge-math queue prog "ge_fmax" a b y)))
+    (ge-math queue prog "ge_fmax" a b y))
+  (copy-sign [_ a b y]
+    (ge-math queue prog "ge_copysign" a b y))
+  (sigmoid [this a y]
+    (ge-math queue prog "ge_sigmoid" a y))
+  (ramp [this a y]
+    (ge-math queue prog "ge_ramp" a y))
+  (relu [this alpha a y]
+    (ge-relu queue prog "ge_relu" alpha a y))
+  (elu [this alpha a y]
+    (ge-relu queue prog "ge_elu" alpha a y)))
 
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine
@@ -1463,7 +1537,17 @@
   (fmin [_ a b y]
     (uplo-math queue prog "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math queue prog "uplo_fmax" a b y)))
+    (uplo-math queue prog "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math queue prog "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math queue prog "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math queue prog "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu queue prog "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu queue prog "uplo_elu" alpha a y)))
 
 (deftype FloatTREngine [ctx queue prog]
   BlockEngine
@@ -1624,7 +1708,17 @@
   (fmin [_ a b y]
     (uplo-math queue prog "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math queue prog "uplo_fmax" a b y)))
+    (uplo-math queue prog "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math queue prog "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math queue prog "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math queue prog "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu queue prog "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu queue prog "uplo_elu" alpha a y)))
 
 (deftype DoubleSYEngine [ctx queue prog]
   BlockEngine
@@ -1783,7 +1877,17 @@
   (fmin [_ a b y]
     (uplo-math queue prog "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math queue prog "uplo_fmax" a b y)))
+    (uplo-math queue prog "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math queue prog "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math queue prog "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math queue prog "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu queue prog "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu queue prog "uplo_elu" alpha a y)))
 
 (deftype FloatSYEngine [ctx queue prog]
   BlockEngine
@@ -1941,7 +2045,17 @@
   (fmin [_ a b y]
     (uplo-math queue prog "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math queue prog "uplo_fmax" a b y)))
+    (uplo-math queue prog "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math queue prog "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math queue prog "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math queue prog "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu queue prog "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu queue prog "uplo_elu" alpha a y)))
 
 (deftype CLFactory [ctx queue prog ^DataAccessor da native-fact vector-eng ge-eng tr-eng sy-eng]
   Releaseable

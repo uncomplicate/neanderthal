@@ -238,3 +238,46 @@
 
 (defmath! fmax! api/fmax a b y)
 (defmath fmax api/fmax a b)
+
+(defmath! copy-sign! api/copy-sign a b y)
+(defmath copy-sign api/copy-sign a b);;TODO
+
+(defmath! sigmoid! api/sigmoid a y)
+(defmath sigmoid api/sigmoid a)
+
+(defmath! ramp! api/ramp a y)
+(defmath ramp api/ramp a)
+
+(defn relu!
+  ([^double alpha a y]
+   (if (and (api/fits? a y) (api/compatible? a y))
+     (api/relu (api/engine a) alpha a y)
+     (throw (ex-info "Arguments are not compatible" {:a a :y y}))))
+  ([a y]
+   (relu! 0.0 a y))
+  ([a]
+   (relu! 0.0 a a)))
+
+(defn relu
+  ([alpha a]
+   (let-release [y (api/raw a)]
+     (relu! alpha a y)))
+  ([a]
+   (relu 0.0 a)))
+
+(defn elu!
+  ([^double alpha a y]
+   (if (and (api/fits? a y) (api/compatible? a y))
+     (api/elu (api/engine a) alpha a y)
+     (throw (ex-info "Arguments are not compatible" {:a a :y y}))))
+  ([a y]
+   (elu! 0.0 a y))
+  ([a]
+   (elu! 0.0 a a)))
+
+(defn elu
+  ([alpha a]
+   (let-release [y (api/raw a)]
+     (elu! alpha a y)))
+  ([a]
+   (elu 1.0 a)))

@@ -184,6 +184,29 @@
 (defn frac ^double [^double x]
   (if (< 0.0 x) (- x (Math/floor x)) (- x (Math/ceil x))))
 
+(defn copy-sign ^double [^double x ^double y]
+  (Math/copySign x y))
+
+(defn sigmoid ^double [^double x]
+  (* 0.5 (inc (Math/tanh (* 0.5 x)))))
+
+(defn ramp ^double [^double x]
+  (max 0 x))
+
+(defn relu
+  (^double [^double alpha ^double x]
+   (max x (* alpha x)))
+  ([^double alpha]
+   (fn ^double [^double x]
+     (max x (* alpha x)))))
+
+(defn elu
+  (^double [^double alpha ^double x]
+   (max x (* alpha (expm1 x))))
+  ([^double alpha]
+   (fn ^double [^double x]
+     (max x (* alpha (expm1 x))))))
+
 (defn round?
   ([^double x]
    (f= x (Math/floor (+ 0.5 x))))

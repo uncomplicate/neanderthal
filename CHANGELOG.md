@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.23.0
+
+* Added copy-sign, ramp, step, and sigmoid functions to math and vect-math (MKL, CUDA, OpenCL)
+
 # 0.22.0
 
 * Introduced the Viewable/view protocol and view function (interop).

@@ -10,7 +10,6 @@
   (:require [uncomplicate.commons
              [core :refer [Info info]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.neanderthal.math :refer [signum]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang IFn$LLDD]
            [uncomplicate.neanderthal.internal.api LayoutNavigator RealLayoutNavigator DenseStorage

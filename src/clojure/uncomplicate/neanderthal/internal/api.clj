@@ -143,7 +143,12 @@
   (modf [this a y z])
   (frac [this a y])
   (fmin [this a b y])
-  (fmax [this a b y]))
+  (fmax [this a b y])
+  (copy-sign [this a b y])
+  (sigmoid [this a y])
+  (ramp [this a y])
+  (relu [this alpha a y])
+  (elu [this alpha a y]))
 
 (defprotocol Triangularizable
   (create-trf [a pure])

@@ -563,6 +563,62 @@ extern "C" {
         }
     }
 
+    __global__ void vector_copysign (const int n,
+                                     const REAL* x, const int offset_x, const int stride_x,
+                                     const REAL* y, const int offset_y, const int stride_y,
+                                     REAL* z, const int offset_z, const int stride_z) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            z[offset_z + gid * stride_z] =
+                CAST(copysign)(x[offset_x + gid * stride_x], y[offset_y + gid * stride_y]);
+        }
+    }
+
+    __global__ void vector_sigmoid (const int n,
+                                    const REAL* x, const int offset_x, const int stride_x,
+                                    REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            y[offset_y + gid * stride_y] =
+                CAST(tanh)((REAL)0.5 * x[offset_x + gid * stride_x]) * (REAL)0.5 + (REAL)0.5;
+        }
+    }
+
+    __global__ void vector_ramp (const int n,
+                                 const REAL* x, const int offset_x, const int stride_x,
+                                 REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            y[offset_y + gid * stride_y] = CAST(fmax)(x[offset_x + gid * stride_x], (REAL)0.0);
+        }
+    }
+
+    __global__ void vector_relu (const int n, const REAL alpha,
+                                 const REAL* x, const int offset_x, const int stride_x,
+                                 REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            const REAL val = x[offset_x + gid * stride_x];
+            y[offset_y + gid * stride_y] = CAST(fmax)(val, alpha * val);
+        }
+    }
+
+    __global__ void vector_elu (const int n, const REAL alpha,
+                                const REAL* x, const int offset_x, const int stride_x,
+                                REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            const REAL val = x[offset_x + gid * stride_x];
+            y[offset_y + gid * stride_y] = CAST(fmax)(val, alpha * expm1(val));
+        }
+    }
+
+
     __global__ void ge_sqr (const int sd, const int fd,
                             const REAL* a, const int offset_a, const int ld_a,
                             REAL* b, const int offset_b, const int ld_b) {
@@ -1163,6 +1219,68 @@ extern "C" {
         if (valid) {
             c[offset_c + gid_0 + gid_1 * ld_c] =
                 CAST(fmin)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void ge_copysign (const int sd, const int fd,
+                                 const REAL* a, const int offset_a, const int ld_a,
+                                 const REAL* b, const int offset_b, const int ld_b,
+                                 REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(copysign)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void ge_sigmoid (const int sd, const int fd,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            b[offset_b + gid_0 + gid_1 * ld_b] =
+                CAST(tanh)((REAL)0.5 * a[offset_a + gid_0 + gid_1 * ld_a]) * (REAL)0.5 + (REAL)0.5;
+        }
+    }
+
+    __global__ void ge_ramp (const int sd, const int fd,
+                             const REAL* a, const int offset_a, const int ld_a,
+                             REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(a[offset_a + gid_0 + gid_1 * ld_a], (REAL)0.0);
+        }
+    }
+
+    __global__ void ge_relu (const int sd, const int fd,
+                             const REAL alpha,
+                             const REAL* a, const int offset_a, const int ld_a,
+                             REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * val);
+        }
+    }
+
+    __global__ void ge_elu (const int sd, const int fd,
+                            const REAL alpha,
+                            const REAL* a, const int offset_a, const int ld_a,
+                            REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * expm1(val));
         }
     }
 
@@ -1872,5 +1990,77 @@ extern "C" {
                 CAST(fmin)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
         }
     }
-    
+
+    __global__ void uplo_copysign (const int sd, const int unit, const int bottom,
+                                   const REAL* a, const int offset_a, const int ld_a,
+                                   const REAL* b, const int offset_b, const int ld_b,
+                                   REAL* c, const int offset_c, const int ld_c) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            c[offset_c + gid_0 + gid_1 * ld_c] =
+                CAST(copysign)(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+        }
+    }
+
+    __global__ void uplo_sigmoid (const int sd, const int unit, const int bottom,
+                                  const REAL* a, const int offset_a, const int ld_a,
+                                  REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] =
+                CAST(tanh)((REAL)0.5 * a[offset_a + gid_0 + gid_1 * ld_a]) * (REAL)0.5 + (REAL)0.5;
+        }
+    }
+
+    __global__ void uplo_ramp (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(a[offset_a + gid_0 + gid_1 * ld_a], (REAL)0.0);
+        }
+    }
+
+    __global__ void uplo_relu (const int sd, const int unit, const int bottom,
+                               const REAL alpha,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * val);
+        }
+    }
+
+    __global__ void uplo_elu (const int sd, const int unit, const int bottom,
+                              const REAL alpha,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * expm1(val));
+        }
+    }
+
 }

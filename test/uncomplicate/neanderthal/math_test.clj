@@ -172,7 +172,12 @@
   (facts "modf" (diff-2 factory m/trunc m/frac vm/modf -5 6 0.77) => (just [(zero) (zero)]))
   (facts "frac" (diff-1 factory m/frac vm/frac -5 9 0.87) => (zero))
   (facts "max" (diff-2 factory (double-fn max) vm/fmax) => (zero))
-  (facts "min" (diff-2 factory (double-fn min) vm/fmin) => (zero)))
+  (facts "min" (diff-2 factory (double-fn min) vm/fmin) => (zero))
+  (facts "copy-sign" (diff-2 factory m/copy-sign vm/copy-sign) => (zero))
+  (facts "sigmoid" (diff-1 factory m/sigmoid vm/sigmoid) => (zero))
+  (facts "ramp" (diff-1 factory m/ramp vm/ramp) => (zero))
+  (facts "relu" (diff-1 factory (m/relu 0.01) #(vm/relu 0.01 %)) => (zero))
+  (facts "elu" (diff-1 factory (m/elu 0.01) #(vm/elu 0.01 %)) => (zero)))
 
 (defn test-math-inv [factory diff-1 diff-2]
   (facts "erf-inv"

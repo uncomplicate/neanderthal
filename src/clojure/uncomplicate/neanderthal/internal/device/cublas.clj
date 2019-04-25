@@ -576,6 +576,17 @@
                              (.buffer y) (.offset y) (.stride y))))))
   y)
 
+(defn ^:private vector-relu [modl hstream kernel-name alpha ^CUBlockVector x ^CUBlockVector y]
+  (when (< 0 (.dim x))
+    (let [da (data-accessor x)]
+      (with-release [math-kernel (function modl kernel-name)]
+        (launch! math-kernel (grid-1d (.dim x)) hstream
+                 (parameters (.dim x)
+                             (.wrapPrim da alpha)
+                             (.buffer x) (.offset x) (.stride x)
+                             (.buffer y) (.offset y) (.stride y))))))
+  y)
+
 (defn ^:private ge-math
   ([modl hstream kernel-name ^CUGEMatrix a ^CUGEMatrix b]
    (when (< 0 (.dim a))
@@ -636,6 +647,19 @@
                              (.buffer c) (.offset c) (.stride c))))))
   c)
 
+(defn ^:private ge-relu [modl hstream kernel-name alpha ^CUGEMatrix a ^CUGEMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a c)
+    (let [stor (full-storage a)
+          da (data-accessor a)]
+      (with-release [math-kernel (function modl kernel-name)]
+        (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.fd stor)
+                             (.wrapPrim da alpha)
+                             (.buffer a) (.offset a) (.stride a)
+                             (.buffer c) (.offset c) (.stride c))))))
+  c)
+
 (defn ^:private uplo-math
   ([modl hstream kernel-name ^CUUploMatrix a ^CUUploMatrix b]
    (when (< 0 (.dim a))
@@ -692,6 +716,19 @@
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (.buffer a) (.offset a) (.stride a)
                              (.wrapPrim da b)
+                             (.buffer c) (.offset c) (.stride c))))))
+  c)
+
+(defn ^:private uplo-relu [modl hstream kernel-name alpha ^CUUploMatrix a ^CUUploMatrix c]
+  (when (< 0 (.dim a))
+    (check-eq-navigators a c)
+    (let [stor (full-storage a)
+          da (data-accessor a)]
+      (with-release [math-kernel (function modl kernel-name)]
+        (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
+                             (.wrapPrim da alpha)
+                             (.buffer a) (.offset a) (.stride a)
                              (.buffer c) (.offset c) (.stride c))))))
   c)
 
@@ -806,13 +843,13 @@
   (atan [_ a y]
     (vector-math modl hstream "vector_atan" a y))
   (atan2 [_ a b y]
-    (vector-math modl hstream "vector_atan2"  a b y))
+    (vector-math modl hstream "vector_atan2" a b y))
   (sinh [_ a y]
     (vector-math modl hstream "vector_sinh" a y))
   (cosh [_ a y]
     (vector-math modl hstream "vector_cosh" a y))
   (tanh [_ a y]
-    (vector-math modl hstream "vector_tanh"  a y))
+    (vector-math modl hstream "vector_tanh" a y))
   (asinh [_ a y]
     (vector-math modl hstream "vector_asinh" a y))
   (acosh [_ a y]
@@ -852,7 +889,17 @@
   (fmin [_ a b y]
     (vector-math modl hstream "vector_fmin" a b y))
   (fmax [_ a b y]
-    (vector-math modl hstream "vector_fmax" a b y)))
+    (vector-math modl hstream "vector_fmax" a b y))
+  (copy-sign [_ a b y]
+    (vector-math modl hstream "vector_copysign" a b y))
+  (sigmoid [this a y]
+    (vector-math modl hstream "vector_sigmoid" a y))
+  (ramp [this a y]
+    (vector-math modl hstream "vector_ramp" a y))
+  (relu [this alpha a y]
+    (vector-relu modl hstream "vector_relu" alpha a y))
+  (elu [this alpha a y]
+    (vector-relu modl hstream "vector_elu" alpha a y)))
 
 (deftype FloatVectorEngine [cublas-handle modl hstream]
   BlockEngine
@@ -1009,7 +1056,17 @@
   (fmin [_ a b y]
     (vector-math modl hstream "vector_fmin" a b y))
   (fmax [_ a b y]
-    (vector-math modl hstream "vector_fmax" a b y)))
+    (vector-math modl hstream "vector_fmax" a b y))
+  (copy-sign [_ a b y]
+    (vector-math modl hstream "vector_copysign" a b y))
+  (sigmoid [this a y]
+    (vector-math modl hstream "vector_sigmoid" a y))
+  (ramp [this a y]
+    (vector-math modl hstream "vector_ramp" a y))
+  (relu [this alpha a y]
+    (vector-relu modl hstream "vector_relu" alpha a y))
+  (elu [this alpha a y]
+    (vector-relu modl hstream "vector_elu" alpha a y)))
 
 (deftype DoubleGEEngine [cublas-handle modl hstream]
   BlockEngine
@@ -1162,7 +1219,17 @@
   (fmin [_ a b y]
     (ge-math modl hstream "ge_fmin" a b y))
   (fmax [_ a b y]
-    (ge-math modl hstream "ge_fmax" a b y)))
+    (ge-math modl hstream "ge_fmax" a b y))
+  (copy-sign [_ a b y]
+    (ge-math modl hstream "ge_copysign" a b y))
+  (sigmoid [this a y]
+    (ge-math modl hstream "ge_sigmoid" a y))
+  (ramp [this a y]
+    (ge-math modl hstream "ge_ramp" a y))
+  (relu [this alpha a y]
+    (ge-relu modl hstream "ge_relu" alpha a y))
+  (elu [this alpha a y]
+    (ge-relu modl hstream "ge_elu" alpha a y)))
 
 (deftype FloatGEEngine [cublas-handle modl hstream]
   BlockEngine
@@ -1315,7 +1382,17 @@
   (fmin [_ a b y]
     (ge-math modl hstream "ge_fmin" a b y))
   (fmax [_ a b y]
-    (ge-math modl hstream "ge_fmax" a b y)))
+    (ge-math modl hstream "ge_fmax" a b y))
+  (copy-sign [_ a b y]
+    (ge-math modl hstream "ge_copysign" a b y))
+  (sigmoid [this a y]
+    (ge-math modl hstream "ge_sigmoid" a y))
+  (ramp [this a y]
+    (ge-math modl hstream "ge_ramp" a y))
+  (relu [this alpha a y]
+    (ge-relu modl hstream "ge_relu" alpha a y))
+  (elu [this alpha a y]
+    (ge-relu modl hstream "ge_elu" alpha a y)))
 
 (deftype DoubleTREngine [cublas-handle modl hstream]
   BlockEngine
@@ -1475,7 +1552,17 @@
   (fmin [_ a b y]
     (uplo-math modl hstream "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math modl hstream "uplo_fmax" a b y)))
+    (uplo-math modl hstream "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math modl hstream "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math modl hstream "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math modl hstream "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu modl hstream "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu modl hstream "uplo_elu" alpha a y)))
 
 (deftype FloatTREngine [cublas-handle modl hstream]
   BlockEngine
@@ -1631,7 +1718,17 @@
   (fmin [_ a b y]
     (uplo-math modl hstream "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math modl hstream "uplo_fmax" a b y)))
+    (uplo-math modl hstream "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math modl hstream "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math modl hstream "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math modl hstream "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu modl hstream "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu modl hstream "uplo_elu" alpha a y)))
 
 (deftype DoubleSYEngine [cublas-handle modl hstream]
   BlockEngine
@@ -1780,7 +1877,17 @@
   (fmin [_ a b y]
     (uplo-math modl hstream "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math modl hstream "uplo_fmax" a b y)))
+    (uplo-math modl hstream "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math modl hstream "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math modl hstream "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math modl hstream "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu modl hstream "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu modl hstream "uplo_elu" alpha a y)))
 
 (deftype FloatSYEngine [cublas-handle modl hstream]
   BlockEngine
@@ -1925,7 +2032,17 @@
   (fmin [_ a b y]
     (uplo-math modl hstream "uplo_fmin" a b y))
   (fmax [_ a b y]
-    (uplo-math modl hstream "uplo_fmax" a b y)))
+    (uplo-math modl hstream "uplo_fmax" a b y))
+  (copy-sign [_ a b y]
+    (uplo-math modl hstream "uplo_copysign" a b y))
+  (sigmoid [this a y]
+    (uplo-math modl hstream "uplo_sigmoid" a y))
+  (ramp [this a y]
+    (uplo-math modl hstream "uplo_ramp" a y))
+  (relu [this alpha a y]
+    (uplo-relu modl hstream "uplo_relu" alpha a y))
+  (elu [this alpha a y]
+    (uplo-relu modl hstream "uplo_elu" alpha a y)))
 
 (deftype CUFactory [modl hstream ^DataAccessor da native-fact vector-eng ge-eng tr-eng sy-eng]
   Releaseable

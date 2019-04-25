@@ -345,6 +345,46 @@ __kernel void vector_fmin (__global const REAL* x, const uint offset_x, const ui
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_copysign (__global const REAL* x, const uint offset_x, const uint stride_x,
+                               __global const REAL* y, const uint offset_y, const uint stride_y,
+                               __global REAL* z, const uint offset_z, const uint stride_z) {
+    const REAL xval = x[offset_x + get_global_id(0) * stride_x];
+    const REAL yval = y[offset_y + get_global_id(0) * stride_y];
+    z[offset_z + get_global_id(0) * stride_z] =
+        copysign(x[offset_x + get_global_id(0) * stride_x], y[offset_y + get_global_id(0) * stride_y]);
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_sigmoid (__global const REAL* x, const uint offset_x, const uint stride_x,
+                              __global REAL* y, const uint offset_y, const uint stride_y) {
+    y[offset_y + get_global_id(0) * stride_y] =
+        tanh((REAL)0.5 * x[offset_x + get_global_id(0) * stride_x]) * (REAL)0.5 + (REAL)0.5;
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_ramp (__global const REAL* x, const uint offset_x, const uint stride_x,
+                           __global REAL* y, const uint offset_y, const uint stride_y) {
+    y[offset_y + get_global_id(0) * stride_y] =
+        fmax(x[offset_x + get_global_id(0) * stride_x], (REAL)0.0);
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_relu (const REAL alpha,
+                           __global const REAL* x, const uint offset_x, const uint stride_x,
+                           __global REAL* y, const uint offset_y, const uint stride_y) {
+    const REAL val = x[offset_x + get_global_id(0) * stride_x];
+    y[offset_y + get_global_id(0) * stride_y] = fmax(val, alpha * val);
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_elu (const REAL alpha,
+                          __global const REAL* x, const uint offset_x, const uint stride_x,
+                          __global REAL* y, const uint offset_y, const uint stride_y) {
+    const REAL val = x[offset_x + get_global_id(0) * stride_x];
+    y[offset_y + get_global_id(0) * stride_y] = fmax(val, alpha * expm1(val));
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
 __kernel void ge_sqr (__global const REAL* a, const uint offset_a, const uint ld_a,
                       __global REAL* b, const uint offset_b, const uint ld_b) {
     const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
@@ -666,6 +706,44 @@ __kernel void ge_fmin (__global const REAL* a, const uint offset_a, const uint l
     const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
     const REAL bval = b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
     c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] = bval < aval ? bval : aval;
+}
+
+__kernel void ge_copysign (__global const REAL* a, const uint offset_a, const uint ld_a,
+                           __global const REAL* b, const uint offset_b, const uint ld_b,
+                           __global REAL* c, const uint offset_c, const uint ld_c) {
+    const REAL aval = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    const REAL bval = b[offset_b + get_global_id(0) + get_global_id(1) * ld_b];
+    c[offset_c + get_global_id(0) + get_global_id(1) * ld_c] =
+        copysign(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a],
+                 b[offset_b + get_global_id(0) + get_global_id(1) * ld_b]);
+}
+
+__kernel void ge_sigmoid (__global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        tanh((REAL)0.5 * a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]) * (REAL)0.5 + (REAL)0.5;
+}
+
+__kernel void ge_ramp (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        fmax(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a], (REAL)0.0);
+}
+
+__kernel void ge_relu (const REAL alpha,
+                       __global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+
+    const REAL val = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] = fmax(val, alpha * val);
+}
+
+__kernel void ge_elu (const REAL alpha,
+                      __global const REAL* a, const uint offset_a, const uint ld_a,
+                      __global REAL* b, const uint offset_b, const uint ld_b) {
+
+    const REAL val = a[offset_a + get_global_id(0) + get_global_id(1) * ld_a];
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] = fmax(val, alpha * expm1(val));
 }
 
 __kernel void uplo_sqr (const uint unit, const int bottom,
@@ -1291,5 +1369,72 @@ __kernel void uplo_fmin (const uint unit, const int bottom,
         const REAL aval = a[offset_a + gid_0 + gid_1 * ld_a];
         const REAL bval = b[offset_b + gid_0 + gid_1 * ld_b];
         c[offset_c + gid_0 + gid_1 * ld_c] = bval < aval ? bval : aval;
+    }
+}
+
+__kernel void uplo_copysign (const uint unit, const int bottom,
+                             __global const REAL* a, const uint offset_a, const uint ld_a,
+                             __global const REAL* b, const uint offset_b, const uint ld_b,
+                             __global REAL* c, const uint offset_c, const uint ld_c) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        c[offset_c + gid_0 + gid_1 * ld_c] =
+            copysign(a[offset_a + gid_0 + gid_1 * ld_a], b[offset_b + gid_0 + gid_1 * ld_b]);
+    }
+}
+
+__kernel void uplo_sigmoid (const uint unit, const int bottom,
+                            __global const REAL* a, const uint offset_a, const uint ld_a,
+                            __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] =
+            tanh((REAL)0.5 * a[offset_a + gid_0 + gid_1 * ld_a]) * (REAL)0.5 + (REAL)0.5;
+    }
+}
+
+__kernel void uplo_ramp (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = fmax(a[offset_a + gid_0 + gid_1 * ld_a], (REAL)0.0);
+    }
+}
+
+__kernel void uplo_relu (const uint unit, const int bottom,
+                         const REAL alpha,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+        b[offset_b + gid_0 + gid_1 * ld_b] = fmax(val , alpha * val);
+    }
+}
+
+__kernel void uplo_elu (const uint unit, const int bottom,
+                        const REAL alpha,
+                        __global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+        b[offset_b + gid_0 + gid_1 * ld_b] = fmax(val , alpha * expm1(val));
     }
 }

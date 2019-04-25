@@ -10,8 +10,9 @@
   (:require [uncomplicate.commons
              [core :refer [with-release let-release info Releaseable release]]
              [utils :refer [dragan-says-ex]]]
+            [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.neanderthal
-             [math :refer [f=]]
+             [math :refer [f=] :as math]
              [block :refer [create-data-source initialize]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
@@ -260,6 +261,43 @@
      (~method (.surface (region ~a)) (.buffer ~a) (.offset ~a) (.buffer ~b) (.offset ~b)
       ~scalea ~shifta ~scaleb ~shiftb (.buffer ~y) (.offset ~y))
      ~y))
+
+;; ============ Delegate math functions  ============================================
+
+(defn sigmoid-over-tanh [eng a y]
+  (when-not (identical? a y) (copy eng a y))
+  (linear-frac eng (tanh eng (scal eng 0.5 y) y) a 0.5 0.5 0.0 1.0 y))
+
+(defn vector-ramp [eng a y]
+  (cond (identical? a y) (fmap! math/ramp y)
+        (= 1 (.stride ^Block a) (.stride ^Block y)) (fmax eng a (set-all eng 0.0 y) y)
+        :else (fmap! math/ramp (copy eng a y))))
+
+(defn matrix-ramp [eng a y]
+  (if (identical? a y)
+    (fmap! math/ramp y)
+    (fmax eng a (set-all eng 0.0 y) y)))
+
+(defn vector-relu [eng alpha a y]
+  (cond (identical? a y) (fmap! (math/relu alpha) y)
+        (= 1 (.stride ^Block a) (.stride ^Block y)) (fmax eng a (axpby eng alpha a 0.0 y) y)
+        :else (fmap! (math/relu alpha) (copy eng a y))))
+
+(defn matrix-relu [eng alpha a y]
+  (if (identical? a y)
+    (fmap! (math/relu alpha) y)
+    (fmax eng a (axpby eng alpha a 0.0 y) y)))
+
+(defn vector-elu [eng alpha a y]
+  (cond (identical? a y) (fmap! (math/elu alpha) y)
+        (= 1 (.stride ^Block a) (.stride ^Block y))
+        (fmax eng a (scal eng alpha (expm1 eng (copy eng a y) y)) y)
+        :else (fmap! (math/elu alpha) (copy eng a y))))
+
+(defn matrix-elu [eng alpha a y]
+  (if (identical? a y)
+    (fmap! (math/elu alpha) y)
+    (fmax eng a (scal eng alpha (expm1 eng (copy eng a y) y)) y)))
 
 ;; ============ Integer Vector Engines ============================================
 
@@ -541,7 +579,17 @@
   (fmin [_ a b y]
     (vector-math MKL/vdFmin ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
   (fmax [_ a b y]
-    (vector-math MKL/vdFmax ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y)))
+    (vector-math MKL/vdFmax ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (copy-sign [_ a b y]
+    (vector-math MKL/vdCopySign ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (vector-ramp this a y))
+  (relu [this alpha a y]
+    (vector-relu this alpha a y))
+  (elu [this alpha a y]
+    (vector-elu this alpha a y)))
 
 (deftype FloatVectorEngine []
   Blas
@@ -710,7 +758,17 @@
   (fmin [_ a b y]
     (vector-math MKL/vsFmin ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
   (fmax [_ a b y]
-    (vector-math MKL/vsFmax ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y)))
+    (vector-math MKL/vsFmax ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (copy-sign [_ a b y]
+    (vector-math MKL/vsCopySign ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (vector-ramp this a y))
+  (relu [this alpha a y]
+    (vector-relu this alpha a y))
+  (elu [this alpha a y]
+    (vector-elu this alpha a y)))
 
 ;; ================= General Matrix Engines ====================================
 
@@ -943,7 +1001,17 @@
   (fmin [_ a b y]
     (matrix-math MKL/vdFmin ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
   (fmax [_ a b y]
-    (matrix-math MKL/vdFmax ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y)))
+    (matrix-math MKL/vdFmax ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (copy-sign [_ a b y]
+    (matrix-math MKL/vdCopySign ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatGEEngine []
   Blas
@@ -1170,7 +1238,17 @@
   (fmin [_ a b y]
     (matrix-math MKL/vsFmin ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
   (fmax [_ a b y]
-    (matrix-math MKL/vsFmax ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y)))
+    (matrix-math MKL/vsFmax ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (copy-sign [_ a b y]
+    (matrix-math MKL/vsCopySign ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 ;; ================= Triangular Matrix Engines =================================
 
@@ -1331,7 +1409,17 @@
   (fmin [_ a b y]
     (matrix-math MKL/vdFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (fmax [_ a b y]
-    (matrix-math MKL/vdFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
+    (matrix-math MKL/vdFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (copy-sign [_ a b y]
+    (matrix-math MKL/vdCopySign ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatTREngine []
   Blas
@@ -1490,7 +1578,17 @@
   (fmin [_ a b y]
     (matrix-math MKL/vsFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (fmax [_ a b y]
-    (matrix-math MKL/vsFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
+    (matrix-math MKL/vsFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (copy-sign [_ a b y]
+    (matrix-math MKL/vsCopySign ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 ;; =============== Symmetric Matrix Engines ===================================
 
@@ -1666,7 +1764,17 @@
   (fmin [_ a b y]
     (matrix-math MKL/vdFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (fmax [_ a b y]
-    (matrix-math MKL/vdFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
+    (matrix-math MKL/vdFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (copy-sign [_ a b y]
+    (matrix-math MKL/vdCopySign ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatSYEngine []
   Blas
@@ -1840,7 +1948,17 @@
   (fmin [_ a b y]
     (matrix-math MKL/vsFmin ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (fmax [_ a b y]
-    (matrix-math MKL/vsFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y)))
+    (matrix-math MKL/vsFmax ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (copy-sign [_ a b y]
+    (matrix-math MKL/vsCopySign ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 ;; =============== Banded Matrix Engines ===================================
 
@@ -2342,7 +2460,17 @@
   (fmin [_ a b y]
     (packed-math MKL/vdFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (fmax [_ a b y]
-    (packed-math MKL/vdFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
+    (packed-math MKL/vdFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (copy-sign [_ a b y]
+    (packed-math MKL/vdCopySign ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatTPEngine []
   Blas
@@ -2500,7 +2628,17 @@
   (fmin [_ a b y]
     (packed-math MKL/vsFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (fmax [_ a b y]
-    (packed-math MKL/vsFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
+    (packed-math MKL/vsFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (copy-sign [_ a b y]
+    (packed-math MKL/vsCopySign ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype DoubleSPEngine []
   Blas
@@ -2670,7 +2808,17 @@
   (fmin [_ a b y]
     (packed-math MKL/vdFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (fmax [_ a b y]
-    (packed-math MKL/vdFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
+    (packed-math MKL/vdFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (copy-sign [_ a b y]
+    (packed-math MKL/vdCopySign ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatSPEngine []
   Blas
@@ -2840,7 +2988,17 @@
   (fmin [_ a b y]
     (packed-math MKL/vsFmin ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (fmax [_ a b y]
-    (packed-math MKL/vsFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y)))
+    (packed-math MKL/vsFmax ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (copy-sign [_ a b y]
+    (packed-math MKL/vsCopySign ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 ;; =============== Tridiagonal Matrix Engines =================================
 
@@ -3005,7 +3163,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vdCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatGTEngine []
   Blas
@@ -3168,7 +3336,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vsCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype DoubleGDEngine []
   Blas
@@ -3327,7 +3505,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vdCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatGDEngine []
   Blas
@@ -3486,7 +3674,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vsCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype DoubleDTEngine []
   Blas
@@ -3647,7 +3845,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vdCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatDTEngine []
   Blas
@@ -3808,7 +4016,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vsCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype DoubleSTEngine []
   Blas
@@ -3969,7 +4187,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vdFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vdFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vdCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 (deftype FloatSTEngine []
   Blas
@@ -4130,7 +4358,17 @@
   (fmin [_ a b y]
     (diagonal-math MKL/vsFmin ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (fmax [_ a b y]
-    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y)))
+    (diagonal-math MKL/vsFmax ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (copy-sign [_ a b y]
+    (diagonal-math MKL/vsCopySign ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
+  (sigmoid [this a y]
+    (sigmoid-over-tanh this a y))
+  (ramp [this a y]
+    (matrix-ramp this a y))
+  (relu [this alpha a y]
+    (matrix-relu this alpha a y))
+  (elu [this alpha a y]
+    (matrix-elu this alpha a y)))
 
 ;; =============== Factories ==================================================
 
