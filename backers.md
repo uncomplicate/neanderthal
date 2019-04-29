@@ -25,7 +25,6 @@ The list of people who pledged monthly support on the first day when I announced
 
 - Daniel Slutsky
 - Robert Luo
-- Johnny Eradus
 - Matthew Chadwick
 - Nicolas Kassis
 - Felix Dahlke
