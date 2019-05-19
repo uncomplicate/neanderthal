@@ -39,6 +39,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Huahai Yang
 - Niko Nyrhilä
 - Erwin Rooijakkers
-- dat
 - Drew Verlee
 - Felipe Gerard
+- Adam Hill
