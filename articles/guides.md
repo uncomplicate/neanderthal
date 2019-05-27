@@ -1,5 +1,5 @@
 ---
-title: "Neanderthal: Tutorials"
+title: "Neanderthal: Guides"
 Author: Dragan Djuric
 layout: article
 ---
@@ -8,6 +8,14 @@ layout: article
 
 * [Getting Started](/articles/getting_started.html) helps you to set up your environment.
 * [Hello world](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world), a project that helps at the very beginning.
+
+## Books
+
+[New book available for subscription.]("https://aiprobook.com/deep-learning-for-programmers")
+
+<a href="https://aiprobook.com/deep-learning-for-programmers">
+<img src="http://aiprobook.com/img/dlfp-cover.png" style="max-width: 100%"/>
+</a>
 
 ## Presentations (Slides & Videos)
 
@@ -36,9 +44,9 @@ layout: article
 
 ## Deep Learning From Scratch To GPU
 
-* [Part 0 - Why Bother?](http://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-0-Why-Bother)
+* [Part 0 - Why Bother?](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-0-Why-Bother)
 
-* [Part 1 - Representing Layers and Connections](http://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-1-Representing-Layers-and-Connections)
+* [Part 1 - Representing Layers and Connections](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-1-Representing-Layers-and-Connections)
 
 * [Part 2 - Bias and Activation Function](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-2-Bias-and-Activation-Function)
 

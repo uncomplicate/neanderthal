@@ -3,15 +3,8 @@ title: Neanderthal - Fast Native Matrix and Linear Algebra in Clojure
 layout: default
 ---
 <div class='headline'>
-  <div class='logo'>
-    <h1>Neanderthal</h1>
-  </div>
   <div class='clear' style=''></div>
   <p>Fast <span class="text-success">native-speed</span> matrix and linear algebra in Clojure</p>
-  <p>On the <strong class="text-success">GPU</strong>: <a href="/articles/tutorial_opencl.html"> almost 3000x faster</a> for large matrices than optimized Clojure/Java libraries!</p>
-  <p>On the CPU: <a href="/articles/benchmarks.html">100x faster</a> than optimized pure Java.</p>
-  <p>Works on <strong><span class="text-success">AMD, Nvidia, and Intel</span></strong> hardware!</p>
-  <p><a href="https://patreon.com/draganrocks">Please support my work on Patreon</a> by <a href="https://dragan.rocks/articles/18/Patreon-Announcement-Adopt-a-Function">adopting a pet Neanderthal function in your name!</a> I'll intive you to a dedicated <a href="https://discordapp.com">Discord</a> discussion server. Can't afford to donate? Ask for a free invite.</p>
   <div id="mc_embed_signup">
       <form action="https://rocks.us7.list-manage.com/subscribe/post?u=e5a068e9631cc8ce0e4cd0cbf&amp;id=f8954697e1" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate>
           <div id="mc_embed_signup_scroll">
@@ -30,12 +23,18 @@ layout: default
 <div class='row'>
   <div class='col-md-4'>
     <h2>Very Fast</h2>
-    <p>Handcrafted JNI calls, with almost no overhead, call the machine-optimized native
-        <a href="https://netlib.org/blas/">BLAS</a>  provided by
-        <a href="https://en.wikipedia.org/wiki/Math_Kernel_Library">Intel's MKL</a>.
-    <p class="text-success"><strong class="text-success">Seamless support for <a href="/articles/tutorial_opencl.html">GPU computing</a>.</strong> Many times faster than any code running on the CPU.</p>
-    </p>
-    <p>Faster than JBlas, and orders of magnitude times faster than pure Java core.matrix/vectorz<span class="text-success"> even for small matrices</span>: see the <a href="/articles/benchmarks.html">benchmarks and comparisons</a>.</p>
+    <p>On the <strong class="text-success">GPU</strong>: <a href="/articles/tutorial_opencl.html"> almost 3000x faster</a> for large matrices than optimized Clojure/Java libraries!</p>
+    <p>On the CPU: <a href="/articles/benchmarks.html">100x faster</a> than optimized pure Java.</p>
+    <p>Works on <strong><span class="text-success">AMD, Nvidia, and Intel</span></strong> hardware!</p>
+  </div>
+  <div class='col-md-4'>
+      <h2>Books</h2>
+      <a href="https://aiprobook.com/deep-learning-for-programmers">
+          New book available for subscription.
+      </a>
+      <a href="https://aiprobook.com/deep-learning-for-programmers">
+          <img src="http://aiprobook.com/img/dlfp-cover.png" style="max-width: 100%"></img>
+      </a>
   </div>
   <div class='col-md-4'>
     <h2>Optimized for Clojure</h2>
@@ -45,14 +44,7 @@ layout: default
     <p><span class="text-success">Comes with <a href="/articles/fast-map-and-reduce-for-primitive-vectors.html">fast primitive versions of map and reduce</a>.</span></p>
     <p>Pluggable engine implementations - even a pure Java engine could be plugged in for the cases when speed is not the priority.</p>
   </div>
-  <div class='col-md-4'>
-    <h2>Reusable literature.</h2>
-    <p>The code and theory from existing books, articles and tutorials for numeric linear algebra
-        computations is BLAS and LAPACK centered and can be used with Neanderthal.</p>
-    <p>Comes with a <a href="/codox">fully documented API</a>, and a set of
-        <a href="/articles/guides.html">tutorials</a>.</p>
   </div>
-</div>
 <div class='row'>
   <div class='col-md-4'>
     <h2>BLAS and LAPACK</h2>
@@ -67,7 +59,10 @@ layout: default
       <p>Follow the news on the <a href="https://groups.google.com/forum/#!forum/uncomplicate">Uncomplicate mailing list</a> or <a href="https://twitter.com/#!/uncomplicateorg">@Uncomplicateorg</a> and <a href="https://twitter.com/#!/draganrocks">@draganrocks</a> Twitter accounts.</p>
   </div>
   <div class='col-md-4'>
-    <h2>Free and Open Source</h2>
-    <p>Licensed under the <a href="https://github.com/uncomplicate/neanderthal/blob/master/LICENSE">Eclipse Public License</a>, same as Clojure.</p>
-  </div>
+      <h2>Reusable literature.</h2>
+      <p>The code and theory from existing books, articles and tutorials for numeric linear algebra
+          computations is BLAS and LAPACK centered and can be used with Neanderthal.</p>
+      <p>Comes with a <a href="/codox">fully documented API</a>, and a bunch of
+          <a href="/articles/guides.html">tutorials</a>.</p>
+      </div>
 </div>
