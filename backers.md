@@ -42,3 +42,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Drew Verlee
 - Felipe Gerard
 - Adam Hill
+- Yiu Ming Huynh
