@@ -176,6 +176,8 @@
       (vctr opencl-factory [1 2 3])
       (vctr opencl-factory (vctr float-factory [1 2 3]))
 
+  Yiu Ming Huynh's pet function.
+
   "
   ([factory source]
    (cond
