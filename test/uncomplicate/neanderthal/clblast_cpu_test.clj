@@ -23,22 +23,24 @@
   (real-test/test-tr-trs factory tr)
   (real-test/test-tr-sv factory tr))
 
-(with-release [dev (first (devices (first (platforms)) :cpu))
-               ctx (context [dev])
-               queue (command-queue-1 ctx dev)]
+(let [devs (devices (first (platforms)) :cpu)]
+  (when (< 0 (count devs))
+    (with-release [dev (first devs)
+                   ctx (context [dev])
+                   queue (command-queue-1 ctx dev)]
 
-  (with-engine clblast-float queue
-    (block-test/test-all *opencl-factory*)
-    (real-test/test-blas *opencl-factory*)
-    (test-blas-clblast *opencl-factory*)
-    (test-lapack-clblast *opencl-factory*)
-    (device-test/test-all *opencl-factory*)
-    (math-test/test-all-device *opencl-factory*))
+      (with-engine clblast-float queue
+        (block-test/test-all *opencl-factory*)
+        (real-test/test-blas *opencl-factory*)
+        (test-blas-clblast *opencl-factory*)
+        (test-lapack-clblast *opencl-factory*)
+        (device-test/test-all *opencl-factory*)
+        (math-test/test-all-device *opencl-factory*))
 
-  (with-engine clblast-double queue
-    (block-test/test-all *opencl-factory*)
-    (real-test/test-blas *opencl-factory*)
-    (test-blas-clblast *opencl-factory*)
-    (test-lapack-clblast *opencl-factory*)
-    (device-test/test-all *opencl-factory*)
-    (math-test/test-all-device *opencl-factory*)))
+      (with-engine clblast-double queue
+        (block-test/test-all *opencl-factory*)
+        (real-test/test-blas *opencl-factory*)
+        (test-blas-clblast *opencl-factory*)
+        (test-lapack-clblast *opencl-factory*)
+        (device-test/test-all *opencl-factory*)
+        (math-test/test-all-device *opencl-factory*)))))

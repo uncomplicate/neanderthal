@@ -1,4 +1,4 @@
-#ifndef REAL#
+#ifndef REAL
 define REAL float
 #endif
 
