@@ -62,6 +62,22 @@ layout: article
 
 * [Part 8 - The Forward Pass (CUDA, OpenCL, Nvidia, AMD, Intel)](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-8-The-Forward-Pass-CPU-GPU-CUDA-OpenCL-Nvidia-AMD-Intel)
 
+* [Part 9 - The Activation and its Derivative](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-9-The-Activation-and-its-Derivative)
+
+* [Part 10 - The Backward Pass](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-10-The-Backward-Pass-CDU-GPU-CUDA-OpenCL-Nvidia-AMD-Intel)
+
+* [Part 11 - A Simple Neural Network Inference API](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-11-A-Simple-Neural-Network-API)
+
+* [Part 12 - A Simple Neural Network Training API](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-12-A-Simple-Neural-Network-Training-API)
+
+* [Part 13 - Initializing Weights](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-13-Initializing-Weights)
+
+* [Part 14 - Learning a Regression](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-14-Learning-Regression)
+
+* [Part 15 - Weight Decay](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-15-Weight-Decay)
+
+* [Part 16 - Momentum](https://dragan.rocks/articles/19/Deep-Learning-in-Clojure-From-Scratch-to-GPU-16-Momentum)
+
 ## GPU computation tutorials
 
 * [Matrix Computations on the GPU in Clojure (in TFLOPS!)](/articles/tutorial_opencl.html). Proceed to this GPU engine tutorial when you want even more speed ([source code](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/examples/guides/tutorial_opencl_test.clj)).
