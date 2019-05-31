@@ -67,10 +67,8 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 ## Installation
 
-1. Add Neanderthal jars to your classpath ([from the Clojars](https://clojars.org/uncomplicate/neanderthal)).
-1a. If you are running on Java 9 or higher, you need to enable the `java.base` module. Add this to your JVM options (:jvm-opts in leiningen): `"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"`.
-2. To use the native engine: install Intel's MKL on your system following [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine)).
-3. To use the GPU engine: install the drivers and a CUDA and/or OpenCL platform software provided by the vendor of your graphic card (you probably already have that; see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
+1. To use the native engine: install Intel's MKL on your system following [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine).
+2. To use the GPU engine: install the drivers and a CUDA and/or OpenCL platform software provided by the vendor of your graphic card (you probably already have that; see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
 
 ### With Leiningen
 
@@ -82,13 +80,15 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 You need at least Java 8.
 
+If you are running on Java 9 or higher, you need to enable the `java.base` module. Add this to your JVM options (:jvm-opts in leiningen): `"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"`.
+
 Neanderthal's data structures are written in Clojure, so many functions work even without native engines. However, you probably need Neanderthal because of its fast BLAS native or GPU engines. Here is how to make sure they are available.
 
 ### The native library used by Neanderthal's native engine
 
 * Works on Linux, OS X, and Windows!
 
-Neanderthal **uses the native Intel MKL library and expects that you make it available on your system, typically as shared xyz.so, xyz.dll, or xyz.dylib files**. Intel MKL is highly optimized for various architectures; its installation comes with many optimized binaries for all supported architectures, that are then selected during runtime according to the hardware at hand. Neanderthal has been built and tested with **Intel MKL 2018**; please make sure that you use a compatible MKL version.
+Neanderthal **uses the native Intel MKL library and expects that you make it available on your system, typically as shared xyz.so, xyz.dll, or xyz.dylib files**. Intel MKL is highly optimized for various architectures; its installation comes with many optimized binaries for all supported architectures, that are then selected during runtime according to the hardware at hand.
 
 **You do not need to compile or tune anything yourself.**
 
@@ -116,8 +116,6 @@ Please note that, if you use Windows or OS X, the binary file extensions are not
 
 **Note for OSX users:** MKL installation on my OSX 10.11 placed `libiomp5.dylib` in a different folder than the rest of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `DYLD_LIBRARY_PATH`. In newer versions of OSX, you'd have to configure the "system integrity protection (SIP)" settings for `DYLD_LIBRARY_PATH` to be respected by the system [see more here](https://github.com/uncomplicate/neanderthal/issues/31). If you want a quick & dirty solution without much fuss, copying the `dylib` files and pasting them into `/usr/local/lib` has been reported to work by multiple users.
 
-**Another important thing on Mac**: CUDA GPU code that Neanderthal uses could not have been compiled for macOS since it is difficult to find a Mac with Nvidia hardware. That means that you have to *explicitly exclude jcuda natives* in your project. See how to do that in the [Hello World project example](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj). **If you have a Mac with an Nvidia GPU and can help with the macOS build, please drop me a note.** This will be permanently fixed in the following versions of Neanderthal.
-
 **Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contains the `dll`s into the `PATH` environment variable, and you're ready to go. Some Windows users reported that `libiomp5.dll` too is in another folder; see the note for OSX users and take the equivalent Windows action.
 
 ### GPU drivers for the OpenCL GPU engine
@@ -128,7 +126,7 @@ Works on Linux, Windows, and OS X!
 
 Follow the [ClojureCL getting started guide](https://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
-**If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` instead of `command-queue` and `with-default` that are used in the examples.**
+**If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` instead of `command-queue` and `with-default`.**
 
 ### GPU drivers for the CUDA GPU engine
 
