@@ -13,7 +13,7 @@
             [uncomplicate.neanderthal
              [core :refer :all]
              [linalg :refer :all]
-             [aux :refer :all]
+             [auxil :refer :all]
              [math :refer :all]
              [vect-math :refer [linear-frac!]]
              [real :refer [ls-residual]]]

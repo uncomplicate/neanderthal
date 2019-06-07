@@ -3,7 +3,8 @@
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl
              [core :refer [*command-queue* with-platform platforms devices with-queue with-context
-                           context command-queue-1]]]
+                           context command-queue-1]]
+             [toolbox :refer [decent-platform]]]
             [uncomplicate.neanderthal
              [core :refer [tr]]
              [opencl :refer [with-engine *opencl-factory*]]
@@ -23,7 +24,7 @@
   (real-test/test-tr-trs factory tr)
   (real-test/test-tr-sv factory tr))
 
-(let [devs (devices (first (platforms)) :cpu)]
+(let [devs (devices (decent-platform (platforms) :cpu) :cpu)]
   (when (< 0 (count devs))
     (with-release [dev (first devs)
                    ctx (context [dev])

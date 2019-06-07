@@ -175,6 +175,10 @@
 (defprotocol BlockEngine
   (equals-block [_ cu-x cu-y]))
 
+(defprotocol RandomNumberGenerator
+  (rand-normal [this rng-state a b x])
+  (rand-uniform [this rng-state a b x]))
+
 (defprotocol ReductionFunction
   (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
   (vector-map-reduce [f init g x] [f init g x y] [f init g x y z] [f init g x y z v])
@@ -208,6 +212,9 @@
   (gt-engine [this])
   (dt-engine [this])
   (st-engine [this]))
+
+(defprotocol RngStreamFactory
+  (create-rng-state [this seed]))
 
 (defprotocol EngineProvider
   (engine [this]))

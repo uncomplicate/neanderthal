@@ -9,9 +9,10 @@
 (ns uncomplicate.neanderthal.internal.host.mkl
   (:require [uncomplicate.commons
              [core :refer [with-release let-release info Releaseable release]]
-             [utils :refer [dragan-says-ex]]]
+             [utils :refer [dragan-says-ex generate-seed direct-buffer]]]
             [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.neanderthal
+             [core :refer [dim]]
              [math :refer [f=] :as math]
              [block :refer [create-data-source initialize]]]
             [uncomplicate.neanderthal.internal
@@ -35,6 +36,39 @@
 
 (def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
   "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")
+
+;; =========== MKL RNG routines =========================================================
+
+(defmacro with-mkl-check [expr]
+  ` (let [err# ~expr]
+      (if (zero? err#)
+        err#
+        (throw (ex-info "MKL error." {:error-code err#})))))
+
+(defn ^:private params-buffer [^RealBufferAccessor da a b]
+  (let-release [buf (create-data-source da 2)]
+    (.set da buf 0 a)
+    (.set da buf 1 b)
+    buf))
+
+(defmacro vector-random
+  ([method stream a b x]
+   `(with-release [params-buf# (params-buffer (data-accessor ~x) ~a ~b)]
+      (vector-random ~method ~stream params-buf# ~x)))
+  ([method stream params-buf x]
+   `(if (and (< 0 (.dim ~x)) (= 0 (.offset ~x)) (= 1 (.stride ~x)))
+      (do
+        (with-mkl-check (~method ~stream (.dim ~x) (.buffer ~x) ~params-buf))
+        ~x)
+      (dragan-says-ex "This engine cannot generate random entries in vectors with stride or offset. Sorry."
+                      {:v (info ~x)}))))
+
+(defn create-stream-ars5 [seed]
+  (let-release [stream (direct-buffer Long/BYTES)]
+    (with-mkl-check (MKL/vslNewStreamARS5 seed stream))
+    stream))
+
+(def ^:private default-rng-stream (create-stream-ars5 (generate-seed)))
 
 ;; =========== MKL-specific routines ====================================================
 
@@ -411,6 +445,10 @@
                      (initialize float-accessor (create-data-source float-accessor 1024) 1.0)
                      1024 0 1))
 
+(def ^:private zeroone-double (params-buffer double-accessor 0 1))
+
+(def ^:private zeroone-float (params-buffer float-accessor 0 1))
+
 (deftype DoubleVectorEngine []
   Blas
   (swap [_ x y]
@@ -589,7 +627,20 @@
   (relu [this alpha a y]
     (vector-relu this alpha a y))
   (elu [this alpha a y]
-    (vector-elu this alpha a y)))
+    (vector-elu this alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream a b x]
+    (if (and a b)
+      (vector-random MKL/vdRngUniform (or rng-stream default-rng-stream) a b
+                     ^RealBlockVector x)
+      (vector-random MKL/vdRngUniform (or rng-stream default-rng-stream)
+                     zeroone-double ^RealBlockVector x)))
+  (rand-normal [_ rng-stream mu sigma x]
+    (if (and mu sigma)
+      (vector-random MKL/vdRngGaussian (or rng-stream default-rng-stream)
+                     mu sigma ^RealBlockVector x)
+      (vector-random MKL/vdRngGaussian (or rng-stream default-rng-stream)
+                     zeroone-double ^RealBlockVector x))))
 
 (deftype FloatVectorEngine []
   Blas
@@ -768,7 +819,20 @@
   (relu [this alpha a y]
     (vector-relu this alpha a y))
   (elu [this alpha a y]
-    (vector-elu this alpha a y)))
+    (vector-elu this alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream a b x]
+    (if (and a b)
+      (vector-random MKL/vsRngUniform (or rng-stream default-rng-stream)
+                     a b ^RealBlockVector x)
+      (vector-random MKL/vsRngUniform (or rng-stream default-rng-stream)
+                     zeroone-float ^RealBlockVector x)))
+  (rand-normal [_ rng-stream mu sigma x]
+    (if (and mu sigma)
+      (vector-random MKL/vsRngGaussian (or rng-stream default-rng-stream)
+                     mu sigma ^RealBlockVector x)
+      (vector-random MKL/vsRngGaussian (or rng-stream default-rng-stream)
+                     zeroone-float ^RealBlockVector x))))
 
 ;; ================= General Matrix Engines ====================================
 
@@ -4388,6 +4452,9 @@
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
+  RngStreamFactory
+  (create-rng-state [_ seed]
+    (create-stream-ars5 seed))
   Factory
   (create-vector [this n _]
     (real-block-vector this n))

@@ -33,8 +33,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Fed Reggiardo
 - Gurvesh Sanghera
 - Bernard Hugueney
-- Otis Clark
-- Ghufran Syed
 - the-alchemist
 - Huahai Yang
 - Niko Nyrhilä

@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.25.0
+
+* Renamed aux to auxil to work around a Windows bug of not allowing files named aux.
+
 # 0.23.0
 
 * Added copy-sign, ramp, step, and sigmoid functions to math and vect-math (MKL, CUDA, OpenCL)

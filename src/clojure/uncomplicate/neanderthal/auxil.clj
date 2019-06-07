@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.aux
+    uncomplicate.neanderthal.auxil
   "Contains type-agnostic auxiliary functions roughly corresponding to the functionality
   usually defined in auxiliary LAPACK (sorting etc.), or useful functions that may not commonly be
   implemented by BLAS engines, but are helpful vectorized ruoutines. This namespace works similarly
