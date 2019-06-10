@@ -12,7 +12,8 @@
              [native :refer [factory-by-type]]
              [block-test :as block-test]
              [real-test :as real-test]
-             [math-test :as math-test]]
+             [math-test :as math-test]
+             [random-test :as random-test]]
             [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
 
 (facts "factory-by-type test"
@@ -89,3 +90,8 @@
 
 (math-test/test-all-host mkl-double)
 (math-test/test-all-host mkl-float)
+
+(random-test/test-all mkl-double)
+(random-test/test-all mkl-float)
+(random-test/test-all-host mkl-double)
+(random-test/test-all-host mkl-float)

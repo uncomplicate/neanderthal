@@ -26,23 +26,23 @@
   The distribution is controlled by arguments `mu` and `sigma`.
   If `rng-state` is not provided, uses the global default rng state."
   ([x]
-   (api/rand-normal (api/engine x) nil nil nil x))
+   (api/rand-normal (api/engine x) nil 0 1 x))
   ([mu sigma x]
    (api/rand-normal (api/engine x) nil mu sigma x))
   ([rng-state x]
-   (api/rand-normal (api/engine x) rng-state nil nil x))
+   (api/rand-normal (api/engine x) rng-state 0 1 x))
   ([rng-state mu sigma x]
    (api/rand-normal (api/engine x) rng-state mu sigma x)))
 
 (defn rand-uniform!
   "Populates vector `x` with uniformly distributed random numbers.
-  The distribution is controlled by arguments `low` and `high`.
-  If `rng-state` is not provided, uses the global default rng state."
+  The distribution is controlled by arguments `lower` and `upper`.
+  If `rng-state` is not provided, uses the engine's global default rng state."
   ([x]
-   (api/rand-uniform (api/engine x) nil nil nil x))
-  ([low high x]
-   (api/rand-uniform (api/engine x) nil low high x))
+   (api/rand-uniform (api/engine x) nil 0 1 x))
+  ([lower upper x]
+   (api/rand-uniform (api/engine x) nil lower upper x))
   ([rng-state x]
-   (api/rand-uniform (api/engine x) rng-state nil nil x))
-  ([rng-state low high x]
-   (api/rand-uniform (api/engine x) rng-state low high x)))
+   (api/rand-uniform (api/engine x) rng-state 0 1 x))
+  ([rng-state lower upper x]
+   (api/rand-uniform (api/engine x) rng-state lower upper x)))

@@ -13,11 +13,11 @@
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.0"]
+  :dependencies [[org.clojure/clojure "1.10.1"]
                  [uncomplicate/commons "0.8.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.9.1"]
-                 [uncomplicate/neanderthal-native "0.23.1"]
-                 [uncomplicate/clojurecl "0.12.0"]
+                 [uncomplicate/neanderthal-native "0.25.0-SNAPSHOT"]
+                 [uncomplicate/clojurecl "0.13.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.5.0"]
                  [uncomplicate/clojurecuda "0.7.0"]
                  [org.jcuda/jcublas "10.1.0"]
@@ -34,7 +34,8 @@
                        uncomplicate.neanderthal.math
                        uncomplicate.neanderthal.vect-math
                        uncomplicate.neanderthal.real
-                       uncomplicate.neanderthal.auxil]
+                       uncomplicate.neanderthal.auxil
+                       uncomplicate.neanderthal.random]
           :output-path "docs/codox"}
 
   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
@@ -51,6 +52,6 @@
                    :dependencies [[midje "1.9.8"]]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
-  :source-paths ["src/clojure" "src/opencl" "src/cuda"]
+  :source-paths ["src/clojure" "src/opencl" "src/cuda" "src/device"]
   :java-source-paths ["src/java"]
   :test-paths ["test"])

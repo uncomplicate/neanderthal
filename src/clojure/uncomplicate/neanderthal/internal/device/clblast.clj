@@ -11,8 +11,8 @@
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info
-                           wrap-int wrap-double wrap-float]]
-             [utils :refer [with-check dragan-says-ex]]]
+                           wrap-int wrap-long wrap-double wrap-float]]
+             [utils :refer [with-check dragan-says-ex generate-seed create-temp-dir count-groups]]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device]]
@@ -29,7 +29,8 @@
              [common :refer [check-eq-navigators]]]
             [uncomplicate.neanderthal.internal.device
              [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
-             [clblock :refer :all]])
+             [clblock :refer :all]
+             [random123 :refer [copy-philox delete-shutdown]]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
            [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide CLBlastLayout
             CLBlastTriangle]
@@ -42,12 +43,30 @@
 (defn ^:private error [^long err-code details]
   (if (< -10000 err-code -1003)
     (let [err (CLBlastStatusCode/stringFor err-code)]
-      (ex-info (format "CLBlast error: %s." err) {:name err :code err-code :type :clblast-error :details details}))
+      (ex-info (format "CLBlast error: %s." err)
+               {:name err :code err-code :type :clblast-error :details details}))
     (let [err (dec-error err-code)]
-      (ex-info (format "OpenCL error: %s." err) {:name err :code err-code :type :opencl-error :details details}))))
+      (ex-info (format "OpenCL error: %s." err)
+               {:name err :code err-code :type :opencl-error :details details}))))
 
 (defn ^:private not-available []
-  (throw (UnsupportedOperationException. "Not available in OpenCL. Please use a host instance.")))
+  (throw (UnsupportedOperationException.
+          "Not available in OpenCL. Please use a host instance.")))
+
+;; =============== Random Number Generators =================================
+
+(defn ^:private vector-random [queue prog kernel-name rng-state a b ^CLBlockVector x]
+  (when (< 0 (.dim x))
+    (let [da (data-accessor x)]
+      (with-release [random-kernel (kernel prog kernel-name)]
+        (set-args! random-kernel 0
+                   (wrap-int (.dim x))
+                   (wrap-long (swap! rng-state inc))
+                   (.wrapPrim da a)
+                   (.wrapPrim da b)
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x)))
+        (enq-kernel! queue random-kernel (work-size-1d (count-groups 4 (.dim x)))))))
+  x)
 
 ;; =============== Common vector macros and functions =======================
 
@@ -97,7 +116,8 @@
            ofst# (.offset ~x)
            strd# (.stride ~x)]
        (with-check error
-         (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
+         (~method mem# ofst mem# (+ ofst# strd#) mem#
+          (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
           (extract ~queue) nil)
          ~x))
      ~x))
@@ -113,22 +133,28 @@
        ~param)
      ~param))
 
-(defmacro ^:private vector-rotmg [queue method ^CLBlockVector d1d2xy ^CLBlockVector param]
+(defmacro ^:private vector-rotmg [queue method
+                                  ^CLBlockVector d1d2xy
+                                  ^CLBlockVector param]
   `(if (= 1 (.stride ~param))
      (let [mem# (extract (.buffer ~d1d2xy))
            ofst# (.offset ~d1d2xy)
            strd# (.stride ~d1d2xy)]
        (with-check error
-         (~method mem# ofst mem# (+ ofst# strd#) mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
-          (extract (.buffer ~param)) (.offset ~param) (extract ~queue) nil)
+         (~method mem# ofst mem# (+ ofst# strd#)
+          mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
+          (extract (.buffer ~param)) (.offset ~param)
+          (extract ~queue) nil)
          ~param))
-     (throw (ex-info "You cannot use strided vector as param." {:param (info ~param)}))))
+     (throw (ex-info "You cannot use strided vector as param."
+                     {:param (info ~param)}))))
 
 (defmacro ^:private vector-method
   ([queue method x]
    `(if (< 0 (.dim ~x))
       (with-check error
-        (~method (.dim ~x) (extract (.buffer ~x)) (.offset ~x) (.stride ~x) (extract ~queue) nil)
+        (~method (.dim ~x) (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+         (extract ~queue) nil)
         ~x)
       ~x))
   ([queue method x y]
@@ -166,7 +192,8 @@
   `(if (< 0 (.dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx ~res-bytes :read-write)]
        (with-check error
-         (~method (.dim ~x) (extract res-buffer#) 0 (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+         (~method (.dim ~x) (extract res-buffer#) 0
+          (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
           (extract ~queue) nil)
          (~read-method ~queue res-buffer#)))
      0.0))
@@ -175,7 +202,8 @@
   `(if (< 0 (.dim ~x))
      (with-release [res-buffer# (cl-buffer ~ctx Integer/BYTES :read-write)]
        (with-check error
-         (~method (.dim ~x) (extract res-buffer#) 0 (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+         (~method (.dim ~x) (extract res-buffer#) 0
+          (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
           (extract ~queue) nil)
          (enq-read-int ~queue res-buffer#)))
      0))
@@ -183,7 +211,8 @@
 (defmacro ^:private vector-scal-set [queue method alpha x]
   `(if (< 0 (.dim ~x))
      (with-check error
-       (~method (.dim ~x) ~alpha (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+       (~method (.dim ~x) ~alpha
+        (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
         (extract ~queue) nil)
        ~x)
      ~x))
@@ -191,25 +220,33 @@
 (defmacro ^:private vector-axpy [queue method alpha x y]
   `(if (< 0 (.dim ~x))
      (with-check error
-       (~method (.dim ~x) ~alpha (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
-        (extract (.buffer ~y)) (.offset ~y) (.stride ~y) (extract ~queue) nil)
+       (~method (.dim ~x) ~alpha
+        (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+        (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+        (extract ~queue) nil)
        ~y)
      ~y))
 
-(defn ^:private vector-axpby [queue prog alpha ^CLBlockVector x beta ^CLBlockVector y]
+(defn ^:private vector-axpby [queue prog
+                              alpha ^CLBlockVector x
+                              beta ^CLBlockVector y]
   (when (< 0 (.dim x))
     (let [da (data-accessor x)]
       (with-release [vector-axpby-kernel (kernel prog "vector_axpby")]
         (set-args! vector-axpby-kernel 0
-                   (.wrapPrim da alpha) (.buffer x) (wrap-int (.offset x)) (wrap-int (.stride x))
-                   (.wrapPrim da beta) (.buffer y) (wrap-int (.offset y)) (wrap-int (.stride y)))
+                   (.wrapPrim da alpha) (.buffer x)
+                   (wrap-int (.offset x)) (wrap-int (.stride x))
+                   (.wrapPrim da beta) (.buffer y)
+                   (wrap-int (.offset y)) (wrap-int (.stride y)))
         (enq-kernel! queue vector-axpby-kernel (work-size-1d (.dim x))))))
   y)
 
 (defmacro ^:private vector-subcopy [queue method x y kx lx ky]
   `(if (< 0 (long ~lx))
      (with-check error
-       (~method ~lx (extract (.buffer ~x)) ~kx (.stride ~x) (extract (.buffer ~y)) ~ky (.stride ~y)
+       (~method ~lx
+        (extract (.buffer ~x)) ~kx (.stride ~x)
+        (extract (.buffer ~y)) ~ky (.stride ~y)
         (extract ~queue) nil)
        ~y)
      ~y))
@@ -889,7 +926,14 @@
   (relu [this alpha a y]
     (vector-relu queue prog "vector_relu" alpha a y))
   (elu [this alpha a y]
-    (vector-relu queue prog "vector_elu" alpha a y)))
+    (vector-relu queue prog "vector_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (vector-random queue prog "vector_uniform_double"
+                   (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (vector-random queue prog "vector_normal_double"
+                   (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype FloatVectorEngine [ctx queue prog]
   BlockEngine
@@ -1056,7 +1100,14 @@
   (relu [this alpha a y]
     (vector-relu queue prog "vector_relu" alpha a y))
   (elu [this alpha a y]
-    (vector-relu queue prog "vector_elu" alpha a y)))
+    (vector-relu queue prog "vector_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (vector-random queue prog "vector_uniform_float"
+                   (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (vector-random queue prog "vector_normal_float"
+                   (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype DoubleGEEngine [ctx queue prog]
   BlockEngine
@@ -2076,6 +2127,9 @@
   FlowProvider
   (flow [_]
     queue)
+  RngStreamFactory
+  (create-rng-state [_ seed]
+    (atom seed))
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
@@ -2115,14 +2169,18 @@
     sy-eng))
 
 (let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cl"))
-           (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cl"))]]
+           (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cl"))
+           (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random.cl"))]
+      temp-dir (create-temp-dir "uncomplicate_")]
 
+  (copy-philox temp-dir)
+  (delete-shutdown temp-dir)
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
   (defn clblast-double [ctx queue]
     (let [wgs (max-work-group-size (queue-device queue))
           prog (build-program! (program-with-source ctx src)
-                               (format "-DREAL=double -DWGS=%d" wgs) nil)]
+                               (format "-DREAL=double -DREAL4=double4 -DWGS=%d -I%s/" wgs temp-dir) nil)]
       (->CLFactory ctx queue prog
                    (cl-double-accessor ctx queue) native-double
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
@@ -2131,7 +2189,7 @@
   (defn clblast-float [ctx queue]
     (let [wgs (max-work-group-size (queue-device queue))
           prog (build-program! (program-with-source ctx src)
-                               (format "-DREAL=float -DWGS=%d" wgs) nil)]
+                               (format "-DREAL=float -DREAL4=float4 -DWGS=%d -I%s/" wgs temp-dir) nil)]
       (->CLFactory ctx queue prog
                    (cl-float-accessor ctx queue) native-float
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)

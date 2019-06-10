@@ -8,7 +8,8 @@
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
-             [math-test :as math-test]]
+             [math-test :as math-test]
+             [random-test :as random-test]]
             [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-float clblast-double]])
   (:import clojure.lang.ExceptionInfo))
 
@@ -36,7 +37,9 @@
     (test-blas-clblast *opencl-factory*)
     (test-lapack-clblast *opencl-factory*)
     (device-test/test-all *opencl-factory*)
-    (math-test/test-all-device *opencl-factory*))
+    (math-test/test-all-device *opencl-factory*)
+    (random-test/test-all *opencl-factory*)
+    (random-test/test-all-device *opencl-factory*))
 
   (with-engine clblast-double *command-queue*
     (block-test/test-all *opencl-factory*)
@@ -44,4 +47,6 @@
     (test-blas-clblast *opencl-factory*)
     (test-lapack-clblast *opencl-factory*)
     (device-test/test-all *opencl-factory*)
-    (math-test/test-all-device *opencl-factory*)))
+    (math-test/test-all-device *opencl-factory*)
+    (random-test/test-all *opencl-factory*)
+    (random-test/test-all-device *opencl-factory*)))

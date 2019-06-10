@@ -8,7 +8,8 @@
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
-             [math-test :as math-test]])
+             [math-test :as math-test]
+             [random-test :as random-test]])
   (:import clojure.lang.ExceptionInfo))
 
 (defn test-blas-cublas [factory]
@@ -53,3 +54,13 @@
     (device-test/test-all *cuda-factory*)
     (math-test/test-all-device *cuda-factory*)
     (test-math-cuda *cuda-factory*)))
+
+(with-default
+
+  (with-engine cuda-float default-stream
+    (random-test/test-all *cuda-factory*)
+    (random-test/test-all-device *cuda-factory*))
+
+  (with-engine cuda-double default-stream
+    (random-test/test-all *cuda-factory*)
+    (random-test/test-all-device *cuda-factory*)))

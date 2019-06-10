@@ -12,9 +12,10 @@
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info
                            wrap-int wrap-double wrap-float]]
-             [utils :refer [with-check dragan-says-ex]]]
+             [utils :refer [with-check dragan-says-ex count-groups generate-seed]]]
             [uncomplicate.clojurecuda
              [core :refer :all :as cuda :exclude [device]]
+             [info :refer [driver-version]]
              [toolbox :refer [launch-reduce! read-int]]]
             [uncomplicate.clojurecuda.internal
              [protocols :refer [extract wrap ptr]]
@@ -40,6 +41,17 @@
 
 (defn ^:private not-available []
   (throw (UnsupportedOperationException. "Not available in CUDA. Please use a host instance.")))
+
+;; =============== Random Number Generators =================================
+
+(defn ^:private vector-random [modl hstream kernel-name rng-state a b ^CUBlockVector x]
+  (when (< 0 (.dim x))
+    (let [da (data-accessor x)]
+      (with-release [random-kernel (function modl kernel-name)]
+        (launch! random-kernel (grid-1d (count-groups 4 (.dim x))) hstream
+                 (parameters (.dim x) (long (swap! rng-state inc)) (.wrapPrim da a) (.wrapPrim da b)
+                             (.buffer x) (.offset x) (.stride x))))))
+  x)
 
 ;; =============== Common vector macros and functions =======================
 
@@ -899,7 +911,14 @@
   (relu [this alpha a y]
     (vector-relu modl hstream "vector_relu" alpha a y))
   (elu [this alpha a y]
-    (vector-relu modl hstream "vector_elu" alpha a y)))
+    (vector-relu modl hstream "vector_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (vector-random modl hstream "vector_uniform_double"
+                   (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (vector-random modl hstream "vector_normal_double"
+                   (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype FloatVectorEngine [cublas-handle modl hstream]
   BlockEngine
@@ -1066,7 +1085,14 @@
   (relu [this alpha a y]
     (vector-relu modl hstream "vector_relu" alpha a y))
   (elu [this alpha a y]
-    (vector-relu modl hstream "vector_elu" alpha a y)))
+    (vector-relu modl hstream "vector_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (vector-random modl hstream "vector_uniform_float"
+                   (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (vector-random modl hstream "vector_normal_float"
+                   (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype DoubleGEEngine [cublas-handle modl hstream]
   BlockEngine
@@ -2064,6 +2090,9 @@
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
+  RngStreamFactory
+  (create-rng-state [_ seed]
+    (atom seed))
   Factory
   (create-vector [this n init]
     (let-release [res (cu-block-vector this n)]
@@ -2119,15 +2148,30 @@
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cu")))]
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cu"))
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu")))
+      standard-headers {"stdint.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/stdint.h"))
+                        "float.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/float.h"))}
+      philox-headers
+      (merge standard-headers
+             {"Random123/philox.h"
+              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/philox.h"))
+              "features/compilerfeatures.h"
+              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/compilerfeatures.h"))
+              "nvccfeatures.h"
+              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/nvccfeatures.h"))
+              "array.h" (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/array.h"))})]
 
   (JCublas2/setExceptionsEnabled false)
 
   (defn cublas-double [ctx hstream]
     (in-context
      ctx
-     (with-release [prog (compile! (program src) ["-DREAL=double" "-DACCUMULATOR=double"
-                                                  "-DCAST(fun)=fun" "-arch=compute_30"])]
+     (with-release [prog (compile! (program src philox-headers)
+                                   ["-DREAL=double" "-DACCUMULATOR=double"
+                                    "-DCAST(fun)=fun" "-arch=compute_30"
+                                    #_"-use_fast_math" "-default-device"
+                                    (format "-DCUDART_VERSION=%s" (driver-version))])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)]
@@ -2138,8 +2182,11 @@
   (defn cublas-float [ctx hstream]
     (in-context
      ctx
-     (with-release [prog (compile! (program src) ["-DREAL=float" "-DACCUMULATOR=float"
-                                                  "-DCAST(fun)=fun##f" "-arch=compute_30"])]
+     (with-release [prog (compile! (program src philox-headers)
+                                   ["-DREAL=float" "-DACCUMULATOR=float"
+                                    "-DCAST(fun)=fun##f" "-arch=compute_30"
+                                    #_"-use_fast_math" "-default-device"
+                                    (format "-DCUDART_VERSION=%s" (driver-version))])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)]

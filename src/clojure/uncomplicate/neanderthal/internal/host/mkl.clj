@@ -39,10 +39,10 @@
 
 ;; =========== MKL RNG routines =========================================================
 
-(defmacro with-mkl-check [expr]
+(defmacro with-mkl-check [expr res]
   ` (let [err# ~expr]
       (if (zero? err#)
-        err#
+        ~res
         (throw (ex-info "MKL error." {:error-code err#})))))
 
 (defn ^:private params-buffer [^RealBufferAccessor da a b]
@@ -53,20 +53,18 @@
 
 (defmacro vector-random
   ([method stream a b x]
-   `(with-release [params-buf# (params-buffer (data-accessor ~x) ~a ~b)]
-      (vector-random ~method ~stream params-buf# ~x)))
-  ([method stream params-buf x]
-   `(if (and (< 0 (.dim ~x)) (= 0 (.offset ~x)) (= 1 (.stride ~x)))
-      (do
-        (with-mkl-check (~method ~stream (.dim ~x) (.buffer ~x) ~params-buf))
-        ~x)
-      (dragan-says-ex "This engine cannot generate random entries in vectors with stride or offset. Sorry."
-                      {:v (info ~x)}))))
+   `(if (< 0 (.dim ~x))
+      (if (= 1 (.stride ~x))
+        (with-mkl-check (~method ~stream (.dim ~x) (.buffer ~x) (.offset ~x) ~a ~b)
+          ~x)
+        (dragan-says-ex "This engine cannot generate random entries in host vectors with stride. Sorry."
+                        {:v (info ~x)}))
+      ~x)))
 
 (defn create-stream-ars5 [seed]
   (let-release [stream (direct-buffer Long/BYTES)]
-    (with-mkl-check (MKL/vslNewStreamARS5 seed stream))
-    stream))
+    (with-mkl-check (MKL/vslNewStreamARS5 seed stream)
+      stream)))
 
 (def ^:private default-rng-stream (create-stream-ars5 (generate-seed)))
 
@@ -445,10 +443,6 @@
                      (initialize float-accessor (create-data-source float-accessor 1024) 1.0)
                      1024 0 1))
 
-(def ^:private zeroone-double (params-buffer double-accessor 0 1))
-
-(def ^:private zeroone-float (params-buffer float-accessor 0 1))
-
 (deftype DoubleVectorEngine []
   Blas
   (swap [_ x y]
@@ -629,18 +623,12 @@
   (elu [this alpha a y]
     (vector-elu this alpha a y))
   RandomNumberGenerator
-  (rand-uniform [_ rng-stream a b x]
-    (if (and a b)
-      (vector-random MKL/vdRngUniform (or rng-stream default-rng-stream) a b
-                     ^RealBlockVector x)
-      (vector-random MKL/vdRngUniform (or rng-stream default-rng-stream)
-                     zeroone-double ^RealBlockVector x)))
+  (rand-uniform [_ rng-stream lower upper x]
+    (vector-random MKL/vdRngUniform (or rng-stream default-rng-stream)
+                   lower upper ^RealBlockVector x))
   (rand-normal [_ rng-stream mu sigma x]
-    (if (and mu sigma)
-      (vector-random MKL/vdRngGaussian (or rng-stream default-rng-stream)
-                     mu sigma ^RealBlockVector x)
-      (vector-random MKL/vdRngGaussian (or rng-stream default-rng-stream)
-                     zeroone-double ^RealBlockVector x))))
+    (vector-random MKL/vdRngGaussian (or rng-stream default-rng-stream)
+                   mu sigma ^RealBlockVector x)))
 
 (deftype FloatVectorEngine []
   Blas
@@ -821,18 +809,12 @@
   (elu [this alpha a y]
     (vector-elu this alpha a y))
   RandomNumberGenerator
-  (rand-uniform [_ rng-stream a b x]
-    (if (and a b)
-      (vector-random MKL/vsRngUniform (or rng-stream default-rng-stream)
-                     a b ^RealBlockVector x)
-      (vector-random MKL/vsRngUniform (or rng-stream default-rng-stream)
-                     zeroone-float ^RealBlockVector x)))
+  (rand-uniform [_ rng-stream lower upper x]
+    (vector-random MKL/vsRngUniform (or rng-stream default-rng-stream)
+                   lower upper ^RealBlockVector x))
   (rand-normal [_ rng-stream mu sigma x]
-    (if (and mu sigma)
-      (vector-random MKL/vsRngGaussian (or rng-stream default-rng-stream)
-                     mu sigma ^RealBlockVector x)
-      (vector-random MKL/vsRngGaussian (or rng-stream default-rng-stream)
-                     zeroone-float ^RealBlockVector x))))
+    (vector-random MKL/vsRngGaussian (or rng-stream default-rng-stream)
+                   mu sigma ^RealBlockVector x)))
 
 ;; ================= General Matrix Engines ====================================
 

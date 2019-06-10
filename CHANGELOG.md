@@ -2,6 +2,7 @@
 
 # 0.25.0
 
+* Random number generation of vector entries with uniformly and normally distributed numbers.
 * Renamed aux to auxil to work around a Windows bug of not allowing files named aux.
 
 # 0.23.0
