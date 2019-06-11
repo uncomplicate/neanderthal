@@ -52,6 +52,6 @@
                    :dependencies [[midje "1.9.8"]]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
-  :source-paths ["src/clojure" "src/opencl" "src/cuda" "src/device"]
+  :source-paths ["src/clojure" "src/device"]
   :java-source-paths ["src/java"]
   :test-paths ["test"])

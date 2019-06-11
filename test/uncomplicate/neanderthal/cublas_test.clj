@@ -44,7 +44,9 @@
     (test-lapack-cublas *cuda-factory*)
     (device-test/test-all *cuda-factory*)
     (math-test/test-all-device *cuda-factory*)
-    (test-math-cuda *cuda-factory*))
+    (test-math-cuda *cuda-factory*)
+    (random-test/test-all *cuda-factory*)
+    (random-test/test-all-device *cuda-factory*))
 
   (with-engine cuda-double default-stream
     (block-test/test-all *cuda-factory*)
@@ -53,14 +55,6 @@
     (test-lapack-cublas *cuda-factory*)
     (device-test/test-all *cuda-factory*)
     (math-test/test-all-device *cuda-factory*)
-    (test-math-cuda *cuda-factory*)))
-
-(with-default
-
-  (with-engine cuda-float default-stream
-    (random-test/test-all *cuda-factory*)
-    (random-test/test-all-device *cuda-factory*))
-
-  (with-engine cuda-double default-stream
+    (test-math-cuda *cuda-factory*)
     (random-test/test-all *cuda-factory*)
     (random-test/test-all-device *cuda-factory*)))

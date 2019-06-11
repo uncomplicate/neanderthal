@@ -2168,8 +2168,8 @@
   (sy-engine [_]
     sy-eng))
 
-(let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cl"))
-           (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cl"))
+(let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/blas-plus.cl"))
+           (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/vect-math.cl"))
            (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random.cl"))]
       temp-dir (create-temp-dir "uncomplicate_")]
 

@@ -2147,8 +2147,8 @@
       (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream) handle))))
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/blas-plus.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/vect-math.cu"))
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/blas-plus.cu"))
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu")))
       standard-headers {"stdint.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/stdint.h"))
                         "float.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/float.h"))}
