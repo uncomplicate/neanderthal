@@ -17,3 +17,13 @@
   (with-default-engine
     (with-release [gpu-x (cuv 1 -2 5)]
       (asum gpu-x))))
+(use 'uncomplicate.neanderthal.random)
+(use 'uncomplicate.neanderthal.cuda)
+(use 'uncomplicate.neanderthal.core)
+
+(with-default
+  (with-default-engine
+    (with-release [gpu-x (entry! (cuge 48 48) 1.0)
+                   ]
+      (sum gpu-x)
+      )))

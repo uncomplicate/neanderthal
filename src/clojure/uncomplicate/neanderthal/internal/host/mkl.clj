@@ -61,6 +61,16 @@
                         {:v (info ~x)}))
       ~x)))
 
+(defmacro matrix-random
+  ([method stream a b x]
+   `(if (< 0 (.dim ~x))
+      (if (.isGapless (storage ~x))
+        (with-mkl-check (~method ~stream (.dim ~x) (.buffer ~x) (.offset ~x) ~a ~b)
+          ~x)
+        (dragan-says-ex "This engine cannot generate random entries in host matrices with stride. Sorry."
+                        {:v (info ~x)}))
+      ~x)))
+
 (defn create-stream-ars5 [seed]
   (let-release [stream (direct-buffer Long/BYTES)]
     (with-mkl-check (MKL/vslNewStreamARS5 seed stream)
@@ -1057,7 +1067,14 @@
   (relu [this alpha a y]
     (matrix-relu this alpha a y))
   (elu [this alpha a y]
-    (matrix-elu this alpha a y)))
+    (matrix-elu this alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper a]
+    (matrix-random MKL/vdRngUniform (or rng-stream default-rng-stream)
+                   lower upper ^RealGEMatrix a))
+  (rand-normal [_ rng-stream mu sigma a]
+    (matrix-random MKL/vdRngGaussian (or rng-stream default-rng-stream)
+                   mu sigma ^RealGEMatrix a)))
 
 (deftype FloatGEEngine []
   Blas
@@ -1294,7 +1311,14 @@
   (relu [this alpha a y]
     (matrix-relu this alpha a y))
   (elu [this alpha a y]
-    (matrix-elu this alpha a y)))
+    (matrix-elu this alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper a]
+    (matrix-random MKL/vsRngUniform (or rng-stream default-rng-stream)
+                   lower upper ^RealGEMatrix a))
+  (rand-normal [_ rng-stream mu sigma a]
+    (matrix-random MKL/vsRngGaussian (or rng-stream default-rng-stream)
+                   mu sigma ^RealGEMatrix a)))
 
 ;; ================= Triangular Matrix Engines =================================
 

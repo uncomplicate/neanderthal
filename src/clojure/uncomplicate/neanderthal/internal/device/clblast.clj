@@ -68,6 +68,20 @@
         (enq-kernel! queue random-kernel (work-size-1d (count-groups 4 (.dim x)))))))
   x)
 
+(defn ^:private ge-random [queue prog kernel-name rng-state a b ^CLGEMatrix x]
+  (when (< 0 (.dim x))
+    (let [da (data-accessor x)
+          stor (full-storage x)]
+      (with-release [random-kernel (kernel prog kernel-name)]
+        (set-args! random-kernel 0
+                   (wrap-int (.sd stor))
+                   (wrap-long (swap! rng-state inc))
+                   (.wrapPrim da a)
+                   (.wrapPrim da b)
+                   (.buffer x) (wrap-int (.offset x)) (wrap-int (.ld stor)))
+        (enq-kernel! queue random-kernel (work-size-2d (count-groups 4 (.sd stor)) (.fd stor))))))
+  x)
+
 ;; =============== Common vector macros and functions =======================
 
 (defn ^:private vector-equals [ctx queue prog ^CLBlockVector x ^CLBlockVector y]
@@ -1267,7 +1281,14 @@
   (relu [this alpha a y]
     (ge-relu queue prog "ge_relu" alpha a y))
   (elu [this alpha a y]
-    (ge-relu queue prog "ge_elu" alpha a y)))
+    (ge-relu queue prog "ge_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (ge-random queue prog "ge_uniform_double"
+               (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (ge-random queue prog "ge_normal_double"
+               (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype FloatGEEngine [ctx queue prog]
   BlockEngine
@@ -1427,7 +1448,14 @@
   (relu [this alpha a y]
     (ge-relu queue prog "ge_relu" alpha a y))
   (elu [this alpha a y]
-    (ge-relu queue prog "ge_elu" alpha a y)))
+    (ge-relu queue prog "ge_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (ge-random queue prog "ge_uniform_float"
+               (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (ge-random queue prog "ge_normal_float"
+               (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype DoubleTREngine [ctx queue prog]
   BlockEngine

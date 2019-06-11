@@ -146,7 +146,7 @@ extern "C" {
         if (threadIdx.y == 0) {
             const ACCUMULATOR sum2 = block_reduction_sum((valid) ? sum : 0.0);
             if (threadIdx.x == 0) {
-                acc[blockDim.x * blockIdx.y + blockIdx.x] = sum2;
+                acc[gridDim.x * blockIdx.y + blockIdx.x] = sum2;
             }
         }
     }
@@ -318,7 +318,7 @@ extern "C" {
         if (threadIdx.y == 0) {
             const ACCUMULATOR sum2 = block_reduction_sum((check) ? sum : 0.0);
             if (threadIdx.x == 0) {
-                acc[blockDim.x * blockIdx.y + blockIdx.x] = sum2;
+                acc[gridDim.x * blockIdx.y + blockIdx.x] = sum2;
             }
         }
     }
@@ -336,7 +336,7 @@ extern "C" {
         if (threadIdx.y == 0) {
             const ACCUMULATOR sum2 = block_reduction_sum((check) ? sum : 0.0);
             if (threadIdx.x == 0) {
-                acc[blockDim.x * blockIdx.y + blockIdx.x] = sum2;
+                acc[gridDim.x * blockIdx.y + blockIdx.x] = sum2;
             }
         }
     }

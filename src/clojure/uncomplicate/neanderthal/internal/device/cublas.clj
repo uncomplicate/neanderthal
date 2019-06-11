@@ -49,8 +49,20 @@
     (let [da (data-accessor x)]
       (with-release [random-kernel (function modl kernel-name)]
         (launch! random-kernel (grid-1d (count-groups 4 (.dim x))) hstream
-                 (parameters (.dim x) (long (swap! rng-state inc)) (.wrapPrim da a) (.wrapPrim da b)
+                 (parameters (.dim x) (long (swap! rng-state inc))
+                             (.wrapPrim da a) (.wrapPrim da b)
                              (.buffer x) (.offset x) (.stride x))))))
+  x)
+
+(defn ^:private ge-random [modl hstream kernel-name rng-state a b ^CUGEMatrix x]
+  (when (< 0 (.dim x))
+    (let [da (data-accessor x)
+          stor (full-storage x)]
+      (with-release [random-kernel (function modl kernel-name)]
+        (launch! random-kernel (grid-2d (count-groups 4 (.sd stor)) (.fd stor)) hstream
+                 (parameters (.sd stor) (.fd stor) (long (swap! rng-state inc))
+                             (.wrapPrim da a) (.wrapPrim da b)
+                             (.buffer x) (.offset x) (.ld stor))))))
   x)
 
 ;; =============== Common vector macros and functions =======================
@@ -1255,7 +1267,14 @@
   (relu [this alpha a y]
     (ge-relu modl hstream "ge_relu" alpha a y))
   (elu [this alpha a y]
-    (ge-relu modl hstream "ge_elu" alpha a y)))
+    (ge-relu modl hstream "ge_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (ge-random modl hstream "ge_uniform_double"
+               (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (ge-random modl hstream "ge_normal_double"
+               (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype FloatGEEngine [cublas-handle modl hstream]
   BlockEngine
@@ -1418,7 +1437,14 @@
   (relu [this alpha a y]
     (ge-relu modl hstream "ge_relu" alpha a y))
   (elu [this alpha a y]
-    (ge-relu modl hstream "ge_elu" alpha a y)))
+    (ge-relu modl hstream "ge_elu" alpha a y))
+  RandomNumberGenerator
+  (rand-uniform [_ rng-stream lower upper x]
+    (ge-random modl hstream "ge_uniform_float"
+               (or rng-stream (atom (generate-seed))) lower upper x))
+  (rand-normal [_ rng-stream mu sigma x]
+    (ge-random modl hstream "ge_normal_float"
+               (or rng-stream (atom (generate-seed))) mu sigma x)))
 
 (deftype DoubleTREngine [cublas-handle modl hstream]
   BlockEngine
