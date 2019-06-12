@@ -16,10 +16,10 @@
 (defn rng-state
   "Creates a random number generator state compatible with a factory.
   Optionally accepts the seed for reproducibility."
-  ([factory ^long seed]
-   (api/create-rng-state factory seed))
-  ([factory]
-   (rng-state factory (generate-seed))))
+  ([fact ^long seed]
+   (api/create-rng-state (api/factory fact) seed))
+  ([fact]
+   (rng-state fact (generate-seed))))
 
 (defn rand-normal!
   "Populates vector `x` with normally distributed random numbers.
