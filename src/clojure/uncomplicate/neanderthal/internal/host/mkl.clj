@@ -73,7 +73,7 @@
 
 (defn create-stream-ars5 [seed]
   (let-release [stream (direct-buffer Long/BYTES)]
-    (with-mkl-check (MKL/vslNewStreamARS5 seed stream)
+    (with-mkl-check (MKL/vslNewStreamARS5 (unchecked-int seed) stream)
       stream)))
 
 (def ^:private default-rng-stream (create-stream-ars5 (generate-seed)))

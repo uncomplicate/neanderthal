@@ -7,8 +7,9 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns hello-world.native
-  (:require [uncomplicate.neanderthal.core :refer :all]
-            [uncomplicate.neanderthal.native :refer :all]))
+  (:require [uncomplicate.neanderthal
+             [core :refer :all]
+             [native :refer :all]]))
 
 ;; We create two matrices...
 (def a (dge 2 3 [1 2 3 4 5 6]))
