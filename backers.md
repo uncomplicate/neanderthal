@@ -40,3 +40,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Felipe Gerard
 - Adam Hill
 - Yiu Ming Huynh
+- Nick Jones
