@@ -1174,7 +1174,7 @@
   "A pure variant of [[axpy!]] that does not change any of the arguments. The result is a new instance."
   ([x y]
    (let-release [res (copy y)]
-     (axpy! 1.0 x (copy y))))
+     (axpy! 1.0 x res)))
   ([x y z]
    (if (number? x)
      (let-release [res (copy z)]
