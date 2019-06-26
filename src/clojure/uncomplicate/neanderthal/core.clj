@@ -1174,7 +1174,7 @@
   "A pure variant of [[axpy!]] that does not change any of the arguments. The result is a new instance."
   ([x y]
    (let-release [res (copy y)]
-     (axpy! 1.0 x (copy y))))
+     (axpy! 1.0 x res)))
   ([x y z]
    (if (number? x)
      (let-release [res (copy z)]
@@ -1309,7 +1309,7 @@
    (if-not (triangular? a)
      (mv 1.0 a x)
      (let-release [res (copy x)]
-       (mv! a x)))))
+       (mv! a res)))))
 
 (defn rk!
   "Rank-1 update. Multiplies vector `x` with transposed vector `y`, scales the resulting matrix
