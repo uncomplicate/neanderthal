@@ -252,11 +252,12 @@
 
 (defmacro ^:private transfer-seq-matrix [source destination]
   `(if (sequential? (first ~source))
-     (let [m# (.mrows ~destination)]
+     (let [n# (.fd (storage ~destination))
+           nav# (navigator ~destination)]
        (loop [i# 0 s# ~source]
-         (if (and s# (< i# m#))
+         (if (and s# (< i# n#))
            (do
-             (transfer! (first s#) (.row ~destination i#))
+             (transfer! (first s#) (.stripe nav# ~destination i#))
              (recur (inc i#) (next s#)))
            ~destination)))
      (let [da# (real-accessor ~destination)

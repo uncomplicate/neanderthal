@@ -265,7 +265,7 @@
     (let [e1 (first this)
           n (count this)]
       (if (sequential? e1)
-        (create-ge fact (count e1) (count this) true false)
+        (create-ge fact (count e1) n true false)
         (create-vector fact n false))))
   (native [this]
     this))

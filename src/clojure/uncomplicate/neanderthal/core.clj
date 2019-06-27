@@ -269,10 +269,7 @@
   ([factory ^long m ^long n]
    (ge factory m n nil nil))
   ([factory a]
-   (cond
-     (instance? Matrix a) (ge factory (.mrows ^Matrix a) (.ncols ^Matrix a) a nil)
-     (sequential? a) (ge factory (count a) (apply max (map count a)) a nil)
-     :default (dragan-says-ex "This type of source is not supported without specifying matrix dimensions."))))
+   (transfer (api/factory factory) a)))
 
 (defn view-ge
   "Attach a GE matrix to the raw data of `a`, with optional dimensions and/or stride multiplicator.
