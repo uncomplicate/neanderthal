@@ -120,7 +120,7 @@
    (permute-cols! a jpiv true)))
 
 (defn permute-cols
-  "Rearranges columnss of a given matrix as specified by a permutation vector `jpiv`
+  "Rearranges columns of a given matrix as specified by a permutation vector `jpiv`
   forward or backward."
   ([a jpiv forward]
    (let-release [a-copy (copy a)]
