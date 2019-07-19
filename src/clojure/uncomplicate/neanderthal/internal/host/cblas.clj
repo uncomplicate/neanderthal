@@ -344,14 +344,16 @@
 (defmacro tr-mm
   ([method alpha a b left]
    `(let [nav# (navigator ~b)
-          reg# (region ~a)]
-      (~method (.layout nav#) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT) (.uplo reg#)
-       (if (= nav# (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+          reg# (region ~a)
+          nav-eq# (= nav# (navigator ~a))]
+      (~method (.layout nav#) (if ~left CBLAS/SIDE_LEFT CBLAS/SIDE_RIGHT)
+       (if nav-eq# (.uplo reg#) (flip-uplo (.uplo reg#)))
+       (if nav-eq# CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
        (.diag reg#) (.mrows ~b) (.ncols ~b)
        ~alpha (.buffer ~a) (.offset ~a) (.stride ~a) (.buffer ~b) (.offset ~b) (.stride ~b))
       ~b))
   ([a]
-   `(dragan-says-ex "Out-of-place mv! is not supported for TR matrices." {:a (info ~a)})))
+   `(dragan-says-ex "Out-of-place mm! is not supported for TR matrices." {:a (info ~a)})))
 
 ;; =============== Common SY matrix macros and functions ============================
 
