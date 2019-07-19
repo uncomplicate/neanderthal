@@ -13,16 +13,10 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.internal
              [api :refer [engine mm mv iamax swap copy scal axpy axpby region navigator storage]]
-             [common :refer [real-accessor check-eq-navigators]]
+             [common :refer [real-accessor check-eq-navigators flip-uplo]]
              [navigation :refer [accu-layout full-storage]]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
            [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))
-
-(defn flip-uplo ^long [^long uplo]
-  (case uplo
-    121 122
-    122 121
-    (throw (ex-info "Invalid CBLAS uplo"))))
 
 ;; =============== Common vector engine  macros and functions ==================
 

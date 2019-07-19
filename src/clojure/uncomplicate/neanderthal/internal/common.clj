@@ -66,6 +66,14 @@
 (defn ^RealBufferAccessor real-accessor [a]
   (data-accessor a))
 
+;; ======================== Uplo ======================================================
+
+(defn flip-uplo ^long [^long uplo]
+  (case uplo
+    121 122
+    122 121
+    (throw (ex-info "Invalid CBLAS uplo"))))
+
 ;; ======================== LU factorization ==========================================
 
 (def ^{:private true :const true} f* (double-fn *))

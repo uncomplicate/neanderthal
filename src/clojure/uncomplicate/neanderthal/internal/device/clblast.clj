@@ -26,7 +26,7 @@
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage]]
-             [common :refer [check-eq-navigators]]]
+             [common :refer [check-eq-navigators flip-uplo]]]
             [uncomplicate.neanderthal.internal.device
              [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [clblock :refer :all]
@@ -512,11 +512,12 @@
 (defmacro ^:private tr-mm
   ([queue method alpha a b left]
    `(with-check error
-      (let [reg# (region ~a)]
+      (let [reg# (region ~a)
+            nav-eq# (= (navigator ~a) (navigator ~b))]
         (~method (.layout (navigator ~b))
          (if ~left CLBlastSide/CLBlastSideLeft CLBlastSide/CLBlastSideRight)
-         (.uplo reg#)
-         (if (= (navigator ~a) (navigator ~b))
+         (if nav-eq# (.uplo reg#) (flip-uplo (.uplo reg#)))
+         (if nav-eq#
            CLBlastTranspose/CLBlastTransposeNo
            CLBlastTranspose/CLBlastTransposeYes)
          (.diag reg#) (.mrows ~b) (.ncols ~b)
@@ -542,11 +543,12 @@
 (defmacro ^:private sy-mm
   ([queue method alpha a b beta c left]
    `(with-check error
-      (let [nav-c# (navigator ~c)]
+      (let [nav-c# (navigator ~c)
+            uplo# (if (= nav-c# (navigator ~a)) (.uplo (region ~a)) (flip-uplo (.uplo (region ~a))))]
         (if (= nav-c# (navigator ~b))
           (~method (.layout nav-c#)
            (if ~left CLBlastSide/CLBlastSideLeft CLBlastSide/CLBlastSideRight)
-           (.uplo (region ~a)) (.mrows ~c) (.ncols ~c)
+           uplo# (.mrows ~c) (.ncols ~c)
            ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
            (extract (.buffer ~b)) (.offset ~b) (.stride ~b)
            ~beta (extract (.buffer ~c)) (.offset ~c) (.stride ~c)
