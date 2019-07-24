@@ -1353,7 +1353,7 @@
 
   If called with only 2 matrices, `a` and `b`, multiplies matrix `a` by a matrix `b`, and puts the
   result in the one that is a GE matrix. In this case, exactly one of `a` or `b` has to be,
-  and one **not** be a GE matrix, but TR, or SY, or a matrix type that supports in-place multiplication.
+  and one **not** be a GE matrix, but TR, or a matrix type that supports in-place multiplication.
   Scaling factors `alpha` and/or `beta` may be left out.
 
   The contents of the destination matrix will be changed.

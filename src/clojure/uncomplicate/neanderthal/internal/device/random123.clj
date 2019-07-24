@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.internal.device.random123
   (:require [uncomplicate.commons
              [core :refer [release]]
-             [utils :refer [dragan-says-ex delete]]])
+             [utils :refer [dragan-says-ex delete create-temp-dir]]])
   (:import [java.nio.file Files Path CopyOption FileVisitOption]
            java.nio.file.attribute.FileAttribute))
 
@@ -46,3 +46,7 @@
     (doseq [d ds]
       (when (realized? d) (release @d)))
     (when (realized? ds) (release ds))))
+
+(defonce temp-dir (doto (create-temp-dir "uncomplicate_")
+                    (copy-philox)
+                    (delete-shutdown)))

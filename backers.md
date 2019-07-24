@@ -25,7 +25,6 @@ The list of people who pledged monthly support on the first day when I announced
 
 - Daniel Slutsky
 - Robert Luo
-- Matthew Chadwick
 - Nicolas Kassis
 - Felix Dahlke
 - Matthew F Marks
@@ -38,6 +37,5 @@ The list of people who pledged monthly support on the first day when I announced
 - Niko Nyrhilä
 - Erwin Rooijakkers
 - Felipe Gerard
-- Adam Hill
 - Yiu Ming Huynh
 - Nick Jones

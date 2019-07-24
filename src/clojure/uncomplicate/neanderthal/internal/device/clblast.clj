@@ -12,7 +12,7 @@
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info
                            wrap-int wrap-long wrap-double wrap-float]]
-             [utils :refer [with-check dragan-says-ex generate-seed create-temp-dir count-groups]]]
+             [utils :refer [with-check dragan-says-ex generate-seed count-groups]]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device]]
@@ -30,7 +30,7 @@
             [uncomplicate.neanderthal.internal.device
              [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [clblock :refer :all]
-             [random123 :refer [copy-philox delete-shutdown]]])
+             [random123 :refer [temp-dir]]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
            [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide CLBlastLayout
             CLBlastTriangle]
@@ -2200,11 +2200,8 @@
 
 (let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/blas-plus.cl"))
            (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/vect-math.cl"))
-           (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random.cl"))]
-      temp-dir (create-temp-dir "uncomplicate_")]
+           (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random.cl"))]]
 
-  (copy-philox temp-dir)
-  (delete-shutdown temp-dir)
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
   (defn clblast-double [ctx queue]
