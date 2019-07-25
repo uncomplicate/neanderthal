@@ -1,14 +1,8 @@
 [New books available for subscription]("https://aiprobook.com")
 
-    <div class="h-25 d-inline-block">
-        <a href="https://aiprobook.com/deep-learning-for-programmers">
-            <img src="http://aiprobook.com/img/dlfp-cover.png" style="max-width: 150px;"></img>
-        </a>
-        <a href="https://aiprobook.com/numerical-linear-algebra-for-programmers">
-            <img src="http://aiprobook.com/img/lafp-cover.png" style="max-width: 150px;"></img>
-        </a>
-    </div>
+<img src="http://aiprobook.com/img/dlfp-cover.png" alt="Deep Learning for Programmers" title="Deep Learning for Programmers" align="left" width="250"/>
 
+<img src="http://aiprobook.com/img/lafp-cover.png" alt="Numerical Linear Algebra for Programmers" title="Numerical Linear Algebra for Programmers" align="left" width="250"/>
 
 # Neanderthal
 
