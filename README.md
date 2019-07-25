@@ -1,8 +1,8 @@
-[New books available for subscription]("https://aiprobook.com")
+[New books available for subscription](https://aiprobook.com)
 
 <img src="http://aiprobook.com/img/dlfp-cover.png" alt="Deep Learning for Programmers" title="Deep Learning for Programmers" align="left" width="250"/>
 
-<img src="http://aiprobook.com/img/lafp-cover.png" alt="Numerical Linear Algebra for Programmers" title="Numerical Linear Algebra for Programmers" align="left" width="250"/>
+<img src="http://aiprobook.com/img/lafp-cover.png" alt="Numerical Linear Algebra for Programmers" title="Numerical Linear Algebra for Programmers" align="right" width="250"/>
 
 # Neanderthal
 
