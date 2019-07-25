@@ -1,3 +1,15 @@
+[New books available for subscription]("https://aiprobook.com")
+
+    <div class="h-25 d-inline-block">
+        <a href="https://aiprobook.com/deep-learning-for-programmers">
+            <img src="http://aiprobook.com/img/dlfp-cover.png" style="max-width: 150px;"></img>
+        </a>
+        <a href="https://aiprobook.com/numerical-linear-algebra-for-programmers">
+            <img src="http://aiprobook.com/img/lafp-cover.png" style="max-width: 150px;"></img>
+        </a>
+    </div>
+
+
 # Neanderthal
 
 [Adopt your pet function](https://dragan.rocks/articles/18/Patreon-Announcement-Adopt-a-Function) and [become a patron](https://patreon.com/draganrocks).
