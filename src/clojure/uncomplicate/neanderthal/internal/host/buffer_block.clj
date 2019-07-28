@@ -466,6 +466,8 @@
     ofst)
   (stride [_]
     strd)
+  (isContiguous [_]
+    (= 1 strd))
   (dim [_]
     n)
   (entry [_ i]
@@ -671,6 +673,8 @@
     ofst)
   (stride [_]
     strd)
+  (isContiguous [_]
+    (= 1 strd))
   (dim [_]
     n)
   (entry [_ i]
@@ -930,6 +934,8 @@
     ofst)
   (stride [_]
     (.ld stor))
+  (isContiguous [_]
+    (.isGapless stor))
   (dim [_]
     (* m n))
   (mrows [_]
@@ -1183,6 +1189,8 @@
     ofst)
   (stride [_]
     (.ld stor))
+  (isContiguous [_]
+    false)
   (dim [_]
     (* n n))
   (mrows [_]
@@ -1489,6 +1497,8 @@
     ofst)
   (stride [_]
     (.ld stor))
+  (isContiguous [_]
+    (.isGapless stor))
   (dim [_]
     (* m n))
   (mrows [_]
@@ -2069,6 +2079,8 @@
     ofst)
   (stride [_]
     1)
+  (isContiguous [_]
+    true)
   (dim [_]
     (* n n))
   (mrows [_]

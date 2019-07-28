@@ -26,8 +26,8 @@
 (defn row? [a]
   (.isRowMajor (api/navigator a)))
 
-(defn gapless? [a]
-  (.isGapless (api/storage a)))
+(defn contiguous? [^Block x]
+  (.isContiguous x))
 
 (defn wrap-prim [^DataAccessor accessor ^double v]
   (.wrapPrim accessor v))

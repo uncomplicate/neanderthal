@@ -14,7 +14,7 @@
              [test :refer :all]]
             [uncomplicate.neanderthal
              [core :refer :all]
-             [block :refer [buffer]]])
+             [block :refer [buffer contiguous?]]])
   (:import  [clojure.lang IFn$LLD IFn$LD IFn$DD ExceptionInfo]))
 
 (defn test-create [factory]
@@ -128,6 +128,32 @@
      (seq (transfer! a1 (double-array 2))) => (seq (double-array [1 2]))
      (transfer! b1 a0) => a2
      (transfer! a2 b0) => b2)))
+
+(defn test-vctr-contiguous [factory]
+  (let [x (vctr factory 4)
+        a (ge factory 4 4 (range 16))]
+    (facts
+     "Vector contiguous tests."
+     (contiguous? x) => true
+     (contiguous? (row a 0)) => false
+     (contiguous? (row a 1)) => false
+     (contiguous? (col a 0)) => true
+     (contiguous? (col a 1)) => true)))
+
+(defn test-ge-contiguous [factory]
+  (let [a (ge factory 4 4 (range 16))]
+    (facts
+     "GE contiguous tests."
+     (contiguous? a) => true
+     (contiguous? (submatrix a 0 0 4 2)) => true
+     (contiguous? (submatrix a 0 1 4 2)) => true
+     (contiguous? (submatrix a 0 1 3 2)) => false)))
+
+(defn test-uplo-contiguous [factory uplo]
+  (let [a (uplo factory 4 (range 16))]
+    (facts
+     "Uplo contiguous tests."
+     (contiguous? a) => false)))
 
 ;; ================= Vector  ========================================
 
@@ -444,7 +470,10 @@
   (test-equality factory)
   (test-release factory)
   (test-vctr-op factory)
-  (test-ge-op factory))
+  (test-ge-op factory)
+  (test-vctr-contiguous factory)
+  (test-ge-contiguous factory)
+  (test-uplo-contiguous factory tr))
 
 (defn test-both-factories [factory0 factory1]
   (test-vctr-transfer factory0 factory1)
@@ -452,6 +481,7 @@
   (test-tr-transfer factory0 factory1))
 
 (defn test-host [factory]
+  (test-uplo-contiguous factory sy)
   (test-vctr-ifn factory)
   (test-vctr-functor factory)
   (test-vctr-fold factory)

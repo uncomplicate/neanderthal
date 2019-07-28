@@ -16,4 +16,5 @@ public interface Block {
 
     long stride ();
 
+    boolean isContiguous ();
 }
