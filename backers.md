@@ -35,7 +35,6 @@ The list of people who pledged monthly support on the first day when I announced
 - the-alchemist
 - Huahai Yang
 - Niko Nyrhilä
-- Erwin Rooijakkers
 - Felipe Gerard
 - Yiu Ming Huynh
 - Nick Jones
