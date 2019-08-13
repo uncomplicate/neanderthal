@@ -43,7 +43,7 @@
       (= double data-type) native-double
       (= int data-type) native-int
       (= long data-type) native-long
-      :default (dragan-says-ex "You requested a factory for and unsupported data type."
+      :default (dragan-says-ex "You requested a factory for an unsupported data type."
                                {:requested data-type :available [:float :int :double :long
                                                                  Float/TYPE Double/TYPE
                                                                  Integer/TYPE Long/TYPE]}))))
