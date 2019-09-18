@@ -28,7 +28,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Nicolas Kassis
 - Felix Dahlke
 - Matthew F Marks
-- Thom Lawrence
 - Fed Reggiardo
 - Gurvesh Sanghera
 - Bernard Hugueney
@@ -38,3 +37,5 @@ The list of people who pledged monthly support on the first day when I announced
 - Felipe Gerard
 - Yiu Ming Huynh
 - Nick Jones
+- Marcus Lindner
+- John Collins

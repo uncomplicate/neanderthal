@@ -591,10 +591,10 @@
     x)
   Viewable
   (view [x]
-    (view-vctr x))
-  DenseContainer
-  (view-vctr [_]
     (real-block-vector fact false buf n ofst strd))
+  DenseContainer
+  (view-vctr [x]
+    x)
   (view-vctr [_ stride-mult]
     (real-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   (view-ge [_]
@@ -833,7 +833,7 @@
     a)
   Viewable
   (view [a]
-    (view-ge a))
+    (real-ge-matrix fact false buf m n ofst nav stor reg))
   DenseContainer
   (view-vctr [a]
     (if (.isGapless stor)
