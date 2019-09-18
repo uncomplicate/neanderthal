@@ -157,6 +157,9 @@
   Changes to the resulting object affect the source `x`, even the parts of data that might not
   be accessible by `x`. Use with caution!
 
+  view always creates a new instance that reuses the master's data,
+  but releasing a view never releases the master data.
+
       (view (buffer (vctr float-factory 1 2 3)))
   "
   ([x]
@@ -194,6 +197,8 @@
 
   Changes to the resulting object affect the source `x`, even the parts of data that might not
   be accessible by `x`. Use with caution!
+
+  view-vctr might return the master object itself, or create a new instance that reuses the master's data.
 
       (view-vctr (ge float-factory 2 3 (range 6)))
   "
@@ -277,6 +282,8 @@
   Changes to the resulting object affect the source `a`, even the parts of data that might not
   be accessible by a. Use with caution!
 
+  view-ge might return the master object itself, or create a new instance that reuses the master's data.
+
       (view-ge (tr float-factory 3 (range 6)))
   "
   ([a]
@@ -335,6 +342,8 @@
 
   Options: `:uplo` (`upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
+  view-tr creates a new instance that reuses the master's data.
+
       (view-tr (ge float-factory 3 2 (range 6)))
   "
   ([a]
@@ -380,6 +389,8 @@
   accessible by a. Use with caution!
 
   Options: `:uplo` (`upper` or `:lower`)..
+
+  view-sy creates a new instance that reuses the master's data.
 
       (view-sy (tr float-factory 3 (range 6)))
   "
