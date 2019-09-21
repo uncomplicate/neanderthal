@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.26.0
+
+* view and view-* behavior made more consistent.
+
 # 0.25.0
 
 * Random number generation of vector entries with uniformly and normally distributed numbers.
