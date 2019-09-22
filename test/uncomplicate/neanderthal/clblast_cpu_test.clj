@@ -24,7 +24,9 @@
   (real-test/test-tr-trs factory tr)
   (real-test/test-tr-sv factory tr))
 
-(let [devs (devices (decent-platform (platforms) :cpu) :cpu)]
+(let [devs (some-> (platforms)
+                   (decent-platform :cpu)
+                   (devices :cpu))]
   (when (< 0 (count devs))
     (with-release [dev (first devs)
                    ctx (context [dev])

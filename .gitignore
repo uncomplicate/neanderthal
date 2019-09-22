@@ -17,3 +17,5 @@ hs_*.log
 *.so
 */nrepl-port
 */target
+/.idea
+*.iml
