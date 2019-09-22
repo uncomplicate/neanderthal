@@ -442,7 +442,7 @@
 
 ;; ============================ Primitive function extensions ==================
 
-(extend-type IFn
+(extend-type Object
   ReductionFunction
   (vector-reduce
     ([this init x]
