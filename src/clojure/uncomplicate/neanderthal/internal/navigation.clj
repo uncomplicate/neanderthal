@@ -526,10 +526,12 @@
    (case type
      :sy sy-default
      :tr (if diag-unit unit-default zero-default)
+     :gb zero-default
      :sb sb-default
      :tb (if diag-unit unit-default zero-default)
      :sp sy-default
      :tp (if diag-unit unit-default zero-default)
+     :td zero-default
      :gt zero-default
      :gd zero-default
      :dt zero-default
@@ -540,6 +542,7 @@
    (case type
      :sy sy-default
      :tr zero-default
+     :gb zero-default
      :sb sb-default
      :tb zero-default
      :sp sy-default
