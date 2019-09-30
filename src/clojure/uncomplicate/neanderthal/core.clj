@@ -475,7 +475,7 @@
        (sb factory n (max 0 (min (dec n) (max (.kl reg) (.ku reg))))  source nil)))))
 
 (defn tb
-  "Creates a triangular banded matrix (SB) in the context of `factory`, with `n` rows and columns,
+  "Creates a triangular banded matrix (TB) in the context of `factory`, with `n` rows and columns,
   `k` sub (lower)  or super (upper) diagonals.
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
@@ -520,8 +520,8 @@
   a matrix, or another structure that can be transferred to the context of `factory`.
   If `source` is a matrix, dimensions `n` and `k` are not mandatory.
 
-  The internal structure can be specified with a map of options: `:uplo` (`:upper` or `:lower`),
-  and `:diag` (`:unit` or `:non-unit`).
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
+  `:uplo` (`:upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
   If the provided indices or source do not make sense, throws ExceptionInfo.
 
@@ -550,8 +550,8 @@
   a matrix, or another structure that can be transferred to the context of `factory`.
   If `source` is a matrix, dimensions `n` and `k` are not mandatory.
 
-  The internal structure can be specified with a map of options: `:uplo` (`:upper` or `:lower`).
-
+  The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
+  and `:uplo` (`:upper` or `:lower`).
 
   If the provided indices or source do not make sense, throws ExceptionInfo.
 
