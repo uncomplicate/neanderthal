@@ -1840,7 +1840,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
+    (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog symmetric-match? alpha a beta b))
   Lapack
@@ -2008,7 +2008,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
+    (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog symmetric-match? alpha a beta b))
   Lapack

@@ -1426,7 +1426,7 @@
       (let [k (max (.kl reg) (.ku reg))]
         (real-banded-matrix fact false buf n n ofst nav
                             (uplo-storage (.isColumnMajor nav) n k (.isLower reg))
-                            (sb-region n k (.isLower reg) false) :sb sb-default (sb-engine fact)))
+                            (sb-region n k (.isLower reg)) :sb sb-default (sb-engine fact)))
       (dragan-says-ex "GB cannot be viewed as a SB due to specific factorization requirements.")))
   MemoryContext
   (compatible? [_ b]
@@ -1444,7 +1444,7 @@
     :cpu)
   Monoid
   (id [a]
-    (real-banded-matrix fact 0 (.isColumnMajor nav) matrix-type))
+    (real-banded-matrix fact 0 0 0 0 (.isColumnMajor nav) matrix-type))
   Applicative
   (pure [_ v]
     (let-release [res (real-banded-matrix fact 1 1 nav stor reg matrix-type default eng)]

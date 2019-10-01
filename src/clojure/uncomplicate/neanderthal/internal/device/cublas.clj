@@ -144,8 +144,8 @@
           (~method ~cublas-handle (.dim ~x)
            (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
            (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y)
-           (offset da# (extract (.buffer ~z)) (.offset ~z)) (.stride ~z)))
-        ~z)
+           (offset da# (extract (.buffer ~z)) (.offset ~z)) (.stride ~z))
+        ~z))
       ~z)))
 
 (defmacro ^:private vector-dot [cublas-handle array-fn method x y]
