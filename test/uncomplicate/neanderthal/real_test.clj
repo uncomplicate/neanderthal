@@ -10,6 +10,7 @@
   (:require [midje.sweet :refer [facts throws => roughly truthy]]
             [uncomplicate.commons.core :refer [release with-release let-release]]
             [uncomplicate.fluokitten.core :refer [fmap!]]
+            [uncomplicate.fluokitten.protocols :refer [id]]
             [uncomplicate.neanderthal
              [core :refer :all]
              [linalg :refer :all]
@@ -33,6 +34,60 @@
                         ac (ge factory 2 3 [0 0 0 0 0 0])]
            (zero a) => ac
            (identical? a (zero a)) => false)))
+
+(defn test-diag-equal [factory]
+  (facts "Test equals on diagonal matrix types"
+         (with-release
+           [gd-a (gd factory 5 [100 200 300 400 500])
+            gd-copy (gd factory gd-a)
+            gd-zero (gd factory 5)
+            gd-diff (gd factory 5 [100 200 300 600 500])
+            st-a (st factory 5 [100 200 300 400 500 5 6 7 8])
+            st-copy (st factory st-a)
+            st-zero (st factory 5)
+            st-diff (st factory 5 [100 200 300 400 500 5 6 9 8])
+            gt-a (gt factory 5 [100 200 300 400 500 6 7 8 9 10 11 12 13])
+            gt-copy (gt factory 5 gt-a)
+            gt-zero (gt factory 5)
+            gt-diff (gt factory 5 [100 200 300 400 500 6 7 8 9 10 11 14 13])
+            dt-a (dt factory 5 [100 200 300 400 500 6 7 8 9 10 11 12 13])
+            dt-copy (dt factory 5 dt-a)
+            dt-zero (dt factory 5)
+            dt-diff (dt factory 5 [100 200 300 400 500 6 7 8 9 10 11 14 13])]
+
+           (= gd-a gd-a) => true
+           (= gd-a gd-copy) => true
+           (= gd-a gd-zero) => false
+           (= gd-a gd-diff) => false
+
+           (= st-a st-a) => true
+           (= st-a st-copy) => true
+           (= st-a st-zero) => false
+           (= st-a st-diff) => false
+
+           (= gt-a gt-a) => true
+           (= gt-a gt-copy) => true
+           (= gt-a gt-zero) => false
+           (= gt-a gt-diff) => false
+
+           (= dt-a dt-a) => true
+           (= dt-a dt-copy) => true
+           (= dt-a dt-zero) => false
+           (= dt-a dt-diff) => false
+
+           (= gt-a dt-a) => true
+           (= gt-a dt-copy) => true
+           (= gt-a dt-zero) => false
+           (= gt-a dt-diff) => false
+
+           (= gd-zero st-zero) => false
+           (= gd-zero gt-zero) => false
+           (= gd-zero dt-zero) => false
+           (= st-zero gt-zero) => false
+           (= st-zero dt-zero) => false
+           (= gt-zero dt-zero) => true
+
+           (= (id gd-a) (id st-a) (id gt-a) (id dt-a) (id gt-a)) => true)))
 
 ;; ============= Matrices and Vectors ======================================
 
