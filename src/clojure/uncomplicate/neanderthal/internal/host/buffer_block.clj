@@ -412,7 +412,7 @@
     :cpu)
   EngineProvider
   (engine [_]
-    nil)
+    eng)
   FactoryProvider
   (factory [_]
     fact)
