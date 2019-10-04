@@ -1075,17 +1075,17 @@
   "
   ([^Vector x ^Vector y ^double c ^double s]
    (if (and (api/compatible? x y))
-     (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0) (f= 1.0 (+ (pow c 2) (pow s 2))))
+     (if (and (<= -1.0 c 1.0) (<= -1.0 s 1.0) (f= 1.0 (+ (pow c 2.0) (pow s 2.0))))
        (api/rot (api/engine x) x y c s)
        (dragan-says-ex "You cannot rotate vectors with c and s that are not sin and cos."
                        {:c c :s s :errors
                         (cond-into []
                                    (not (<= -1.0 c 1.0)) "c is not between -1.0 and 1.0"
                                    (not (<= -1.0 s 1.0)) "s is not between -1.0 and 1.0"
-                                   (not (f= 1.0 (+ (pow c 2) (pow s 2)))) "s^2 + c^2 is not 1.0")}))
+                                   (not (f= 1.0 (+ (pow c 2.0) (pow s 2.0)))) "s^2 + c^2 is not 1.0")}))
      (dragan-says-ex "You cannot rotate incompatible vectors." {:x (info x) :y (info y)})))
   ([x y ^double c]
-   (rot! x y c (sqrt (- 1.0 (pow c 2))))))
+   (rot! x y c (sqrt (- 1.0 (pow c 2.0))))))
 
 (defn rotg!
   "Computes the parameters for a givens rotation and puts them as entries of a 4-element vector `abcs`,
