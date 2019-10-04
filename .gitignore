@@ -19,3 +19,4 @@ hs_*.log
 */target
 /.idea
 *.iml
+/.clj-kondo/.cache

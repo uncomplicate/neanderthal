@@ -1,0 +1,14 @@
+{:lint-as {uncomplicate.commons.core/let-release               clojure.core/let
+           uncomplicate.commons.core/with-release              clojure.core/with-open
+           uncomplicate.neanderthal.cuda/with-engine           clojure.core/with-open
+           uncomplicate.neanderthal.cuda/with-default-engine   clojure.core/with-open
+           uncomplicate.neanderthal.opencl/with-engine         clojure.core/with-open
+           uncomplicate.neanderthal.opencl/with-default-engine clojure.core/with-open}
+ :linters {:unused-referred-var {:level :off}
+           :unused-binding      {:level :off}
+           :redefined-var       {:level :off}
+           :refer-all           {:level :off}
+           :cond-else           {:level :off}
+           :unused-namespace    {:level :off}
+           :unresolved-symbol   {:exclude [(uncomplicate.neanderthal.internal.navigation/and-layout)]}}
+ :output  {:exclude-files ["^./examples/" "./project.clj" "src/clojure/uncomplicate/neanderthal/vect_math.clj"]}}
