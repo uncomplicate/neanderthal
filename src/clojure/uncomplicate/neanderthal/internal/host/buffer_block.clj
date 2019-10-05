@@ -272,7 +272,10 @@
 (defmacro ^:private transfer-vector-matrix [source destination]
   `(let [stor# (storage ~destination)]
      (if (and (compatible? ~source ~destination) (.isGapless stor#))
-       (copy (engine ~source) ~source (view-vctr ~destination))
+       (let [dst-view# ^VectorSpace (view-vctr ~destination)
+             n# (min (.dim ~source) (.dim dst-view#))]
+         (when (pos? n#)
+           (subcopy (engine ~source) ~source dst-view# 0 n# 0)))
        (let [da# (real-accessor ~destination)
              nav# (navigator ~destination)
              reg# (region ~destination)
@@ -287,8 +290,10 @@
 (defmacro ^:private transfer-matrix-vector [source destination]
   `(let [stor# (storage ~source)]
      (if (and (compatible? ~destination ~source) (.isGapless stor#))
-       (let [src# (view-vctr ~source)]
-         (copy (engine src#) src# ~destination))
+       (let [src-view# ^VectorSpace (view-vctr ~source)
+             n# (min (.dim src-view#) (.dim ~destination))]
+         (when (pos? n#)
+           (subcopy (engine src-view#) src-view# ~destination 0 n# 0)))
        (let [da# (real-accessor ~source)
              nav# (navigator ~source)
              reg# (region ~source)
@@ -328,8 +333,10 @@
 
 (defmacro ^:private transfer-vector-vector [source destination]
   `(do
-     (if (and (compatible? ~source ~destination) (fits? ~source ~destination))
-       (copy! ~source ~destination)
+     (if (compatible? ~source ~destination)
+       (when-not (identical? ~source ~destination)
+         (let [n# (min (.dim ~source) (.dim ~destination))]
+           (subcopy (engine ~source) ~source ~destination 0 n# 0)))
        (dotimes [i# (min (.dim ~source) (.dim ~destination))]
          (.set ~destination i# (.entry ~source i#))))
      ~destination))
