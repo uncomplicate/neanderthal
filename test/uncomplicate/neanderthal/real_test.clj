@@ -85,6 +85,23 @@
          (entry (alter! (vctr factory [1 2 3]) 1 val+) 1) => 3.0
          (alter! (vctr factory [1 2 3]) val-ind+) => (vctr factory [1 3 5])))
 
+(defn test-vctr-int-entry [factory]
+  (facts "Vector entry."
+         (entry (vctr factory [1 2 3]) 1) => 2
+         (entry (vctr factory []) 0) => (throws ExceptionInfo)))
+
+(defn test-vctr-int-entry! [factory]
+  (facts "Vector entry!."
+         (entry (entry! (vctr factory [1 2 3]) 1 77) 1) => 77))
+
+(defn test-vctr-int-alter! [factory]
+  (facts "Vector alter!."
+         (entry (alter! (vctr factory [1 2 3]) 1
+                        (fn ^long [^long val] (inc val))) 1) => 3
+         (alter! (vctr factory [1 2 3])
+                 (fn ^long [^long i ^long val] (long (+ i val)))) => (vctr factory [1 3 5])))
+
+
 ;;================ BLAS functions =========================================
 
 (defn test-vctr-dot [factory]
@@ -2850,6 +2867,13 @@
   (test-tr-asum factory tr)
   (test-tr-sum factory tr)
   (test-tr-amax factory tr))
+
+(defn test-basic-int-host [factory]
+  (test-vctr-swap factory)
+  (test-vctr-copy factory)
+  (test-vctr-int-entry factory)
+  (test-vctr-int-entry! factory)
+  (test-vctr-int-alter! factory))
 
 (defn test-lapack [factory]
   (test-vctr-srt factory)
