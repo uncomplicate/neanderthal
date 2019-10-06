@@ -193,7 +193,7 @@
    (vctr factory (cons x xs))))
 
 (defn view-vctr
-  "Attach a dense vector to the raw data of `x`, with optional stride multiplicator `stride-mult`.
+  "Attach a dense vector to the raw data of `x`, with optional stride multiplier `stride-mult`.
 
   Changes to the resulting object affect the source `x`, even the parts of data that might not
   be accessible by `x`. Use with caution!
@@ -277,7 +277,7 @@
    (transfer (api/factory factory) a)))
 
 (defn view-ge
-  "Attach a GE matrix to the raw data of `a`, with optional dimensions and/or stride multiplicator.
+  "Attach a GE matrix to the raw data of `a`, with optional dimensions and/or stride multiplier.
 
   Changes to the resulting object affect the source `a`, even the parts of data that might not
   be accessible by a. Use with caution!
@@ -401,7 +401,7 @@
 
 (defn gb
   "Creates a general banded matrix (GB) in the context of `factory`, with `m` rows, `n` columns,
-  `kl` sub (lower) diagonals, and `ku` super (upper) diagonals.
+  `kl` sub (lower) diagonals and `ku` super (upper) diagonals.
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
   a matrix, or another structure that can be transferred to the context of `factory`.
@@ -436,7 +436,7 @@
 
 (defn sb
   "Creates a symmetric banded matrix (SB) in the context of `factory`, with `n` rows and columns,
-  `k` sub (lower)  or super (upper) diagonals.
+  `k` sub (lower) and 'k' super (upper) diagonals.
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
   a matrix, or another structure that can be transferred to the context of `factory`.
@@ -518,7 +518,7 @@
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
   a matrix, or another structure that can be transferred to the context of `factory`.
-  If `source` is a matrix, dimensions `n` and `k` are not mandatory.
+  If `source` is a matrix, dimension `n` is not mandatory.
 
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   `:uplo` (`:upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
@@ -548,7 +548,7 @@
 
   If `source` is provided, transfers the data to the result. `source` is typically a sequence,
   a matrix, or another structure that can be transferred to the context of `factory`.
-  If `source` is a matrix, dimensions `n` and `k` are not mandatory.
+  If `source` is a matrix, dimension `n` is not mandatory.
 
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   and `:uplo` (`:upper` or `:lower`).
