@@ -35,6 +35,8 @@
 (real-test/test-blas mkl-float)
 (real-test/test-blas-host mkl-double)
 (real-test/test-blas-host mkl-float)
+(real-test/test-basic-int-host mkl-long)
+(real-test/test-basic-int-host mkl-int)
 (real-test/test-lapack mkl-double)
 (real-test/test-lapack mkl-float)
 
