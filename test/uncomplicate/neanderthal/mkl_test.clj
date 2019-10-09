@@ -31,6 +31,9 @@
 
 (block-test/test-extend-buffer mkl-float)
 
+(real-test/test-diag-equal mkl-double)
+(real-test/test-diag-equal mkl-float)
+
 (real-test/test-blas mkl-double)
 (real-test/test-blas mkl-float)
 (real-test/test-blas-host mkl-double)

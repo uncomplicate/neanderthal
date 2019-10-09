@@ -1930,12 +1930,13 @@
   (equals [a b]
     (or (identical? a b)
         (and (instance? RealDiagonalMatrix b) (compatible? a b) (fits? a b)
-             (let [n (.fd stor)
-                   buf-b (.buffer ^RealDiagonalMatrix b)]
+             (let [n (.surface reg)
+                   buf-b (.buffer ^RealDiagonalMatrix b)
+                   ofst-b (.offset ^RealDiagonalMatrix b)]
                (loop [i 0]
                  (if (< i n)
-                   (and (= (.get da buf i) (.get da buf-b i))
-                        (recur (inc i) ))
+                   (and (= (.get da buf (+ i ofst)) (.get da buf-b (+ i ofst-b)))
+                        (recur (inc i)))
                    true))))))
   (toString [a]
     (format "#RealDiagonalMatrix[%s, type%s mxn:%dx%d, offset:%d]"

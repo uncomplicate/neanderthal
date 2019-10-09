@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.26.1"
+(defproject uncomplicate/neanderthal "0.27.0-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -41,7 +41,7 @@
   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
-                       #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]
+                       "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [lein-codox "0.10.6"]]
@@ -49,7 +49,11 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.9.9"]]}}
+                   :dependencies [[midje "1.9.9"]
+                                  [org.clojure/test.check "0.10.0"]]}
+             :java8 {:jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                          "-XX:MaxDirectMemorySize=16g"
+                                          "-XX:+UseLargePages"]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :source-paths ["src/clojure" "src/device"]
