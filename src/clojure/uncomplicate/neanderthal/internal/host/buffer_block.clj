@@ -1758,8 +1758,9 @@
       (.set ^RealPackedMatrix res 0 0 v)))
   (pure [_ v vs]
     (let [source (cons v vs)]
-      (let-release [res (real-packed-matrix fact (long (Math/sqrt (count source)))
-                                            (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) matrix-type)]
+      (let-release [res (real-packed-matrix fact 0 (long (Math/sqrt (count source)))
+                                            (.isColumnMajor nav) (.isLower reg)
+                                            (.isDiagUnit reg) matrix-type)]
         (transfer! source res))))
   Seqable
   (seq [a]
@@ -1910,6 +1911,12 @@
   ([fact n nav ^DenseStorage stor reg matrix-type default engine]
    (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
      (real-packed-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
+  ([fact n column? lower? diag-unit? matrix-type]
+   (case matrix-type
+     :tp (real-packed-matrix fact n column? lower? diag-unit?)
+     :sy (real-packed-matrix fact n column? lower?)
+     (dragan-says-ex "Packed matrices have to be either triangular or symmetric."
+                     {:matrix-type matrix-type})))
   ([fact n column? lower? diag-unit?]
    (real-packed-matrix fact n (layout-navigator column?) (packed-storage column? lower? n)
                        (band-region n lower? diag-unit?) :tp (real-default :tp diag-unit?) (tp-engine fact)))

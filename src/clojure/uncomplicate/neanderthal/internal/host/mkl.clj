@@ -4487,11 +4487,7 @@
       (dragan-says-ex "SB matrices have to be either column-major lower or row-major upper."
                       {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
   (create-packed [this n matrix-type column? lower? diag-unit? _]
-    (case matrix-type
-      :tp (real-packed-matrix this n column? lower? diag-unit?)
-      :sy (real-packed-matrix this n column? lower?)
-      (dragan-says-ex "Packed matrices have to be either triangular or symmetric."
-                      {:matrix-type matrix-type})))
+    (real-packed-matrix this n column? lower? diag-unit? matrix-type))
   (create-tp [this n column? lower? diag-unit? _]
     (real-packed-matrix this n column? lower? diag-unit?))
   (create-sp [this n column? lower? _]
