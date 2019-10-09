@@ -20,7 +20,7 @@
 (deftype BandRegion [^long m ^long n ^long kl ^long ku ^long uplo ^long diag]
   Object
   (hashCode [a]
-    (-> (hash-combine :BandRegion) (hash-combine m) (hash-combine n) (hash-combine kl) (hash-combine ku)))
+    (-> (hash :BandRegion) (hash-combine m) (hash-combine n) (hash-combine kl) (hash-combine ku)))
   (equals [a b]
     (or (identical? a b)
         (and (instance? BandRegion b)
@@ -101,7 +101,7 @@
 (deftype GERegion [^long m ^long n]
   Object
   (hashCode [a]
-    (-> (hash-combine :GERegion) (hash-combine m) (hash-combine n)))
+    (-> (hash :GERegion) (hash-combine m) (hash-combine n)))
   (equals [a b]
     (or (identical? a b)
         (and (instance? GERegion b)
@@ -266,7 +266,7 @@
      :capacity (.capacity s)})
   Object
   (hashCode [a]
-    (-> (hash-combine :FullStorage) (hash-combine sd) (hash-combine fd) (hash-combine ld)))
+    (-> (hash :FullStorage) (hash-combine sd) (hash-combine fd) (hash-combine ld)))
   (equals [a b]
     (or (identical? a b)
         (and (instance? StripeFullStorage b) (= sd (.sd ^StripeFullStorage b))
@@ -317,7 +317,7 @@
      :capacity (.capacity s)})
   Object
   (hashCode [a]
-    (-> (hash-combine :BandStorage) (hash-combine ld) (hash-combine kl) (hash-combine ku)))
+    (-> (hash :BandStorage) (hash-combine ld) (hash-combine kl) (hash-combine ku)))
   (equals [a b]
     (or (identical? a b)
         (and (instance? BandStorage b) (= h (.h ^BandStorage b))
@@ -372,7 +372,7 @@
      :capacity (.capacity s)})
   Object
   (hashCode [a]
-    (-> (hash-combine :TopPackedStorage) (hash-combine n)))
+    (-> (hash :TopPackedStorage) (hash-combine n)))
   (equals [a b]
     (or (identical? a b)
         (and (instance? TopPackedStorage b) (= n (.n ^TopPackedStorage b)))))
@@ -399,7 +399,7 @@
      :capacity (.capacity s)})
   Object
   (hashCode [a]
-    (-> (hash-combine :BottomPackedStorage) (hash-combine n)))
+    (-> (hash :BottomPackedStorage) (hash-combine n)))
   (equals [a b]
     (or (identical? a b)
         (and (instance? BottomPackedStorage b) (= n (.n ^BottomPackedStorage b)))))
@@ -434,7 +434,7 @@
      :capacity (.capacity s)})
   Object
   (hashCode [a]
-    (-> (hash-combine :TridiagonalStorage) (hash-combine n)))
+    (-> (hash :TridiagonalStorage) (hash-combine n)))
   (equals [a b]
     (or (identical? a b) (and (instance? TridiagonalStorage b) (= n (.n ^TridiagonalStorage b)))))
   (toString [a]
@@ -460,7 +460,7 @@
      :capacity (.capacity s)})
   Object
   (hashCode [a]
-    (-> (hash-combine :BidiagonalStorage) (hash-combine n)))
+    (-> (hash :BidiagonalStorage) (hash-combine n)))
   (equals [a b]
     (or (identical? a b) (and (instance? BidiagonalStorage b) (= n (.n ^BidiagonalStorage b)))))
   (toString [a]
@@ -526,10 +526,12 @@
    (case type
      :sy sy-default
      :tr (if diag-unit unit-default zero-default)
+     :gb zero-default
      :sb sb-default
      :tb (if diag-unit unit-default zero-default)
      :sp sy-default
      :tp (if diag-unit unit-default zero-default)
+     :td zero-default
      :gt zero-default
      :gd zero-default
      :dt zero-default
@@ -540,6 +542,7 @@
    (case type
      :sy sy-default
      :tr zero-default
+     :gb zero-default
      :sb sb-default
      :tb zero-default
      :sp sy-default

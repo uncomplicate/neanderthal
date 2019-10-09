@@ -72,7 +72,7 @@
   (case uplo
     121 122
     122 121
-    (throw (ex-info "Invalid CBLAS uplo"))))
+    (throw (ex-info "Invalid CBLAS uplo" {}))))
 
 ;; ======================== LU factorization ==========================================
 

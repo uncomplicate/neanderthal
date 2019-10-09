@@ -117,7 +117,7 @@
    `(if (and (< 0 (.dim ~x)) (< 0 (.dim ~y)))
       (with-check error
         (~method (.dim ~x)
-         (extract (.buffer ~x)) (.offset ~x) (.stri)
+         (extract (.buffer ~x)) (.offset ~x) (.stride ~y)
          (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
          ~c ~s
          (extract ~queue) nil)
@@ -130,7 +130,7 @@
            ofst# (.offset ~x)
            strd# (.stride ~x)]
        (with-check error
-         (~method mem# ofst mem# (+ ofst# strd#) mem#
+         (~method mem# ofst# mem# (+ ofst# strd#) mem#
           (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
           (extract ~queue) nil)
          ~x))
@@ -155,7 +155,7 @@
            ofst# (.offset ~d1d2xy)
            strd# (.stride ~d1d2xy)]
        (with-check error
-         (~method mem# ofst mem# (+ ofst# strd#)
+         (~method mem# ofst# mem# (+ ofst# strd#)
           mem# (+ ofst# (* 2 strd#)) mem# (+ ofst# (* 3 strd#))
           (extract (.buffer ~param)) (.offset ~param)
           (extract ~queue) nil)
@@ -1840,7 +1840,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
+    (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog symmetric-match? alpha a beta b))
   Lapack
@@ -2008,7 +2008,7 @@
   (sum [_ _]
     (not-available))
   (set-all [_ alpha a]
-    (uplo-set-scal queue prog symmetric-match? "uplo_set" alpha a))
+    (uplo-set-scal queue prog "uplo_set" alpha a))
   (axpby [_ alpha a beta b]
     (uplo-axpby queue prog symmetric-match? alpha a beta b))
   Lapack
