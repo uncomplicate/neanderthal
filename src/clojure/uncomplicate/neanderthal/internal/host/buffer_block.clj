@@ -1758,7 +1758,7 @@
       (.set ^RealPackedMatrix res 0 0 v)))
   (pure [_ v vs]
     (let [source (cons v vs)]
-      (let-release [res (real-packed-matrix fact 0 (long (Math/sqrt (count source)))
+      (let-release [res (real-packed-matrix fact (long (Math/sqrt (count source)))
                                             (.isColumnMajor nav) (.isLower reg)
                                             (.isDiagUnit reg) matrix-type)]
         (transfer! source res))))
