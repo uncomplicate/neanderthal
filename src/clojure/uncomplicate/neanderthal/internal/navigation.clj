@@ -36,7 +36,7 @@
      :kl kl
      :ku ku
      :surface (.surface r)
-     :uplo (if (.isLower r) :lower :upper)
+     :uplo (dec-property (.uplo r))
      :diag (if (.isDiagUnit r) :unit :non-unit)})
   Region
   (accessible [_ i j]
@@ -50,9 +50,9 @@
   (rowEnd [_ i]
     (min n (inc (+ i ku))))
   (isLower [_]
-    (< ku 1))
+    (= 122 uplo))
   (isUpper [_]
-    (< kl 1))
+    (= 121 uplo))
   (isDiagUnit [_]
     (or (= -1 kl) (= -1 ku)))
   (uplo [_]
@@ -71,6 +71,13 @@
   (flip [_]
     (BandRegion. n m ku kl (case uplo 121 122 122 121 0) diag)))
 
+(defn square-band-region
+  [^long n ^long kl ^long ku ^Boolean lower?]
+  (let [kl (min (max 0 (dec n)) kl)
+        ku (min (max 0 (dec n)) ku)]
+    (BandRegion. n n kl ku (if-not lower? 121 122)
+                 (if (or (= -1 kl) (= -1 ku)) 132 131))))
+
 (defn band-region
   ([^long m ^long n ^long kl ^long ku]
    (let [kl (min (max 0 (dec m)) kl)
@@ -80,8 +87,8 @@
   ([^long n ^Boolean lower? ^Boolean diag-unit?]
    (let [diag-pad (if diag-unit? -1 0)]
      (if lower?
-       (band-region n n (max 0 (dec n)) diag-pad)
-       (band-region n n diag-pad (max 0 (dec n))))))
+       (square-band-region n (max 0 (dec n)) diag-pad lower?)
+       (square-band-region n diag-pad (max 0 (dec n)) lower?))))
   ([^long n lower?]
    (band-region n lower? false)))
 
@@ -89,14 +96,14 @@
   ([^long n ^long k lower? diag-unit?]
    (let [diag-pad (if diag-unit? -1 0)]
      (if lower?
-       (band-region n n (min (max 0 k) (dec n)) diag-pad)
-       (band-region n n diag-pad (min (max 0 k) (dec n)))))))
+       (square-band-region n (min (max 0 k) (max 0 (dec n))) diag-pad lower?)
+       (square-band-region n diag-pad (min (max 0 k) (max 0 (dec n))) lower?)))))
 
 (defn sb-region
   ([^long n ^long k lower?]
    (if lower?
-     (band-region n n (min (max 0 k) (dec n)) 0)
-     (band-region n n 0 (min (max 0 k) (dec n))))))
+     (square-band-region n (min (max 0 k) (max 0 (dec n))) 0 lower?)
+     (square-band-region n 0 (min (max 0 k) (max 0 (dec n))) lower?))))
 
 (deftype GERegion [^long m ^long n]
   Object
@@ -116,7 +123,7 @@
      :kl (.kl r)
      :ku (.ku r)
      :surface (.surface r)
-     :uplo (if (.isLower r) :lower :upper)
+     :uplo (dec-property (.uplo r))
      :diag (if (.isDiagUnit r) :unit :non-unit)})
   Region
   (accessible [_ _ _]
