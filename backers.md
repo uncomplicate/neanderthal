@@ -28,7 +28,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Nicolas Kassis
 - Felix Dahlke
 - Matthew F Marks
-- Fed Reggiardo
 - Gurvesh Sanghera
 - Bernard Hugueney
 - the-alchemist
@@ -39,3 +38,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Nick Jones
 - Marcus Lindner
 - John Collins
+- 303 Ventures
+- Chancy Kennedy
+- Michael Glaesemann

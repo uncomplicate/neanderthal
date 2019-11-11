@@ -39,9 +39,10 @@
           :output-path "docs/codox"}
 
   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
+  ;; If building on Java 9+, uncomment the --add-opens=etc. line.
   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
-                       "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]
+                       #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [lein-codox "0.10.6"]]
@@ -50,10 +51,7 @@
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
                    :dependencies [[midje "1.9.9"]
-                                  [org.clojure/test.check "0.10.0"]]}
-             :java8 {:jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
-                                          "-XX:MaxDirectMemorySize=16g"
-                                          "-XX:+UseLargePages"]}}
+                                  [org.clojure/test.check "0.10.0"]]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :source-paths ["src/clojure" "src/device"]
