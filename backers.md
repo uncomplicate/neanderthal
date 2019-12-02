@@ -36,8 +36,11 @@ The list of people who pledged monthly support on the first day when I announced
 - Felipe Gerard
 - Yiu Ming Huynh
 - Nick Jones
-- Marcus Lindner
 - John Collins
 - 303 Ventures
 - Chancy Kennedy
 - Michael Glaesemann
+- Lukasz Hall
+- Joe Lane
+- Ethan Sherbondy
+- George Kierstein
