@@ -14,13 +14,13 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.1"]
-                 [uncomplicate/commons "0.8.0"]
+                 [uncomplicate/commons "0.9.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.9.1"]
                  [uncomplicate/neanderthal-native "0.25.0"]
-                 [uncomplicate/clojurecl "0.13.0"]
+                 [uncomplicate/clojurecl "0.14.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.5.0"]
-                 [uncomplicate/clojurecuda "0.8.0"]
-                 [org.jcuda/jcublas "10.1.0"]
+                 [uncomplicate/clojurecuda "0.9.0-SNAPSHOT"]
+                 [org.jcuda/jcublas "10.1.1"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :codox {:metadata {:doc/format :markdown}

@@ -11,14 +11,14 @@
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info
-                           wrap-int wrap-double wrap-float]]
+                           extract wrap wrap-int wrap-double wrap-float]]
              [utils :refer [with-check dragan-says-ex count-groups generate-seed count-groups]]]
             [uncomplicate.clojurecuda
              [core :refer :all :as cuda :exclude [device]]
              [info :refer [driver-version]]
              [toolbox :refer [launch-reduce! read-int]]]
             [uncomplicate.clojurecuda.internal
-             [protocols :refer [extract wrap ptr]]
+             [protocols :refer [ptr]]
              [utils :refer [error]]]
             [uncomplicate.neanderthal
              [core :refer [transfer!]]
@@ -2164,8 +2164,7 @@
     (with-check cublas-error (JCublas2/cublasGetStream handle res) (wrap (CUstream. res)))))
 
 (defn ^:private cublas-handle
-  "Creates a cuBLAS context handler on the specific `device-id` (default `0`) and `stream`
-  (default is a per-thread cuda stream)"
+  "Creates a cuBLAS context handler on the specific `stream`."
   [hstream]
   (let [handle (cublasHandle.)
         cuda-stream (cudaStream_t. ^CUStream (extract hstream))]

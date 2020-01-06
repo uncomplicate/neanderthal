@@ -652,7 +652,7 @@
     n)
   RealChangeable
   (set [x val]
-    (if (not (Double/isNaN val))
+    (if-not (Double/isNaN val)
       (set-all eng val x)
       (dotimes [i n]
         (.set x i val)))
@@ -911,7 +911,7 @@
   (isAllowed [a i j]
     true)
   (set [a val]
-    (if (not (Double/isNaN val))
+    (if-not (Double/isNaN val)
       (set-all eng val a)
       (doall-layout nav stor reg i j idx (.set da buf (+ ofst idx) val)))
     a)
@@ -1166,7 +1166,7 @@
   (isAllowed [a i j]
     (.accessible reg i j))
   (set [a val]
-    (if (not (Double/isNaN val))
+    (if-not (Double/isNaN val)
       (set-all eng val a)
       (doall-layout nav stor reg i j idx (.set da buf (+ ofst idx) val)))
     a)
@@ -1474,7 +1474,7 @@
   (isAllowed [a i j]
     (.accessible reg i j))
   (set [a val]
-    (if (not (Double/isNaN val))
+    (if-not (Double/isNaN val)
       (set-all eng val a)
       (doall-layout nav stor reg i j idx (.set da buf (+ ofst idx) val)))
     a)
@@ -1785,7 +1785,7 @@
   (isAllowed [a i j]
     (.accessible reg i j))
   (set [a val]
-    (if (not (Double/isNaN val))
+    (if-not (Double/isNaN val)
       (set-all eng val a)
       (doall-layout nav stor reg i j idx (.set da buf (+ ofst idx) val)))
     a)
@@ -2065,7 +2065,7 @@
   (isAllowed [a i j]
     (.accessible reg i j))
   (set [a val]
-    (if (not (Double/isNaN val))
+    (if-not (Double/isNaN val)
       (set-all eng val a)
       (dotimes [idx (.capacity stor)]
         (.set da buf (+ ofst idx) val)))

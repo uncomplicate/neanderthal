@@ -997,7 +997,7 @@
   See related info about [cblas_?swap](https://software.intel.com/en-us/node/520744).
   "
   [^VectorSpace x y]
-  (if (not (identical? x y))
+  (if-not (identical? x y)
     (if (and (api/compatible? x y) (api/fits? x y))
       (if (< 0 (.dim x))
         (api/swap (api/engine x) x y)
@@ -1016,7 +1016,7 @@
   See related info about [cblas_?copy](https://software.intel.com/en-us/node/520733).
   "
   ([^VectorSpace x y]
-   (if (not (identical? x y))
+   (if-not (identical? x y)
      (if (and (api/compatible? x y) (api/fits? x y))
        (if (< 0 (.dim x))
          (api/copy (api/engine x) x y)
@@ -1025,7 +1025,7 @@
                        {:x (info x) :y (info y)}))
      y))
   ([^Vector x ^Vector y offset-x length offset-y]
-   (if (not (identical? x y))
+   (if-not (identical? x y)
      (if (and (api/compatible? x y)
               (<= (+ (long offset-x) (long length)) (.dim x))
               (<= (+ (long offset-y) (long length)) (.dim y)))

@@ -10,11 +10,11 @@
     uncomplicate.neanderthal.internal.device.cublock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Info info
-                           wrap-float wrap-double wrap-int wrap-long]]
+                           Wrapper extract wrap-float wrap-double wrap-int wrap-long]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
-            [uncomplicate.clojurecuda.internal.protocols :refer [size Wrapper extract ptr with-offset]]
+            [uncomplicate.clojurecuda.internal.protocols :refer [size ptr with-offset]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -203,7 +203,7 @@
       (equals-block eng x y)
       :default false))
   (toString [this]
-    (format "#CUBlockVector[%s, n:%d, offset:%d stride:%d]" (.entryType da) n ofst strd))
+    (format "#CUBlockVector[%s, n:%d, offset:%d, stride:%d]" (.entryType da) n ofst strd))
   Info
   (info [x]
     {:entry-type (.entryType da)
@@ -213,7 +213,7 @@
      :offset ofst
      :stride strd
      :master master
-     :engine eng})
+     :engine eng});;TODO (info [x info-type])
   Releaseable
   (release [_]
     (if master (release buf) true))

@@ -31,7 +31,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Gurvesh Sanghera
 - Bernard Hugueney
 - the-alchemist
-- Huahai Yang
 - Niko Nyrhilä
 - Felipe Gerard
 - Yiu Ming Huynh

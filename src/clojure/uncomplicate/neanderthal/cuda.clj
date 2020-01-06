@@ -102,7 +102,7 @@
 
 (defn cusy
   "Creates a SY matrix using CUDA GPU engine provided to the bound [[*cuda-factory*]]
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/sy]])."
   ([^long n source options]
    (sy *cuda-factory* n source options))
   ([^long n arg]

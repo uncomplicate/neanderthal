@@ -11,15 +11,13 @@
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info
-                           wrap-int wrap-long wrap-double wrap-float]]
+                           extract wrap-int wrap-long wrap-double wrap-float]]
              [utils :refer [with-check dragan-says-ex generate-seed count-groups]]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
-            [uncomplicate.clojurecl.internal
-             [protocols :refer [extract]]
-             [constants :refer [dec-error]]]
+            [uncomplicate.clojurecl.internal.constants :refer [dec-error]]
             [uncomplicate.neanderthal
              [core :refer [transfer!]]
              [native :refer [native-float native-double]]]

@@ -10,11 +10,11 @@
     uncomplicate.neanderthal.internal.device.clblock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Mappable mmap unmap
-                           Info info wrap-float wrap-double wrap-int wrap-long]]
+                           Info info Wrapper extract wrap-float wrap-double wrap-int wrap-long]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecl.core :refer :all]
-            [uncomplicate.clojurecl.internal.protocols :refer [size extract Wrapper extract]]
+            [uncomplicate.clojurecl.internal.protocols :refer [size]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
