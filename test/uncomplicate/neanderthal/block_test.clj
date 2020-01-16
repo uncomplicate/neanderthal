@@ -58,9 +58,9 @@
            (= x1 y3) => false)))
 
 (defn test-release [factory]
-  (let [a (ge factory 2 3 [1 2 3 4 5 6])
-        col-a (col a 0)
-        sub-a (submatrix a 0 0 1 1)]
+  (with-release [a (ge factory 2 3 [1 2 3 4 5 6])
+                 col-a (col a 0)
+                 sub-a (submatrix a 0 0 1 1)]
     (facts "RealBlockVector and RealBlockMatrix release tests."
            (release col-a) => true
            (release col-a) => true
@@ -70,68 +70,68 @@
            (release a) => true)))
 
 (defn test-vctr-transfer [factory0 factory1]
-  (let [x0 (vctr factory0 4)
-        x1 (vctr factory0 [1 2 3 0])
-        x2 (vctr factory0 [22 33 3 0])
-        y0 (vctr factory1 4)
-        y1 (vctr factory1 [22 33])
-        y2 (vctr factory1 [22 33 3 0])]
+  (with-release [x0 (vctr factory0 4)
+                 x1 (vctr factory0 [1 2 3 0])
+                 x2 (vctr factory0 [22 33 3 0])
+                 y0 (vctr factory1 4)
+                 y1 (vctr factory1 [22 33])
+                 y2 (vctr factory1 [22 33 3 0])]
     (facts
      "Vector transfer tests."
      (transfer! (float-array [1 2 3]) x0) => x1
      (transfer! (double-array [1 2 3]) x0) => x1
      (transfer! (int-array [1 2 3 0 44]) x0) => x1
      (transfer! (long-array [1 2 3]) x0) => x1
-     (seq (transfer! x1 (float-array 2))) => (seq (float-array [1 2]))
-     (seq (transfer! x1 (double-array 2))) => (seq (double-array [1 2]))
+     (seq (transfer! x1 (float-array 2))) => [1.0 2.0]
+     (seq (transfer! x1 (double-array 2))) => [1.0 2.0]
      (transfer! y1 x0) => x2
      (transfer! x2 y0) => y2)))
 
 (defn test-ge-transfer [factory0 factory1]
-  (let [x0 (vctr factory0 6)
-        x1 (vctr factory0 [1 2 3 4 5 6])
-        y0 (vctr factory1 6)
-        y1 (vctr factory1 [1 2 3 4 5 6])
-        a0 (ge factory0 2 3)
-        a1 (ge factory0 2 3 [1 2 3])
-        a2 (ge factory0 2 3 [22 33])
-        b0 (ge factory1 2 3)
-        b1 (ge factory1 2 3 [22 33])
-        b2 (ge factory1 2 3 [22 33])]
+  (with-release [x0 (vctr factory0 6)
+                 x1 (vctr factory0 [1 2 3 4 5 6])
+                 y0 (vctr factory1 6)
+                 y1 (vctr factory1 [1 2 3 4 5 6])
+                 a0 (ge factory0 2 3)
+                 a1 (ge factory0 2 3 [1 2 3])
+                 a2 (ge factory0 2 3 [22 33])
+                 b0 (ge factory1 2 3)
+                 b1 (ge factory1 2 3 [22 33])
+                 b2 (ge factory1 2 3 [22 33])]
     (facts
      "GE transfer tests."
      (transfer! (float-array [1 2 3]) a0) => a1
      (transfer! (double-array [1 2 3]) a0) => a1
      (transfer! (int-array [1 2 3 0]) a0) => a1
      (transfer! (long-array [1 2 3]) a0) => a1
-     (seq (transfer! a1 (float-array 2))) => (seq (float-array [1 2]))
-     (seq (transfer! a1 (double-array 2))) => (seq (double-array [1 2]))
+     (seq (transfer! a1 (float-array 2))) => [1.0 2.0]
+     (seq (transfer! a1 (double-array 2))) => [1.0 2.0]
      (transfer! b1 a0) => a2
      (transfer! a2 b0) => b2
      (transfer! (transfer! x1 a0) x0) => x1
      (transfer! (transfer! y1 a1) y0) => y1)))
 
 (defn test-tr-transfer [factory0 factory1]
-  (let [a0 (tr factory0 3)
-        a1 (tr factory0 3 [1 2 3])
-        a2 (tr factory0 3 [22 33])
-        b0 (tr factory1 3)
-        b1 (tr factory1 3 [22 33])
-        b2 (tr factory1 3 [22 33])]
+  (with-release [a0 (tr factory0 3)
+                 a1 (tr factory0 3 [1 2 3])
+                 a2 (tr factory0 3 [22 33])
+                 b0 (tr factory1 3)
+                 b1 (tr factory1 3 [22 33])
+                 b2 (tr factory1 3 [22 33])]
     (facts
      "TR transfer tests."
      (transfer! (float-array [1 2 3]) a0) => a1
      (transfer! (double-array [1 2 3]) a0) => a1
      (transfer! (int-array [1 2 3 0]) a0) => a1
      (transfer! (long-array [1 2 3]) a0) => a1
-     (seq (transfer! a1 (float-array 2))) => (seq (float-array [1 2]))
-     (seq (transfer! a1 (double-array 2))) => (seq (double-array [1 2]))
+     (seq (transfer! a1 (float-array 2))) => [1.0 2.0]
+     (seq (transfer! a1 (double-array 2))) => [1.0 2.0]
      (transfer! b1 a0) => a2
      (transfer! a2 b0) => b2)))
 
 (defn test-vctr-contiguous [factory]
-  (let [x (vctr factory 4)
-        a (ge factory 4 4 (range 16))]
+  (with-release [x (vctr factory 4)
+                 a (ge factory 4 4 (range 16))]
     (facts
      "Vector contiguous tests."
      (contiguous? x) => true
@@ -141,7 +141,7 @@
      (contiguous? (col a 1)) => true)))
 
 (defn test-ge-contiguous [factory]
-  (let [a (ge factory 4 4 (range 16))]
+  (with-release [a (ge factory 4 4 (range 16))]
     (facts
      "GE contiguous tests."
      (contiguous? a) => true
@@ -150,7 +150,7 @@
      (contiguous? (submatrix a 0 1 3 2)) => false)))
 
 (defn test-uplo-contiguous [factory uplo]
-  (let [a (uplo factory 4 (range 16))]
+  (with-release [a (uplo factory 4 (range 16))]
     (facts
      "Uplo contiguous tests."
      (contiguous? a) => false)))
@@ -159,7 +159,7 @@
 
 (defn test-vctr-ifn [factory]
   (facts "IFn implementation for real block vector"
-         (let [x (vctr factory [1 2 3 4])]
+         (with-release [x (vctr factory [1 2 3 4])]
            (x 2) => 3.0
            (x 5) => (throws ExceptionInfo)
            (x -1) => (throws ExceptionInfo)
@@ -189,14 +189,14 @@
      v5 => t5)))
 
 (defn test-vctr-functor [factory]
-  (let [fx (fn [] (vctr factory [1 2 3 4]))
-        fy (fn [] (vctr factory [2 3 4 5 6]))
-        x (fx)
-        f (fn
-            (^double [^double x] (+ x 1.0))
-            (^double [^double x ^double y] (+ x y))
-            (^double [^double x ^double y ^double z] (+ x y z))
-            (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
+  (with-release [fx (fn [] (vctr factory [1 2 3 4]))
+                 fy (fn [] (vctr factory [2 3 4 5 6]))
+                 x (fx)
+                 f (fn
+                     (^double [^double x] (+ x 1.0))
+                     (^double [^double x ^double y] (+ x y))
+                     (^double [^double x ^double y ^double z] (+ x y z))
+                     (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
 
     (facts "Functor implementation for real block vector"
            (instance? IFn$DD f) => true
@@ -217,11 +217,11 @@
            => (throws ExceptionInfo))))
 
 (defn test-vctr-fold [factory]
-  (let [x (vctr factory [1 2 3 4])
-        *' (fn ^double [^double x ^double y]
-             (* x y))
-        +' (fn ^double [^double x ^double y]
-             (+ x y))]
+  (with-release [x (vctr factory [1 2 3 4])
+                 *' (fn ^double [^double x ^double y]
+                      (* x y))
+                 +' (fn ^double [^double x ^double y]
+                      (+ x y))]
     (facts "Fold implementation for vector"
 
            (fold x) => 10.0
@@ -229,10 +229,10 @@
            (fold +' 0.0 x) => (fold x))))
 
 (defn test-vctr-reducible [factory]
-  (let [y (vctr factory [2 3 4 5 6])
-        x (vctr factory [1 2 3 4])
-        pf1 (fn ^double [^double res ^double x] (+ x res))
-        pf1o (fn [res ^double x] (conj res x))]
+  (with-release [y (vctr factory [2 3 4 5 6])
+                 x (vctr factory [1 2 3 4])
+                 pf1 (fn ^double [^double res ^double x] (+ x res))
+                 pf1o (fn [res ^double x] (conj res x))]
     (facts "Reducible implementation for vector"
 
            (fold pf1 1.0 x) => 11.0
@@ -258,7 +258,7 @@
 
 (defn test-ge-ifn [factory]
   (facts "IFn implementation for double general matrix"
-         (let [x (ge factory 2 3 [1 2 3 4 5 6])]
+         (with-release [x (ge factory 2 3 [1 2 3 4 5 6])]
            (x 1 2) => 6.0
            (x 2 1) => (throws ExceptionInfo)
            (x -1 3) => (throws ExceptionInfo)
@@ -288,14 +288,14 @@
      v5 => t5)))
 
 (defn test-ge-functor [factory]
-  (let [fx (fn [] (ge factory 2 3 [1 2 3 4 5 6]))
-        fy (fn [] (ge factory 2 3 [2 3 4 5 6 7]))
-        x (fx)
-        f (fn
-            (^double [^double x] (+ x 1.0))
-            (^double [^double x ^double y] (+ x y))
-            (^double [^double x ^double y ^double z] (+ x y z))
-            (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
+  (with-release [fx (fn [] (ge factory 2 3 [1 2 3 4 5 6]))
+                 fy (fn [] (ge factory 2 3 [2 3 4 5 6 7]))
+                 x (fx)
+                 f (fn
+                     (^double [^double x] (+ x 1.0))
+                     (^double [^double x ^double y] (+ x y))
+                     (^double [^double x ^double y ^double z] (+ x y z))
+                     (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
     (facts "Functor implementation for real GE matrix"
            (instance? clojure.lang.IFn$DD f) => true
 
@@ -314,19 +314,19 @@
            (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws ExceptionInfo))))
 
 (defn test-ge-fold [factory]
-  (let [x (ge factory 2 3 [1 2 3 4 5 6])
-        *' (fn ^double [^double x ^double y] (double (* x y)))
-        +' (fn ^double [^double x ^double y] (double (+ x y)))]
+  (with-release [x (ge factory 2 3 [1 2 3 4 5 6])
+                 *' (fn ^double [^double x ^double y] (double (* x y)))
+                 +' (fn ^double [^double x ^double y] (double (+ x y)))]
     (facts "Fold implementation for real GE matrix"
            (fold x) => 21.0
            (fold *' 1.0 x) => 720.0
            (fold +' 0.0 x) => (fold x))))
 
 (defn test-ge-reducible [factory]
-  (let [x (ge factory 2 3 [1 2 3 4 5 6])
-        y (ge factory 2 3 [2 3 4 5 6 7])
-        pf1 (fn ^double [^double res ^double x] (+ x res))
-        pf1o (fn [res ^double x] (conj res x))]
+  (with-release [x (ge factory 2 3 [1 2 3 4 5 6])
+                 y (ge factory 2 3 [2 3 4 5 6 7])
+                 pf1 (fn ^double [^double res ^double x] (+ x res))
+                 pf1o (fn [res ^double x] (conj res x))]
     (facts "Reducible implementation for real GE matrix"
 
            (fold pf1 1.0 x) => 22.0
@@ -353,14 +353,14 @@
 ;; ================= TR matrix ========================================
 
 (defn test-tr-functor [factory]
-  (let [fx (fn [] (tr factory 3 [1 2 3 4 5 6]))
-        fy (fn [] (tr factory 3 [2 3 4 5 6 7]))
-        x (fx)
-        f (fn
-            (^double [^double x] (+ x 1.0))
-            (^double [^double x ^double y] (+ x y))
-            (^double [^double x ^double y ^double z] (+ x y z))
-            (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
+  (with-release [fx (fn [] (tr factory 3 [1 2 3 4 5 6]))
+                 fy (fn [] (tr factory 3 [2 3 4 5 6 7]))
+                 x (fx)
+                 f (fn
+                     (^double [^double x] (+ x 1.0))
+                     (^double [^double x ^double y] (+ x y))
+                     (^double [^double x ^double y ^double z] (+ x y z))
+                     (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
     (facts "Functor implementation for real TR matrix"
            (instance? clojure.lang.IFn$DD f) => true
 
@@ -379,19 +379,19 @@
            (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws ExceptionInfo))))
 
 (defn test-tr-fold [factory]
-  (let [x (tr factory 3 [1 2 3 4 5 6])
-        *' (fn ^double [^double x ^double y] (double (* x y)))
-        +' (fn ^double [^double x ^double y] (double (+ x y)))]
+  (with-release [x (tr factory 3 [1 2 3 4 5 6])
+                 *' (fn ^double [^double x ^double y] (double (* x y)))
+                 +' (fn ^double [^double x ^double y] (double (+ x y)))]
     (facts "Fold implementation for real TR matrix"
            (fold x) => 21.0
            (fold *' 1.0 x) => 720.0
            (fold +' 0.0 x) => (fold x))))
 
 (defn test-tr-reducible [factory]
-  (let [x (tr factory 3 [1 2 3 4 5 6])
-        y (tr factory 3 [2 3 4 5 6 7])
-        pf1 (fn ^double [^double res ^double x] (+ x res))
-        pf1o (fn [res ^double x] (conj res x))]
+  (with-release [x (tr factory 3 [1 2 3 4 5 6])
+                 y (tr factory 3 [2 3 4 5 6 7])
+                 pf1 (fn ^double [^double res ^double x] (+ x res))
+                 pf1o (fn [res ^double x] (conj res x))]
     (facts "Reducible implementation for real TR matrix"
 
            (fold pf1 1.0 x) => 22.0
@@ -430,9 +430,9 @@
          => (list (list) (list 1.0) (list 2.0 3.0))))
 
 (defn test-vctr-functor-laws [factory]
-  (let [pinc (double-fn (partial + 1))
-        p*100 (double-fn (partial * 100))
-        p+ (double-fn +)]
+  (with-release [pinc (double-fn (partial + 1))
+                 p*100 (double-fn (partial * 100))
+                 p+ (double-fn +)]
     (facts "Monadic laws for vector."
            (functor-law2 pinc p*100 (vctr factory [1 -199 9]))
            (functor-law2 pinc p*100 (vctr factory [1 -199 9] (vctr factory [1 -66 9])))
@@ -440,9 +440,9 @@
            (fmap-keeps-type p+ (vctr factory [100 0 -999]) (vctr factory (list 44 0 -54))))))
 
 (defn test-ge-functor-laws [factory creator]
-  (let [pinc (double-fn (partial + 1))
-        p*100 (double-fn (partial * 100))
-        p+ (double-fn +)]
+  (with-release [pinc (double-fn (partial + 1))
+                 p*100 (double-fn (partial * 100))
+                 p+ (double-fn +)]
     (facts "Monadic laws for GE matrices."
            (functor-law2 pinc p*100 (creator factory 3 2 [1 -199 9 7 8 19]))
            (functor-law2 pinc p*100 (creator factory 2 3 [1 -199 9 8 -7 -1])
@@ -451,9 +451,9 @@
            (fmap-keeps-type p+ (creator factory 0 0) (ge factory 0 0)))))
 
 (defn test-sspar-mat-functor-laws [factory creator]
-  (let [pinc (double-fn (partial + 1))
-        p*100 (double-fn (partial * 100))
-        p+ (double-fn +)]
+  (with-release [pinc (double-fn (partial + 1))
+                 p*100 (double-fn (partial * 100))
+                 p+ (double-fn +)]
     (facts "Monadic laws for UPLO and packed matrices."
            (functor-law2 pinc p*100 (creator factory 3 [1 -199 9 7 8 19]))
            (functor-law2 pinc p*100 (creator factory 2 [1 -199 9] (creator factory 2 [9 8 -7])))

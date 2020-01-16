@@ -2108,7 +2108,7 @@
   FactoryProvider
   (factory [this]
     this)
-  (native-factory [this]
+  (native-factory [_]
     native-fact)
   FlowProvider
   (flow [_]
