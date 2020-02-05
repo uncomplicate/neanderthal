@@ -58,9 +58,9 @@
            (= x1 y3) => false)))
 
 (defn test-release [factory]
-  (with-release [a (ge factory 2 3 [1 2 3 4 5 6])
-                 col-a (col a 0)
-                 sub-a (submatrix a 0 0 1 1)]
+  (let [a (ge factory 2 3 [1 2 3 4 5 6])
+        col-a (col a 0)
+        sub-a (submatrix a 0 0 1 1)]
     (facts "RealBlockVector and RealBlockMatrix release tests."
            (release col-a) => true
            (release col-a) => true

@@ -20,7 +20,7 @@
                  [uncomplicate/clojurecl "0.14.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.5.0"]
                  [uncomplicate/clojurecuda "0.9.0-SNAPSHOT"]
-                 [org.jcuda/jcublas "10.1.1"]
+                 [org.jcuda/jcublas "10.2.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :codox {:metadata {:doc/format :markdown}
