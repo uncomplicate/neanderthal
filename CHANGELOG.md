@@ -1,5 +1,10 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.27.0
+
+* Support CUDA 10.2.0
+* A bunch of bugfixes provided by Kamil Toman (katox).
+
 # 0.26.0
 
 * view and view-* behavior made more consistent.
