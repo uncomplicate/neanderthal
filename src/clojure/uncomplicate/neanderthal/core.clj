@@ -1320,8 +1320,8 @@
        (mv! a res)))))
 
 (defn rk!
-  "Rank-1 update. Multiplies vector `x` with transposed vector `y`, scales the resulting matrix
-  by scalar `alpha`, and adds it to the matrix `a`.
+  "The output product of two vectors. Multiplies vector `x` with transposed vector `y`,
+  scales the resulting matrix  by scalar `alpha`, and adds it to the matrix `a`.
 
   The contents of `a` will be changed.
 
@@ -1346,7 +1346,8 @@
    (rk! 1.0 x y a)))
 
 (defn rk
-  "Pure rank-1 update. A pure version of [[rk!]] that returns the result in a new matrix instance."
+  "Pure output product of two vectors. A pure version of [[rk!]] that returns
+  the result in a new matrix instance."
   ([alpha x y a]
    (let-release [res (copy a)]
      (rk! alpha x y res)))
