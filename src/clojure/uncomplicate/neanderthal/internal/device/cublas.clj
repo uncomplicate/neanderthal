@@ -565,7 +565,7 @@
                             (.buffer x) (.offset x) (.stride x)
                             (.buffer y) (.offset y) (.stride y)
                             (.buffer z) (.offset z) (.stride z)))))
-   y))
+   z))
 
 (defn ^:private vector-linear-frac [modl hstream ^CUBlockVector x ^CUBlockVector y
                                     scalea shifta scaleb shiftb ^CUBlockVector z]
