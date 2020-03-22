@@ -2366,6 +2366,14 @@
   [^ints source ^RealNativeMatrix destination]
   (transfer-array-matrix source destination))
 
+(defmethod transfer! [(Class/forName "[S") RealNativeMatrix]
+  [^shorts source ^RealNativeMatrix destination]
+  (transfer-array-matrix source destination))
+
+(defmethod transfer! [(Class/forName "[B") RealNativeMatrix]
+  [^bytes source ^RealNativeMatrix destination]
+  (transfer-array-matrix source destination))
+
 (defmethod transfer! [RealNativeMatrix (Class/forName "[D")]
   [^RealNativeMatrix source ^doubles destination]
   (transfer-matrix-array source destination))
@@ -2389,7 +2397,7 @@
      {:view
       (fn [buf#]
         (if (or (not ~only-direct) (buf-direct? buf#))
-          (real-block-vector ~fact false (buf-attachment ~buf-type buf#) (buf-capacity buf#) 0 1)
+          (create-vector ~fact false (buf-attachment ~buf-type buf#) (buf-capacity buf#) 0 1)
           (dragan-says-ex "This engine only supports direct buffers." {:buffer buf#})))}))
 
 (extend-type ByteBuffer
@@ -2402,7 +2410,7 @@
    (let [fact (factory fact)
          entry-width (.entryWidth ^DataAccessor (data-accessor fact))]
      (let-release [buf (mapped-buffer channel (* n entry-width) flag)]
-       (real-block-vector fact true buf n 0 1))))
+       (create-vector fact true buf n 0 1))))
   ([fact ^FileChannel channel n-or-flag]
    (if (integer? n-or-flag)
      (map-channel fact channel n-or-flag :read-write)

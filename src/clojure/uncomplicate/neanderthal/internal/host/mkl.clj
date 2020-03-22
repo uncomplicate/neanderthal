@@ -346,6 +346,22 @@
 
 ;; ============ Integer Vector Engines ============================================
 
+(defmacro byte-float [x]
+  `(let [b# (ByteBuffer/allocate Float/BYTES)
+         x# (byte ~x)]
+     (.put b# 0 x#)
+     (.put b# 1 x#)
+     (.put b# 2 x#)
+     (.put b# 3 x#)
+     (.getFloat b# 0)))
+
+(defmacro short-float [x]
+  `(let [b# (ByteBuffer/allocate Float/BYTES)
+         x# (short ~x)]
+     (.putShort b# 0 x#)
+     (.putShort b# 1 x#)
+     (.getFloat b# 0)))
+
 (deftype LongVectorEngine []
   Blas
   (swap [_ x y]
@@ -390,7 +406,7 @@
   (imin [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (set-all [_ alpha x]
-    (vctr-laset LAPACK/dlaset alpha ^RealBlockVector x)
+    (vctr-laset LAPACK/dlaset (Double/longBitsToDouble alpha) ^IntegerBlockVector x)
     x)
   (axpby [_ alpha x beta y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
@@ -439,7 +455,7 @@
   (imin [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (set-all [_ alpha x]
-    (vctr-laset LAPACK/slaset alpha ^RealBlockVector x)
+    (vctr-laset LAPACK/slaset (Float/intBitsToFloat alpha) ^IntegerBlockVector x)
     x)
   (axpby [_ alpha x beta y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
@@ -500,7 +516,7 @@
   (set-all [_ alpha x]
     (check-stride x)
     (if (= 0 (rem (dim x) 2))
-      (vctr-laset LAPACK/slaset alpha ^RealBlockVector x)
+      (vctr-laset LAPACK/slaset (short-float alpha) ^IntegerBlockVector x)
       (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
     x)
   (axpby [_ alpha x beta y]
@@ -562,7 +578,7 @@
   (set-all [_ alpha x]
     (check-stride x)
     (if (= 0 (rem (dim x) 4))
-      (vctr-laset LAPACK/slaset alpha ^RealBlockVector x)
+      (vctr-laset LAPACK/slaset (byte-float alpha) ^IntegerBlockVector x)
       (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
     x)
   (axpby [_ alpha x beta y]
@@ -4589,6 +4605,8 @@
   (create-rng-state [_ seed]
     (create-stream-ars5 seed))
   Factory
+  (create-vector [this master buf n ofst strd]
+    (real-block-vector this master buf n ofst strd))
   (create-vector [this n _]
     (real-block-vector this n))
   (create-ge [this m n column? _]
@@ -4663,6 +4681,8 @@
   (compatible? [_ o]
     (compatible? da o))
   Factory
+  (create-vector [this master buf n ofst strd]
+    (integer-block-vector this master buf n ofst strd))
   (create-vector [this n _]
     (integer-block-vector this n))
   (vector-engine [_]

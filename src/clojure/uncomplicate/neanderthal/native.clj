@@ -45,6 +45,7 @@
     :long native-long
     :short native-short
     :byte native-byte
+    :uint8 native-byte
     (cond
       (= Float/TYPE data-type) native-float
       (= Double/TYPE data-type) native-double

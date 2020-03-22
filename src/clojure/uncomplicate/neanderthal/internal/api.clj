@@ -186,7 +186,7 @@
   (matrix-map-reduce [f init g a] [f init g a b] [f init g a b c] [f init g a b c d]))
 
 (defprotocol Factory
-  (create-vector [this n init])
+  (create-vector [this n init] [this master buf n ofst strd])
   (create-ge [this m n column? init])
   (create-uplo [this n matrix-type column? lower? diag-unit? init])
   (create-tr [this n column? lower? diag-unit? init])
