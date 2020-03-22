@@ -37,6 +37,9 @@
 (def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
   "\nInteger BLAS operations are not supported. Please transform data to float or double.\n")
 
+(def ^{:no-doc true :const true} SHORT_UNSUPPORTED_MSG
+  "BLAS operation on short vectors are supported only on dimensions divisible by 2 (short) or 4 (byte).")
+
 ;; =========== MKL RNG routines =========================================================
 
 (defmacro with-mkl-check [expr res]
@@ -437,6 +440,130 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (set-all [_ alpha x]
     (vctr-laset LAPACK/slaset alpha ^RealBlockVector x)
+    x)
+  (axpby [_ alpha x beta y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
+
+(deftype ShortVectorEngine []
+  Blas
+  (swap [_ x y]
+    (check-stride x y)
+    (if (= 0 (rem (dim x) 2))
+      (vector-method CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    x)
+  (copy [_ x y]
+    (check-stride x y)
+    (if (= 0 (rem (dim x) 2))
+      (vector-method CBLAS/scopy ^IntegerBlockVector x ^IntegerBlockVector y)
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    y)
+  (dot [_ x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm1 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm2 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrmi [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (asum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (iamax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rot [_ x y c s]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotg [_ abcs]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotm [_ x y param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotmg [_ d1d2xy param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (scal [_ alpha x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (axpy [_ alpha x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  BlasPlus
+  (subcopy [_ x y kx lx ky]
+    (check-stride x y)
+    (if (= 0 (rem (long lx) 2))
+      (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                   (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+
+    y)
+  (sum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imin [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (set-all [_ alpha x]
+    (check-stride x)
+    (if (= 0 (rem (dim x) 2))
+      (vctr-laset LAPACK/slaset alpha ^RealBlockVector x)
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    x)
+  (axpby [_ alpha x beta y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
+
+(deftype ByteVectorEngine []
+  Blas
+  (swap [_ x y]
+    (check-stride x y)
+    (if (= 0 (rem (dim x) 4))
+      (vector-method CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    x)
+  (copy [_ x y]
+    (check-stride x y)
+    (if (= 0 (rem (dim x) 4))
+      (vector-method CBLAS/scopy ^IntegerBlockVector x ^IntegerBlockVector y)
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    y)
+  (dot [_ x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm1 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrm2 [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (nrmi [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (asum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (iamax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rot [_ x y c s]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotg [_ abcs]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotm [_ x y param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (rotmg [_ d1d2xy param]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (scal [_ alpha x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (axpy [_ alpha x y]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  BlasPlus
+  (subcopy [_ x y kx lx ky]
+    (check-stride x y)
+    (if (= 0 (rem (long lx) 4))
+      (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
+                   (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+
+    y)
+  (sum [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imax [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (imin [_ x]
+    (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+  (set-all [_ alpha x]
+    (check-stride x)
+    (if (= 0 (rem (dim x) 4))
+      (vctr-laset LAPACK/slaset alpha ^RealBlockVector x)
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
     x)
   (axpby [_ alpha x beta y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
@@ -4546,6 +4673,10 @@
   (def mkl-int (->MKLIntegerFactory index-fact int-accessor (->IntVectorEngine)))
 
   (def mkl-long (->MKLIntegerFactory index-fact long-accessor (->LongVectorEngine)))
+
+  (def mkl-byte (->MKLIntegerFactory index-fact byte-accessor (->ByteVectorEngine)))
+
+  (def mkl-short (->MKLIntegerFactory index-fact short-accessor (->ShortVectorEngine)))
 
   (def mkl-float
     (->MKLRealFactory index-fact float-accessor (->FloatVectorEngine)

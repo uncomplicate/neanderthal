@@ -14,13 +14,16 @@
              [real-test :as real-test]
              [math-test :as math-test]
              [random-test :as random-test]]
-            [uncomplicate.neanderthal.internal.host.mkl :refer [mkl-float mkl-double mkl-int mkl-long]]))
+            [uncomplicate.neanderthal.internal.host.mkl
+             :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]))
 
 (facts "factory-by-type test"
        (factory-by-type :float) => mkl-float
        (factory-by-type :double) => mkl-double
        (factory-by-type :int) => mkl-int
-       (factory-by-type :long) => mkl-long)
+       (factory-by-type :long) => mkl-long
+       (factory-by-type :short) => mkl-short
+       (factory-by-type :byte) => mkl-byte)
 
 (block-test/test-all mkl-double)
 (block-test/test-all mkl-float)
@@ -40,6 +43,8 @@
 (real-test/test-blas-host mkl-float)
 (real-test/test-basic-int-host mkl-long)
 (real-test/test-basic-int-host mkl-int)
+(real-test/test-basic-int-host mkl-short)
+(real-test/test-basic-int-host mkl-byte)
 (real-test/test-lapack mkl-double)
 (real-test/test-lapack mkl-float)
 

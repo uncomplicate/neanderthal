@@ -178,9 +178,6 @@
       (vctr float-factory 1 2 3)
       (vctr opencl-factory [1 2 3])
       (vctr opencl-factory (vctr float-factory [1 2 3]))
-
-  Yiu Ming Huynh's pet function.
-
   "
   ([factory source]
    (cond
@@ -817,8 +814,6 @@
   function from `uncomplicate.neanderthal.real` namespace.
 
   If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
-
-  Arthur Maciejewicz's pet function.
   "
   ([^Vector x ^long i]
    (try
@@ -908,8 +903,6 @@
   See related info about [cblas_?nrm2](https://software.intel.com/en-us/node/520738).
 
       (nrm2 (dv 1 2 3)) => 3.7416573867739413
-
-  Ghufran Syed's pet function.
   "
   [x]
   (api/nrm2 (api/engine x) x))

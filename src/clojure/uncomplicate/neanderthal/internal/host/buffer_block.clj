@@ -8,9 +8,9 @@
 
 (ns uncomplicate.neanderthal.internal.host.buffer-block
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release Info info
-                           double-fn wrap-float wrap-double wrap-int wrap-long]]
-             [utils :refer [direct-buffer slice-buffer dragan-says-ex]]]
+             [core :refer [Releaseable release let-release Info info double-fn
+                           wrap-float wrap-double wrap-int wrap-long wrap-short wrap-byte]]
+             [utils :refer [direct-buffer slice-buffer dragan-says-ex mapped-buffer]]]
             [uncomplicate.fluokitten.protocols
              :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold]]
             [uncomplicate.neanderthal
@@ -26,6 +26,7 @@
              [navigation :refer :all]]
             [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
   (:import [java.nio Buffer ByteBuffer DirectByteBuffer]
+           java.nio.channels.FileChannel
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL]
            [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
@@ -129,6 +130,89 @@
     (.putDouble buf (* Double/BYTES i) val)))
 
 (def double-accessor (->DoubleBufferAccessor))
+
+(deftype ByteBufferAccessor []
+  DataAccessor
+  (entryType [_]
+    Byte/TYPE)
+  (entryWidth [_]
+    Byte/BYTES)
+  (count [_ b]
+    (.capacity ^ByteBuffer b))
+  (createDataSource [_ n]
+    (direct-buffer n))
+  (initialize [_ b]
+    b)
+  (initialize [this b v]
+    (let [v ^double v]
+      (dotimes [i (.count this b)]
+        (.put ^ByteBuffer b i v))
+      b))
+  (wrapPrim [_ s]
+    (wrap-byte s))
+  (castPrim [_ v]
+    (byte v))
+  DataAccessorProvider
+  (data-accessor [this]
+    this)
+  MemoryContext
+  (compatible? [this o]
+    (let [da (data-accessor o)]
+      (or (identical? this da) (instance? ByteBufferAccessor da))))
+  (device [_]
+    :cpu)
+  BufferAccessor
+  (slice [_ buf k l]
+    (slice-buffer buf k l))
+  IntegerBufferAccessor
+  (get [_ buf i]
+    (long (.get buf i)))
+  (set [_ buf i val]
+    (.put buf i val)))
+
+(def byte-accessor (->ByteBufferAccessor))
+
+(deftype ShortBufferAccessor []
+  DataAccessor
+  (entryType [_]
+    Short/TYPE)
+  (entryWidth [_]
+    Short/BYTES)
+  (count [_ b]
+    (quot (.capacity ^ByteBuffer b) Short/BYTES))
+  (createDataSource [_ n]
+    (direct-buffer (* Short/BYTES n)))
+  (initialize [_ b]
+    b)
+  (initialize [this b v]
+    (let [v ^double v
+          strd Short/BYTES]
+      (dotimes [i (.count this b)]
+        (.putInt ^ByteBuffer b (* strd i) v))
+      b))
+  (wrapPrim [_ s]
+    (wrap-long s))
+  (castPrim [_ v]
+    (long v))
+  DataAccessorProvider
+  (data-accessor [this]
+    this)
+  MemoryContext
+  (compatible? [this o]
+    (let [da (data-accessor o)]
+      (or (identical? this da) (instance? ShortBufferAccessor da))))
+  (device [_]
+    :cpu)
+  BufferAccessor
+  (slice [_ buf k l]
+    (slice-buffer buf (* Short/BYTES k) (* Short/BYTES l)))
+  IntegerBufferAccessor
+  (get [_ buf i]
+    (long (.getShort buf (* Short/BYTES i))))
+  (set [_ buf i val]
+    (.putShort buf (* Short/BYTES i) val)))
+
+(def short-accessor (->ShortBufferAccessor))
 
 (deftype IntBufferAccessor []
   DataAccessor
@@ -2312,3 +2396,17 @@
   Viewable
   (view [b]
     (view (.asFloatBuffer b))))
+
+(defn map-channel
+  ([fact channel ^long n flag]
+   (let [fact (factory fact)
+         entry-width (.entryWidth ^DataAccessor (data-accessor fact))]
+     (let-release [buf (mapped-buffer channel (* n entry-width) flag)]
+       (real-block-vector fact true buf n 0 1))))
+  ([fact ^FileChannel channel n-or-flag]
+   (if (integer? n-or-flag)
+     (map-channel fact channel n-or-flag :read-write)
+     (let [n (quot (.size channel) (.entryWidth ^DataAccessor (data-accessor fact)))]
+       (map-channel fact channel n n-or-flag))))
+  ([fact channel]
+   (map-channel fact channel :read-write)))

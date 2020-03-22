@@ -142,19 +142,19 @@
 
 (defn test-vctr-int-entry [factory]
   (facts "Vector entry."
-         (entry (vctr factory [1 2 3]) 1) => 2
+         (entry (vctr factory [1 2 3 4]) 1) => 2
          (entry (vctr factory []) 0) => (throws ExceptionInfo)))
 
 (defn test-vctr-int-entry! [factory]
   (facts "Vector entry!."
-         (entry (entry! (vctr factory [1 2 3]) 1 77) 1) => 77))
+         (entry (entry! (vctr factory [1 2 3 4]) 1 77) 1) => 77))
 
 (defn test-vctr-int-alter! [factory]
   (facts "Vector alter!."
-         (entry (alter! (vctr factory [1 2 3]) 1
+         (entry (alter! (vctr factory [1 2 3 4]) 1
                         (fn ^long [^long val] (inc val))) 1) => 3
-         (alter! (vctr factory [1 2 3])
-                 (fn ^long [^long i ^long val] (long (+ i val)))) => (vctr factory [1 3 5])))
+         (alter! (vctr factory [1 2 3 4])
+                 (fn ^long [^long i ^long val] (long (+ i val)))) => (vctr factory [1 3 5 7])))
 
 
 ;;================ BLAS functions =========================================
@@ -267,11 +267,11 @@
 (defn test-vctr-swap [factory]
   (facts
    "BLAS 1 vectors swap!"
-   (with-release [x (vctr factory [1 2 3])]
-     (swp! x (vctr factory 3)) => x
-     (swp! x (vctr factory [10 20 30])) => (vctr factory [10 20 30])
+   (with-release [x (vctr factory [1 2 3 4])]
+     (swp! x (vctr factory 4)) => x
+     (swp! x (vctr factory [10 20 30 40])) => (vctr factory [10 20 30 40])
      (swp! x nil) => (throws ExceptionInfo)
-     (identical? (swp! x (vctr factory [10 20 30])) x) => true
+     (identical? (swp! x (vctr factory [10 20 30 40])) x) => true
      (swp! x (vctr factory [10 20])) => (throws ExceptionInfo))))
 
 (defn test-vctr-scal [factory]
@@ -283,18 +283,18 @@
 
 (defn test-vctr-copy [factory]
   (facts "BLAS 1 vector copy!"
-         (with-release [y (vctr factory 3)]
-           (identical? (copy! (vctr factory [1 2 3]) y) y) => true
+         (with-release [y (vctr factory 4)]
+           (identical? (copy! (vctr factory [1 2 3 4]) y) y) => true
            (identical? (copy y) y) => false
-           (copy (vctr factory [1 2 3])) => y)
+           (copy (vctr factory [1 2 3 4])) => y)
 
-         (copy! (vctr factory [10 20 30]) (vctr factory [1 2 3]))
-         => (vctr factory [10 20 30])
+         (copy! (vctr factory [10 20 30 40]) (vctr factory [1 2 3 4]))
+         => (vctr factory [10 20 30 40])
 
-         (copy! (vctr factory [1 2 3]) nil) => (throws ExceptionInfo)
-         (copy! (vctr factory [10 20 30]) (vctr factory [1])) => (throws ExceptionInfo)
+         (copy! (vctr factory [1 2 3 4]) nil) => (throws ExceptionInfo)
+         (copy! (vctr factory [10 20 30 40]) (vctr factory [1])) => (throws ExceptionInfo)
 
-         (copy (vctr factory 1 2)) => (vctr factory 1 2)))
+         (copy (vctr factory 1 2 3 4)) => (vctr factory 1 2 3 4)))
 
 (defn test-vctr-axpy [factory]
   (facts "BLAS 1 vector axpy!"
