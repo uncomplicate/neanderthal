@@ -2406,11 +2406,13 @@
     (view (.asFloatBuffer b))))
 
 (defn map-channel
-  ([fact channel ^long n flag]
+  ([fact channel n flag offset-bytes]
    (let [fact (factory fact)
          entry-width (.entryWidth ^DataAccessor (data-accessor fact))]
-     (let-release [buf (mapped-buffer channel (* n entry-width) flag)]
+     (let-release [buf (mapped-buffer channel offset-bytes (* (long n) entry-width) flag)]
        (create-vector fact true buf n 0 1))))
+  ([fact channel n flag]
+   (map-channel fact channel n flag 0))
   ([fact ^FileChannel channel n-or-flag]
    (if (integer? n-or-flag)
      (map-channel fact channel n-or-flag :read-write)

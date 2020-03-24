@@ -377,9 +377,11 @@
   "Maps a file or file channel to a vector of size `n`.
   Supported `flag`s are: `:read-write`, `:read` (or `:read-only`),
   `:private` (or `:copy-on-write`)."
-  ([fact file ^long n flag]
+  ([fact file n flag offset-bytes]
    (let [channel (if (instance? FileChannel file) file (channel file))]
-     (map-channel fact channel n flag)))
+     (map-channel fact channel n flag offset-bytes)))
+  ([fact file n flag]
+   (map-file fact file n flag 0))
   ([fact file n-or-flag]
    (let [channel (if (instance? FileChannel file) file (channel file))]
      (map-channel fact channel n-or-flag)))

@@ -1,5 +1,14 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.29.0
+
+* Support mapping a vector to a file channel.
+* Support int, long, short, and byte vectors.
+
+# 0.28.0
+
+* Fix a subtle CUDA vect-math return object bug.
+
 # 0.27.0
 
 * Support CUDA 10.2.0
