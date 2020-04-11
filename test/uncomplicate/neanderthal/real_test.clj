@@ -608,11 +608,11 @@
            (identical? (rk! 2.0 (vctr factory 1 2) (vctr factory 1 2 3) b) b))
          => true
 
-         (rk! (vctr factory 3 2 1 4) (vctr factory 1 2 3)
+         (rk! 1.0 (vctr factory 3 2 1 4) (vctr factory 1 2 3)
               (ge factory 4 3 [1 2 3 4 2 2 2 2 3 4 2 1]))
          => (ge factory 4 3 [4 4 4 8 8 6 4 10 12 10 5 13])
 
-         (rk! (vctr factory 1 2) (vctr factory 1 2 3) (ge factory 2 2 [1 2 3 5]))
+         (rk! 1.0 (vctr factory 1 2) (vctr factory 1 2 3) (ge factory 2 2 [1 2 3 5]))
          => (throws ExceptionInfo)))
 
 ;; ====================== BLAS 3 ================================
@@ -918,6 +918,15 @@
          (mv! (sy factory 3 [1 2 4 3 5 6] {:layout :row}) (vctr factory 1 2 3) (vctr factory 3))
          => (mv! (sy factory 3 [1 2 3 4 5 6] {:layout :column}) (vctr factory 1 2 3) (vctr factory 3))))
 
+(defn test-sy-rk [factory sy]
+  (facts "BLAS 2 rk!"
+         (rk! 2.0 (vctr factory 1 3 4) (sy factory 3 [10 20 30 40 50 60]))
+         => (transfer! (rk! 2.0 (vctr factory 1 3 4) (vctr factory 1 3 4)
+                            (ge factory 3 3 [10 20 30 20 40 50 30 30 60]))
+                       (sy factory 3))
+
+         (rk! 1.0 (vctr factory 1 2) (sy factory 3)) => (throws ExceptionInfo)))
+
 (defn test-sy-mm [factory]
   (facts "BLAS 3 SY mm!"
          (mm! 2.0 (sy factory 3 [1 2 3 4 5 6]) (ge factory 3 3 (range 1 10))
@@ -940,6 +949,26 @@
 
          (mm 2.0 (sy factory 3 [1 2 3 4 5 6]) (sy factory 3 [1 2 3 4 5 6])
              3.0 (sy factory 3 [1 2 3 4 5 6])) => (throws ClassCastException)))
+
+(defn test-sy-mmt [factory sy]
+  (facts "BLAS 3 SY rk (mmt!)"
+         (with-release [a1 (ge factory 3 7 (range))
+                        s1 (sy factory 3 (range))
+                        s2 (sy factory 3 (range))]
+           (mmt! 2.0 a1 3.0 s1) => (view-sy (mm! 2.0 a1 (trans a1) 3.0 (view-ge s2))))
+
+         (with-release [a1 (ge factory 3 7 (range))
+                        s1 (sy factory 3 (range))
+                        s2 (sy factory 3 (range))]
+           (mmt! 2.0 a1 3.0 (trans s1)) => (view-sy (trans (mm! 2.0 a1 (trans a1) 3.0 (view-ge (trans s2))))))
+
+         (with-release [a1 (ge factory 3 7 (range))
+                        s3 (sy factory 7 (range))
+                        s4 (sy factory 7 (range))]
+           (mmt! 2.0 (trans a1) 3.0 s3) => (view-sy (mm! 2.0 (trans a1) a1 3.0 (view-ge s4))))
+
+         (mmt! 2.0 (sy factory 3 [1 2 3 4 5 6]) 3.0 (sy factory 3 [1 2 3 4 5 6]))
+         => (throws ClassCastException)))
 
 (defn test-sy-entry [factory sy]
   (facts "Symmetric Matrix entry."
@@ -2890,6 +2919,8 @@
   (test-uplo-scal factory sy)
   (test-uplo-axpy factory sy)
   (test-sy-mv factory sy)
+  (test-sy-rk factory sy)
+  (test-sy-mmt factory sy)
   (test-sy-mm factory))
 
 (defn test-blas-host [factory]
@@ -2921,7 +2952,8 @@
   (test-tr-nrm2 factory tr)
   (test-tr-asum factory tr)
   (test-tr-sum factory tr)
-  (test-tr-amax factory tr))
+  (test-tr-amax factory tr)
+  (test-sy-rk factory sp))
 
 (defn test-basic-int-host [factory]
   (test-vctr-swap factory)
@@ -2984,16 +3016,6 @@
   (test-sy-evr factory)
   (test-ge-es factory)
   (test-ge-svd factory))
-
-(defn test-blas-sy [factory]
-  (test-sy-constructor factory)
-  (test-sy factory)
-  (test-uplo-copy factory sy)
-  (test-uplo-swap factory sy)
-  (test-uplo-scal factory sy)
-  (test-uplo-axpy factory sy)
-  (test-sy-mv factory sy)
-  (test-sy-mm factory))
 
 (defn test-blas-sy-host [factory]
   (test-sy-entry factory sy)

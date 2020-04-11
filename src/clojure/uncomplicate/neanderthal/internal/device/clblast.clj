@@ -538,6 +538,41 @@
   ([a]
    `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
 
+(defmacro ^:private sy-r
+  ([queue method alpha x y a]
+   `(let [da# (data-accessor ~a)]
+      (~method
+       (.layout (navigator ~a)) (.uplo (region ~a))
+       (.mrows ~a)
+       ~alpha (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+       (extract (.buffer ~y)) (.offset ~y) (.stride ~y)
+       (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+       (extract ~queue) nil)
+      ~a))
+  ([queue method alpha x a]
+   `(let [da# (data-accessor ~a)]
+      (~method
+       (.layout (navigator ~a)) (.uplo (region ~a))
+       (.mrows ~a)
+       ~alpha (extract (.buffer ~x)) (.offset ~x) (.stride ~x)
+       (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+       (extract ~queue) nil)
+      ~a)))
+
+(defmacro ^:private sy-rk [queue method alpha a beta c]
+  `(if (instance? CLUploMatrix ~c)
+     (let [da# (data-accessor ~a)
+           nav# (navigator ~c)]
+       (~method
+        (.layout (navigator ~c)) (.uplo (region ~c))
+        (if (= nav# (navigator ~a)) CLBlastTranspose/CLBlastTransposeNo CLBlastTranspose/CLBlastTransposeYes)
+        (.mrows ~c) (.ncols ~a)
+        ~alpha (extract (.buffer ~a)) (.offset ~a) (.stride ~a)
+        ~beta (extract (.buffer ~c)) (.offset ~c) (.stride ~c)
+        (extract ~queue) nil)
+       ~c)
+     (throw (ex-info "sy-rk is only available for symmetric matrices." {:c (info ~c)}))))
+
 (defmacro ^:private sy-mm
   ([queue method alpha a b beta c left]
    `(with-check error
@@ -1828,6 +1863,12 @@
     (sy-mv queue CLBlast/CLBlastDsymv alpha ^CLUploMatrix a ^CLBlockVector x beta ^CLBlockVector y))
   (mv [_ a x]
     (sy-mv a))
+  (rk [_ alpha x y a]
+    (sy-r queue CLBlast/CLBlastDsyr2 alpha ^CLBlockVector x ^CLBlockVector y ^CLUploMatrix a))
+  (rk [_ alpha x a]
+    (sy-r queue CLBlast/CLBlastDsyr alpha ^CLBlockVector x ^CLUploMatrix a))
+  (srk [_ alpha a beta c]
+    (sy-rk queue CLBlast/CLBlastDsyrk alpha ^CLGEMatrix a beta ^CLUploMatrix c))
   (mm [this alpha a b beta c left]
     (sy-mm queue CLBlast/CLBlastDsymm alpha ^CLUploMatrix a ^CLGEMatrix b beta ^CLGEMatrix c left))
   (mm [_ alpha a b left]
@@ -1996,6 +2037,12 @@
     (sy-mv queue CLBlast/CLBlastSsymv alpha ^CLUploMatrix a ^CLBlockVector x beta ^CLBlockVector y))
   (mv [_ a x]
     (sy-mv a))
+  (rk [_ alpha x y a]
+    (sy-r queue CLBlast/CLBlastSsyr2 alpha ^CLBlockVector x ^CLBlockVector y ^CLUploMatrix a))
+  (rk [_ alpha x a]
+    (sy-r queue CLBlast/CLBlastSsyr alpha ^CLBlockVector x ^CLUploMatrix a))
+  (srk [_ alpha a beta c]
+    (sy-rk queue CLBlast/CLBlastSsyrk alpha ^CLGEMatrix a beta ^CLUploMatrix c))
   (mm [this alpha a b beta c left]
     (sy-mm queue CLBlast/CLBlastSsymm alpha ^CLUploMatrix a ^CLGEMatrix b beta ^CLGEMatrix c left))
   (mm [_ alpha a b left]

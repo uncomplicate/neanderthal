@@ -49,7 +49,7 @@
 
   [Naming conventions for BLAS routines](https://software.intel.com/en-us/node/468382).
 
-  * Create: [[vctr]], [[view-vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[sy]], [[view-sy]],
+  * Create: [[vctr]], [[view]], [[view-vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[sy]], [[view-sy]],
   [[gb]], [[tb]], [[sb]], [[tp]], [[sp]], [[gd]], [[gt]], [[dt]], [[st]], [[raw]], [[zero]].
 
   * Move data around: [[transfer!]], [[transfer]], [[native]], [[copy!]], [[copy]], [[swp!]].
@@ -57,6 +57,8 @@
   * Clean up!: `with-release`, `let-release`, and `release` from the `uncomplicate.commons.core` namespace.
 
   * Vector: [[vctr?]], [[dim]], [[subvector]], [[entry]], [[entry!]], [[alter!]].
+
+  * Meta:  [[vspace?]], [[matrix?]], [[symmetric?]], [[triangular?]], [[matrix-type?]], [[compatible?]]
 
   * Matrix: [[matrix?]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[sy]], [[view-sy]],
   [[gb]], [[tb]], [[sb]], [[tp]], [[sp]], [[gd]], [[gt]], [[dt]], [[st]], [[mrows]], [[ncols]],
@@ -77,7 +79,7 @@
 
   * [Compute level 2](https://software.intel.com/en-us/node/468426): [[mv!]], [[mv]], [[rk!]], [[rk]].
 
-  * [Compute level 3](https://software.intel.com/en-us/node/468478): [[mm!]], [[mm]].
+  * [Compute level 3](https://software.intel.com/en-us/node/468478): [[mm!]], [[mm]], [[mmt]].
 
   "
   (:require [uncomplicate.commons
@@ -1313,12 +1315,14 @@
        (mv! a res)))))
 
 (defn rk!
-  "The output product of two vectors. Multiplies vector `x` with transposed vector `y`,
+  "The outer product of two vectors. Multiplies vector `x` with transposed vector `y`,
   scales the resulting matrix  by scalar `alpha`, and adds it to the matrix `a`.
 
   The contents of `a` will be changed.
 
   If the context or dimensions of `a`, `x` and `y` are not compatible, throws ExceptionInfo.
+
+  If `y` is not provided, uses `x` in its place, and computes a symmetric outer product.
 
   See related info about [cblas_?ger](https://software.intel.com/en-us/node/520751).
 
@@ -1335,11 +1339,17 @@
                                  (not (api/compatible? a y)) "incompatible a and y"
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)"
                                  (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")})))
-  ([x y a]
-   (rk! 1.0 x y a)))
+  ([alpha ^Vector x ^Matrix a]
+   (if (and (api/compatible? a x) (= (.mrows a) (.dim x)))
+     (api/rk (api/engine a) alpha x a)
+     (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
+                     {:a (info a) :x (info x) :errors
+                      (cond-into []
+                                 (not (api/compatible? a x)) "incompatible a and x"
+                                 (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")}))))
 
 (defn rk
-  "Pure output product of two vectors. A pure version of [[rk!]] that returns
+  "Pure outer product of two vectors. A pure version of [[rk!]] that returns
   the result in a new matrix instance."
   ([alpha x y a]
    (let-release [res (copy a)]
@@ -1347,8 +1357,42 @@
   ([alpha ^Vector x ^Vector y]
    (let-release [res (ge (api/factory x) (.dim x) (.dim y))]
      (rk! alpha x y res)))
-  ([x y]
-   (rk 1.0 x y)))
+  ([alpha-or-x ^Vector y]
+   (if (number? alpha-or-x)
+     (let-release [res (sy (api/factory y) (.dim y))]
+       (rk! alpha-or-x y res))
+     (rk 1.0 alpha-or-x y)))
+  ([x]
+   (rk 1.0 x)))
+
+(defn mmt!
+  "Multiplies matrix `a` by its transpose, scales the result by `alpha`,
+  and adds it to a symmetric matrix `c` scaled by `beta`.
+
+  If `alpha` and/or `beta` are not provided, scales by `1.0`."
+  ([alpha ^Matrix a beta ^Matrix c]
+   (if (and (api/compatible? a c) (= (.mrows a) (.mrows c)))
+     (api/srk (api/engine c) alpha a beta c)
+     (dragan-says-ex "You cannot multiply incompatible or ill-fitting matrices."
+                     {:a (info a) :c (info c) :errors
+                      (cond-into []
+                                 (not (api/compatible? a c)) "incompatible a and c"
+                                 (not (= (.mrows a) (.mrows c))) "(mrows a) is not equals to (mrows c)")})))
+  ([alpha a c]
+   (mmt! alpha a 1.0 c))
+  ([a c]
+   (mmt! 1.0 a 1.0 c)))
+
+(defn mmt
+  "Pure variant of [[mmt]], multiplies matrix `a` by its transpose and return
+  the scaled result in a new instance of SY matrix `c`.
+
+  If `alpha` is not provided, the scaling factor is `1.0`. "
+  ([alpha ^Matrix a]
+   (let-release [res (sy (api/factory a) (.mrows a))]
+     (mmt! alpha a 0.0 res)))
+  ([a]
+   (mmt 1.0 a)))
 
 ;; =========================== BLAS 3 ==========================================
 

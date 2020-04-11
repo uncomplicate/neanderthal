@@ -16,7 +16,7 @@
              [common :refer [real-accessor check-eq-navigators flip-uplo]]
              [navigation :refer [accu-layout full-storage]]])
   (:import uncomplicate.neanderthal.internal.host.CBLAS
-           [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix]))
+           [uncomplicate.neanderthal.internal.api RealVector Matrix Region GEMatrix UploMatrix]))
 
 ;; =============== Common vector engine  macros and functions ==================
 
@@ -409,6 +409,31 @@
       ~y))
   ([a]
    `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
+
+(defmacro sy-r
+  ([method alpha x y a]
+   `(do
+      (~method (.layout (navigator ~a)) (.uplo (region ~a)) (.mrows ~a)
+       ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
+       (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~a) (.offset ~a) (.stride ~a))
+      ~a))
+  ([method alpha x a]
+   `(do
+      (~method (.layout (navigator ~a)) (.uplo (region ~a)) (.mrows ~a)
+       ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
+       (.buffer ~a) (.offset ~a) (.stride ~a))
+      ~a)))
+
+(defmacro sy-rk [method alpha a beta c]
+  `(if (instance? UploMatrix ~c)
+     (let [nav# (navigator ~c)]
+       (~method (.layout nav#) (.uplo (region ~c))
+        (if (= nav# (navigator ~a)) CBLAS/TRANSPOSE_NO_TRANS CBLAS/TRANSPOSE_TRANS)
+        (.mrows ~c) (.ncols ~a)
+        ~alpha (.buffer ~a) (.offset ~a) (.stride ~a)
+        ~beta (.buffer ~c) (.offset ~c) (.stride ~c))
+       ~c)
+     (throw (ex-info "sy-rk is only available for symmetric matrices." {:c (info ~c)}))))
 
 (defmacro sy-mm
   ([method alpha a b beta c left]
@@ -1076,6 +1101,20 @@
       ~y))
   ([a]
    `(dragan-says-ex "In-place mv! is not supported by SY matrices. Now way around that." {:a (info ~a)})))
+
+(defmacro sp-r
+  ([method alpha x y a]
+   `(do
+      (~method (.layout (navigator ~a)) (.uplo (region ~a)) (.mrows ~a)
+       ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
+       (.buffer ~y) (.offset ~y) (.stride ~y) (.buffer ~a) (.offset ~a))
+      ~a))
+  ([method alpha x a]
+   `(do
+      (~method (.layout (navigator ~a)) (.uplo (region ~a)) (.mrows ~a)
+       ~alpha (.buffer ~x) (.offset ~x) (.stride ~x)
+       (.buffer ~a) (.offset ~a))
+      ~a)))
 
 (defmacro sp-mm
   ([method alpha a b beta c left]

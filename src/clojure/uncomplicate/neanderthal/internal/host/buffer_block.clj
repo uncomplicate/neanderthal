@@ -310,7 +310,7 @@
   (or (identical? a b)
       (and (instance? (class a) b)
            (= (.matrixType ^MatrixImplementation a) (.matrixType ^MatrixImplementation b))
-           (compatible? a b) (fits? a b)
+           (compatible? a b) (= (.mrows a) (.mrows b)) (= (.ncols a) (.ncols b))
            (let [nav (real-navigator a)
                  da (real-accessor a)
                  buf (.buffer a)

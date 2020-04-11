@@ -508,6 +508,37 @@
   ([a]
    `(throw (ex-info "In-place mv! is not supported for SY matrices." {:a (info ~a)}))))
 
+(defmacro ^:private sy-r
+  ([cublas-handle method alpha x y a]
+   `(let [da# (data-accessor ~a)]
+      (~method ~cublas-handle
+       (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+       (.mrows ~a)
+       (ptr ~alpha) (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+       (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y)
+       (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a))
+      ~a))
+  ([cublas-handle method alpha x a]
+   `(let [da# (data-accessor ~a)]
+      (~method ~cublas-handle
+       (if (uplo-bottom? ~a) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+       (.mrows ~a)
+       (ptr ~alpha) (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
+       (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a))
+      ~a)))
+
+(defmacro ^:private sy-rk [cublas-handle method alpha a beta c]
+  `(if (instance? CUUploMatrix ~c)
+     (let [da# (data-accessor ~a)]
+       (~method ~cublas-handle
+        (if (uplo-bottom? ~c) cublasFillMode/CUBLAS_FILL_MODE_LOWER cublasFillMode/CUBLAS_FILL_MODE_UPPER)
+        (if (.isColumnMajor (navigator ~a)) cublasOperation/CUBLAS_OP_N cublasOperation/CUBLAS_OP_T)
+        (.mrows ~c) (.ncols ~a)
+        (ptr ~alpha) (offset da# (extract (.buffer ~a)) (.offset ~a)) (.stride ~a)
+        (ptr ~beta) (offset da# (extract (.buffer ~c)) (.offset ~c)) (.stride ~c))
+       ~c)
+     (throw (ex-info "sy-rk is only available for symmetric matrices." {:c (info ~c)}))))
+
 (defmacro ^:private sy-mm
   ([cublas-handle method alpha a b beta c left]
    `(if (< 0 (.dim ~a))
@@ -1811,6 +1842,15 @@
            (double alpha) ^CUUploMatrix a ^CUBlockVector x (double beta) ^CUBlockVector y))
   (mv [_ a x]
     (sy-mv a))
+  (rk [_ alpha x y a]
+    (sy-r cublas-handle JCublas2/cublasDsyr2
+          (double alpha) ^CUBlockVector x ^CUBlockVector y ^CUUploMatrix a))
+  (rk [_ alpha x a]
+    (sy-r cublas-handle JCublas2/cublasDsyr
+          (double alpha) ^CUBlockVector x ^CUUploMatrix a))
+  (srk [_ alpha a beta c]
+    (sy-rk cublas-handle JCublas2/cublasDsyrk
+           (double alpha) ^CUGEMatrix a (double beta) ^CUUploMatrix c))
   (mm [this alpha a b beta c left]
     (sy-mm cublas-handle JCublas2/cublasDsymm
            (double alpha) ^CUUploMatrix a ^CUGEMatrix b (double beta) ^CUGEMatrix c left))
@@ -1966,6 +2006,15 @@
            (float alpha) ^CUUploMatrix a ^CUBlockVector x (float beta)  ^CUBlockVector y))
   (mv [_ a x]
     (sy-mv a))
+  (rk [_ alpha x y a]
+    (sy-r cublas-handle JCublas2/cublasSsyr2
+          (float alpha) ^CUBlockVector x ^CUBlockVector y ^CUUploMatrix a))
+  (rk [_ alpha x a]
+    (sy-r cublas-handle JCublas2/cublasSsyr
+          (float alpha) ^CUBlockVector x ^CUUploMatrix a))
+  (srk [_ alpha a beta c]
+    (sy-rk cublas-handle JCublas2/cublasSsyrk
+           (float alpha) ^CUGEMatrix a (float beta) ^CUUploMatrix c))
   (mm [this alpha a b beta c left]
     (sy-mm cublas-handle JCublas2/cublasSsymm
            (float alpha) ^CUUploMatrix a ^CUGEMatrix b (float beta) ^CUGEMatrix c left))

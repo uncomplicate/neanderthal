@@ -1829,6 +1829,12 @@
     (sy-mv CBLAS/dsymv alpha ^RealUploMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sy-mv a))
+  (rk [_ alpha x y a]
+    (sy-r CBLAS/dsyr2 alpha ^RealBlockVector x ^RealBlockVector y ^RealUploMatrix a))
+  (rk [_ alpha x a]
+    (sy-r CBLAS/dsyr alpha ^RealBlockVector x ^RealUploMatrix a))
+  (srk [_ alpha a beta c]
+    (sy-rk CBLAS/dsyrk alpha ^RealGEMatrix a beta ^RealUploMatrix c))
   (mm [_ alpha a b beta c left]
     (sy-mm CBLAS/dsymm alpha ^RealUploMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ alpha a b _]
@@ -2013,6 +2019,12 @@
     (sy-mv CBLAS/ssymv alpha ^RealUploMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sy-mv a))
+  (rk [_ alpha x y a]
+    (sy-r CBLAS/ssyr2 alpha ^RealBlockVector x ^RealBlockVector y ^RealUploMatrix a))
+  (rk [_ alpha x a]
+    (sy-r CBLAS/ssyr alpha ^RealBlockVector x ^RealUploMatrix a))
+  (srk [_ alpha a beta c]
+    (sy-rk CBLAS/ssyrk alpha ^RealGEMatrix a beta ^RealUploMatrix c))
   (mm [_ alpha a b beta c left]
     (sy-mm CBLAS/ssymm alpha ^RealUploMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ alpha a b _]
@@ -2878,6 +2890,10 @@
     (sp-mv CBLAS/dspmv alpha ^RealPackedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sp-mv a))
+  (rk [_ alpha x y a]
+    (sp-r CBLAS/dspr2 alpha ^RealBlockVector x ^RealBlockVector y ^RealPackedMatrix a))
+  (rk [_ alpha x a]
+    (sp-r CBLAS/dspr alpha ^RealBlockVector x ^RealPackedMatrix a))
   (mm [_ alpha a b beta c left]
     (sp-mm CBLAS/dspmv alpha ^RealPackedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]
@@ -3058,6 +3074,10 @@
     (sp-mv CBLAS/sspmv alpha ^RealPackedMatrix a ^RealBlockVector x beta ^RealBlockVector y))
   (mv [_ a x]
     (sp-mv a))
+  (rk [_ alpha x y a]
+    (sp-r CBLAS/sspr2 alpha ^RealBlockVector x ^RealBlockVector y ^RealPackedMatrix a))
+  (rk [_ alpha x a]
+    (sp-r CBLAS/sspr alpha ^RealBlockVector x ^RealPackedMatrix a))
   (mm [_ alpha a b beta c left]
     (sp-mm CBLAS/sspmv alpha ^RealPackedMatrix a ^RealGEMatrix b beta ^RealGEMatrix c left))
   (mm [_ _ a _ _]

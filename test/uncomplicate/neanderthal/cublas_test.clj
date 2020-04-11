@@ -27,7 +27,8 @@
 (defn test-math-cuda [factory]
   (math-test/test-math-inv factory math-test/diff-vctr-1 math-test/diff-vctr-2)
   (math-test/test-math-inv factory math-test/diff-ge-1 math-test/diff-ge-2)
-  (math-test/test-math-inv factory (partial math-test/diff-square-1 tr) (partial math-test/diff-square-2 tr)))
+  (math-test/test-math-inv factory (partial math-test/diff-square-1 tr)
+                           (partial math-test/diff-square-2 tr)))
 
 (with-default
 

@@ -1,5 +1,10 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.30.0
+
+* New function mmt! for symmetric matrix multiply with its transpose (faster than mm!).
+* Support for symmetric rk! of a vector with its transpose.
+
 # 0.29.0
 
 * Support mapping a vector to a file channel.

@@ -10,7 +10,8 @@
     uncomplicate.neanderthal.internal.device.common
   (:require [uncomplicate.neanderthal.internal.api
              :refer [compatible? fits? equals-block navigator region]])
-  (:import [uncomplicate.neanderthal.internal.api MatrixImplementation LayoutNavigator Region]))
+  (:import [uncomplicate.neanderthal.internal.api
+            MatrixImplementation LayoutNavigator Region Matrix]))
 
 (defn name-transp
   ([condition name a b]
@@ -30,11 +31,12 @@
   (let [reg (region a)]
     (if (.isColumnMajor (navigator a)) (.isLower reg) (.isUpper reg))))
 
-(defn device-matrix-equals [eng a b]
+(defn device-matrix-equals [eng ^Matrix a ^Matrix b]
   (or (identical? a b)
       (and (instance? (class a) b)
            (= (.matrixType ^MatrixImplementation a) (.matrixType ^MatrixImplementation b))
-           (compatible? a b) (fits? a b) (equals-block eng a b))))
+           (compatible? a b) (= (.mrows a) (.mrows b)) (= (.ncols a) (.ncols b))
+           (equals-block eng a b))))
 
 (defn device-vector-equals [eng x y]
   (or (identical? x y)

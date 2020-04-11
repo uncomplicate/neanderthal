@@ -43,7 +43,8 @@
   (scal [this alpha x])
   (axpy [this alpha x y])
   (mv [this alpha a x beta y] [this a x])
-  (rk [this alpha x y a])
+  (rk [this alpha x a] [this alpha x y a])
+  (srk [this alpha a beta c])
   (mm [this alpha a b beta c left] [this alpha a b left]))
 
 (defprotocol BlasPlus
