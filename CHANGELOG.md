@@ -2,6 +2,10 @@
 
 # 0.30.0
 
+* Fix regression in core.rk! caused by 0.30.0 update.
+
+# 0.30.0
+
 * New function mmt! for symmetric matrix multiply with its transpose (faster than mm!).
 * Support for symmetric rk! of a vector with its transpose.
 
