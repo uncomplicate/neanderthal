@@ -1339,14 +1339,18 @@
                                  (not (api/compatible? a y)) "incompatible a and y"
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)"
                                  (not (= (.mrows a) (.dim y))) "(dim y) is not equals to (mrows a)")})))
-  ([alpha ^Vector x ^Matrix a]
-   (if (and (api/compatible? a x) (= (.mrows a) (.dim x)))
-     (api/rk (api/engine a) alpha x a)
-     (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
-                     {:a (info a) :x (info x) :errors
-                      (cond-into []
-                                 (not (api/compatible? a x)) "incompatible a and x"
-                                 (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")}))))
+  ([alpha-or-x ^Vector y ^Matrix a]
+   (if (number? alpha-or-x)
+     (if (and (api/compatible? a y) (= (.mrows a) (.dim y)))
+       (api/rk (api/engine a) alpha-or-x y a)
+       (dragan-says-ex "You cannot multiply incompatible or ill-fitting structures."
+                       {:a (info a) :y (info y) :errors
+                        (cond-into []
+                                   (not (api/compatible? a y)) "incompatible a and y"
+                                   (not (= (.ncols a) (.dim y))) "(dim y) is not equals to (ncols a)")}))
+     (rk! 1.0 alpha-or-x y a)))
+  ([^Vector y ^Matrix a]
+   (rk! 1.0 y a)))
 
 (defn rk
   "Pure outer product of two vectors. A pure version of [[rk!]] that returns
