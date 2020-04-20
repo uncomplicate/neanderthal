@@ -31,15 +31,11 @@ The list of people who pledged monthly support on the first day when I announced
 - Gurvesh Sanghera
 - Bernard Hugueney
 - the-alchemist
-- Niko Nyrhilä
 - Felipe Gerard
-- Yiu Ming Huynh
-- Nick Jones
 - John Collins
-- 303 Ventures
 - Chancy Kennedy
 - Michael Glaesemann
-- Lukasz Hall
 - Joe Lane
 - Ethan Sherbondy
 - George Kierstein
+- Matus Lestan
