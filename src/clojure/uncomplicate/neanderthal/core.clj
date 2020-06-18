@@ -273,7 +273,10 @@
   ([factory ^long m ^long n]
    (ge factory m n nil nil))
   ([factory a]
-   (transfer (api/factory factory) a)))
+   (let-release [res (transfer (api/factory factory) a)]
+     (if (matrix? res)
+       res
+       (dragan-says-ex "This is not a valid source for matrices.")))))
 
 (defn view-ge
   "Attach a GE matrix to the raw data of `a`, with optional dimensions and/or stride multiplier.

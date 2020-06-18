@@ -2209,12 +2209,17 @@
   (dias [a]
     (region-dias a))
   (submatrix [a i j k l]
-    (dragan-says-ex "You cannot create a submatrix of a (tri)diagonal matrix."
-                    {:a (info a)}))
+    (if (and (= i j) (= k l))
+      (real-diagonal-matrix fact false buf k (+ ofst (.index nav stor i j))
+                            nav (diagonal-storage k matrix-type)
+                            (band-region k l (.kl reg) (.ku reg))
+                            matrix-type default eng)
+      (dragan-says-ex "You cannot create such submatrix of a (tri)diagonal matrix."
+                      {:a (info a)})))
   (transpose [a]
     (if (or (= :gd matrix-type) (= :st matrix-type))
       a
-      (dragan-says-ex "You cannot transpose a (tri)diagonal matrix.")))
+      (dragan-says-ex "You cannot transpose this (tri)diagonal matrix.")))
   Triangularizable
   (create-trf [a pure]
     (case matrix-type

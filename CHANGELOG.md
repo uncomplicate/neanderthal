@@ -1,6 +1,10 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
-# 0.30.0
+# 0.32.0
+
+* Enable submatrix of (tri)diagonal matrix when appropriate.
+
+# 0.31.0
 
 * Fix regression in core.rk! caused by 0.30.0 update.
 

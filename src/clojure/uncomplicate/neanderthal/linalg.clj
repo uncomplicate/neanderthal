@@ -630,7 +630,7 @@
   "Computes the eigenvalues and Schur factorization of a matrix `a`.
 
   On exit, `a` is overwritten with the Schur form T. The first 2 columns of a column-oriented GE matrix
-  `w` are overwritten with eigenvalues of `a`. If `v` GE matrice is provided, it will be overwritten
+  `w` are overwritten with eigenvalues of `a`. If `v` GE matrix is provided, it will be overwritten
   by the orthogonal matrix Z of Schur vectors. If `vs` is nil, only eigenvalues are computed.
 
   If the QR algorithm failed to compute all the eigenvalues, throws ExceptionInfo, with the information
@@ -769,7 +769,7 @@
   "Computes the singular value decomposition of a matrix `a`, and returns a SVD record containing
   `:sigma` (the singular values), `u` (if `u?` is true) and `vt` (if `vt?` is true).
 
-  If `sdd?` is true, uses the faster divide and conquer SVD method unless. If `sdd?` is not provided,
+  If `sdd?` is true, uses the faster divide and conquer SDD method. If `sdd?` is not provided,
   uses ordinary SVD if both `u?` and `vt?` are false.
 
   If the reduction to bidiagonal form failed to converge, throws ExceptionInfo, with the information

@@ -39,3 +39,7 @@ The list of people who pledged monthly support on the first day when I announced
 - Ethan Sherbondy
 - George Kierstein
 - Matus Lestan
+- Boris
+- Yiu Ming Huynh
+- Alex Zdanov
+- Alberto Balsam
