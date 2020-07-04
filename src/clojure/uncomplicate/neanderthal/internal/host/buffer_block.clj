@@ -494,6 +494,14 @@
       (copy eng x res)))
   (native [x]
     x)
+  Viewable
+  (view [x]
+    (integer-block-vector fact false buf n ofst strd))
+  DenseContainer
+  (view-vctr [x]
+    x)
+  (view-vctr [_ stride-mult]
+    (integer-block-vector fact false buf (ceil (/ n (long stride-mult))) ofst (* (long stride-mult) strd)))
   MemoryContext
   (compatible? [_ y]
     (compatible? da y))

@@ -344,6 +344,32 @@
     (fmap! (math/elu alpha) y)
     (fmax eng a (scal eng alpha (expm1 eng (copy eng a y) y)) y)))
 
+;; ============ Chunked integer operations =======================================
+
+(defmacro patch-vector-method [chunk method x y]
+  `(if (= 0 (rem (.dim ~x) ~chunk))
+     (~method (quot (.dim ~x) ~chunk) (.buffer ~x) (/ (.offset ~x) ~chunk) (.stride ~x)
+      (.buffer ~y) (/ (.offset ~y) ~chunk) (.stride ~y))
+     (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (.dim ~x)})))
+
+(defn patch-subcopy [chunk ^IntegerBlockVector x ^IntegerBlockVector y kx lx ky]
+  (check-stride x y)
+  (let [chunk (long chunk)]
+    (if (= 0 (rem (long kx) chunk) (rem (long lx) chunk) (rem (long ky) chunk))
+      (CBLAS/scopy (/ (long lx) chunk) (.buffer x) (/ (+ (long kx) (.offset x)) chunk) (.stride x)
+                   (.buffer ^IntegerBlockVector y) (/ (+ (long ky) (.offset y)) chunk) (.stride y))
+      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)})))
+  y)
+
+(defn patch-vctr-laset [^long chunk alpha ^IntegerBlockVector x]
+  (check-stride x)
+  (if (= 0 (rem (dim x) chunk))
+    (with-lapack-check
+      (LAPACK/slaset CBLAS/ORDER_ROW_MAJOR (int \g) (/ (.dim x) chunk) 1 alpha alpha
+                     (.buffer x) (/ (.offset x) chunk) (.stride x)))
+    (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+  x)
+
 ;; ============ Integer Vector Engines ============================================
 
 (defmacro byte-float [x]
@@ -464,15 +490,11 @@
   Blas
   (swap [_ x y]
     (check-stride x y)
-    (if (= 0 (rem (dim x) 2))
-      (vector-method CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    (patch-vector-method 2 CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
     x)
   (copy [_ x y]
     (check-stride x y)
-    (if (= 0 (rem (dim x) 2))
-      (vector-method CBLAS/scopy ^IntegerBlockVector x ^IntegerBlockVector y)
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    (patch-vector-method 2 CBLAS/scopy ^IntegerBlockVector x ^IntegerBlockVector y)
     y)
   (dot [_ x y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -500,13 +522,7 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (check-stride x y)
-    (if (= 0 (rem (long lx) 2))
-      (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
-                   (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
-
-    y)
+    (patch-subcopy 2 x y kx lx ky))
   (sum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (imax [_ x]
@@ -514,11 +530,7 @@
   (imin [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (set-all [_ alpha x]
-    (check-stride x)
-    (if (= 0 (rem (dim x) 2))
-      (vctr-laset LAPACK/slaset (short-float alpha) ^IntegerBlockVector x)
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
-    x)
+    (patch-vctr-laset 2 (short-float alpha) x))
   (axpby [_ alpha x beta y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
 
@@ -526,15 +538,11 @@
   Blas
   (swap [_ x y]
     (check-stride x y)
-    (if (= 0 (rem (dim x) 4))
-      (vector-method CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    (patch-vector-method 4 CBLAS/sswap ^IntegerBlockVector x ^IntegerBlockVector y)
     x)
   (copy [_ x y]
     (check-stride x y)
-    (if (= 0 (rem (dim x) 4))
-      (vector-method CBLAS/scopy ^IntegerBlockVector x ^IntegerBlockVector y)
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
+    (patch-vector-method 4 CBLAS/scopy ^IntegerBlockVector x ^IntegerBlockVector y)
     y)
   (dot [_ x y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -562,13 +570,7 @@
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   BlasPlus
   (subcopy [_ x y kx lx ky]
-    (check-stride x y)
-    (if (= 0 (rem (long lx) 4))
-      (CBLAS/scopy lx (.buffer ^IntegerBlockVector x) (+ (long kx) (.offset ^Block x)) (.stride ^Block x)
-                   (.buffer ^IntegerBlockVector y) (+ (long ky) (.offset ^Block y)) (.stride ^Block y))
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
-
-    y)
+    (patch-subcopy 4 x y kx lx ky))
   (sum [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (imax [_ x]
@@ -576,11 +578,7 @@
   (imin [_ x]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
   (set-all [_ alpha x]
-    (check-stride x)
-    (if (= 0 (rem (dim x) 4))
-      (vctr-laset LAPACK/slaset (byte-float alpha) ^IntegerBlockVector x)
-      (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim x)}))
-    x)
+    (patch-vctr-laset 4 (byte-float alpha) x))
   (axpby [_ alpha x beta y]
     (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
 
