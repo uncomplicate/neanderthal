@@ -16,7 +16,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [uncomplicate/commons "0.11.0"]
                  [uncomplicate/fluokitten "0.9.1"]
-                 [uncomplicate/neanderthal-native "0.30.0"]
+                 [uncomplicate/neanderthal-native "0.33.0-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.14.1"]
                  [org.jocl/jocl-blast "1.5.0"]
                  [uncomplicate/clojurecuda "0.9.1"]

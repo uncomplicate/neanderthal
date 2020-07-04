@@ -146,6 +146,7 @@
   (facts "expm1" (diff-1 factory m/expm1 vm/expm1) => (zero))
   (facts "log" (diff-1 factory m/log vm/log 0.1 7 0.33) => (zero))
   (facts "log10" (diff-1 factory m/log10 vm/log10 0.1 3 0.07) => (zero))
+  (facts "log1p" (diff-1 factory m/log1p vm/log1p 0.1 7 0.33) => (zero))
   (facts "sin" (diff-1 factory m/sin vm/sin) => (zero))
   (facts "cos" (diff-1 factory m/cos vm/cos) => (zero))
   (facts "tan" (diff-1 factory m/tan vm/tan 1 9 0.77) => (zero))

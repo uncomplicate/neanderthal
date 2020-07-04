@@ -9,7 +9,7 @@ extern "C" {
 #endif
     
 #ifndef REAL2o3
-#define REAL2o3 (REAL)0.6666666666666666
+#define REAL2o3 (REAL)0.6666666666666667
 #endif
 
 #ifndef REAL3o2
@@ -223,6 +223,26 @@ extern "C" {
         }
     }
 
+    __global__ void vector_exp2 (const int n,
+                                 const REAL* x, const int offset_x, const int stride_x,
+                                 REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            y[offset_y + gid * stride_y] = CAST(exp2)(x[offset_x + gid * stride_x]);
+        }
+    }
+
+    __global__ void vector_exp10 (const int n,
+                                  const REAL* x, const int offset_x, const int stride_x,
+                                  REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            y[offset_y + gid * stride_y] = CAST(exp10)(x[offset_x + gid * stride_x]);
+        }
+    }
+
     __global__ void vector_expm1 (const int n,
                                   const REAL* x, const int offset_x, const int stride_x,
                                   REAL* y, const int offset_y, const int stride_y) {
@@ -243,6 +263,16 @@ extern "C" {
         }
     }
 
+    __global__ void vector_log2 (const int n,
+                                 const REAL* x, const int offset_x, const int stride_x,
+                                 REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            y[offset_y + gid * stride_y] = CAST(log2)(x[offset_x + gid * stride_x]);
+        }
+    }
+
     __global__ void vector_log10 (const int n,
                                   const REAL* x, const int offset_x, const int stride_x,
                                   REAL* y, const int offset_y, const int stride_y) {
@@ -250,6 +280,16 @@ extern "C" {
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
             y[offset_y + gid * stride_y] = CAST(log10)(x[offset_x + gid * stride_x]);
+        }
+    }
+
+    __global__ void vector_log1p (const int n,
+                                  const REAL* x, const int offset_x, const int stride_x,
+                                  REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            y[offset_y + gid * stride_y] = CAST(log1p)(x[offset_x + gid * stride_x]);
         }
     }
 
@@ -848,6 +888,28 @@ extern "C" {
         }
     }
 
+    __global__ void ge_exp2 (const int sd, const int fd,
+                             const REAL* a, const int offset_a, const int ld_a,
+                             REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(exp2)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void ge_exp10 (const int sd, const int fd,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(exp10)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
     __global__ void ge_expm1 (const int sd, const int fd,
                               const REAL* a, const int offset_a, const int ld_a,
                               REAL* b, const int offset_b, const int ld_b) {
@@ -870,6 +932,17 @@ extern "C" {
         }
     }
 
+    __global__ void ge_log2 (const int sd, const int fd,
+                             const REAL* a, const int offset_a, const int ld_a,
+                             REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log2)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
     __global__ void ge_log10 (const int sd, const int fd,
                               const REAL* a, const int offset_a, const int ld_a,
                               REAL* b, const int offset_b, const int ld_b) {
@@ -878,6 +951,17 @@ extern "C" {
         const bool valid = (gid_0 < sd) && (gid_1 < fd);
         if (valid) {
             b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log10)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void ge_log1p (const int sd, const int fd,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log1p)(a[offset_a + gid_0 + gid_1 * ld_a]);
         }
     }
 
@@ -1551,6 +1635,32 @@ extern "C" {
         }
     }
 
+    __global__ void uplo_exp2 (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(exp2)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_exp10 (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(exp10)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
     __global__ void uplo_expm1 (const int sd, const int unit, const int bottom,
                                 const REAL* a, const int offset_a, const int ld_a,
                                 REAL* b, const int offset_b, const int ld_b) {
@@ -1577,6 +1687,19 @@ extern "C" {
         }
     }
 
+    __global__ void uplo_log2 (const int sd, const int unit, const int bottom,
+                               const REAL* a, const int offset_a, const int ld_a,
+                               REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log2)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
     __global__ void uplo_log10 (const int sd, const int unit, const int bottom,
                                 const REAL* a, const int offset_a, const int ld_a,
                                 REAL* b, const int offset_b, const int ld_b) {
@@ -1587,6 +1710,19 @@ extern "C" {
             ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
         if (check) {
             b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log10)(a[offset_a + gid_0 + gid_1 * ld_a]);
+        }
+    }
+
+    __global__ void uplo_log1p (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(log1p)(a[offset_a + gid_0 + gid_1 * ld_a]);
         }
     }
 

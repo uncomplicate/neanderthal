@@ -145,7 +145,7 @@
            (offset da# (extract (.buffer ~x)) (.offset ~x)) (.stride ~x)
            (offset da# (extract (.buffer ~y)) (.offset ~y)) (.stride ~y)
            (offset da# (extract (.buffer ~z)) (.offset ~z)) (.stride ~z))
-        ~z))
+          ~z))
       ~z)))
 
 (defmacro ^:private vector-dot [cublas-handle array-fn method x y]
@@ -600,24 +600,24 @@
 
 (defn ^:private vector-linear-frac [modl hstream ^CUBlockVector x ^CUBlockVector y
                                     scalea shifta scaleb shiftb ^CUBlockVector z]
- (when (< 0 (.dim x))
-   (let [da (data-accessor x)]
-     (if (and (= 0.0 scaleb) (= 1.0 shiftb))
-       (with-release [math-kernel (function modl "vector_scale_shift")]
-         (launch! math-kernel (grid-1d (.dim x)) hstream
-                  (parameters (.dim x)
-                              (.buffer x) (.offset x) (.stride x)
-                              (.wrapPrim da scalea) (.wrapPrim da shifta)
-                              (.wrapPrim da scaleb) (.wrapPrim da shiftb)
-                              (.buffer z) (.offset z) (.stride z))))
-       (with-release [math-kernel (function modl "vector_linear_frac")]
-         (launch! math-kernel (grid-1d (.dim x)) hstream
-                  (parameters (.dim x)
-                              (.buffer x) (.offset x) (.stride x)
-                              (.buffer y) (.offset y) (.stride y)
-                              (.wrapPrim da scalea) (.wrapPrim da shifta)
-                              (.wrapPrim da scaleb) (.wrapPrim da shiftb)
-                              (.buffer z) (.offset z) (.stride z)))))))
+  (when (< 0 (.dim x))
+    (let [da (data-accessor x)]
+      (if (and (= 0.0 scaleb) (= 1.0 shiftb))
+        (with-release [math-kernel (function modl "vector_scale_shift")]
+          (launch! math-kernel (grid-1d (.dim x)) hstream
+                   (parameters (.dim x)
+                               (.buffer x) (.offset x) (.stride x)
+                               (.wrapPrim da scalea) (.wrapPrim da shifta)
+                               (.wrapPrim da scaleb) (.wrapPrim da shiftb)
+                               (.buffer z) (.offset z) (.stride z))))
+        (with-release [math-kernel (function modl "vector_linear_frac")]
+          (launch! math-kernel (grid-1d (.dim x)) hstream
+                   (parameters (.dim x)
+                               (.buffer x) (.offset x) (.stride x)
+                               (.buffer y) (.offset y) (.stride y)
+                               (.wrapPrim da scalea) (.wrapPrim da shifta)
+                               (.wrapPrim da scaleb) (.wrapPrim da shiftb)
+                               (.buffer z) (.offset z) (.stride z)))))))
   z)
 
 (defn ^:private vector-powx [modl hstream ^CUBlockVector x b ^CUBlockVector y]
@@ -877,12 +877,20 @@
     (vector-math modl hstream "vector_hypot" a b y))
   (exp [_ a y]
     (vector-math modl hstream "vector_exp" a y))
+  (exp2 [_ a y]
+    (vector-math modl hstream "vector_exp2" a y))
+  (exp10 [_ a y]
+    (vector-math modl hstream "vector_exp10" a y))
   (expm1 [_ a y]
     (vector-math modl hstream "vector_expm1" a y))
   (log [_ a y]
     (vector-math modl hstream "vector_log" a y))
+  (log2 [_ a y]
+    (vector-math modl hstream "vector_log2" a y))
   (log10 [_ a y]
     (vector-math modl hstream "vector_log10" a y))
+  (log1p [_ a y]
+    (vector-math modl hstream "vector_log1p" a y))
   (sin [_ a y]
     (vector-math modl hstream "vector_sin" a y))
   (cos [_ a y]
@@ -1051,12 +1059,20 @@
     (vector-math modl hstream "vector_hypot" a b y))
   (exp [_ a y]
     (vector-math modl hstream "vector_exp" a y))
+  (exp2 [_ a y]
+    (vector-math modl hstream "vector_exp2" a y))
+  (exp10 [_ a y]
+    (vector-math modl hstream "vector_exp10" a y))
   (expm1 [_ a y]
     (vector-math modl hstream "vector_expm1" a y))
   (log [_ a y]
     (vector-math modl hstream "vector_log" a y))
+  (log2 [_ a y]
+    (vector-math modl hstream "vector_log2" a y))
   (log10 [_ a y]
     (vector-math modl hstream "vector_log10" a y))
+  (log1p [_ a y]
+    (vector-math modl hstream "vector_log1p" a y))
   (sin [_ a y]
     (vector-math modl hstream "vector_sin" a y))
   (cos [_ a y]
@@ -1221,12 +1237,20 @@
     (ge-math modl hstream "ge_hypot" a b y))
   (exp [_ a y]
     (ge-math modl hstream "ge_exp" a y))
+  (exp2 [_ a y]
+    (ge-math modl hstream "ge_exp2" a y))
+  (exp10 [_ a y]
+    (ge-math modl hstream "ge_exp10" a y))
   (expm1 [_ a y]
     (ge-math modl hstream "ge_expm1" a y))
   (log [_ a y]
     (ge-math modl hstream "ge_log" a y))
+  (log2 [_ a y]
+    (ge-math modl hstream "ge_log2" a y))
   (log10 [_ a y]
     (ge-math modl hstream "ge_log10" a y))
+  (log1p [_ a y]
+    (ge-math modl hstream "ge_log1p" a y))
   (sin [_ a y]
     (ge-math modl hstream "ge_sin" a y))
   (cos [_ a y]
@@ -1391,12 +1415,20 @@
     (ge-math modl hstream "ge_hypot" a b y))
   (exp [_ a y]
     (ge-math modl hstream "ge_exp" a y))
+  (exp2 [_ a y]
+    (ge-math modl hstream "ge_exp2" a y))
+  (exp10 [_ a y]
+    (ge-math modl hstream "ge_exp10" a y))
   (expm1 [_ a y]
     (ge-math modl hstream "ge_expm1" a y))
   (log [_ a y]
     (ge-math modl hstream "ge_log" a y))
+  (log2 [_ a y]
+    (ge-math modl hstream "ge_log2" a y))
   (log10 [_ a y]
     (ge-math modl hstream "ge_log10" a y))
+  (log1p [_ a y]
+    (ge-math modl hstream "ge_log1p" a y))
   (sin [_ a y]
     (ge-math modl hstream "ge_sin" a y))
   (cos [_ a y]
@@ -1566,14 +1598,22 @@
     (uplo-powx modl hstream a b y))
   (hypot [_ a b y]
     (uplo-math modl hstream "uplo_hypot" a b y))
+  (exp2 [_ a y]
+    (uplo-math modl hstream "uplo_exp2" a y))
+  (exp10 [_ a y]
+    (uplo-math modl hstream "uplo_exp10" a y))
   (exp [_ a y]
     (uplo-math modl hstream "uplo_exp" a y))
   (expm1 [_ a y]
     (uplo-math modl hstream "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math modl hstream "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math modl hstream "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math modl hstream "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math modl hstream "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math modl hstream "uplo_sin" a y))
   (cos [_ a y]
@@ -1734,12 +1774,20 @@
     (uplo-math modl hstream "uplo_hypot" a b y))
   (exp [_ a y]
     (uplo-math modl hstream "uplo_exp" a y))
+  (exp2 [_ a y]
+    (uplo-math modl hstream "uplo_exp2" a y))
+  (exp10 [_ a y]
+    (uplo-math modl hstream "uplo_exp10" a y))
   (expm1 [_ a y]
     (uplo-math modl hstream "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math modl hstream "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math modl hstream "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math modl hstream "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math modl hstream "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math modl hstream "uplo_sin" a y))
   (cos [_ a y]
@@ -1906,8 +1954,12 @@
     (uplo-math modl hstream "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math modl hstream "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math modl hstream "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math modl hstream "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math modl hstream "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math modl hstream "uplo_sin" a y))
   (cos [_ a y]
@@ -2066,12 +2118,20 @@
     (uplo-math modl hstream "uplo_hypot" a b y))
   (exp [_ a y]
     (uplo-math modl hstream "uplo_exp" a y))
+  (exp2 [_ a y]
+    (uplo-math modl hstream "uplo_exp2" a y))
+  (exp10 [_ a y]
+    (uplo-math modl hstream "uplo_exp10" a y))
   (expm1 [_ a y]
     (uplo-math modl hstream "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math modl hstream "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math modl hstream "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math modl hstream "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math modl hstream "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math modl hstream "uplo_sin" a y))
   (cos [_ a y]

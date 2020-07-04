@@ -898,12 +898,20 @@
     (vector-math queue prog "vector_hypot" a b y))
   (exp [_ a y]
     (vector-math queue prog "vector_exp" a y))
+  (exp2 [_ a y]
+    (vector-math queue prog "vector_exp2" a y))
+  (exp10 [_ a y]
+    (vector-math queue prog "vector_exp10" a y))
   (expm1 [_ a y]
     (vector-math queue prog "vector_expm1" a y))
   (log [_ a y]
     (vector-math queue prog "vector_log" a y))
+  (log2 [_ a y]
+    (vector-math queue prog "vector_log2" a y))
   (log10 [_ a y]
     (vector-math queue prog "vector_log10" a y))
+  (log1p [_ a y]
+    (vector-math queue prog "vector_log1p" a y))
   (sin [_ a y]
     (vector-math queue prog "vector_sin" a y))
   (cos [_ a y]
@@ -1072,12 +1080,20 @@
     (vector-math queue prog "vector_hypot" a b y))
   (exp [_ a y]
     (vector-math queue prog "vector_exp" a y))
+  (exp2 [_ a y]
+    (vector-math queue prog "vector_exp2" a y))
+  (exp10 [_ a y]
+    (vector-math queue prog "vector_exp10" a y))
   (expm1 [_ a y]
     (vector-math queue prog "vector_expm1" a y))
   (log [_ a y]
     (vector-math queue prog "vector_log" a y))
+  (log2 [_ a y]
+    (vector-math queue prog "vector_log2" a y))
   (log10 [_ a y]
     (vector-math queue prog "vector_log10" a y))
+  (log1p [_ a y]
+    (vector-math queue prog "vector_log1p" a y))
   (sin [_ a y]
     (vector-math queue prog "vector_sin" a y))
   (cos [_ a y]
@@ -1239,12 +1255,20 @@
     (ge-math queue prog "ge_hypot" a b y))
   (exp [_ a y]
     (ge-math queue prog "ge_exp" a y))
+  (exp2 [_ a y]
+    (ge-math queue prog "ge_exp2" a y))
+  (exp10 [_ a y]
+    (ge-math queue prog "ge_exp10" a y))
   (expm1 [_ a y]
     (ge-math queue prog "ge_expm1" a y))
   (log [_ a y]
     (ge-math queue prog "ge_log" a y))
+  (log2 [_ a y]
+    (ge-math queue prog "ge_log2" a y))
   (log10 [_ a y]
     (ge-math queue prog "ge_log10" a y))
+  (log1p [_ a y]
+    (ge-math queue prog "ge_log1p" a y))
   (sin [_ a y]
     (ge-math queue prog "ge_sin" a y))
   (cos [_ a y]
@@ -1406,12 +1430,20 @@
     (ge-math queue prog "ge_hypot" a b y))
   (exp [_ a y]
     (ge-math queue prog "ge_exp" a y))
+  (exp2 [_ a y]
+    (ge-math queue prog "ge_exp2" a y))
+  (exp10 [_ a y]
+    (ge-math queue prog "ge_exp10" a y))
   (expm1 [_ a y]
     (ge-math queue prog "ge_expm1" a y))
   (log [_ a y]
     (ge-math queue prog "ge_log" a y))
+  (log2 [_ a y]
+    (ge-math queue prog "ge_log2" a y))
   (log10 [_ a y]
     (ge-math queue prog "ge_log10" a y))
+  (log1p [_ a y]
+    (ge-math queue prog "ge_log1p" a y))
   (sin [_ a y]
     (ge-math queue prog "ge_sin" a y))
   (cos [_ a y]
@@ -1584,12 +1616,20 @@
     (uplo-math queue prog "uplo_hypot" a b y))
   (exp [_ a y]
     (uplo-math queue prog "uplo_exp" a y))
+  (exp2 [_ a y]
+    (uplo-math queue prog "uplo_exp2" a y))
+  (exp10 [_ a y]
+    (uplo-math queue prog "uplo_exp10" a y))
   (expm1 [_ a y]
     (uplo-math queue prog "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math queue prog "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math queue prog "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math queue prog "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math queue prog "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math queue prog "uplo_sin" a y))
   (cos [_ a y]
@@ -1755,12 +1795,20 @@
     (uplo-math queue prog "uplo_hypot" a b y))
   (exp [_ a y]
     (uplo-math queue prog "uplo_exp" a y))
+  (exp2 [_ a y]
+    (uplo-math queue prog "uplo_exp2" a y))
+  (exp10 [_ a y]
+    (uplo-math queue prog "uplo_exp10" a y))
   (expm1 [_ a y]
     (uplo-math queue prog "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math queue prog "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math queue prog "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math queue prog "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math queue prog "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math queue prog "uplo_sin" a y))
   (cos [_ a y]
@@ -1930,12 +1978,20 @@
     (uplo-math queue prog "uplo_hypot" a b y))
   (exp [_ a y]
     (uplo-math queue prog "uplo_exp" a y))
+  (exp2 [_ a y]
+    (uplo-math queue prog "uplo_exp2" a y))
+  (exp10 [_ a y]
+    (uplo-math queue prog "uplo_exp10" a y))
   (expm1 [_ a y]
     (uplo-math queue prog "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math queue prog "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math queue prog "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math queue prog "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math queue prog "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math queue prog "uplo_sin" a y))
   (cos [_ a y]
@@ -2104,12 +2160,20 @@
     (uplo-math queue prog "uplo_hypot" a b y))
   (exp [_ a y]
     (uplo-math queue prog "uplo_exp" a y))
+  (exp2 [_ a y]
+    (uplo-math queue prog "uplo_exp2" a y))
+  (exp10 [_ a y]
+    (uplo-math queue prog "uplo_exp10" a y))
   (expm1 [_ a y]
     (uplo-math queue prog "uplo_expm1" a y))
   (log [_ a y]
     (uplo-math queue prog "uplo_log" a y))
+  (log2 [_ a y]
+    (uplo-math queue prog "uplo_log2" a y))
   (log10 [_ a y]
     (uplo-math queue prog "uplo_log10" a y))
+  (log1p [_ a y]
+    (uplo-math queue prog "uplo_log1p" a y))
   (sin [_ a y]
     (uplo-math queue prog "uplo_sin" a y))
   (cos [_ a y]

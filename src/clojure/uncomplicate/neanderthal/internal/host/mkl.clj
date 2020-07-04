@@ -695,12 +695,20 @@
     (vector-math MKL/vdHypot ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
   (exp [_ a y]
     (vector-math MKL/vdExp ^RealBlockVector a ^RealBlockVector y))
+  (exp2 [_ a y]
+    (vector-math MKL/vdExp2 ^RealBlockVector a ^RealBlockVector y))
+  (exp10 [_ a y]
+    (vector-math MKL/vdExp10 ^RealBlockVector a ^RealBlockVector y))
   (expm1 [_ a y]
     (vector-math MKL/vdExpm1 ^RealBlockVector a ^RealBlockVector y))
   (log [_ a y]
     (vector-math MKL/vdLn ^RealBlockVector a ^RealBlockVector y))
+  (log2 [_ a y]
+    (vector-math MKL/vdLog2 ^RealBlockVector a ^RealBlockVector y))
   (log10 [_ a y]
     (vector-math MKL/vdLog10 ^RealBlockVector a ^RealBlockVector y))
+  (log1p [_ a y]
+    (vector-math MKL/vdLog1p ^RealBlockVector a ^RealBlockVector y))
   (sin [_ a y]
     (vector-math MKL/vdSin ^RealBlockVector a ^RealBlockVector y))
   (cos [_ a y]
@@ -881,12 +889,20 @@
     (vector-math MKL/vsHypot ^RealBlockVector a ^RealBlockVector b ^RealBlockVector y))
   (exp [_ a y]
     (vector-math MKL/vsExp ^RealBlockVector a ^RealBlockVector y))
+  (exp2 [_ a y]
+    (vector-math MKL/vsExp2 ^RealBlockVector a ^RealBlockVector y))
+  (exp10 [_ a y]
+    (vector-math MKL/vsExp10 ^RealBlockVector a ^RealBlockVector y))
   (expm1 [_ a y]
     (vector-math MKL/vsExpm1 ^RealBlockVector a ^RealBlockVector y))
   (log [_ a y]
     (vector-math MKL/vsLn ^RealBlockVector a ^RealBlockVector y))
+  (log2 [_ a y]
+    (vector-math MKL/vsLog2 ^RealBlockVector a ^RealBlockVector y))
   (log10 [_ a y]
     (vector-math MKL/vsLog10 ^RealBlockVector a ^RealBlockVector y))
+  (log1p [_ a y]
+    (vector-math MKL/vsLog1p ^RealBlockVector a ^RealBlockVector y))
   (sin [_ a y]
     (vector-math MKL/vsSin ^RealBlockVector a ^RealBlockVector y))
   (cos [_ a y]
@@ -1131,12 +1147,20 @@
     (matrix-math MKL/vdHypot ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
   (exp [_ a y]
     (matrix-math MKL/vdExp ^RealGEMatrix a ^RealGEMatrix y))
+  (exp2 [_ a y]
+    (matrix-math MKL/vdExp2 ^RealGEMatrix a ^RealGEMatrix y))
+  (exp10 [_ a y]
+    (matrix-math MKL/vdExp10 ^RealGEMatrix a ^RealGEMatrix y))
   (expm1 [_ a y]
     (matrix-math MKL/vdExpm1 ^RealGEMatrix a ^RealGEMatrix y))
   (log [_ a y]
     (matrix-math MKL/vdLn ^RealGEMatrix a ^RealGEMatrix y))
+  (log2 [_ a y]
+    (matrix-math MKL/vdLog2 ^RealGEMatrix a ^RealGEMatrix y))
   (log10 [_ a y]
     (matrix-math MKL/vdLog10 ^RealGEMatrix a ^RealGEMatrix y))
+  (log1p [_ a y]
+    (matrix-math MKL/vdLog1p ^RealGEMatrix a ^RealGEMatrix y))
   (sin [_ a y]
     (matrix-math MKL/vdSin ^RealGEMatrix a ^RealGEMatrix y))
   (cos [_ a y]
@@ -1375,12 +1399,20 @@
     (matrix-math MKL/vsHypot ^RealGEMatrix a ^RealGEMatrix b ^RealGEMatrix y))
   (exp [_ a y]
     (matrix-math MKL/vsExp ^RealGEMatrix a ^RealGEMatrix y))
+  (exp2 [_ a y]
+    (matrix-math MKL/vsExp2 ^RealGEMatrix a ^RealGEMatrix y))
+  (exp10 [_ a y]
+    (matrix-math MKL/vsExp10 ^RealGEMatrix a ^RealGEMatrix y))
   (expm1 [_ a y]
     (matrix-math MKL/vsExpm1 ^RealGEMatrix a ^RealGEMatrix y))
   (log [_ a y]
     (matrix-math MKL/vsLn ^RealGEMatrix a ^RealGEMatrix y))
+  (log2 [_ a y]
+    (matrix-math MKL/vsLog2 ^RealGEMatrix a ^RealGEMatrix y))
   (log10 [_ a y]
     (matrix-math MKL/vsLog10 ^RealGEMatrix a ^RealGEMatrix y))
+  (log1p [_ a y]
+    (matrix-math MKL/vsLog1p ^RealGEMatrix a ^RealGEMatrix y))
   (sin [_ a y]
     (matrix-math MKL/vsSin ^RealGEMatrix a ^RealGEMatrix y))
   (cos [_ a y]
@@ -1553,12 +1585,20 @@
     (matrix-math MKL/vdHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (exp [_ a y]
     (matrix-math MKL/vdExp ^RealUploMatrix a ^RealUploMatrix y))
+  (exp2 [_ a y]
+    (matrix-math MKL/vdExp2 ^RealUploMatrix a ^RealUploMatrix y))
+  (exp10 [_ a y]
+    (matrix-math MKL/vdExp10 ^RealUploMatrix a ^RealUploMatrix y))
   (expm1 [_ a y]
     (matrix-math MKL/vdExpm1 ^RealUploMatrix a ^RealUploMatrix y))
   (log [_ a y]
     (matrix-math MKL/vdLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log2 [_ a y]
+    (matrix-math MKL/vdLog2 ^RealUploMatrix a ^RealUploMatrix y))
   (log10 [_ a y]
     (matrix-math MKL/vdLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (log1p [_ a y]
+    (matrix-math MKL/vdLog1p ^RealUploMatrix a ^RealUploMatrix y))
   (sin [_ a y]
     (matrix-math MKL/vdSin ^RealUploMatrix a ^RealUploMatrix y))
   (cos [_ a y]
@@ -1722,12 +1762,20 @@
     (matrix-math MKL/vsHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (exp [_ a y]
     (matrix-math MKL/vsExp ^RealUploMatrix a ^RealUploMatrix y))
+  (exp2 [_ a y]
+    (matrix-math MKL/vsExp2 ^RealUploMatrix a ^RealUploMatrix y))
+  (exp10 [_ a y]
+    (matrix-math MKL/vsExp10 ^RealUploMatrix a ^RealUploMatrix y))
   (expm1 [_ a y]
     (matrix-math MKL/vsExpm1 ^RealUploMatrix a ^RealUploMatrix y))
   (log [_ a y]
     (matrix-math MKL/vsLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log2 [_ a y]
+    (matrix-math MKL/vsLog1p ^RealUploMatrix a ^RealUploMatrix y))
   (log10 [_ a y]
     (matrix-math MKL/vsLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (log1p [_ a y]
+    (matrix-math MKL/vsLog1p ^RealUploMatrix a ^RealUploMatrix y))
   (sin [_ a y]
     (matrix-math MKL/vsSin ^RealUploMatrix a ^RealUploMatrix y))
   (cos [_ a y]
@@ -1914,12 +1962,20 @@
     (matrix-math MKL/vdHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (exp [_ a y]
     (matrix-math MKL/vdExp ^RealUploMatrix a ^RealUploMatrix y))
+  (exp2 [_ a y]
+    (matrix-math MKL/vdExp2 ^RealUploMatrix a ^RealUploMatrix y))
+  (exp10 [_ a y]
+    (matrix-math MKL/vdExp10 ^RealUploMatrix a ^RealUploMatrix y))
   (expm1 [_ a y]
     (matrix-math MKL/vdExpm1 ^RealUploMatrix a ^RealUploMatrix y))
   (log [_ a y]
     (matrix-math MKL/vdLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log2 [_ a y]
+    (matrix-math MKL/vdLog1p ^RealUploMatrix a ^RealUploMatrix y))
   (log10 [_ a y]
     (matrix-math MKL/vdLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (log1p [_ a y]
+    (matrix-math MKL/vdLog1p ^RealUploMatrix a ^RealUploMatrix y))
   (sin [_ a y]
     (matrix-math MKL/vdSin ^RealUploMatrix a ^RealUploMatrix y))
   (cos [_ a y]
@@ -2104,12 +2160,20 @@
     (matrix-math MKL/vsHypot ^RealUploMatrix a ^RealUploMatrix b ^RealUploMatrix y))
   (exp [_ a y]
     (matrix-math MKL/vsExp ^RealUploMatrix a ^RealUploMatrix y))
+  (exp2 [_ a y]
+    (matrix-math MKL/vsExp2 ^RealUploMatrix a ^RealUploMatrix y))
+  (exp10 [_ a y]
+    (matrix-math MKL/vsExp10 ^RealUploMatrix a ^RealUploMatrix y))
   (expm1 [_ a y]
     (matrix-math MKL/vsExpm1 ^RealUploMatrix a ^RealUploMatrix y))
   (log [_ a y]
     (matrix-math MKL/vsLn ^RealUploMatrix a ^RealUploMatrix y))
+  (log2 [_ a y]
+    (matrix-math MKL/vsLog2 ^RealUploMatrix a ^RealUploMatrix y))
   (log10 [_ a y]
     (matrix-math MKL/vsLog10 ^RealUploMatrix a ^RealUploMatrix y))
+  (log1p [_ a y]
+    (matrix-math MKL/vsLog1p ^RealUploMatrix a ^RealUploMatrix y))
   (sin [_ a y]
     (matrix-math MKL/vsSin ^RealUploMatrix a ^RealUploMatrix y))
   (cos [_ a y]
@@ -2616,12 +2680,20 @@
     (packed-math MKL/vdHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (exp [_ a y]
     (packed-math MKL/vdExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp2 [_ a y]
+    (packed-math MKL/vdExp2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp10 [_ a y]
+    (packed-math MKL/vdExp10 ^RealPackedMatrix a ^RealPackedMatrix y))
   (expm1 [_ a y]
     (packed-math MKL/vdExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log [_ a y]
     (packed-math MKL/vdLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log2 [_ a y]
+    (packed-math MKL/vdLog2 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log10 [_ a y]
     (packed-math MKL/vdLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log1p [_ a y]
+    (packed-math MKL/vdLog1p ^RealPackedMatrix a ^RealPackedMatrix y))
   (sin [_ a y]
     (packed-math MKL/vdSin ^RealPackedMatrix a ^RealPackedMatrix y))
   (cos [_ a y]
@@ -2784,12 +2856,20 @@
     (packed-math MKL/vsHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (exp [_ a y]
     (packed-math MKL/vsExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp2 [_ a y]
+    (packed-math MKL/vsExp2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp10 [_ a y]
+    (packed-math MKL/vsExp10 ^RealPackedMatrix a ^RealPackedMatrix y))
   (expm1 [_ a y]
     (packed-math MKL/vsExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log [_ a y]
     (packed-math MKL/vsLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log2 [_ a y]
+    (packed-math MKL/vsLog2 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log10 [_ a y]
     (packed-math MKL/vsLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log1p [_ a y]
+    (packed-math MKL/vsLog1p ^RealPackedMatrix a ^RealPackedMatrix y))
   (sin [_ a y]
     (packed-math MKL/vsSin ^RealPackedMatrix a ^RealPackedMatrix y))
   (cos [_ a y]
@@ -2968,12 +3048,20 @@
     (packed-math MKL/vdHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (exp [_ a y]
     (packed-math MKL/vdExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp2 [_ a y]
+    (packed-math MKL/vdExp2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp10 [_ a y]
+    (packed-math MKL/vdExp10 ^RealPackedMatrix a ^RealPackedMatrix y))
   (expm1 [_ a y]
     (packed-math MKL/vdExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log [_ a y]
     (packed-math MKL/vdLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log2 [_ a y]
+    (packed-math MKL/vdLog2 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log10 [_ a y]
     (packed-math MKL/vdLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log1p [_ a y]
+    (packed-math MKL/vdLog1p ^RealPackedMatrix a ^RealPackedMatrix y))
   (sin [_ a y]
     (packed-math MKL/vdSin ^RealPackedMatrix a ^RealPackedMatrix y))
   (cos [_ a y]
@@ -3152,12 +3240,20 @@
     (packed-math MKL/vsHypot ^RealPackedMatrix a ^RealPackedMatrix b ^RealPackedMatrix y))
   (exp [_ a y]
     (packed-math MKL/vsExp ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp2 [_ a y]
+    (packed-math MKL/vsExp2 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (exp10 [_ a y]
+    (packed-math MKL/vsExp10 ^RealPackedMatrix a ^RealPackedMatrix y))
   (expm1 [_ a y]
     (packed-math MKL/vsExpm1 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log [_ a y]
     (packed-math MKL/vsLn ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log2 [_ a y]
+    (packed-math MKL/vsLog2 ^RealPackedMatrix a ^RealPackedMatrix y))
   (log10 [_ a y]
     (packed-math MKL/vsLog10 ^RealPackedMatrix a ^RealPackedMatrix y))
+  (log1p [_ a y]
+    (packed-math MKL/vsLog1p ^RealPackedMatrix a ^RealPackedMatrix y))
   (sin [_ a y]
     (packed-math MKL/vsSin ^RealPackedMatrix a ^RealPackedMatrix y))
   (cos [_ a y]
@@ -3327,12 +3423,20 @@
     (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vdExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vdExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vdLog2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vdLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]
@@ -3500,12 +3604,20 @@
     (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vsExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vsExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vsLog2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vsLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]
@@ -3669,12 +3781,20 @@
     (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vdExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vdExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vdLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vdLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]
@@ -3838,12 +3958,20 @@
     (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vsExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vsExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vsLog2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vsLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]
@@ -4009,12 +4137,20 @@
     (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vdExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vdExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vdLog2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vdLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]
@@ -4180,12 +4316,20 @@
     (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vsExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vsExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vsLog2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vsLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]
@@ -4351,12 +4495,20 @@
     (diagonal-math MKL/vdHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vdExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vdExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vdExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vdExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vdLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vdLog2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vdLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vdLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vdSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]
@@ -4522,12 +4674,20 @@
     (diagonal-math MKL/vsHypot ^RealDiagonalMatrix a ^RealDiagonalMatrix b ^RealDiagonalMatrix y))
   (exp [_ a y]
     (diagonal-math MKL/vsExp ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp2 [_ a y]
+    (diagonal-math MKL/vsExp2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (exp10 [_ a y]
+    (diagonal-math MKL/vsExp10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (expm1 [_ a y]
     (diagonal-math MKL/vsExpm1 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log [_ a y]
     (diagonal-math MKL/vsLn ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log2 [_ a y]
+    (diagonal-math MKL/vsLog2 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (log10 [_ a y]
     (diagonal-math MKL/vsLog10 ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
+  (log1p [_ a y]
+    (diagonal-math MKL/vsLog1p ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (sin [_ a y]
     (diagonal-math MKL/vsSin ^RealDiagonalMatrix a ^RealDiagonalMatrix y))
   (cos [_ a y]

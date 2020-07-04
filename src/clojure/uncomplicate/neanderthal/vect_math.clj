@@ -124,14 +124,26 @@
 (defmath! exp! api/exp a y)
 (defmath exp api/exp a)
 
+(defmath! exp2! api/exp2 a y)
+(defmath exp2 api/exp2 a)
+
+(defmath! exp10! api/exp10 a y)
+(defmath exp10 api/exp10 a)
+
 (defmath! expm1! api/expm1 a y)
 (defmath expm1 api/expm1 a)
 
 (defmath! log! api/log a y)
 (defmath log api/log a)
 
+(defmath! log2! api/log2 a y)
+(defmath log2 api/log2 a)
+
 (defmath! log10! api/log10 a y)
 (defmath log10 api/log10 a)
+
+(defmath! log1p! api/log1p a y)
+(defmath log1p api/log1p a)
 
 (defmath! sin! api/sin a y)
 (defmath sin api/sin a)

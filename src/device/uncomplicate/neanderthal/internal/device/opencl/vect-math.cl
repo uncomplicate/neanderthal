@@ -3,7 +3,7 @@
 #endif
 
 #ifndef REAL2o3
-#define REAL2o3 (REAL)0.6666666666666666
+#define REAL2o3 (REAL)0.6666666666666667
 #endif
 
 #ifndef REAL3o2
@@ -150,6 +150,18 @@ __kernel void vector_exp (__global const REAL* x, const uint offset_x, const uin
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_exp2 (__global const REAL* x, const uint offset_x, const uint stride_x,
+                           __global REAL* y, const uint offset_y, const uint stride_y) {
+    y[offset_y + get_global_id(0) * stride_y] = exp2(x[offset_x + get_global_id(0) * stride_x]);
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_exp10 (__global const REAL* x, const uint offset_x, const uint stride_x,
+                            __global REAL* y, const uint offset_y, const uint stride_y) {
+    y[offset_y + get_global_id(0) * stride_y] = exp10(x[offset_x + get_global_id(0) * stride_x]);
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
 __kernel void vector_expm1 (__global const REAL* x, const uint offset_x, const uint stride_x,
                             __global REAL* y, const uint offset_y, const uint stride_y) {
     y[offset_y + get_global_id(0) * stride_y] = expm1(x[offset_x + get_global_id(0) * stride_x]);
@@ -162,9 +174,21 @@ __kernel void vector_log (__global const REAL* x, const uint offset_x, const uin
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_log2 (__global const REAL* x, const uint offset_x, const uint stride_x,
+                           __global REAL* y, const uint offset_y, const uint stride_y) {
+    y[offset_y + get_global_id(0) * stride_y] = log2(x[offset_x + get_global_id(0) * stride_x]);
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
 __kernel void vector_log10 (__global const REAL* x, const uint offset_x, const uint stride_x,
                             __global REAL* y, const uint offset_y, const uint stride_y) {
     y[offset_y + get_global_id(0) * stride_y] = log10(x[offset_x + get_global_id(0) * stride_x]);
+}
+
+__attribute__((work_group_size_hint(WGS, 1, 1)))
+__kernel void vector_log1p (__global const REAL* x, const uint offset_x, const uint stride_x,
+                            __global REAL* y, const uint offset_y, const uint stride_y) {
+    y[offset_y + get_global_id(0) * stride_y] = log1p(x[offset_x + get_global_id(0) * stride_x]);
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))
@@ -517,6 +541,18 @@ __kernel void ge_exp (__global const REAL* a, const uint offset_a, const uint ld
         exp(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
 }
 
+__kernel void ge_exp2 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        exp2(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_exp10 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        exp10(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
 __kernel void ge_expm1 (__global const REAL* a, const uint offset_a, const uint ld_a,
                         __global REAL* b, const uint offset_b, const uint ld_b) {
     b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
@@ -529,10 +565,22 @@ __kernel void ge_log (__global const REAL* a, const uint offset_a, const uint ld
         log(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
 }
 
+__kernel void ge_log2 (__global const REAL* a, const uint offset_a, const uint ld_a,
+                       __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        log2(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
 __kernel void ge_log10 (__global const REAL* a, const uint offset_a, const uint ld_a,
                         __global REAL* b, const uint offset_b, const uint ld_b) {
     b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
         log10(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
+}
+
+__kernel void ge_log1p (__global const REAL* a, const uint offset_a, const uint ld_a,
+                        __global REAL* b, const uint offset_b, const uint ld_b) {
+    b[offset_b + get_global_id(0) + get_global_id(1) * ld_b] =
+        log1p(a[offset_a + get_global_id(0) + get_global_id(1) * ld_a]);
 }
 
 __kernel void ge_sin (__global const REAL* a, const uint offset_a, const uint ld_a,
@@ -995,6 +1043,30 @@ __kernel void uplo_exp (const uint unit, const int bottom,
     }
 }
 
+__kernel void uplo_exp2 (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = exp2(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_exp10 (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = exp10(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
 __kernel void uplo_expm1 (const uint unit, const int bottom,
                           __global const REAL* a, const uint offset_a, const uint ld_a,
                           __global REAL* b, const uint offset_b, const uint ld_b) {
@@ -1019,6 +1091,18 @@ __kernel void uplo_log (const uint unit, const int bottom,
     }
 }
 
+__kernel void uplo_log2 (const uint unit, const int bottom,
+                         __global const REAL* a, const uint offset_a, const uint ld_a,
+                         __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = log2(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
 __kernel void uplo_log10 (const uint unit, const int bottom,
                           __global const REAL* a, const uint offset_a, const uint ld_a,
                           __global REAL* b, const uint offset_b, const uint ld_b) {
@@ -1028,6 +1112,18 @@ __kernel void uplo_log10 (const uint unit, const int bottom,
         ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
     if (check) {
         b[offset_b + gid_0 + gid_1 * ld_b] = log10(a[offset_a + gid_0 + gid_1 * ld_a]);
+    }
+}
+
+__kernel void uplo_log1p (const uint unit, const int bottom,
+                          __global const REAL* a, const uint offset_a, const uint ld_a,
+                          __global REAL* b, const uint offset_b, const uint ld_b) {
+    const int gid_0 = get_global_id(0);
+    const int gid_1 = get_global_id(1);
+    const bool check = (unit == 132)
+        ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1;
+    if (check) {
+        b[offset_b + gid_0 + gid_1 * ld_b] = log1p(a[offset_a + gid_0 + gid_1 * ld_a]);
     }
 }
 
