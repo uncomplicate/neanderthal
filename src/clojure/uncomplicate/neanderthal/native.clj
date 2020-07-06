@@ -387,6 +387,6 @@
      (map-channel fact channel n-or-flag)))
   ([fact file]
    (let [channel (if (instance? FileChannel file) file (channel file))]
-     (map-channel channel file)))
+     (map-channel fact channel)))
   ([file]
    (map-file native-float file)))
