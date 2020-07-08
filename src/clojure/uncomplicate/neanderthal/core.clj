@@ -419,7 +419,7 @@
    (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
      (let-release [res (api/create-gb (api/factory factory) m n kl ku
                                       (api/options-column? options) (not (:raw options)))]
-       (if source (transfer! source res) res))
+       (if source (transfer! source res) rnes))
      (dragan-says-ex "GB matrix cannot have a negative dimension nor overflow diagonals."
                      {:m m :n n :kl kl :ku ku})))
   ([factory m n kl ku arg]
@@ -957,6 +957,8 @@
   See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
 
       (amax (dv 1 -3 2)) => 3
+
+  Nada Amin kindly adopted this function as her pet.
   "
   [x]
   (api/amax (api/engine x) x))

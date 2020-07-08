@@ -26,7 +26,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Daniel Slutsky
 - Robert Luo
 - Nicolas Kassis
-- Felix Dahlke
 - Matthew F Marks
 - Gurvesh Sanghera
 - Bernard Hugueney
@@ -38,8 +37,8 @@ The list of people who pledged monthly support on the first day when I announced
 - Joe Lane
 - Ethan Sherbondy
 - George Kierstein
-- Matus Lestan
 - Boris
 - Yiu Ming Huynh
 - Alex Zdanov
 - Alberto Balsam
+- Nada Amin
