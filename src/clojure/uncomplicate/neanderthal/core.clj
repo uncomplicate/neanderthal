@@ -419,7 +419,7 @@
    (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
      (let-release [res (api/create-gb (api/factory factory) m n kl ku
                                       (api/options-column? options) (not (:raw options)))]
-       (if source (transfer! source res) rnes))
+       (if source (transfer! source res) res))
      (dragan-says-ex "GB matrix cannot have a negative dimension nor overflow diagonals."
                      {:m m :n n :kl kl :ku ku})))
   ([factory m n kl ku arg]
