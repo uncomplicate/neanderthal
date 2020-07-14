@@ -1,5 +1,10 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.33.0
+
+* New vect-math functions: exp2, exp10, log2, and log1p
+* Fix short and byte engine crash.
+
 # 0.32.0
 
 * Enable submatrix of (tri)diagonal matrix when appropriate.
