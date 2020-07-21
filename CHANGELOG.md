@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.34.0
+
+* cublas engines support int, long, short, byte, and uint8
+
 # 0.33.0
 
 * New vect-math functions: exp2, exp10, log2, and log1p

@@ -40,8 +40,8 @@
 (defn factory-by-type [data-type]
   (case data-type
     :float native-float
-    :int native-int
     :double native-double
+    :int native-int
     :long native-long
     :short native-short
     :byte native-byte

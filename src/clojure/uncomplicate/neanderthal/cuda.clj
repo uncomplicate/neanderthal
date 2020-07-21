@@ -17,7 +17,7 @@
             [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
             [uncomplicate.neanderthal.internal.device.cublas
-             :refer [cublas-double cublas-float cublas-long cublas-int]]))
+             :refer [cublas-double cublas-float cublas-long cublas-int cublas-short cublas-byte]]))
 
 (def ^{:dynamic true
        :doc "Dynamically bound CUDA factory that is used in vector and matrix constructors."}
@@ -29,12 +29,17 @@
 (def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
   cuda-double cublas-double)
 
-(def ^{:doc "Constructor of a long integer CUDA factory."}
+(def ^{:doc "Constructor of a long CUDA factory."}
   cuda-long cublas-long)
 
-(def ^{:doc "Constructor of an integer integer CUDA factory."}
+(def ^{:doc "Constructor of an int CUDA factory."}
   cuda-int cublas-int)
 
+(def ^{:doc "Constructor of a short CUDA factory."}
+  cuda-short cublas-short)
+
+(def ^{:doc "Constructor of a byte CUDA factory."}
+  cuda-byte cublas-byte)
 
 (defn factory-by-type [data-type]
   (case data-type
@@ -42,6 +47,9 @@
     :double cuda-double
     :long cuda-long
     :int cuda-int
+    :short cuda-short
+    :byte cuda-byte
+    :uint8 cuda-byte
     (cond
       (= Float/TYPE data-type) cuda-float
       (= float data-type) cuda-float
@@ -51,6 +59,10 @@
       (= Integer/TYPE data-type) cuda-int
       (= long data-type) cuda-long
       (= Long/TYPE data-type) cuda-long
+      (= short data-type) cuda-short
+      (= Short/TYPE data-type) cuda-short
+      (= byte data-type) cuda-byte
+      (= Byte/TYPE data-type) cuda-byte
       :default (dragan-says-ex "You requested a factory for an unsupported data type."
                                {:requested data-type :available [:float :double Float/TYPE Double/TYPE]}))))
 

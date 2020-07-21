@@ -5,7 +5,7 @@
             [uncomplicate.neanderthal
              [core :refer [tr sy]]
              [cuda :refer [with-engine *cuda-factory*  factory-by-type cuda-float
-                           cuda-double cuda-long cuda-int]]
+                           cuda-double cuda-long cuda-int cuda-short cuda-byte]]
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
@@ -37,7 +37,10 @@
          (= cuda-float (factory-by-type :float)) => true
          (= cuda-double (factory-by-type :double)) => true
          (= cuda-int (factory-by-type :int)) => true
-         (= cuda-long (factory-by-type :long)) => true)
+         (= cuda-long (factory-by-type :long)) => true
+         (= cuda-short (factory-by-type :short)) => true
+         (= cuda-byte (factory-by-type :byte)) => true
+         (= cuda-byte (factory-by-type :uint8)) => true)
 
   (with-engine cuda-float default-stream
     (block-test/test-all *cuda-factory*)
@@ -65,4 +68,10 @@
     (real-test/test-basic-integer *cuda-factory*))
 
   (with-engine cuda-int default-stream
+    (real-test/test-basic-integer *cuda-factory*))
+
+  (with-engine cuda-short default-stream
+    (real-test/test-basic-integer *cuda-factory*))
+
+  (with-engine cuda-byte default-stream
     (real-test/test-basic-integer *cuda-factory*)))

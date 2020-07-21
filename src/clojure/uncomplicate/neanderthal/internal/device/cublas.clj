@@ -82,13 +82,27 @@
         (= 0 (read-int hstream eq-flag-buf)))
       (= 0 (.dim y)))))
 
-(defn ^:private vector-subcopy [modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky]
-  (when (< 0 (long lx))
-    (with-release [copy-kernel (function modl "vector_copy")]
-      (launch! copy-kernel (grid-1d lx) hstream
-               (parameters (long lx) (.buffer x) (+ (.offset x) (* (long kx) (.stride x))) (.stride x)
-                           (.buffer y) (+ (.offset y) (* (long ky) (.stride y))) (.stride y)))))
-  y)
+(defn ^:private vector-copy
+  ([modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky]
+   (when (< 0 (long lx))
+     (with-release [copy-kernel (function modl "vector_copy")]
+       (launch! copy-kernel (grid-1d lx) hstream
+                (parameters (long lx) (.buffer x) (+ (.offset x) (* (long kx) (.stride x))) (.stride x)
+                            (.buffer y) (+ (.offset y) (* (long ky) (.stride y))) (.stride y)))))
+   y)
+  ([modl hstream ^CUBlockVector x ^CUBlockVector y]
+   (with-release [copy-kernel (function modl "vector_copy")]
+     (launch! copy-kernel (grid-1d (.dim x)) hstream
+              (parameters (.dim x) (.buffer x) (.offset x) (.stride x)
+                          (.buffer y) (.offset y) (.stride y))))
+   y))
+
+(defn ^:private vector-swap [modl hstream ^CUBlockVector x ^CUBlockVector y]
+  (with-release [copy-kernel (function modl "vector_swap")]
+    (launch! copy-kernel (grid-1d (.dim x)) hstream
+             (parameters (.dim x) (.buffer x) (.offset x) (.stride x)
+                         (.buffer y) (.offset y) (.stride y))))
+  x)
 
 (defn ^:private vector-sum [modl hstream ^CUBlockVector x]
   (let [da (data-accessor x)
@@ -800,6 +814,110 @@
     x)
   (copy [_ x y]
     (vector-method cublas-handle JCublas2/cublasDcopy ^CUBlockVector x ^CUBlockVector y))
+  (dot [_ x y]
+    (not-available))
+  (nrm1 [this x]
+    (not-available))
+  (nrm2 [_ x]
+    (not-available))
+  (nrmi [_ _]
+    (not-available))
+  (asum [_ x]
+    (not-available))
+  (iamax [_ x]
+    (not-available))
+  (iamin [_ x]
+    (not-available))
+  (rot [_ x y c s]
+    (not-available))
+  (rotg [_ _]
+    (not-available))
+  (rotm [_ x y param]
+    (not-available))
+  (rotmg [_ _ _]
+    (not-available))
+  (scal [_ alpha x]
+    (not-available))
+  (axpy [_ alpha x y]
+    (not-available))
+  BlasPlus
+  (amax [_ _]
+    (not-available))
+  (subcopy [_ x y kx lx ky]
+    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+  (sum [_ x]
+    (not-available))
+  (imax [_ x]
+    (not-available))
+  (imin [this x]
+    (not-available))
+  (set-all [_ alpha x]
+    (vector-set modl hstream alpha ^CUBlockVector x))
+  (axpby [_ alpha x beta y]
+    (not-available)))
+
+(deftype IntegerVectorEngine [cublas-handle modl hstream]
+  BlockEngine
+  (equals-block [_ x y]
+    (vector-equals modl hstream ^CUBlockVector x ^CUBlockVector y))
+  Blas
+  (swap [_ x y]
+    (vector-method cublas-handle JCublas2/cublasSswap ^CUBlockVector x ^CUBlockVector y)
+    x)
+  (copy [_ x y]
+    (vector-method cublas-handle JCublas2/cublasScopy ^CUBlockVector x ^CUBlockVector y))
+  (dot [_ x y]
+    (not-available))
+  (nrm1 [this x]
+    (not-available))
+  (nrm2 [_ x]
+    (not-available))
+  (nrmi [_ _]
+    (not-available))
+  (asum [_ x]
+    (not-available))
+  (iamax [_ x]
+    (not-available))
+  (iamin [_ x]
+    (not-available))
+  (rot [_ x y c s]
+    (not-available))
+  (rotg [_ _]
+    (not-available))
+  (rotm [_ x y param]
+    (not-available))
+  (rotmg [_ _ _]
+    (not-available))
+  (scal [_ alpha x]
+    (not-available))
+  (axpy [_ alpha x y]
+    (not-available))
+  BlasPlus
+  (amax [_ _]
+    (not-available))
+  (subcopy [_ x y kx lx ky]
+    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+  (sum [_ x]
+    (not-available))
+  (imax [_ x]
+    (not-available))
+  (imin [this x]
+    (not-available))
+  (set-all [_ alpha x]
+    (vector-set modl hstream alpha ^CUBlockVector x))
+  (axpby [_ alpha x beta y]
+    (not-available)))
+
+(deftype ByteVectorEngine [modl hstream]
+  BlockEngine
+  (equals-block [_ x y]
+    (vector-equals modl hstream ^CUBlockVector x ^CUBlockVector y))
+  Blas
+  (swap [_ x y]
+    (vector-swap modl hstream ^CUBlockVector x ^CUBlockVector y)
+    x)
+  (copy [_ x y]
+    (vector-copy modl hstream ^CUBlockVector x ^CUBlockVector y))
   (dot [_ x y]
     (not-available))
   (nrm1 [this x]
@@ -2407,4 +2525,24 @@
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)]
          (->CUFactory modl hstream (cu-int-accessor (current-context) hstream) native-int
-                      (->LongVectorEngine handle modl hstream) nil nil nil))))))
+                      (->IntegerVectorEngine handle modl hstream) nil nil nil)))))
+
+  (defn cublas-short [ctx hstream]
+    (in-context
+     ctx
+     (with-release [prog (compile! (program integer-src)
+                                   ["-DNUMBER=short" "-arch=compute_30"
+                                    #_"-use_fast_math" "-default-device"])]
+       (let-release [modl (module prog)]
+         (->CUFactory modl hstream (cu-short-accessor (current-context) hstream) native-short
+                      (->ByteVectorEngine modl hstream) nil nil nil)))))
+
+  (defn cublas-byte [ctx hstream]
+    (in-context
+     ctx
+     (with-release [prog (compile! (program integer-src)
+                                   ["-DNUMBER=char" "-arch=compute_30"
+                                    #_"-use_fast_math" "-default-device"])]
+       (let-release [modl (module prog)]
+         (->CUFactory modl hstream (cu-byte-accessor (current-context) hstream) native-byte
+                      (->ByteVectorEngine modl hstream) nil nil nil))))))
