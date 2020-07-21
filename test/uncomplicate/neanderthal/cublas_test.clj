@@ -4,7 +4,8 @@
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
              [core :refer [tr sy]]
-             [cuda :refer [with-engine *cuda-factory* cuda-float cuda-double factory-by-type]]
+             [cuda :refer [with-engine *cuda-factory*  factory-by-type cuda-float
+                           cuda-double cuda-long cuda-int]]
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
@@ -35,8 +36,8 @@
   (facts "factory-by-type test"
          (= cuda-float (factory-by-type :float)) => true
          (= cuda-double (factory-by-type :double)) => true
-         (factory-by-type :int) => (throws ExceptionInfo)
-         (factory-by-type :long) => (throws ExceptionInfo))
+         (= cuda-int (factory-by-type :int)) => true
+         (= cuda-long (factory-by-type :long)) => true)
 
   (with-engine cuda-float default-stream
     (block-test/test-all *cuda-factory*)
@@ -58,4 +59,10 @@
     (math-test/test-all-device *cuda-factory*)
     (test-math-cuda *cuda-factory*)
     (random-test/test-all *cuda-factory*)
-    (random-test/test-all-device *cuda-factory*)))
+    (random-test/test-all-device *cuda-factory*))
+
+  (with-engine cuda-long default-stream
+    (real-test/test-basic-integer *cuda-factory*))
+
+  (with-engine cuda-int default-stream
+    (real-test/test-basic-integer *cuda-factory*)))

@@ -22,7 +22,8 @@
              [utils :refer [error]]]
             [uncomplicate.neanderthal
              [core :refer [transfer!]]
-             [native :refer [native-float native-double]]
+             [native :refer [native-float native-double native-long native-int
+                             native-short native-byte]]
              [block :as block]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
@@ -788,6 +789,58 @@
   c)
 
 ;; ======================== Engines ===========================================
+
+(deftype LongVectorEngine [cublas-handle modl hstream]
+  BlockEngine
+  (equals-block [_ x y]
+    (vector-equals modl hstream ^CUBlockVector x ^CUBlockVector y))
+  Blas
+  (swap [_ x y]
+    (vector-method cublas-handle JCublas2/cublasDswap ^CUBlockVector x ^CUBlockVector y)
+    x)
+  (copy [_ x y]
+    (vector-method cublas-handle JCublas2/cublasDcopy ^CUBlockVector x ^CUBlockVector y))
+  (dot [_ x y]
+    (not-available))
+  (nrm1 [this x]
+    (not-available))
+  (nrm2 [_ x]
+    (not-available))
+  (nrmi [_ _]
+    (not-available))
+  (asum [_ x]
+    (not-available))
+  (iamax [_ x]
+    (not-available))
+  (iamin [_ x]
+    (not-available))
+  (rot [_ x y c s]
+    (not-available))
+  (rotg [_ _]
+    (not-available))
+  (rotm [_ x y param]
+    (not-available))
+  (rotmg [_ _ _]
+    (not-available))
+  (scal [_ alpha x]
+    (not-available))
+  (axpy [_ alpha x y]
+    (not-available))
+  BlasPlus
+  (amax [_ _]
+    (not-available))
+  (subcopy [_ x y kx lx ky]
+    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+  (sum [_ x]
+    (not-available))
+  (imax [_ x]
+    (not-available))
+  (imin [this x]
+    (not-available))
+  (set-all [_ alpha x]
+    (vector-set modl hstream alpha ^CUBlockVector x))
+  (axpby [_ alpha x beta y]
+    (not-available)))
 
 (deftype DoubleVectorEngine [cublas-handle modl hstream]
   BlockEngine
@@ -2281,9 +2334,13 @@
       (with-check cublas-error (JCublas2/cublasSetStream handle cuda-stream) handle))))
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/blas-plus.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu")))
+
+      integer-src (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
+
       standard-headers {"stdint.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/stdint.h"))
                         "float.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/float.h"))}
       philox-headers
@@ -2302,7 +2359,7 @@
     (in-context
      ctx
      (with-release [prog (compile! (program src philox-headers)
-                                   ["-DREAL=double" "-DACCUMULATOR=double"
+                                   ["-DNUMBER=double" "-DREAL=double" "-DACCUMULATOR=double"
                                     "-DCAST(fun)=fun" "-arch=compute_30"
                                     #_"-use_fast_math" "-default-device"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
@@ -2317,7 +2374,7 @@
     (in-context
      ctx
      (with-release [prog (compile! (program src philox-headers)
-                                   ["-DREAL=float" "-DACCUMULATOR=float"
+                                   ["-DNUMBER=float" "-DREAL=float" "-DACCUMULATOR=float"
                                     "-DCAST(fun)=fun##f" "-arch=compute_30"
                                     #_"-use_fast_math" "-default-device"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
@@ -2326,4 +2383,28 @@
                      hstream (get-cublas-stream handle)]
          (->CUFactory modl hstream (cu-float-accessor (current-context) hstream) native-float
                       (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
-                      (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream)))))))
+                      (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))
+
+  (defn cublas-long [ctx hstream]
+    (in-context
+     ctx
+     (with-release [prog (compile! (program integer-src)
+                                   ["-DNUMBER=long" "-arch=compute_30"
+                                    #_"-use_fast_math" "-default-device"])]
+       (let-release [modl (module prog)
+                     handle (cublas-handle hstream)
+                     hstream (get-cublas-stream handle)]
+         (->CUFactory modl hstream (cu-long-accessor (current-context) hstream) native-long
+                      (->LongVectorEngine handle modl hstream) nil nil nil)))))
+
+  (defn cublas-int [ctx hstream]
+    (in-context
+     ctx
+     (with-release [prog (compile! (program integer-src)
+                                   ["-DNUMBER=int" "-arch=compute_30"
+                                    #_"-use_fast_math" "-default-device"])]
+       (let-release [modl (module prog)
+                     handle (cublas-handle hstream)
+                     hstream (get-cublas-stream handle)]
+         (->CUFactory modl hstream (cu-int-accessor (current-context) hstream) native-int
+                      (->LongVectorEngine handle modl hstream) nil nil nil))))))

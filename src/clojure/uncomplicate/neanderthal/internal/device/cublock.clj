@@ -10,7 +10,8 @@
     uncomplicate.neanderthal.internal.device.cublock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Info info
-                           Wrapper extract wrap-float wrap-double wrap-int wrap-long]]
+                           Wrapper extract wrap-float wrap-double wrap-int wrap-long
+                           wrap-short wrap-byte]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
@@ -34,9 +35,9 @@
            [uncomplicate.neanderthal.internal.api DataAccessor VectorSpace Vector CLVector CUVector
             Matrix CLMatrix CUMatrix GEMatrix RealChangeable LayoutNavigator RealLayoutNavigator
             Region MatrixImplementation NativeBlock FullStorage RealDefault UploMatrix
-            RealNativeVector RealNativeMatrix]
-           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix
-            RealUploMatrix]))
+            RealNativeVector RealNativeMatrix Block]
+           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector
+            IntegerBlockVector RealGEMatrix RealUploMatrix]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -122,6 +123,12 @@
 (defn cu-long-accessor [ctx hstream]
   (->TypedCUAccessor (volatile! true) ctx hstream Long/TYPE Long/BYTES wrap-long long))
 
+(defn cu-short-accessor [ctx hstream]
+  (->TypedCUAccessor (volatile! true) ctx hstream Short/TYPE Short/BYTES wrap-short short))
+
+(defn cu-byte-accessor [ctx hstream]
+  (->TypedCUAccessor (volatile! true) ctx hstream Byte/TYPE Byte/BYTES wrap-byte byte))
+
 ;; ================ CUDA memory transfer ======================================
 
 (defn cublas-error [^long err-code details]
@@ -129,8 +136,8 @@
     (ex-info (format "cuBLAS error: %s." err)
              {:name err :code err-code :type :cublas-error :details details})))
 
-(defn get-vector! [^CUVector cu ^RealNativeVector host]
-  (if (< 0 (.dim host))
+(defn get-vector! [^CUVector cu ^Block host]
+  (if (< 0 (.dim ^Vector host))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
       (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
@@ -143,8 +150,8 @@
                         {:cu (info cu) :host (info host)}))))
     host))
 
-(defn set-vector! [^RealNativeVector host ^CUVector cu]
-  (if (< 0 (.dim cu))
+(defn set-vector! [^Block host ^CUVector cu]
+  (if (< 0 (.dim ^Vector cu))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
       (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
@@ -353,6 +360,14 @@
   (get-vector! source destination))
 
 (defmethod transfer! [RealBlockVector CUBlockVector]
+  [source destination]
+  (set-vector! source destination))
+
+(defmethod transfer! [CUBlockVector IntegerBlockVector]
+  [source destination]
+  (get-vector! source destination))
+
+(defmethod transfer! [IntegerBlockVector CUBlockVector]
   [source destination]
   (set-vector! source destination))
 
