@@ -220,7 +220,18 @@
      :offset ofst
      :stride strd
      :master master
-     :engine eng});;TODO (info [x info-type])
+     :engine eng})
+  (info [x info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class x)
+      :device :cuda
+      :dim n
+      :offset ofst
+      :stride strd
+      :master master
+      :engine eng
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -228,11 +239,11 @@
   (raw [_]
     (cu-block-vector fact n))
   (raw [_ fact]
-    (create-vector fact n false))
+    (create-vector (factory fact) n false))
   (zero [x]
     (zero x fact))
   (zero [_ fact]
-    (create-vector fact n true))
+    (create-vector (factory fact) n true))
   (host [x]
     (let-release [res (raw x (native-factory fact))]
       (get-vector! x res)))
@@ -409,6 +420,23 @@
      :storage (info stor)
      :region (info reg)
      :engine (info eng)})
+  (info [a info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class a)
+      :device :cuda
+      :matrix-type :ge
+      :dim (.dim ^Matrix a)
+      :m m
+      :n n
+      :offset ofst
+      :stride (.ld stor)
+      :master master
+      :layout (:layout (info nav))
+      :storage (info stor)
+      :region (info reg)
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -441,11 +469,11 @@
   (raw [_]
     (cu-ge-matrix fact m n nav stor reg))
   (raw [_ fact]
-    (create-ge fact m n (.isColumnMajor nav) false))
+    (create-ge (factory fact) m n (.isColumnMajor nav) false))
   (zero [a]
     (zero a fact))
   (zero [_ fact]
-    (create-ge fact m n (.isColumnMajor nav) true))
+    (create-ge (factory fact) m n (.isColumnMajor nav) true))
   (host [a]
     (let-release [res (raw a (native-factory fact))]
       (get-matrix! a res)))
@@ -602,6 +630,39 @@
   (toString [a]
     (format "#CUUploMatrix[%s, type%s, mxn:%dx%d, layout%s, offset:%d]"
             (.entryType da) matrix-type n n (dec-property (.layout nav)) ofst))
+  Info
+  (info [a]
+    {:entry-type (.entryType da)
+     :class (class a)
+     :device :cuda
+     :matrix-type matrix-type
+     :dim (.dim ^Matrix a)
+     :m n
+     :n n
+     :offset ofst
+     :stride (.ld stor)
+     :master master
+     :layout (:layout (info nav))
+     :storage (info stor)
+     :region (info reg)
+     :engine (info eng)})
+  (info [a info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class a)
+      :device :cuda
+      :matrix-type matrix-type
+      :dim (.dim ^Matrix a)
+      :m n
+      :n n
+      :offset ofst
+      :stride (.ld stor)
+      :master master
+      :layout (:layout (info nav))
+      :storage (info stor)
+      :region (info reg)
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -634,11 +695,13 @@
   (raw [_]
     (cu-uplo-matrix fact n nav stor reg matrix-type default eng))
   (raw [_ fact]
-    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
+    (create-uplo (factory fact) n matrix-type (.isColumnMajor nav)
+                 (.isLower reg) (.isDiagUnit reg) false))
   (zero [a]
     (zero a fact))
   (zero [_ fact]
-    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) true))
+    (create-uplo (factory fact) n matrix-type (.isColumnMajor nav)
+                 (.isLower reg) (.isDiagUnit reg) true))
   (host [a]
     (let-release [res (raw a (native-factory fact))]
       (get-matrix! a res)))

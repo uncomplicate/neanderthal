@@ -128,7 +128,7 @@
       (transfer (fv [1 2 3]))
   "
   ([factory x]
-   (let-release [res (api/raw x (api/factory factory))]
+   (let-release [res (api/raw x factory)]
      (transfer! x res)
      res))
   ([x]

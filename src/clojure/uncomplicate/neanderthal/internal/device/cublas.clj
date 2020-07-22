@@ -844,7 +844,7 @@
   (amax [_ _]
     (not-available))
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+    (vector-copy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
   (sum [_ x]
     (not-available))
   (imax [_ x]
@@ -896,7 +896,7 @@
   (amax [_ _]
     (not-available))
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+    (vector-copy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
   (sum [_ x]
     (not-available))
   (imax [_ x]
@@ -948,7 +948,7 @@
   (amax [_ _]
     (not-available))
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+    (vector-copy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
   (sum [_ x]
     (not-available))
   (imax [_ x]
@@ -1000,7 +1000,7 @@
   (amax [_ _]
     (not-available))
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+    (vector-copy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
   (sum [_ x]
     (vector-sum modl hstream ^CUBlockVector x))
   (imax [_ x]
@@ -1182,7 +1182,7 @@
   (amax [_ _]
     (not-available))
   (subcopy [_ x y kx lx ky]
-    (vector-subcopy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
+    (vector-copy modl hstream ^CUBlockVector x ^CUBlockVector y kx lx ky))
   (sum [_ x]
     (vector-sum modl hstream ^CUBlockVector x))
   (imax [_ x]

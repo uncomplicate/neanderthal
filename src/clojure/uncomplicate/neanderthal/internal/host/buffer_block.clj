@@ -474,6 +474,17 @@
      :stride strd
      :master master
      :info (info eng)})
+  (info [x info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class x)
+      :device :cpu
+      :dim n
+      :offset ofst
+      :stride strd
+      :master master
+      :info (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -484,11 +495,11 @@
   (raw [_]
     (integer-block-vector fact n))
   (raw [_ fact]
-    (create-vector fact n false))
+    (create-vector (factory fact) n false))
   (zero [_]
     (integer-block-vector fact n))
   (zero [_ fact]
-    (create-vector fact n true))
+    (create-vector (factory fact) n true))
   (host [x]
     (let-release [res (raw x)]
       (copy eng x res)))
@@ -668,6 +679,17 @@
      :stride strd
      :master master
      :engine (info eng)})
+  (info [x info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class x)
+      :device :cpu
+      :dim n
+      :offset ofst
+      :stride strd
+      :master master
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -678,11 +700,11 @@
   (raw [_]
     (real-block-vector fact n))
   (raw [_ fact]
-    (create-vector fact n false))
+    (create-vector (factory fact) n false))
   (zero [_]
     (real-block-vector fact n))
   (zero [_ fact]
-    (create-vector fact n true))
+    (create-vector (factory fact) n true))
   (host [x]
     (let-release [res (raw x)]
       (copy eng x res)))
@@ -886,6 +908,23 @@
      :storage (info stor)
      :region (info reg)
      :engine (info eng)})
+  (info [a info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class a)
+      :device :cpu
+      :matrix-type :ge
+      :dim (.dim ^Matrix a)
+      :m m
+      :n n
+      :offset ofst
+      :stride (.ld stor)
+      :master master
+      :layout (:layout (info nav))
+      :storage (info stor)
+      :region (info reg)
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -920,11 +959,11 @@
   (raw [_]
     (real-ge-matrix fact m n nav stor reg))
   (raw [_ fact]
-    (create-ge fact m n (.isColumnMajor nav) false))
+    (create-ge (factory fact) m n (.isColumnMajor nav) false))
   (zero [a]
     (raw a))
   (zero [_ fact]
-    (create-ge fact m n (.isColumnMajor nav) true))
+    (create-ge (factory fact) m n (.isColumnMajor nav) true))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
@@ -1144,6 +1183,23 @@
      :storage (info stor)
      :region (info reg)
      :engine (info eng)})
+  (info [a info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class a)
+      :device :cpu
+      :matrix-type matrix-type
+      :dim (.dim ^Matrix a)
+      :m n
+      :n n
+      :offset ofst
+      :stride (.ld stor)
+      :master master
+      :layout (:layout (info nav))
+      :storage (info stor)
+      :region (info reg)
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -1178,11 +1234,13 @@
   (raw [_]
     (real-uplo-matrix fact n nav stor reg matrix-type default eng))
   (raw [_ fact]
-    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
+    (create-uplo (factory fact) n matrix-type (.isColumnMajor nav)
+                 (.isLower reg) (.isDiagUnit reg) false))
   (zero [a]
     (raw a))
   (zero [_ fact]
-    (create-uplo fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) true))
+    (create-uplo (factory fact) n matrix-type (.isColumnMajor nav)
+                 (.isLower reg) (.isDiagUnit reg) true))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
@@ -1443,6 +1501,23 @@
      :storage (info stor)
      :region (info reg)
      :engine (info eng)})
+  (info [a info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class a)
+      :device :cpu
+      :matrix-type matrix-type
+      :dim (.dim ^Matrix a)
+      :m m
+      :n n
+      :offset ofst
+      :stride (.ld stor)
+      :master master
+      :layout (:layout (info nav))
+      :storage (info stor)
+      :region (info reg)
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -1477,11 +1552,13 @@
   (raw [_]
     (real-banded-matrix fact m n nav stor reg matrix-type default eng))
   (raw [_ fact]
-    (create-banded fact m n (.kl reg) (.ku reg) matrix-type (.isColumnMajor nav) false))
+    (create-banded (factory fact) m n (.kl reg) (.ku reg) matrix-type
+                   (.isColumnMajor nav) false))
   (zero [a]
     (raw a))
   (zero [_ fact]
-    (create-banded fact m n (.kl reg) (.ku reg) matrix-type (.isColumnMajor nav) true))
+    (create-banded (factory fact) m n (.kl reg) (.ku reg) matrix-type
+                   (.isColumnMajor nav) true))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
@@ -1771,6 +1848,22 @@
      :storage (info stor)
      :region (info reg)
      :engine (info eng)})
+  (info [a info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class a)
+      :device :cpu
+      :matrix-type matrix-type
+      :dim (.dim ^Matrix a)
+      :m n
+      :n n
+      :offset ofst
+      :master master
+      :layout (:layout (info nav))
+      :storage (info stor)
+      :region (info reg)
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -1805,11 +1898,13 @@
   (raw [_]
     (real-packed-matrix fact n nav stor reg matrix-type default eng))
   (raw [_ fact]
-    (create-packed fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) false))
+    (create-packed (factory fact) n matrix-type (.isColumnMajor nav)
+                   (.isLower reg) (.isDiagUnit reg) false))
   (zero [a]
     (raw a))
   (zero [_ fact]
-    (create-packed fact n matrix-type (.isColumnMajor nav) (.isLower reg) (.isDiagUnit reg) true))
+    (create-packed (factory fact) n matrix-type (.isColumnMajor nav)
+                   (.isLower reg) (.isDiagUnit reg) true))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
@@ -2054,6 +2149,21 @@
      :storage (info stor)
      :region (info reg)
      :engine (info eng)})
+  (info [a info-type]
+    (case info-type
+      :entry-type (.entryType da)
+      :class (class a)
+      :device :cpu
+      :matrix-type matrix-type
+      :dim (.dim ^Matrix a)
+      :n n
+      :offset ofst
+      :master master
+      :layout :diagonal
+      :storage (info stor)
+      :region (info reg)
+      :engine (info eng)
+      nil))
   Releaseable
   (release [_]
     (if master (release buf) true))
@@ -2088,11 +2198,11 @@
   (raw [_]
     (real-diagonal-matrix fact n nav stor reg matrix-type default eng))
   (raw [_ fact]
-    (create-diagonal fact n matrix-type false))
+    (create-diagonal (factory fact) n matrix-type false))
   (zero [a]
     (raw a))
   (zero [_ fact]
-    (create-diagonal fact n matrix-type true))
+    (create-diagonal (factory fact) n matrix-type true))
   (host [a]
     (let-release [res (raw a)]
       (copy eng a res)))
