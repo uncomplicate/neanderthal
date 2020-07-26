@@ -373,7 +373,7 @@
   ([source]
    (st native-double source)))
 
-(defn map-file
+(defn map-vector
   "Maps a file or file channel to a vector of size `n`.
   Supported `flag`s are: `:read-write`, `:read` (or `:read-only`),
   `:private` (or `:copy-on-write`)."
@@ -381,7 +381,7 @@
    (let [channel (if (instance? FileChannel file) file (channel file))]
      (map-channel fact channel n flag offset-bytes)))
   ([fact file n flag]
-   (map-file fact file n flag 0))
+   (map-vector fact file n flag 0))
   ([fact file n-or-flag]
    (let [channel (if (instance? FileChannel file) file (channel file))]
      (map-channel fact channel n-or-flag)))
@@ -389,4 +389,4 @@
    (let [channel (if (instance? FileChannel file) file (channel file))]
      (map-channel fact channel)))
   ([file]
-   (map-file native-float file)))
+   (map-vector native-float file)))
