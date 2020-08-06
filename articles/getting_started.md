@@ -13,8 +13,6 @@ Neanderthal's default option is to use use native libraries, so it is very impor
 
 ## Usage
 
-This is what you'll be able to do after the [installation](#installation):
-
 First `use` or `require` `uncomplicate.neanderthal.core` and `uncomplicate.neanderthal.native` in your namespace, and you'll be able to call appropriate functions from the Neanderthal library.
 
 ```clojure
@@ -40,6 +38,16 @@ This is one of the ways to multiply matrices:
 (mm a b)
 ```
 
+## Leiningen
+
+The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependency to your `project.clj`, just like in **[the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj)**:
+
+![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
+
+Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.1-1.5.3"]` as your project's dependency.
+
+Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional). **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
+
 ## Overview and Features
 
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
@@ -64,21 +72,6 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 * ~"Tensors"~: This is already available in Deep Diamond!
 * Sparse matrices;
 * Support for complex numbers;
-
-## Installation
-
-1. To use the native engine: install Intel's MKL on your system following [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine).
-2. To use the GPU engine: install the drivers and a CUDA and/or OpenCL platform software provided by the vendor of your graphic card (you probably already have that; see [GPU Engine Requirements](#gpu-drivers-for-the-gpu-engine)).
-
-### With Leiningen
-
-The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependency to your `project.clj`, just like in [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj):
-
-![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
-
-Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.1-1.5.3"]` as your project's dependency.
-
-Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional). **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
 
 ## Requirements
 
