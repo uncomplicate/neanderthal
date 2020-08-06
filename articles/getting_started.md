@@ -61,7 +61,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 ### On the TODO List
 
-* "Tensors" (as defined in various deep learning libraries)
+* ~"Tensors"~: This is already available in Deep Diamond!
 * Sparse matrices;
 * Support for complex numbers;
 
@@ -76,6 +76,10 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
 
+Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.1-1.5.3"]` as your project's dependency.
+
+Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine). *Note: MKL size is 750MB*! Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
+
 ## Requirements
 
 You need at least Java 8.
@@ -84,7 +88,27 @@ If you are running on Java 9 or higher, you need to enable the `java.base` modul
 
 Neanderthal's data structures are written in Clojure, so many functions work even without native engines. However, you probably need Neanderthal because of its fast BLAS native or GPU engines. Here is how to make sure they are available.
 
-### The native library used by Neanderthal's native engine
+### GPU drivers for the OpenCL GPU engine
+
+Everything will magically work (no need to compile anything) on Nvidia, AMD, and Intel's GPUs and CPUs as long as you have appropriate GPU drivers.
+
+Works on Linux, Windows, and OS X!
+
+Follow the [ClojureCL getting started guide](https://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
+
+**If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` instead of `command-queue` and `with-default`.**
+
+### GPU drivers for the CUDA GPU engine
+
+Everything will magically work (no need to compile anything) on Nvidia, provided that you **installed the latest Nvidia's CUDA Toolkit**.
+
+Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
+
+### The native library used by Neanderthal's native engine (Optional)
+
+** None of this is needed if you include [org.bytedeco/mkl-platform-redist "2020.1-1.5.3"] dependency**.
+
+This section deals with system-wide MKL installation.
 
 * Works on Linux, OS X, and Windows!
 
@@ -92,7 +116,7 @@ Neanderthal **uses the native [Intel MKL](https://software.intel.com/en-us/mkl) 
 
 **You do not need to compile or tune anything yourself.**
 
-There are 3 main choices to make MKL available on your system; either:
+These are alternative ways to make MKL available on your system globally; either:
 
 1. Install it through a package manager it that is available on your system. I use Arch Linux (`pacman -Syu intel-mkl`), and I believe that many other Linux distributions now ship MKL in their repositories..
 
@@ -100,10 +124,6 @@ OR:
 
 1. (Optionally) Install MKL using a [GUI installer provided by Intel](https://software.intel.com/en-us/intel-mkl) free of charge. In case you use this method, you may [set environment variables as explained in this guide](https://software.intel.com/en-us/node/528500), but it is probably not required, since you do **not** need to compile anything.
 2. Put all required binary files (that you installed with MKL installer or copied from wherever you acquired them) in a directory that is available from your `LD_LIBRARY_PATH` (Linux), `DYLD_LIBRARY_PATH` (OSX) or, `PATH` (windows). Those binary files are available from anyone who installed MKL and have the (free) license to redistribute it with a project.
-
-(Not needed for most people:) For a Leiningen project, [lein-with-env-vars](https://github.com/athos/lein-with-env-vars) is useful for passing the path of the MKL libraries to the native linker environment variables, see [lin-alg-app](https://github.com/viesti/lin-alg-app) example project. I don't use this at all. Rather, I set MKL to be globally accessible through `LD_LIBRARY_PATH`. (In other words, this is an optional step).
-
-Either way, Neanderthal does not care how MKL has been provided, as long as it is on the path of your OS. When it comes to distributing the software you build using Neanderthal, I guess the most convenient option is that you include the required MKL binary files in the uberjar or other package that you use to ship the product. Then, it would not require any additional action from your users.
 
 This is the list of MKL files that Neanderthal requires:
 
@@ -122,21 +142,7 @@ Please note that, if you use Windows or OS X, the binary file extensions are not
 
 **Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contains the `dll`s into the `PATH` environment variable, and you're ready to go. Some Windows users reported that `libiomp5.dll` too is in another folder; see the note for OSX users and take the equivalent Windows action.
 
-### GPU drivers for the OpenCL GPU engine
-
-Everything will magically work (no need to compile anything) on Nvidia, AMD, and Intel's GPUs and CPUs as long as you have appropriate GPU drivers.
-
-Works on Linux, Windows, and OS X!
-
-Follow the [ClojureCL getting started guide](https://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
-
-**If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` instead of `command-queue` and `with-default`.**
-
-### GPU drivers for the CUDA GPU engine
-
-Everything will magically work (no need to compile anything) on Nvidia, provided that you **installed the latest Nvidia's CUDA Toolkit**.
-
-Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
+*Final note* If you prefer zero-install, just include `[org.bytedeco/mkl-platform-redist "2020.1-1.5.3"]` as a dependencly in your leiningen project and none of these is necessary.
 
 ## Where to Go Next
 
