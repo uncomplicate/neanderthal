@@ -78,7 +78,7 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.1-1.5.3"]` as your project's dependency.
 
-Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine). *Note: MKL size is 750MB*! Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
+Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine). **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
 
 ## Requirements
 
@@ -106,7 +106,7 @@ Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.
 
 ### The native library used by Neanderthal's native engine (Optional)
 
-** None of this is needed if you include [org.bytedeco/mkl-platform-redist "2020.1-1.5.3"] dependency**.
+**The following is not needed if you include [org.bytedeco/mkl-platform-redist "2020.1-1.5.3"] dependency.**
 
 This section deals with system-wide MKL installation.
 
