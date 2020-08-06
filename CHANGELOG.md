@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.35.0
+
+* Does not require system-wide MKL. Uses binaries provided by the bytedeco jar if present.
+
 # 0.34.0
 
 * cublas engines support int, long, short, byte, and uint8
