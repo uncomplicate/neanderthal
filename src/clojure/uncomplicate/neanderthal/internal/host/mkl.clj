@@ -23,14 +23,17 @@
              [buffer-block :refer :all]
              [cblas :refer :all]
              [lapack :refer :all]])
-  (:import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK]
-           [java.nio ByteBuffer FloatBuffer DoubleBuffer LongBuffer IntBuffer ShortBuffer
+  (:import [java.nio ByteBuffer FloatBuffer DoubleBuffer LongBuffer IntBuffer ShortBuffer
             ByteBuffer  DirectByteBuffer DirectFloatBufferU DirectDoubleBufferU
             DirectLongBufferU DirectIntBufferU DirectShortBufferU]
            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
             Block RealVector Region LayoutNavigator DenseStorage RealNativeMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
             RealGEMatrix RealUploMatrix RealBandedMatrix RealPackedMatrix RealDiagonalMatrix]))
+(try
+  (clojure.lang.RT/loadClassForName "org.bytedeco.mkl.global.mkl_rt")
+  (finally
+    (import [uncomplicate.neanderthal.internal.host CBLAS MKL LAPACK])))
 
 (defn ^:private not-available [kind]
   (throw (UnsupportedOperationException. "Operation not available for %s matrix")))

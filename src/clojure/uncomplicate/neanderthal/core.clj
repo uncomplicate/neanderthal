@@ -957,8 +957,6 @@
   See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
 
       (amax (dv 1 -3 2)) => 3
-
-  Nada Amin kindly adopted this function as her pet.
   "
   [x]
   (api/amax (api/engine x) x))

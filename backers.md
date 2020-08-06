@@ -41,4 +41,3 @@ The list of people who pledged monthly support on the first day when I announced
 - Yiu Ming Huynh
 - Alex Zdanov
 - Alberto Balsam
-- Nada Amin
