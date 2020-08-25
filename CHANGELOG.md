@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.36.0
+
+* Viewable/view moved to commons.
+
 # 0.35.0
 
 * Does not require system-wide MKL. Uses binaries provided by the bytedeco jar if present.

@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.block-test
   (:require [midje.sweet :refer [facts throws => roughly]]
-            [uncomplicate.commons.core :refer [release with-release double-fn]]
+            [uncomplicate.commons.core :refer [release with-release double-fn view]]
             [uncomplicate.fluokitten
              [core :refer [fmap! fold foldmap op]]
              [test :refer :all]]

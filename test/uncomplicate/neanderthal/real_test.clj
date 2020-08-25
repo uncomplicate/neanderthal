@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.real-test
   (:require [midje.sweet :refer [facts throws => roughly truthy]]
-            [uncomplicate.commons.core :refer [release with-release let-release]]
+            [uncomplicate.commons.core :refer [release with-release let-release view]]
             [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.fluokitten.protocols :refer [id]]
             [uncomplicate.neanderthal

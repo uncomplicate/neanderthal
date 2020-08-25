@@ -11,7 +11,7 @@
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Info info
                            Wrapper extract wrap-float wrap-double wrap-int wrap-long
-                           wrap-short wrap-byte]]
+                           wrap-short wrap-byte Viewable view]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
