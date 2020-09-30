@@ -2478,8 +2478,7 @@
      ctx
      (with-release [prog (compile! (program src philox-headers)
                                    ["-DNUMBER=double" "-DREAL=double" "-DACCUMULATOR=double"
-                                    "-DCAST(fun)=fun" "-arch=compute_30"
-                                    #_"-use_fast_math" "-default-device"
+                                    "-DCAST(fun)=fun" #_"-use_fast_math" "-default-device"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
@@ -2493,8 +2492,7 @@
      ctx
      (with-release [prog (compile! (program src philox-headers)
                                    ["-DNUMBER=float" "-DREAL=float" "-DACCUMULATOR=float"
-                                    "-DCAST(fun)=fun##f" "-arch=compute_30"
-                                    #_"-use_fast_math" "-default-device"
+                                    "-DCAST(fun)=fun##f" #_"-use_fast_math" "-default-device"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
@@ -2507,8 +2505,7 @@
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=long" "-arch=compute_30"
-                                    #_"-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=long" #_"-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)]
@@ -2519,8 +2516,7 @@
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=int" "-arch=compute_30"
-                                    #_"-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=int" "-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)]
@@ -2531,8 +2527,7 @@
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=short" "-arch=compute_30"
-                                    #_"-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=short" #_"-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)]
          (->CUFactory modl hstream (cu-short-accessor (current-context) hstream) native-short
                       (->ByteVectorEngine modl hstream) nil nil nil)))))
@@ -2541,8 +2536,7 @@
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=char" "-arch=compute_30"
-                                    #_"-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=char" #_"-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)]
          (->CUFactory modl hstream (cu-byte-accessor (current-context) hstream) native-byte
                       (->ByteVectorEngine modl hstream) nil nil nil))))))
