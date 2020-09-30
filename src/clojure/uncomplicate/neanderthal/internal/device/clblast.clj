@@ -15,7 +15,7 @@
              [utils :refer [with-check dragan-says-ex generate-seed count-groups]]]
             [uncomplicate.clojurecl
              [core :refer :all]
-             [info :refer [max-work-group-size queue-device]]
+             [info :refer [max-work-group-size queue-device platform name-info]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
             [uncomplicate.clojurecl.internal.constants :refer [dec-error]]
             [uncomplicate.neanderthal
@@ -2314,18 +2314,24 @@
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
   (defn clblast-double [ctx queue]
-    (let [wgs (max-work-group-size (queue-device queue))
+    (let [dev (queue-device queue)
+          wgs (max-work-group-size dev)
+          apple? (clojure.string/includes? (name-info (platform dev)) "Apple")
           prog (build-program! (program-with-source ctx src)
-                               (format "-DREAL=double -DREAL4=double4 -DWGS=%d -I%s/" wgs temp-dir) nil)]
+                               (format "-DREAL=double -DREAL4=double4 -DWGS=%d -DNATIVE(fun)=%s -I%s/"
+                                       wgs (if apple? "fun" "native_##fun") temp-dir) nil)]
       (->CLFactory ctx queue prog
                    (cl-double-accessor ctx queue) native-double
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
                    (->DoubleTREngine ctx queue prog) (->DoubleSYEngine ctx queue prog))))
 
   (defn clblast-float [ctx queue]
-    (let [wgs (max-work-group-size (queue-device queue))
+    (let [dev (queue-device queue)
+          wgs (max-work-group-size dev)
+          apple? (clojure.string/includes? (name-info (platform dev)) "Apple")
           prog (build-program! (program-with-source ctx src)
-                               (format "-DREAL=float -DREAL4=float4 -DWGS=%d -I%s/" wgs temp-dir) nil)]
+                               (format "-DREAL=float -DREAL4=float4 -DWGS=%d -DNATIVE(fun)=%s -I%s/"
+                                       wgs (if apple? "fun" "native_##fun") temp-dir) nil)]
       (->CLFactory ctx queue prog
                    (cl-float-accessor ctx queue) native-float
                    (->FloatVectorEngine ctx queue prog) (->FloatGEEngine ctx queue prog)

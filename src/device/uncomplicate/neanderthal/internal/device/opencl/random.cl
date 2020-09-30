@@ -8,6 +8,10 @@
 #define M_2PI_DOUBLE 6.283185307179586
 #endif
 
+#ifndef NATIVE
+#define NATIVE(fun) native_ ## fun
+#endif
+
 inline float u01_float(const uint32_t i) {
     return (0.5f + (i >> 9)) * 0x1.0p-23f;
 }
@@ -33,25 +37,25 @@ inline philox4x64_ctr_t rand_arr_64 (const uint64_t seed) {
 }
 
 inline void box_muller_float(const uint32_t* i, float* g) {
-    g[0] = native_sin(M_2PI_FLOAT * u01_float(i[0]))
-        * sqrt(-2.0f * native_log(u01_float(i[1])));
-    g[1] = native_cos(M_2PI_FLOAT * u01_float(i[0]))
-        * sqrt(-2.0f * native_log(u01_float(i[1])));
-    g[2] = native_sin(M_2PI_FLOAT * u01_float(i[2]))
-        * sqrt(-2.0f * native_log(u01_float(i[3])));
-    g[3] = native_cos(M_2PI_FLOAT * u01_float(i[2]))
-        * sqrt(-2.0f * native_log(u01_float(i[3])));
+    g[0] = NATIVE(sin)(M_2PI_FLOAT * u01_float(i[0]))
+        * sqrt(-2.0f * NATIVE(log)(u01_float(i[1])));
+    g[1] = NATIVE(cos)(M_2PI_FLOAT * u01_float(i[0]))
+        * sqrt(-2.0f * NATIVE(log)(u01_float(i[1])));
+    g[2] = NATIVE(sin)(M_2PI_FLOAT * u01_float(i[2]))
+        * sqrt(-2.0f * NATIVE(log)(u01_float(i[3])));
+    g[3] = NATIVE(cos)(M_2PI_FLOAT * u01_float(i[2]))
+        * sqrt(-2.0f * NATIVE(log)(u01_float(i[3])));
 }
 
 inline void box_muller_double(const uint64_t* i, double* g) {
-    g[0] = native_sin(M_2PI_DOUBLE * u01_double(i[0]))
-        * sqrt(-2.0f * native_log(u01_double(i[1])));
-    g[1] = native_cos(M_2PI_DOUBLE * u01_double(i[0]))
-        * sqrt(-2.0f * native_log(u01_double(i[1])));
-    g[2] = native_sin(M_2PI_DOUBLE * u01_double(i[2]))
-        * sqrt(-2.0f * native_log(u01_double(i[3])));
-    g[3] = native_cos(M_2PI_DOUBLE * u01_double(i[2]))
-        * sqrt(-2.0f * native_log(u01_double(i[3])));
+    g[0] = NATIVE(sin)(M_2PI_DOUBLE * u01_double(i[0]))
+        * sqrt(-2.0f * NATIVE(log)(u01_double(i[1])));
+    g[1] = NATIVE(cos)(M_2PI_DOUBLE * u01_double(i[0]))
+        * sqrt(-2.0f * NATIVE(log)(u01_double(i[1])));
+    g[2] = NATIVE(sin)(M_2PI_DOUBLE * u01_double(i[2]))
+        * sqrt(-2.0f * NATIVE(log)(u01_double(i[3])));
+    g[3] = NATIVE(cos)(M_2PI_DOUBLE * u01_double(i[2]))
+        * sqrt(-2.0f * NATIVE(log)(u01_double(i[3])));
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))

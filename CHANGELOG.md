@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.37.0
+
+* Workaround the bug in Apple's OpenCL driver that doesn't support native_ functions.
+
 # 0.36.0
 
 * Viewable/view moved to commons.
