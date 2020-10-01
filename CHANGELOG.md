@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.38.0
+
+* Upgrade CUDA to 11.0.
+
 # 0.37.0
 
 * Workaround the bug in Apple's OpenCL driver that doesn't support native_ functions.
