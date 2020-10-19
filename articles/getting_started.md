@@ -97,6 +97,8 @@ Everything will magically work (no need to compile anything) on Nvidia, provided
 
 Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
+*macOS* doesn't support CUDA 11 and higher (and Apple hasn't shipped Nvidia GPUs since 2014 anyway).
+
 ### The native library used by Neanderthal's native engine (Optional)
 
 **The following is not needed if you include [org.bytedeco/mkl-platform-redist "2020.1-1.5.3"] dependency.**
