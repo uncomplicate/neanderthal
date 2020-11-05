@@ -16,7 +16,7 @@
              [core :refer [asum]]
              [opencl :refer [clv with-default-engine set-engine!]]]))
 
-;; Conveniently in interactive REPL sessions (but don't do this in production code):
+;; Convenient in interactive REPL sessions (but don't do this in production code):
 
 (set-default-1!)
 (set-engine!)
