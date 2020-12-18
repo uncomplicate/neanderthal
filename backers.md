@@ -26,19 +26,15 @@ The list of people who pledged monthly support on the first day when I announced
 - Daniel Slutsky
 - Robert Luo
 - Nicolas Kassis
-- Matthew F Marks
-- Gurvesh Sanghera
 - Bernard Hugueney
 - the-alchemist
-- Felipe Gerard
 - John Collins
 - Chancy Kennedy
 - Michael Glaesemann
 - Joe Lane
-- Ethan Sherbondy
 - George Kierstein
-- Boris
-- Yiu Ming Huynh
 - Alex Zdanov
 - Alberto Balsam
 - Jochen Bedersdorfer
+- Robin Crim
+- Cognitect
