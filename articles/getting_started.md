@@ -44,7 +44,7 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
 
-Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.1-1.5.3"]` as your project's dependency.
+Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.3-1.5.4"]` as your project's dependency.
 
 Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional). **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
 
