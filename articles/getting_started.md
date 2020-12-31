@@ -101,7 +101,7 @@ Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.
 
 ### The native library used by Neanderthal's native engine (Optional)
 
-**The following is not needed if you include [org.bytedeco/mkl-platform-redist "2020.1-1.5.3"] dependency.**
+**The following is not needed if you include [org.bytedeco/mkl-platform-redist "2020.3-1.5.4"] dependency.**
 
 This section deals with system-wide MKL installation.
 
@@ -137,7 +137,7 @@ Please note that, if you use Windows or OS X, the binary file extensions are not
 
 **Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contains the `dll`s into the `PATH` environment variable, and you're ready to go. Some Windows users reported that `libiomp5.dll` too is in another folder; see the note for OSX users and take the equivalent Windows action.
 
-*Final note* If you prefer zero-install, just include `[org.bytedeco/mkl-platform-redist "2020.1-1.5.3"]` as a dependencly in your leiningen project and none of these is necessary.
+*Final note* If you prefer zero-install, just include `[org.bytedeco/mkl-platform-redist "2020.3-1.5.4"]` as a dependencly in your leiningen project and none of these is necessary.
 
 ## Where to Go Next
 
