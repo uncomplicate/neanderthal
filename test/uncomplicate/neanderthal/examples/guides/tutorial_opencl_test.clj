@@ -218,7 +218,7 @@ $code"
         (facts
          "Let's try with 2^20. That's more than a million."
 
-         (asum host-x) => (float 5.49755322E11)
+         (asum host-x) => (float 5.49755257E11)
          #_(println "CPU:")
          #_(with-progress-reporting (quick-bench (asum host-x)))
 

@@ -29,7 +29,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Bernard Hugueney
 - the-alchemist
 - John Collins
-- Chancy Kennedy
 - Michael Glaesemann
 - Joe Lane
 - George Kierstein

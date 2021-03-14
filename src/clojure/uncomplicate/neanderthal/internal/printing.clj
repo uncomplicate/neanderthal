@@ -142,7 +142,7 @@
     ([^java.io.Writer w a]
      (when (< 0 (dim a))
        (let [max-value (double (amax (engine a) a))
-             formatter (partial cl-format nil  (if (< max-value 10000.0) format-f format-g))]
+             formatter (partial cl-format nil (if (< max-value 10000.0) format-f format-g))]
          (print-ge w formatter a)))))
 
   (defn print-uplo

@@ -13,46 +13,45 @@
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.1"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
                  [uncomplicate/commons "0.12.0"]
                  [uncomplicate/fluokitten "0.9.1"]
                  [uncomplicate/neanderthal-native "0.33.0"]
                  [uncomplicate/clojurecl "0.15.0"]
-                 [org.jocl/jocl-blast "1.5.0"]
+                 [org.jocl/jocl-blast "1.5.2"]
                  [uncomplicate/clojurecuda "0.12.0"]
                  [org.jcuda/jcublas "11.1.1"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
-  :codox {:metadata {:doc/format :markdown}
-          :src-dir-uri "http://github.com/uncomplicate/neanderthal/blob/master/"
-          :src-linenum-anchor-prefix "L"
-          :namespaces [uncomplicate.neanderthal.core
-                       uncomplicate.neanderthal.linalg
-                       uncomplicate.neanderthal.native
-                       uncomplicate.neanderthal.opencl
-                       uncomplicate.neanderthal.cuda
-                       uncomplicate.neanderthal.math
-                       uncomplicate.neanderthal.vect-math
-                       uncomplicate.neanderthal.real
-                       uncomplicate.neanderthal.auxil
-                       uncomplicate.neanderthal.random]
-          :output-path "docs/codox"}
-
-  ;;also replaces lein's default JVM argument TieredStopAtLevel=1
-  ;; If building on Java 9+, uncomment the --add-opens=etc. line.
-  :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
-                       "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
-                       #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]
+  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
+  :source-paths ["src/clojure" "src/device"]
+  :java-source-paths ["src/java"]
+  :test-paths ["test"]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
-                             [lein-codox "0.10.6"]]
+                             [lein-codox "0.10.7"]]
                    :global-vars {*warn-on-reflection* true
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.9.9"]]}}
-
-  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
-  :source-paths ["src/clojure" "src/device"]
-  :java-source-paths ["src/java"]
-  :test-paths ["test"])
+                   :dependencies [[midje "1.9.10"]
+                                  [codox-theme-rdash "0.1.2"]]
+                   :codox {:metadata {:doc/format :markdown}
+                           :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
+                           :themes [:rdash]
+                           :namespaces [uncomplicate.neanderthal.core
+                                        uncomplicate.neanderthal.linalg
+                                        uncomplicate.neanderthal.native
+                                        uncomplicate.neanderthal.opencl
+                                        uncomplicate.neanderthal.cuda
+                                        uncomplicate.neanderthal.math
+                                        uncomplicate.neanderthal.vect-math
+                                        uncomplicate.neanderthal.real
+                                        uncomplicate.neanderthal.auxil
+                                        uncomplicate.neanderthal.random]
+                           :output-path "docs/codox"}}
+             ;;also replaces lein's default JVM argument TieredStopAtLevel=1
+             ;; If building on Java 9+, uncomment the --add-opens=etc. line.
+             :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                  "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
+                                  #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]})
