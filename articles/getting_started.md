@@ -46,14 +46,15 @@ The most straightforward way to include Neanderthal in your project is with Lein
 
 Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.3-1.5.4"]` as your project's dependency.
 
-Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional). **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
+Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional).33 **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
 
 ## Overview and Features
 
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
 
 * The **native engine** is based on a highly optimized native [Intel's MKL](https://https://software.intel.com/en-us/intel-mkl) library of [BLAS](https://netlib.org/blas/) and [LAPACK](https://www.netlib.org/lapack/) computation routines (MKL is not open-source, but it is free to use and redistribute since 2016).
-* The **CUDA GPU engine** is based on cuBLAS and supports all modern Nvidia GPUs. It uses [ClojureCUDA](https://clojurecuda.uncomplicate.org) and [JCuda](https://jcuda.org) libraries. Check out [Uncomplicate ClojureCUDA](https://clojurecuda.uncomplicate.org).
+* The **CUDA GPU engine** is based on cuBLAS and supports all modern Nvidia GPUs. It uses [ClojureCUDA](https://clojurecuda.uncomplicate.org) and [JCuda](https://jcuda
+3.org) libraries. Check out [Uncomplicate ClojureCUDA](https://clojurecuda.uncomplicate.org).
 * The **OpenCL GPU engine** is based on OpenCL BLAS routines from [CLBlast](https://github.com/CNugteren/CLBlast) library for even more computational power when needed. It uses [ClojureCL](https://clojurecl.uncomplicate.org) and [JOCL](https://jocl.org) libraries. Check out [Uncomplicate ClojureCL](https://clojurecl.uncomplicate.org).
 
 ### Implemented Features

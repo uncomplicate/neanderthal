@@ -109,4 +109,5 @@ $(window).ready(function() { persistScrollPosition('.primary')})
 $(window).ready(function() {
     $('#content').scroll(setCurrentVarLink)
     $(window).resize(setCurrentVarLink)
+    $(window).resize(resizeSidebars)
 })
