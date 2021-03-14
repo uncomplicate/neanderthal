@@ -1245,7 +1245,7 @@
 
 (defn mv!
   "Matrix-vector multiplication. Multiplies matrix `a`, scaled by scalar `alpha`, by vector `x`,
-  and ads it to vector `y` previously scaled by scalar `beta`.
+  and adds it to vector `y` previously scaled by scalar `beta`.
 
   If called with 2 arguments, `a` and `x`, multiplies matrix `a` by a vector `x`, and puts the
   result in the vector `x`. Scaling factors `alpha` and/or `beta` may be left out.
@@ -1390,7 +1390,7 @@
 
 (defn mm!
   "Matrix-matrix multiplication. Multiplies matrix `a`, scaled by scalar `alpha`, by matrix `b`,
-  and ads it to matrix `c` previously scaled by scalar `beta`.
+  and adds it to matrix `c` previously scaled by scalar `beta`.
 
   If called with only 2 matrices, `a` and `b`, multiplies matrix `a` by a matrix `b`, and puts the
   result in the one that is a GE matrix. In this case, exactly one of `a` or `b` has to be,
