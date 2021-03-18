@@ -25,7 +25,6 @@ The list of people who pledged monthly support on the first day when I announced
 
 - Daniel Slutsky
 - Robert Luo
-- Nicolas Kassis
 - Bernard Hugueney
 - the-alchemist
 - John Collins
@@ -37,3 +36,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Jochen Bedersdorfer
 - Robin Crim
 - Cognitect
+- Rangel Spasov
