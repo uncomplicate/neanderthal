@@ -37,3 +37,4 @@ The list of people who pledged monthly support on the first day when I announced
 - Robin Crim
 - Cognitect
 - Rangel Spasov
+- Jason Thomas
