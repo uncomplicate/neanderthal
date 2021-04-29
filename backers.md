@@ -36,5 +36,5 @@ The list of people who pledged monthly support on the first day when I announced
 - Jochen Bedersdorfer
 - Robin Crim
 - Cognitect
-- Rangel Spasov
 - Jason Thomas
+- Timothy Dean
