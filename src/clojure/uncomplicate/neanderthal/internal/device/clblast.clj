@@ -2308,13 +2308,13 @@
     sy-eng))
 
 (let [src [(slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/blas-plus.cl"))
-           (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/vect-math.cl"))
-           (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random.cl"))]]
+           (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/vect-math.cl"))]]
 
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
   (defn clblast-double [ctx queue]
-    (let [dev (queue-device queue)
+    (let [src (conj src (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random-double.cl")))
+          dev (queue-device queue)
           wgs (max-work-group-size dev)
           apple? (clojure.string/includes? (name-info (platform dev)) "Apple")
           prog (build-program! (program-with-source ctx src)
@@ -2326,7 +2326,8 @@
                    (->DoubleTREngine ctx queue prog) (->DoubleSYEngine ctx queue prog))))
 
   (defn clblast-float [ctx queue]
-    (let [dev (queue-device queue)
+    (let [src (conj src (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random-float.cl")))
+          dev (queue-device queue)
           wgs (max-work-group-size dev)
           apple? (clojure.string/includes? (name-info (platform dev)) "Apple")
           prog (build-program! (program-with-source ctx src)
