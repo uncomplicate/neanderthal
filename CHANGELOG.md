@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.43.0
+
+* Upgrade CUDA to 11.4.
+
 # 0.42.0
 
 * Fixed a few issues with devices that miss some hardware support for various OpenCL features.
