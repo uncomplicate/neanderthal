@@ -34,7 +34,7 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.9.10"]
+                   :dependencies [[midje "1.10.4"]
                                   [codox-theme-rdash "0.1.2"]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
