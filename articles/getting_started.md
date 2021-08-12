@@ -2,7 +2,7 @@
 title: "Get Started"
 Author: Dragan Djuric
 layout: article
----
+---o
 
 Neanderthal's default option is to use use native libraries, so it is very important that you do not skip any part of this guide.
 
