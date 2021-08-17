@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.43.0"
+(defproject uncomplicate/neanderthal "0.43.1-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -14,7 +14,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.3"]
-                 [uncomplicate/commons "0.12.1"]
+                 [uncomplicate/commons "0.12.2"]
                  [uncomplicate/fluokitten "0.9.1"]
                  [uncomplicate/neanderthal-native "0.33.0"]
                  [uncomplicate/clojurecl "0.15.1"]
@@ -23,15 +23,10 @@
                  [org.jcuda/jcublas "11.4.1"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
-  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
-  :source-paths ["src/clojure" "src/device"]
-  :java-source-paths ["src/java"]
-  :test-paths ["test"]
-
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [lein-codox "0.10.7"]]
                    :global-vars {*warn-on-reflection* true
-                                 *assert* false
+                                 *assert* true
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
                    :dependencies [[midje "1.10.4"]
@@ -49,9 +44,16 @@
                                         uncomplicate.neanderthal.real
                                         uncomplicate.neanderthal.auxil
                                         uncomplicate.neanderthal.random]
-                           :output-path "docs/codox"}}
-             ;;also replaces lein's default JVM argument TieredStopAtLevel=1
-             ;; If building on Java 9+, uncomment the --add-opens=etc. line.
-             :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
-                                  "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
-                                  #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"]})
+                           :output-path "docs/codox"}
+
+                   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
+                   ;; If building on Java 9+, uncomment the --add-opens=etc. line.
+                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
+                                        "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"
+                                        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}}
+
+  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
+  :source-paths ["src/clojure" "src/device"]
+  :java-source-paths ["src/java"]
+  :test-paths ["test"])

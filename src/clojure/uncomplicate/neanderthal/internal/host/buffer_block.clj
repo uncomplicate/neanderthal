@@ -169,7 +169,7 @@
   (get [_ buf i]
     (long (.get buf i)))
   (set [_ buf i val]
-    (.put buf i val)))
+    (.put buf i (byte val))))
 
 (def byte-accessor (->ByteBufferAccessor))
 
