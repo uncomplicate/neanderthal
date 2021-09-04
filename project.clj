@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.43.1"
+(defproject uncomplicate/neanderthal "0.43.2"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -14,7 +14,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.3"]
-                 [uncomplicate/commons "0.12.2"]
+                 [uncomplicate/commons "0.12.3"]
                  [uncomplicate/fluokitten "0.9.1"]
                  [uncomplicate/neanderthal-native "0.33.0"]
                  [uncomplicate/clojurecl "0.15.1"]
@@ -26,7 +26,7 @@
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [lein-codox "0.10.7"]]
                    :global-vars {*warn-on-reflection* true
-                                 *assert* true
+                                 *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
                    :dependencies [[midje "1.10.4"]

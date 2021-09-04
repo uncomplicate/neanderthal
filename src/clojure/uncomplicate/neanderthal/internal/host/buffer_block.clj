@@ -145,10 +145,9 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v ^double v]
-      (dotimes [i (.count this b)]
-        (.put ^ByteBuffer b i v))
-      b))
+    (dotimes [i (.count this b)]
+      (.put ^ByteBuffer b i (byte v)))
+    b)
   (wrapPrim [_ s]
     (wrap-byte s))
   (castPrim [_ v]
@@ -186,10 +185,9 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v ^double v
-          strd Short/BYTES]
+    (let [strd Short/BYTES]
       (dotimes [i (.count this b)]
-        (.putInt ^ByteBuffer b (* strd i) v))
+        (.putShort ^ByteBuffer b (* strd i) v))
       b))
   (wrapPrim [_ s]
     (wrap-long s))
@@ -228,8 +226,7 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v ^double v
-          strd Integer/BYTES]
+    (let [strd Integer/BYTES]
       (dotimes [i (.count this b)]
         (.putInt ^ByteBuffer b (* strd i) v))
       b))
@@ -270,10 +267,9 @@
   (initialize [_ b]
     b)
   (initialize [this b v]
-    (let [v ^double v
-          strd Long/BYTES]
+    (let [strd Long/BYTES]
       (dotimes [i (.count this b)]
-        (.putInt ^ByteBuffer b (* strd i) v))
+        (.putLong ^ByteBuffer b (* strd i) v))
       b))
   (wrapPrim [_ s]
     (wrap-long s))
