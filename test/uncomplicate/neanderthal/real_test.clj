@@ -2452,7 +2452,14 @@
                                       -0.26   0.44  -0.59  -0.34  -3.43]
                          {:layout :row})]
 
-     (det (trf! a)) => (roughly -38406.4848))))
+     (det (trf! a)) => (roughly 38406.4848))))
+
+(defn test-ge-det2x2 [factory]
+  (facts
+   "Pivoted det sign bugfix"
+
+   (with-release [a (ge factory 2 2 [2 -3 4 1])]
+     (det (trf! a)) => (roughly 14.0))))
 
 (defn test-ge-con [factory]
   (facts
@@ -2994,6 +3001,7 @@
   (test-tr-con factory tr)
   (test-tr-con factory tp)
   (test-ge-det factory)
+  (test-ge-det2x2 factory)
   (test-ge-sv factory)
   (test-tr-sv factory tr)
   (test-tr-sv factory tp)

@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.common
-  (:require [uncomplicate.fluokitten.core :refer [fold]]
+  (:require [uncomplicate.fluokitten.core :refer [fold foldmap]]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release double-fn Info info]]
              [utils :refer [dragan-says-ex]]]
@@ -129,10 +129,11 @@
     (nrm-needed-for-con))
   (trdet [_]
     (if @fresh
-      (let [res (double (fold f* 1.0 (.dia lu)))]
-        (if (even? (.dim ipiv))
-          res
-          (- res)))
+      (double (foldmap f*
+                       (fold f* 1.0 (.dia lu))
+                       (fn [piv ind] (if (= ind piv) 1 -1))
+                       (seq ipiv)
+                       (range 1 Long/MAX_VALUE)))
       (stale-factorization)))
   Matrix
   (mrows [_]
