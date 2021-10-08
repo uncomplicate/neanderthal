@@ -78,7 +78,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 
 You need at least Java 8.
 
-If you are running on Java 9 or higher, you need to enable the `java.base` module. Add this to your JVM options (:jvm-opts in leiningen): `"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"`.
+If you are running on Java 9 or higher, you need to enable the `java.base` module. Add the following to your JVM options (:jvm-opts in leiningen): `"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"` and `"--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"`.
 
 Neanderthal's data structures are written in Clojure, so many functions work even without native engines. However, you probably need Neanderthal because of its fast BLAS native or GPU engines. Here is how to make sure they are available.
 
