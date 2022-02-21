@@ -38,3 +38,6 @@ The list of people who pledged monthly support on the first day when I announced
 - Cognitect
 - Jason Thomas
 - Timothy Dean
+- Cognitect
+- Ella
+- George Nelson

@@ -139,6 +139,8 @@
 
       (let [v (fv [1 2 3])]
         (identical? (native v) v)) => true
+
+  This function is kindly supported by patronage from George Nelson.
   "
   [x]
   (api/native x))
