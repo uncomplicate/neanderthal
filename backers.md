@@ -24,20 +24,15 @@ The list of people who pledged monthly support on the first day when I announced
 (in no particular order)
 
 - Daniel Slutsky
-- Robert Luo
+- Jochen Bedersdorfer
 - Bernard Hugueney
 - the-alchemist
+- Yiuming H.
 - John Collins
 - Michael Glaesemann
-- Joe Lane
-- George Kierstein
-- Alex Zdanov
-- Alberto Balsam
-- Jochen Bedersdorfer
-- Robin Crim
 - Cognitect
-- Jason Thomas
+- Steven Collins
+- Rangel Spasov
 - Timothy Dean
-- Cognitect
 - Ella
 - George Nelson
