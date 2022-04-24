@@ -98,7 +98,7 @@ Everything will magically work (no need to compile anything) on Nvidia, provided
 
 Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
-*macOS* doesn't support CUDA 11 and higher (and Apple hasn't shipped Nvidia GPUs since 2014 anyway).
+*macOS* doesn't support CUDA 11 and higher (and Apple hasn't shipped Nvidia GPUs since 2014 anyway). You'll have to exclude CUDA dependency in your build script (see the [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj)).
 
 ### The native library used by Neanderthal's native engine (Optional)
 
