@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.44.0
+
+* Upgrade CUDA to 11.6.
+
 # 0.43.0
 
 * Upgrade CUDA to 11.4.
