@@ -5,7 +5,7 @@
 FROM clojure:lein-2.9.8-focal
 RUN apt-get update && apt-get -y install git wget python3
 RUN wget https://registrationcenter-download.intel.com/akdlm/irc_nas/18721/l_onemkl_p_2022.1.0.223.sh
-# RUN sh ./l_onemkl_p_2022.1.0.223.sh -a --silent  --eula accept
+RUN sh ./l_onemkl_p_2022.1.0.223.sh -a --silent  --eula accept
 
 # RUN git clone https://github.com/uncomplicate/neanderthal.git
 
