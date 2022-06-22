@@ -12,4 +12,4 @@ RUN git clone https://github.com/uncomplicate/neanderthal.git
 WORKDIR /tmp/neanderthal
 RUN git checkout e01511ff47605f2e4031d58899b303e4435d58e3
 
-RUN lein update-in :dependencies conj "[org.bytedeco/mkl-platform-redist \"2020.3-1.5.4\"]" -- test uncomplicate.neanderthal.mkl-test
+CMD  ["lein", "update-in" ,":dependencies", "conj" ,"[org.bytedeco/mkl-platform-redist \"2020.3-1.5.4\"]" ,"--", "test" ,"uncomplicate.neanderthal.mkl-test" ]
