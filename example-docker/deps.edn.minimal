@@ -1,0 +1,8 @@
+{:deps
+ {uncomplicate/neanderthal {:mvn/version "0.44.0"}
+ org.jcuda/jcuda {:mvn/version "11.4.1"}
+ org.jcuda/jcublas {:mvn/version "11.4.1"}
+ nrepl/nrepl {:mvn/version "0.9.0"}
+}
+
+}

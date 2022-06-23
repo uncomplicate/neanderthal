@@ -3,7 +3,7 @@ RUN apt-get update && apt-get -y install --reinstall ca-certificates && update-c
 RUN apt-get update && apt-get -y install
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-11-jdk curl rlwrap libssl-dev build-essential zlib1g-dev  libncurses5-dev \
     libgdbm-dev libnss3-dev  libreadline-dev libffi-dev libbz2-dev  automake-1.15 git liblzma-dev wget git clinfo vim  \
-    leiningen software-properties-common
+    leiningen software-properties-common vim
 
 # mkl . This might ask questions '??' Important ??
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y intel-mkl
@@ -17,8 +17,6 @@ RUN apt-key add /var/cuda-repo-ubuntu2004-11-4-local/7fa2af80.pub
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install cuda
 
-# opencl
-RUN apt-get install -y vim nvidia-opencl-dev intel-opencl-icd
 
 
 #cudnn via official installer
@@ -33,8 +31,16 @@ RUN apt-get update
 RUN apt-get install libcudnn8=${cudnn_version}-1+${cuda_version}
 RUN apt-get install libcudnn8-dev=${cudnn_version}-1+${cuda_version}
 
+#opencl
+RUN apt-get install -y libnvidia-compute-515 nvidia-opencl-dev intel-opencl-icd
 # clone neanderthal, temporay stuff just to ease to run the tests
-WORKDIR /tmp
-RUN git clone https://github.com/uncomplicate/neanderthal.git
-WORKDIR /tmp/neanderthal
 
+RUN curl -O https://download.clojure.org/install/linux-install-1.11.1.1149.sh
+RUN chmod +x linux-install-1.11.1.1149.sh
+RUN ./linux-install-1.11.1.1149.sh
+
+COPY deps.edn.minimal /tmp/deps.edn
+WORKDIR /tmp
+
+# from know onwards neandertthal is setup with MKL, Cuda, OpenCL
+CMD ["clj" , "-M:nREPL",  "-m" , "nrepl.cmdline"]
