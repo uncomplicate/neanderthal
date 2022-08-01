@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.45.0
+
+* Upgrade CUDA to 11.7. It should work with 11.6, too!
+
 # 0.44.0
 
 * Upgrade CUDA to 11.6.
