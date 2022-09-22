@@ -9,6 +9,7 @@
 (ns uncomplicate.neanderthal.math
   "Primitive floating point mathematical functions commonly found in Math, FastMath, and the likes.
   Vectorized counterparts can be found in the [[vect-math]] namespace."
+  (:refer-clojure :exclude [abs])
   (:import [org.apache.commons.math3.util Precision FastMath]
            [org.apache.commons.math3.special Gamma Erf]))
 

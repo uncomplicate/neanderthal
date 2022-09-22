@@ -9,6 +9,7 @@
 (ns uncomplicate.neanderthal.vect-math
   "Vectorized floating point mathematical functions commonly found in Math, FastMath, and the likes.
   Primitive scalar counterparts can be found in the [[math]] namespace."
+  (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons.core :refer [let-release]]
             [uncomplicate.neanderthal.internal.api :as api]))
 

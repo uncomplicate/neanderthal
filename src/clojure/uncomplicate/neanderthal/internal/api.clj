@@ -7,6 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns uncomplicate.neanderthal.internal.api
+  (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons.core :refer [Releaseable]]))
 
 ;; ================================ Default entry =================================
