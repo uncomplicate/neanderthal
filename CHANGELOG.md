@@ -1,5 +1,10 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.46.0
+
+* Upgrade CUDA to 11.8.
+* Upgrade neanderthal-native MKL native dependency to oneAPI MKL 2022.2 on Linux and Windows, and 2021.1 on Mac (the latest that my mac 10.12 supports).
+
 # 0.45.0
 
 * Upgrade CUDA to 11.7. It should work with 11.6, too!
