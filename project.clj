@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.45.1-SNAPSHOT"
+(defproject uncomplicate/neanderthal "0.46.0-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -14,13 +14,13 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.11.1"]
-                 [uncomplicate/commons "0.13.0"]
+                 [uncomplicate/commons "0.13.1-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.9.1"]
-                 [uncomplicate/neanderthal-native "0.33.0"]
+                 [uncomplicate/neanderthal-native "0.46.0"]
                  [uncomplicate/clojurecl "0.15.1"]
                  [org.jocl/jocl-blast "1.5.2"]
-                 [uncomplicate/clojurecuda "0.16.0"]
-                 [org.jcuda/jcublas "11.7.0"]
+                 [uncomplicate/clojurecuda "0.17.0-SNAPSHOT"]
+                 [org.jcuda/jcublas "11.8.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -29,7 +29,7 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.10.5"]
+                   :dependencies [[midje "1.10.9"]
                                   [codox-theme-rdash "0.1.2"]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"

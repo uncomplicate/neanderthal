@@ -1,10 +1,10 @@
-(defproject hello-world "0.45.0"
+(defproject hello-world "0.46.0-SNAPSHOT"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.3"]
-                 [uncomplicate/neanderthal "0.45.0"]
+  :dependencies [[org.clojure/clojure "1.11.1"]
+                 [uncomplicate/neanderthal "0.46.0-SNAPSHOT"]
                  ;;Optional. If bytedeco is not present, a system-wide MKL is used.
-                 [org.bytedeco/mkl-platform-redist "2020.3-1.5.4"]]
+                 [org.bytedeco/mkl-platform-redist "2022.2-1.5.8"]]
   ;; Nvidia doesn't ship CUDA for macOS; you have to add this to your project
   :exclusions [[org.jcuda/jcuda-natives :classifier "apple-x86_64"]
                [org.jcuda/jcublas-natives :classifier "apple-x86_64"]]
