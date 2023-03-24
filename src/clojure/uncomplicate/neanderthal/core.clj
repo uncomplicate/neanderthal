@@ -808,10 +808,9 @@
   If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
   "
   ([^Vector x ^long i]
-   (try
+   (if (< -1 i (.dim x))
      (.boxedEntry x i)
-     (catch IndexOutOfBoundsException e
-       (throw (ex-info "Requested element is out of bounds of the vector." {:i i :dim (.dim x)})))))
+     (throw (ex-info "Requested element is out of bounds of the vector." {:i i :dim (.dim x)}))))
   ([^Matrix a ^long i ^long j]
    (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)))
      (.boxedEntry a i j)
@@ -829,13 +828,12 @@
   ([^Changeable x val]
    (.setBoxed x val))
   ([^Changeable x ^long i val]
-   (try
+   (if (< -1 i (.dim ^VectorSpace x))
      (.setBoxed x i val)
-     (catch IndexOutOfBoundsException e
-       (throw (ex-info "The element you're trying to set is out of bounds of the vector."
-                       {:i i :dim (dim x)})))))
+     (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                     {:i i :dim (dim x)}))))
   ([^Matrix a ^long i ^long j val]
-   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^Changeable a i j))
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^Changeable a i j));;TODO use only isAllowed?
      (.setBoxed ^Changeable a i j val)
      (throw (ex-info "The element you're trying to set is out of bounds of the matrix."
                      {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))
@@ -856,11 +854,10 @@
   ([^Changeable x f]
    (.alter x f))
   ([^Changeable x ^long i f]
-   (try
+   (if (< -1 i (.dim ^VectorSpace x))
      (.alter x i f)
-     (catch IndexOutOfBoundsException e
-       (throw (ex-info "The element you're trying to alter is out of bounds of the vector."
-                       {:i i :dim (dim x)})))))
+     (throw (ex-info "The element you're trying to alter is out of bounds of the vector."
+                     {:i i :dim (dim x)}))))
   ([^Matrix a ^long i ^long j f]
    (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^Changeable a i j))
      (.alter ^Changeable a i j f)

@@ -30,7 +30,7 @@
            java.nio.channels.FileChannel
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL]
-           [uncomplicate.neanderthal.internal.api BufferAccessor RealBufferAccessor IntegerBufferAccessor
+           [uncomplicate.neanderthal.internal.api RealAccessor IntegerAccessor
             VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
             RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault
             LayoutNavigator RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix
@@ -79,14 +79,11 @@
   (compatible? [this o]
     (let [da (data-accessor o)]
       (or (identical? this da) (instance? FloatBufferAccessor da))))
-  BufferAccessor
-  (slice [_ buf k l]
-    (slice-buffer buf (* Float/BYTES k) (* Float/BYTES l)))
-  RealBufferAccessor
+  RealAccessor
   (get [_ buf i]
-    (.getFloat buf (* Float/BYTES i)))
+    (.getFloat ^ByteBuffer buf (* Float/BYTES i)))
   (set [_ buf i val]
-    (.putFloat buf (* Float/BYTES i) val)))
+    (.putFloat ^ByteBuffer buf (* Float/BYTES i) val)))
 
 (def float-accessor (->FloatBufferAccessor))
 
@@ -121,14 +118,11 @@
       (or (identical? this da) (instance? DoubleBufferAccessor da))))
   (device [_]
     :cpu)
-  BufferAccessor
-  (slice [_ buf k l]
-    (slice-buffer buf (* Double/BYTES k) (* Double/BYTES l)))
-  RealBufferAccessor
+  RealAccessor
   (get [_ buf i]
-    (.getDouble buf (* Double/BYTES i)))
+    (.getDouble ^ByteBuffer buf (* Double/BYTES i)))
   (set [_ buf i val]
-    (.putDouble buf (* Double/BYTES i) val)))
+    (.putDouble ^ByteBuffer buf (* Double/BYTES i) val)))
 
 (def double-accessor (->DoubleBufferAccessor))
 
@@ -161,14 +155,11 @@
       (or (identical? this da) (instance? ByteBufferAccessor da))))
   (device [_]
     :cpu)
-  BufferAccessor
-  (slice [_ buf k l]
-    (slice-buffer buf k l))
-  IntegerBufferAccessor
+  IntegerAccessor
   (get [_ buf i]
-    (long (.get buf i)))
+    (long (.get ^ByteBuffer buf i)))
   (set [_ buf i val]
-    (.put buf i (byte val))))
+    (.put ^ByteBuffer buf i (byte val))))
 
 (def byte-accessor (->ByteBufferAccessor))
 
@@ -202,14 +193,11 @@
       (or (identical? this da) (instance? ShortBufferAccessor da))))
   (device [_]
     :cpu)
-  BufferAccessor
-  (slice [_ buf k l]
-    (slice-buffer buf (* Short/BYTES k) (* Short/BYTES l)))
-  IntegerBufferAccessor
+  IntegerAccessor
   (get [_ buf i]
-    (long (.getShort buf (* Short/BYTES i))))
+    (long (.getShort ^ByteBuffer buf (* Short/BYTES i))))
   (set [_ buf i val]
-    (.putShort buf (* Short/BYTES i) val)))
+    (.putShort ^ByteBuffer buf (* Short/BYTES i) val)))
 
 (def short-accessor (->ShortBufferAccessor))
 
@@ -243,14 +231,11 @@
       (or (identical? this da) (instance? IntBufferAccessor da))))
   (device [_]
     :cpu)
-  BufferAccessor
-  (slice [_ buf k l]
-    (slice-buffer buf (* Integer/BYTES k) (* Integer/BYTES l)))
-  IntegerBufferAccessor
+  IntegerAccessor
   (get [_ buf i]
-    (.getInt buf (* Integer/BYTES i)))
+    (.getInt ^ByteBuffer buf (* Integer/BYTES i)))
   (set [_ buf i val]
-    (.putInt buf (* Integer/BYTES i) val)))
+    (.putInt ^ByteBuffer buf (* Integer/BYTES i) val)))
 
 (def int-accessor (->IntBufferAccessor))
 
@@ -284,14 +269,11 @@
       (or (identical? this da) (instance? IntBufferAccessor da))))
   (device [_]
     :cpu)
-  BufferAccessor
-  (slice [_ buf k l]
-    (slice-buffer buf (* Long/BYTES k) (* Long/BYTES l)))
-  IntegerBufferAccessor
+  IntegerAccessor
   (get [_ buf i]
-    (.getLong buf (* Long/BYTES i)))
+    (.getLong ^ByteBuffer buf (* Long/BYTES i)))
   (set [_ buf i val]
-    (.putLong buf (* Long/BYTES i) val)))
+    (.putLong ^ByteBuffer buf (* Long/BYTES i) val)))
 
 (def long-accessor (->LongBufferAccessor))
 
@@ -444,7 +426,7 @@
 
 ;; ============ Integer Vector =================================================
 
-(deftype IntegerBlockVector [fact ^IntegerBufferAccessor da eng master ^ByteBuffer buf
+(deftype IntegerBlockVector [fact ^IntegerAccessor da eng master ^ByteBuffer buf
                              ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
@@ -532,18 +514,26 @@
     da)
   IFn$LLL
   (invokePrim [x i v]
-    (.set x i v))
+    (try
+      (.set x i v)
+      (catch IndexOutOfBoundsException e
+        (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                        {:i i :dim (.dim x)})))))
   IFn$LL
   (invokePrim [x i]
-    (.entry x i))
+    (try
+      (.entry x i)
+      (catch IndexOutOfBoundsException e
+        (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                        {:i i :dim (.dim x)})))))
   IFn$L
   (invokePrim [x]
     n)
   IFn
   (invoke [x i v]
-    (.set x i v))
+    (.invokePrim x i v))
   (invoke [x i]
-    (.entry x i))
+    (.invokePrim x i))
   (invoke [x]
     n)
   IntegerChangeable
@@ -649,7 +639,7 @@
 
 ;; ============ Real Vector ====================================================
 
-(deftype RealBlockVector [fact ^RealBufferAccessor da eng master ^ByteBuffer buf
+(deftype RealBlockVector [fact ^RealAccessor da eng master ^ByteBuffer buf
                           ^long n ^long ofst ^long strd]
   Object
   (hashCode [x]
@@ -747,18 +737,26 @@
     da)
   IFn$LDD
   (invokePrim [x i v]
-    (.set x i v))
+    (try
+      (.set x i v)
+      (catch IndexOutOfBoundsException e
+        (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                        {:i i :dim (.dim x)})))))
   IFn$LD
   (invokePrim [x i]
-    (entry x i))
+    (try
+      (.entry x i)
+      (catch IndexOutOfBoundsException e
+        (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                        {:i i :dim (.dim x)})))))
   IFn$L
   (invokePrim [x]
     n)
   IFn
   (invoke [x i v]
-    (.set x i v))
+    (.invokePrim x i v))
   (invoke [x i]
-    (entry x i))
+    (.invokePrim x i))
   (invoke [x]
     n)
   RealChangeable
@@ -879,7 +877,7 @@
 ;; =================== Real Matrix =============================================
 
 (deftype RealGEMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg
-                       fact ^RealBufferAccessor da eng master
+                       fact ^RealAccessor da eng master
                        ^ByteBuffer buf ^long m ^long n ^long ofst]
   Object
   (hashCode [a]
@@ -1002,7 +1000,7 @@
   (compatible? [_ b]
     (compatible? da b))
   (fits? [_ b]
-    (and (instance? GEMatrix b)) (= reg (region b)))
+    (and (instance? GEMatrix b) (= reg (region b))))
   (fits-navigation? [_ b]
     (= nav (navigator b)))
   (device [_]
@@ -1154,7 +1152,7 @@
 ;; =================== Real Uplo Matrix ==================================
 
 (deftype RealUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
-                         fact ^RealBufferAccessor da eng matrix-type master
+                         fact ^RealAccessor da eng matrix-type master
                          ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
@@ -1471,7 +1469,7 @@
 ;; ================= Banded Matrix ==============================================================
 
 (deftype RealBandedMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
-                           fact ^RealBufferAccessor da eng matrix-type
+                           fact ^RealAccessor da eng matrix-type
                            master ^ByteBuffer buf ^long m ^long n ^long ofst]
   Object
   (hashCode [a]
@@ -1819,7 +1817,7 @@
 ;; =================== Real Packed Matrix ==================================
 
 (deftype RealPackedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
-                           fact ^RealBufferAccessor da eng matrix-type
+                           fact ^RealAccessor da eng matrix-type
                            master ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
@@ -2113,7 +2111,7 @@
   (print-uplo w a "."))
 
 (deftype RealDiagonalMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^RealDefault default
-                             fact ^RealBufferAccessor da eng matrix-type
+                             fact ^RealAccessor da eng matrix-type
                              master ^ByteBuffer buf ^long n ^long ofst]
   Object
   (hashCode [a]
@@ -2386,6 +2384,7 @@
   Functor
   {:fmap (diagonal-fmap RealBlockVector double)}
   PseudoFunctor
+
   {:fmap! (diagonal-fmap identity RealBlockVector double)}
   Foldable
   {:fold diagonal-fold

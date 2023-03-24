@@ -33,7 +33,7 @@
    (:import [java.nio ByteBuffer FloatBuffer DoubleBuffer LongBuffer IntBuffer ShortBuffer
              ByteBuffer  DirectByteBuffer DirectFloatBufferU DirectDoubleBufferU
              DirectLongBufferU DirectIntBufferU DirectShortBufferU]
-            [uncomplicate.neanderthal.internal.api DataAccessor RealBufferAccessor
+            [uncomplicate.neanderthal.internal.api DataAccessor RealAccessor
              Block RealVector Region LayoutNavigator DenseStorage RealNativeMatrix]
             [uncomplicate.neanderthal.internal.host.buffer_block IntegerBlockVector RealBlockVector
              RealGEMatrix RealUploMatrix RealBandedMatrix RealPackedMatrix RealDiagonalMatrix]
@@ -56,7 +56,7 @@
         ~res
         (throw (ex-info "MKL error." {:error-code err#})))))
 
-(defn ^:private params-buffer [^RealBufferAccessor da a b]
+(defn ^:private params-buffer [^RealAccessor da a b]
   (let-release [buf (create-data-source da 2)]
     (.set da buf 0 a)
     (.set da buf 1 b)
@@ -159,10 +159,10 @@
 
 (defmacro vector-math
   ([method a y]
-   ` (do
-       (check-stride ~a ~y)
-       (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
-       ~y))
+   `(do
+      (check-stride ~a ~y)
+      (~method (.dim ~a) (.buffer ~a) (.offset ~a) (.buffer ~y) (.offset ~y))
+      ~y))
   ([method a b y]
    `(do
       (check-stride ~a ~b ~y)

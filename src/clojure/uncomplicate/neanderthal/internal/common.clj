@@ -13,7 +13,7 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.math :refer [f=]]
             [uncomplicate.neanderthal.internal.api :refer :all])
-  (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealBufferAccessor
+  (:import [uncomplicate.neanderthal.internal.api Matrix Vector Region RealAccessor
             MatrixImplementation LayoutNavigator Block DiagonalMatrix]))
 
 (defn check-stride
@@ -63,7 +63,7 @@
   (let [reg (region a)]
     (map #(.dia a %) (range (.ku reg) (- (inc (.kl reg))) -1))))
 
-(defn ^RealBufferAccessor real-accessor [a]
+(defn ^RealAccessor real-accessor [a]
   (data-accessor a))
 
 ;; ======================== Uplo ======================================================

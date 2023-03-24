@@ -13,7 +13,7 @@
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang IFn$LLDD]
            [uncomplicate.neanderthal.internal.api LayoutNavigator RealLayoutNavigator DenseStorage
-            FullStorage Region RealDefault RealBufferAccessor RealChangeable RealMatrix Matrix]))
+            FullStorage Region RealDefault RealAccessor RealChangeable RealMatrix Matrix]))
 
 ;; ======================== Region  =================================================
 
@@ -495,21 +495,21 @@
 (deftype SYDefault []
   RealDefault
   (entry [_ nav stor da buf ofst i j]
-    (.get ^RealBufferAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^DenseStorage stor j i)))))
+    (.get ^RealAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^DenseStorage stor j i)))))
 
 (deftype SBDefault []
   RealDefault
   (entry [_ nav stor da buf ofst i j]
     (let [k (+ (.kl ^BandStorage stor) (.ku ^BandStorage stor))]
       (if (<= (- j k) i (+ j k))
-        (.get ^RealBufferAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^BandStorage stor j i)))
+        (.get ^RealAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^BandStorage stor j i)))
         0.0))))
 
 (deftype STDefault []
   RealDefault
   (entry [_ nav stor da buf ofst i j]
     (if (< -2 (- i j) 2)
-      (.get ^RealBufferAccessor da buf (+ ofst (.index ^DenseStorage stor j (Math/abs (- i j)))))
+      (.get ^RealAccessor da buf (+ ofst (.index ^DenseStorage stor j (Math/abs (- i j)))))
       0.0)))
 
 (deftype ZeroDefault []

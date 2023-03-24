@@ -32,10 +32,9 @@
 (defn entry
   "The primitive, much faster, version of [[uncomplicate.neanderthal.core/entry]]."
   (^double [^RealVector x ^long i]
-   (try
+   (if (< -1 (.dim x))
      (.entry x i)
-     (catch IndexOutOfBoundsException e
-       (throw (ex-info "Requested element is out of bounds of the vector." {:i i :dim (.dim x)})))))
+     (throw (ex-info "Requested element is out of bounds of the vector." {:i i :dim (.dim x)}))))
   (^double [^RealMatrix a ^long i ^long j]
    (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)))
      (.entry a i j)
@@ -47,11 +46,10 @@
   ([^RealChangeable x ^double val]
    (.set x val))
   ([^RealChangeable x ^long i ^double val]
-   (try
+   (if (< -1 (.dim x))
      (.set x i val)
-     (catch IndexOutOfBoundsException e
-       (throw (ex-info "The element you're trying to set is out of bounds of the vector."
-                       {:i i :dim (core/dim x)})))))
+     (throw (ex-info "The element you're trying to set is out of bounds of the vector."
+                     {:i i :dim (core/dim x)}))))
   ([^RealMatrix a ^long i ^long j ^double val]
    (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^RealChangeable a i j))
      (.set ^RealChangeable a i j val)

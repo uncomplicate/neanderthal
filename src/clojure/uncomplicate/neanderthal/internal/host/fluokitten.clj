@@ -22,7 +22,7 @@
              [common :refer [real-accessor]]
              [navigation :refer [doall-layout real-navigator]]])
   (:import [clojure.lang IFn IFn$DLDD IFn$ODO IFn$OLDO]
-           [uncomplicate.neanderthal.internal.api RealBufferAccessor RealVector RealMatrix
+           [uncomplicate.neanderthal.internal.api RealAccessor RealVector RealMatrix
             Vector Matrix DiagonalMatrix Changeable LayoutNavigator RealLayoutNavigator
             DenseStorage Region]))
 

@@ -8,12 +8,10 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-import java.nio.ByteBuffer;
+public interface RealAccessor extends DataAccessor {
 
-public interface IntegerBufferAccessor extends BufferAccessor {
+    double get (Object o, long index);
 
-    long get (ByteBuffer buf, long index);
-
-    void set (ByteBuffer buf, long index, long value);
+    void set (Object o, long index, double value);
 
 }
