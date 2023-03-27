@@ -589,8 +589,8 @@
   PseudoFunctor
   {:fmap! (vector-fmap identity IntegerBlockVector long)}
   Foldable
-  {:fold vector-fold
-   :foldmap (vector-foldmap IntegerBlockVector long)}
+  {:fold (vector-fold IntegerBlockVector long long)
+   :foldmap (vector-foldmap IntegerBlockVector long long IFn$LLL)}
   Magma
   {:op (constantly vector-op)})
 
@@ -825,8 +825,8 @@
   PseudoFunctor
   {:fmap! (vector-fmap identity RealBlockVector double)}
   Foldable
-  {:fold vector-fold
-   :foldmap (vector-foldmap RealBlockVector double)}
+  {:fold (vector-fold RealBlockVector double double)
+   :foldmap (vector-foldmap RealBlockVector double double IFn$LDD)}
   Magma
   {:op (constantly vector-op)})
 
@@ -1136,12 +1136,12 @@
 
 (extend RealGEMatrix
   Functor
-  {:fmap (matrix-fmap double)}
+  {:fmap (matrix-fmap real-navigator real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap identity double)}
+  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
   Foldable
-  {:fold matrix-fold
-   :foldmap matrix-foldmap}
+  {:fold (matrix-fold real-navigator double)
+   :foldmap (matrix-foldmap real-navigator double)}
   Magma
   {:op (constantly matrix-op)})
 
@@ -1430,12 +1430,12 @@
 
 (extend RealUploMatrix
   Functor
-  {:fmap (matrix-fmap double)}
+  {:fmap (matrix-fmap real-navigator real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap identity double)}
+  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
   Foldable
-  {:fold matrix-fold
-   :foldmap matrix-foldmap}
+  {:fold (matrix-fold real-navigator double)
+   :foldmap (matrix-foldmap real-navigator double)}
   Magma
   {:op (constantly matrix-op)})
 
@@ -1773,12 +1773,12 @@
 
 (extend RealBandedMatrix
   Functor
-  {:fmap (matrix-fmap double)}
+  {:fmap (matrix-fmap real-navigator real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap identity double)}
+  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
   Foldable
-  {:fold matrix-fold
-   :foldmap matrix-foldmap}
+  {:fold (matrix-fold real-navigator double)
+   :foldmap (matrix-foldmap real-navigator double)}
   Magma
   {:op (constantly matrix-op)})
 
@@ -2077,12 +2077,12 @@
 
 (extend RealPackedMatrix
   Functor
-  {:fmap (matrix-fmap double)}
+  {:fmap (matrix-fmap real-navigator real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap identity double)}
+  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
   Foldable
-  {:fold matrix-fold
-   :foldmap matrix-foldmap}
+  {:fold (matrix-fold real-navigator double)
+   :foldmap (matrix-foldmap real-navigator double)}
   Magma
   {:op (constantly matrix-op)})
 

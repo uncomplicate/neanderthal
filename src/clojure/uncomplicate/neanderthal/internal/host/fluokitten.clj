@@ -11,14 +11,13 @@
   (:require [uncomplicate.commons
              [core :refer [let-release double-fn]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.fluokitten.protocols :refer [fmap!]]
+            [uncomplicate.fluokitten.protocols :refer [fmap! fold foldmap]]
             [uncomplicate.neanderthal
              [core :refer [copy dim ncols transfer! vctr ge dia]]
              [block :refer [buffer offset]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [factory compatible? engine raw subcopy sum ReductionFunction
-                          vector-reduce vector-map-reduce matrix-reduce matrix-map-reduce
-                          data-accessor create-ge navigator storage region view-vctr create-vector]]
+             [api :refer [factory compatible? engine raw subcopy sum data-accessor create-ge
+                          navigator storage region view-vctr create-vector]]
              [common :refer [real-accessor]]
              [navigation :refer [doall-layout real-navigator]]])
   (:import [clojure.lang IFn IFn$DLDD IFn$ODO IFn$OLDO]
@@ -63,7 +62,7 @@
        ~res)
     `(dragan-says-ex "Vector fmap supports up to 4 vectors.")))
 
-(defmacro vector-reduce* [vtype etype acctype f init & xs]
+(defmacro vector-reduce* [vtype etype acctype f init & xs] ;;TODO recuce should compute (f acc x y z)
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]
@@ -72,7 +71,7 @@
              (recur (inc i#) (~acctype (~f acc# (~etype (map-entries-i ~vtype + i# ~@xs)))))
              acc#)))
        (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
-    `(dragan-says-ex "Vector fold supports up to 4 vectors.")))
+    `(dragan-says-ex "Vector reduction supports up to 4 vectors.")))
 
 (defmacro vector-map-reduce* [vtype etype acctype f init g & xs]
   (if (< (count xs) 5)
@@ -85,7 +84,7 @@
        (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
     `(dragan-says-ex "Vector foldmap supports up to 4 vectors.")))
 
-(defmacro ^:private vector-reduce-indexed* [vtype etype acctype f init & xs]
+(defmacro vector-reduce-indexed* [vtype etype acctype f init & xs]
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]
@@ -94,9 +93,9 @@
              (recur (inc i#) (~acctype (~f acc# i# (~etype (map-entries-i ~vtype + i# ~@xs)))))
              acc#)))
        (dragan-says-ex DIMENSIONS_MSG {:xs (map str ~xs)}))
-    `(dragan-says-ex "Vector fold supports up to 4 vectors.")))
+    `(dragan-says-ex "Vector reduction supports up to 4 vectors.")))
 
-(defmacro ^:private vector-map-reduce-indexed* [vtype etype acctype f init g & xs]
+(defmacro vector-map-reduce-indexed* [vtype etype acctype f init g & xs]
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]
@@ -142,32 +141,65 @@
         ([x# f# xs#]
          (apply fmap-fn# x# f# xs#))))))
 
-(defn vector-fold
-  ([x]
-   (sum (engine x) x))
-  ([x f init]
-   (vector-reduce f init x))
-  ([x f init y]
-   (vector-reduce f init x y))
-  ([x f init y z]
-   (vector-reduce f init x y z))
-  ([x f init y z v]
-   (vector-reduce f init x y z v))
-  ([_ _ _ _ _ _ _]
-   (dragan-says-ex "fold with more than four arguments is not available for vectors.")))
+(defmacro vector-fold [vtype etype acctype]
+  `(fn
+     ([x#]
+      (sum (engine x#) x#))
+     ([x# f# init#]
+      (if (number? init#)
+        (vector-reduce* ~vtype ~etype ~acctype f# init# x#)
+        (vector-reduce* ~vtype ~etype identity f# init# x#)))
+     ([x# f# init# y#]
+      (if (number? init#)
+        (vector-reduce* ~vtype ~etype ~acctype f# init# x# y#)
+        (vector-reduce* ~vtype ~etype identity f# init# x# y#)))
+     ([x# f# init# y# z#]
+      (if (number? init#)
+        (vector-reduce* ~vtype ~etype ~acctype f# init# x# y# z#)
+        (vector-reduce* ~vtype ~etype identity f# init# x# y# z#)))
+     ([x# f# init# y# z# v#]
+      (if (number? init#)
+        (vector-reduce* ~vtype ~etype ~acctype f# init# x# y# z# v#)
+        (vector-reduce* ~vtype ~etype identity f# init# x# y# z# v#)))
+     ([_# _# _# _# _# _# _#]
+      (dragan-says-ex "fold with more than four arguments is not available for vectors."))))
 
-(defmacro vector-foldmap [vtype etype]
+(defmacro vector-foldmap [vtype etype acctype indexed-fn]
   `(fn
      ([x# g#]
-      (vector-map-reduce* ~vtype ~etype ~etype + 0 g# x#))
+      (foldmap x# g# + 0))
      ([x# g# f# init#]
-      (vector-map-reduce f# init# g# x#))
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~acctype f# init# g# x#)
+          (vector-map-reduce* ~vtype ~etype ~acctype f# init# g# x#))
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~identity f# init# g# x#)
+          (vector-map-reduce* ~vtype ~etype identity f# init# g# x#))))
      ([x# g# f# init# y#]
-      (vector-map-reduce f# init# g# x# y#))
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~acctype f# init# g# x# y#)
+          (vector-map-reduce* ~vtype ~etype ~acctype f# init# g# x# y#))
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~identity f# init# g# x# y#)
+          (vector-map-reduce* ~vtype ~etype identity f# init# g# x# y#))))
      ([x# g# f# init# y# z#]
-      (vector-map-reduce f# init# g# x# y# z#))
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~acctype f# init# g# x# y# z#)
+          (vector-map-reduce* ~vtype ~etype ~acctype f# init# g# x# y# z#))
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~identity f# init# g# x# y# z#)
+          (vector-map-reduce* ~vtype ~etype identity f# init# g# x# y# z#))))
      ([x# g# f# init# y# z# v#]
-      (vector-map-reduce f# init# g# x# y# z# v#))
+      (if (number? init#)
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~acctype f# init# g# x# y# z# v#)
+          (vector-map-reduce* ~vtype ~etype ~acctype f# init# g# x# y# z# v#))
+        (if (instance? ~indexed-fn g#)
+          (vector-map-reduce-indexed* ~vtype ~etype ~identity f# init# g# x# y# z# v#)
+          (vector-map-reduce* ~vtype ~etype identity f# init# g# x# y# z# v#))))
      ([_# _# _# _# _# _# _# _#]
       (dragan-says-ex "foldmap with more than four arguments is not available for vectors."))))
 
@@ -198,13 +230,13 @@
 (defmacro map-entries-ij [nav f i j & xs]
   `(~f ~@(map #(list `.get nav % i j) xs)))
 
-(defmacro matrix-fmap* [etype res f & as]
+(defmacro matrix-fmap* [typed-navigator typed-accessor etype res f & as]
   (if (< (count as) 5)
     `(if (check-matrix-dimensions ~@as)
-       (let [nav# (real-navigator ~res)
+       (let [nav# (~typed-navigator ~res)
              stor# (storage ~res)
              reg# (region ~res)
-             da# (real-accessor ~res)
+             da# (~typed-accessor ~res)
              buff# (buffer ~res)
              ofst# (offset ~res)]
          (doall-layout nav# stor# reg# i# j#
@@ -214,10 +246,10 @@
        (dragan-says-ex FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))
     `(dragan-says-ex "Matrix fmap supports up to 4 matrices.")))
 
-(defmacro ^:private matrix-reduce* [acctype f init & as]
-  (if (< (count as) 5)
+(defmacro matrix-reduce* [typed-navigator acctype f init & as]
+  (if (< (long (count as)) 5)
     `(if (check-matrix-dimensions ~@as)
-       (let [nav# (real-navigator ~(first as))
+       (let [nav# (~typed-navigator ~(first as))
              stor# (storage ~(first as))
              reg# (region ~(first as))
              fd# (.fd stor#)]
@@ -234,10 +266,10 @@
        (dragan-says-ex FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))
     `(dragan-says-ex "Matrix fold supports up to 4 matrices.")))
 
-(defmacro ^:private  matrix-map-reduce* [acctype f init g & as]
-  (if (< (count as) 5)
+(defmacro matrix-map-reduce* [typed-navigator acctype f init g & as]
+  (if (< (long (count as)) 5)
     `(if (check-matrix-dimensions ~@as)
-       (let [nav# (real-navigator ~(first as))
+       (let [nav# (~typed-navigator ~(first as))
              stor# (storage ~(first as))
              reg# (region ~(first as))
              fd# (.fd stor#)]
@@ -256,24 +288,24 @@
     `(dragan-says-ex "Matrix foldmap supports up to 4 matrices.")))
 
 (defmacro matrix-fmap
-  ([creator etype]
+  ([typed-navigator typed-accessor creator etype]
    `(fn
       ([a# f#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~etype res# f# a#)))
+         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a#)))
       ([a# f# b#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~etype res# f# a# b#)))
+         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a# b#)))
       ([a# f# b# c#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~etype res# f# a# b# c#)))
+         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a# b# c#)))
       ([a# f# b# c# d#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~etype res# f# a# b# c# d#)))
+         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a# b# c# d#)))
       ([a# f# b# c# d# es#]
        (dragan-says-ex "Matrix fmap! supports up to 4 matrices."))))
-  ([etype]
-   `(let [fmap-fn# (matrix-fmap raw ~etype)]
+  ([typed-navigator typed-accessor etype]
+   `(let [fmap-fn# (matrix-fmap ~typed-navigator ~typed-accessor raw ~etype)]
       (fn
         ([a# f#]
          (fmap-fn# a# f#))
@@ -344,220 +376,105 @@
         ([a# f# as#]
          (apply fmap-fn# a# f# as#))))))
 
-(defn matrix-fold
-  ([a]
-   (sum (engine a) a))
-  ([a f init]
-   (matrix-reduce f init a))
-  ([a f init b]
-   (matrix-reduce f init a b))
-  ([a f init b c]
-   (matrix-reduce f init a b c))
-  ([a f init b c d]
-   (matrix-reduce f init a b c d))
-  ([a f init b c d es]
-   (dragan-says-ex "Matrix fold supports up to 4 matrices.")))
+(defmacro matrix-fold [typed-navigator acctype]
+  `(fn
+     ([a#]
+      (sum (engine a#) a#))
+     ([a# f# init#]
+      (if (number? init#)
+        (matrix-reduce* ~typed-navigator ~acctype f# init# a#)
+        (matrix-reduce* ~typed-navigator identity f# init# a#)))
+     ([a# f# init# b#]
+      (if (number? init#)
+        (matrix-reduce* ~typed-navigator ~acctype f# init# a# b#)
+        (matrix-reduce* ~typed-navigator identity f# init# a# b#)))
+     ([a# f# init# b# c#]
+      (if (number? init#)
+        (matrix-reduce* ~typed-navigator ~acctype f# init# a# b# c#)
+        (matrix-reduce* ~typed-navigator identity f# init# a# b# c#)))
+     ([a# f# init# b# c# d#]
+      (if (number? init#)
+        (matrix-reduce* ~typed-navigator ~acctype f# init# a# b# c# d#)
+        (matrix-reduce* ~typed-navigator identity f# init# a# b# c# d#)))
+     ([_# _# _# _# _# _# _#]
+      (dragan-says-ex "fold with more than four arguments is not available for matrices."))))
+
+(defmacro matrix-foldmap [typed-navigator acctype]
+  (let [f (double-fn +)]
+    `(fn
+       ([a# g#]
+        (matrix-map-reduce* ~typed-navigator ~acctype ~f 0 g# a#))
+       ([a# g# f# init#]
+        (if (number? init#)
+          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a#)
+          (matrix-map-reduce* ~typed-navigator identity f# init# g# a#)))
+       ([a# g# f# init# b#]
+        (if (number? init#)
+          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a# b#)
+          (matrix-map-reduce* ~typed-navigator identity f# init# g# a# b#)))
+       ([a# g# f# init# b# c#]
+        (if (number? init#)
+          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a# b# c#)
+          (matrix-map-reduce* ~typed-navigator identity f# init# g# a# b# c#)))
+       ([a# g# f# init# b# c# d#]
+        (if (number? init#)
+          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a# b# c# d#)
+          (matrix-map-reduce* ~typed-navigator identity f# init# g# a# b# c# d#)))
+       ([_# _# _# _# _# _# _# _#]
+        (dragan-says-ex "foldmap with more than four arguments is not available for matrices.")))))
 
 (defn diagonal-fold
   ([a]
    (sum (engine a) a))
   ([a f init]
-   (vector-reduce f init (view-vctr a)))
+   (fold f init (view-vctr a)))
   ([^Matrix a f init ^Matrix b]
    (if (instance? DiagonalMatrix b)
-     (vector-reduce f init (view-vctr a) (view-vctr b))
-     (vector-reduce f
-                    (vector-reduce f
-                                   (vector-reduce f init (.dia a) (.dia b))
-                                   (.dia a 1) (.dia b 1))
-                    (.dia a -1) (.dia b -1))))
+     (fold (view-vctr a) f init (view-vctr b))
+     (fold (.dia a 1) f (fold (.dia a -1) f (fold (.dia a) f init (.dia b)) (.dia b -1)) (.dia b 1))))
   ([^Matrix a f init ^Matrix b ^Matrix c]
    (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c))
-     (vector-reduce f init (view-vctr a) (view-vctr b) (view-vctr c))
-     (vector-reduce f
-                    (vector-reduce f
-                                   (vector-reduce f init (.dia a) (.dia b) (.dia c))
-                                   (.dia a 1) (.dia b 1) (.dia c 1))
-                    (.dia a -1) (.dia b -1) (.dia c -1))))
+     (fold (view-vctr a) f init (view-vctr b) (view-vctr c))
+     (fold (.dia a 1) f
+           (fold (.dia a -1) f
+                 (fold (.dia a) f init (.dia b) (.dia c))
+                 (.dia b -1) (.dia c -1))
+           (.dia b 1) (.dia c 1))))
   ([^Matrix a f init ^Matrix b ^Matrix c ^Matrix d]
-   ([^Matrix a f init ^Matrix b ^Matrix c]
-    (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
-      (vector-reduce f init (view-vctr a) (view-vctr b) (view-vctr c) (view-vctr d))
-      (vector-reduce f
-                     (vector-reduce f
-                                    (vector-reduce f init (.dia a) (.dia b) (.dia c) (.dia d))
-                                    (.dia a 1) (.dia b 1) (.dia c 1) (.dia d 1))
-                     (.dia a -1) (.dia b -1) (.dia c -1) (.dia d -1)))))
+   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
+     (fold (view-vctr a) f init (view-vctr b) (view-vctr c) (view-vctr d))
+     (fold (.dia a 1) f
+           (fold (.dia a -1) f
+                 (fold (.dia a) f init (.dia b) (.dia c) (.dia d))
+                 (.dia b -1) (.dia c -1) (.dia d -1))
+           (.dia b 1) (.dia c 1) (.dia d 1))))
   ([a f init b c d es]
    (dragan-says-ex "Matrix fold supports up to 4 matrices.")))
-
-(let [p+ (double-fn +)]
-
-  (defn matrix-foldmap
-    ([a g]
-     (matrix-map-reduce* double p+ 0.0 g a))
-    ([a g f init]
-     (matrix-map-reduce f init g a))
-    ([a g f init b]
-     (matrix-map-reduce f init g a b))
-    ([a g f init b c]
-     (matrix-map-reduce f init g a b c))
-    ([a g f init b c d]
-     (matrix-map-reduce f init g a b c d))
-    ([a g f init b c d es]
-     (dragan-says-ex "Matrix foldmap supports up to 4 matrices."))))
 
 (defn diagonal-foldmap
   ([a g]
    (sum (engine a) a))
   ([a g f init]
-   (vector-map-reduce f init g (view-vctr a)))
+   (foldmap (view-vctr a) g f init))
   ([^Matrix a g f init ^Matrix b]
    (if (instance? DiagonalMatrix b)
-     (vector-map-reduce f init g (view-vctr a) (view-vctr b))
-     (vector-map-reduce f
-                        (vector-map-reduce f
-                                           (vector-map-reduce f init g (.dia a) (.dia b))
-                                           g (.dia a 1) (.dia b 1))
-                        g (.dia a -1) (.dia b -1))))
+     (foldmap (view-vctr a) g f init (view-vctr b))
+     (foldmap (.dia a 1) g f (fold (.dia a -1) f (fold (.dia a) f init (.dia b)) (.dia b -1)) (.dia b 1))))
   ([^Matrix a g f init ^Matrix b ^Matrix c]
    (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c))
-     (vector-map-reduce f init g (view-vctr a) (view-vctr b) (view-vctr c))
-     (vector-map-reduce f
-                        (vector-map-reduce f
-                                           (vector-map-reduce f init g (.dia a) (.dia b) (.dia c))
-                                           g (.dia a 1) (.dia b 1) (.dia c 1))
-                        g (.dia a -1) (.dia b -1) (.dia c -1))))
+     (foldmap (view-vctr a) g f init (view-vctr b) (view-vctr c))
+     (foldmap (.dia a 1) g f
+           (foldmap (.dia a -1) g f
+                 (foldmap (.dia a) g f init (.dia b) (.dia c))
+                 (.dia b -1) (.dia c -1))
+           (.dia b 1) (.dia c 1))))
   ([^Matrix a g f init ^Matrix b ^Matrix c ^Matrix d]
-   ([^Matrix a f init ^Matrix b ^Matrix c]
-    (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
-      (vector-map-reduce f init g (view-vctr a) (view-vctr b) (view-vctr c) (view-vctr d))
-      (vector-map-reduce f
-                         (vector-map-reduce f
-                                            (vector-map-reduce f init g (.dia a) (.dia b) (.dia c) (.dia d))
-                                            g (.dia a 1) (.dia b 1) (.dia c 1) (.dia d 1))
-                         g (.dia a -1) (.dia b -1) (.dia c -1) (.dia d -1)))))
+   (if (and (instance? DiagonalMatrix b) (instance? DiagonalMatrix c) (instance? DiagonalMatrix d))
+     (foldmap (view-vctr a) g f init (view-vctr b) (view-vctr c) (view-vctr d))
+     (foldmap (.dia a 1) g f
+           (foldmap (.dia a -1) g f
+                 (foldmap (.dia a) f init (.dia b) (.dia c) (.dia d))
+                 (.dia b -1) (.dia c -1) (.dia d -1))
+           (.dia b 1) (.dia c 1) (.dia d 1))))
   ([a g f init b c d es]
    (dragan-says-ex "Matrix foldmap supports up to 4 matrices.")))
-
-;; ============================ Primitive function extensions ==================
-
-(extend-type Object
-  ReductionFunction
-  (vector-reduce
-    ([this init x]
-     (vector-reduce* RealVector double double this init x))
-    ([this init x y]
-     (vector-reduce* RealVector double double this init x y))
-    ([this init x y z]
-     (vector-reduce* RealVector double double this init x y z))
-    ([this init x y z v]
-     (vector-reduce* RealVector double double this init x y z v)))
-  (vector-map-reduce
-    ([this init g x]
-     (vector-map-reduce* RealVector double double this init g x))
-    ([this init g x y]
-     (vector-map-reduce* RealVector double double this init g x y))
-    ([this init g x y z]
-     (vector-map-reduce* RealVector double double this init g x y z))
-    ([this init g x y z v]
-     (vector-map-reduce* RealVector double double this init g x y z v)))
-  (matrix-reduce
-    ([this init a]
-     (matrix-reduce* double this init a))
-    ([this init a b]
-     (matrix-reduce* double this init a b))
-    ([this init a b c]
-     (matrix-reduce* double this init a b c))
-    ([this init a b c d]
-     (matrix-reduce* double this init a b c d)))
-  (matrix-map-reduce
-    ([this init g a]
-     (matrix-map-reduce* double this init g a))
-    ([this init g a b]
-     (matrix-map-reduce* double this init g a b))
-    ([this init g a b c]
-     (matrix-map-reduce* double this init g a b c))
-    ([this init g a b c d]
-     (matrix-map-reduce* double this init g a b c d))))
-
-(extend-type IFn$ODO
-  ReductionFunction
-  (vector-reduce
-    ([this init x]
-     (vector-reduce* RealVector double identity this init x))
-    ([this init x y]
-     (vector-reduce* RealVector double identity this init x y))
-    ([this init x y z]
-     (vector-reduce* RealVector double identity this init x y z))
-    ([this init x y z v]
-     (vector-reduce* RealVector double identity this init x y z v)))
-  (vector-map-reduce
-    ([this init g x]
-     (vector-map-reduce* RealVector double identity this init g x))
-    ([this init g x y]
-     (vector-map-reduce* RealVector double identity this init g x y))
-    ([this init g x y z]
-     (vector-map-reduce* RealVector double identity this init g x y z))
-    ([this init g x y z v]
-     (vector-map-reduce* RealVector double identity this init g x y z v)))
-  (matrix-reduce
-    ([this init a]
-     (matrix-reduce* identity this init a))
-    ([this init a b]
-     (matrix-reduce* identity this init a b))
-    ([this init a b c]
-     (matrix-reduce* identity this init a b c))
-    ([this init a b c d]
-     (matrix-reduce* identity this init a b c d)))
-  (matrix-map-reduce
-    ([this init g a]
-     (matrix-map-reduce* identity this init g a))
-    ([this init g a b]
-     (matrix-map-reduce* identity this init g a b))
-    ([this init g a b c]
-     (matrix-map-reduce* identity this init g a b c))
-    ([this init g a b c d]
-     (matrix-map-reduce* identity this init g a b c d))))
-
-(extend-type IFn$DLDD
-  ReductionFunction
-  (vector-reduce
-    ([this init x]
-     (vector-reduce-indexed* RealVector double double this init x))
-    ([this init x y]
-     (vector-reduce-indexed* RealVector double double this init x y))
-    ([this init x y z]
-     (vector-reduce-indexed* RealVector double double this init x y z))
-    ([this init x y z v]
-     (vector-reduce-indexed* RealVector double double this init x y z v)))
-  (vector-map-reduce
-    ([this init g x]
-     (vector-map-reduce-indexed* RealVector double double this init g x))
-    ([this init g x y]
-     (vector-map-reduce-indexed* RealVector double double this init g x y))
-    ([this init g x y z]
-     (vector-map-reduce-indexed* RealVector double double this init g x y z))
-    ([this init g x y z v]
-     (vector-map-reduce-indexed* RealVector double double this init g x y z v))))
-
-(extend-type IFn$OLDO
-  ReductionFunction
-  (vector-reduce
-    ([this init x]
-     (vector-reduce-indexed* RealVector double identity this init x))
-    ([this init x y]
-     (vector-reduce-indexed* RealVector double identity this init x y))
-    ([this init x y z]
-     (vector-reduce-indexed* RealVector double identity this init x y z))
-    ([this init x y z v]
-     (vector-reduce-indexed* RealVector double identity this init x y z v)))
-  (vector-map-reduce
-    ([this init g x]
-     (vector-map-reduce-indexed* RealVector double identity this init g x))
-    ([this init g x y]
-     (vector-map-reduce-indexed* RealVector double identity this init g x y))
-    ([this init g x y z]
-     (vector-map-reduce-indexed* RealVector double identity this init g x y z))
-    ([this init g x y z v]
-     (vector-map-reduce-indexed* RealVector double identity this init g x y z v))))

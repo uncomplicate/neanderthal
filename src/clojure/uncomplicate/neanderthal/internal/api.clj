@@ -185,12 +185,6 @@
   (rand-normal [this rng-state a b x])
   (rand-uniform [this rng-state a b x]))
 
-(defprotocol ReductionFunction
-  (vector-reduce [f init x] [f init x y] [f init x y z] [f init x y z v])
-  (vector-map-reduce [f init g x] [f init g x y] [f init g x y z] [f init g x y z v])
-  (matrix-reduce [f init a] [f init a b] [f init a b c] [f init a b c d])
-  (matrix-map-reduce [f init g a] [f init g a b] [f init g a b c] [f init g a b c d]))
-
 (defprotocol Factory
   (create-vector [this n init] [this master buf n ofst strd])
   (create-ge [this m n column? init])
