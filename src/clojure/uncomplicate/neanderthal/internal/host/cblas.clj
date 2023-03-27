@@ -1195,7 +1195,7 @@
           buff-b# (.buffer ~b)
           ofst-b# (.offset ~b)]
       (+ (~method n# buff-a# ofst-a# 1 buff-b# ofst-b# 1)
-         (* 2.0 (~method (dec n#) buff-a# (+ ofst-a# n#) 1  buff-b# (+ ofst-b# n#) 1))))))
+         (* 2.0 (~method (dec n#) buff-a# (+ ofst-a# n#) 1 buff-b# (+ ofst-b# n#) 1))))))
 
 (defmacro st-nrm2 [method a]
   `(let [n# (.ncols ~a)

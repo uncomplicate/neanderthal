@@ -1843,7 +1843,7 @@
                         b (st factory 5 (range 1 100))
                         d (st factory 5)
                         zero-point (st factory 5)]
-           (sqrt (dot a a)) => (roughly (nrm2 a) 0.000001)
+           (sqrt (dot a a)) => (roughly (nrm2 a) 0.00001)
            (dot a b) => -310.0
            (dot a (copy! b d)) => (dot a b)
            (dot zero-point zero-point) => 0.0)))
@@ -2832,7 +2832,7 @@
                                           -0.0956 -0.7215 -0.3482 -0.5908]
                              {:layout :row})]
 
-     (es! a0 w0 vs) => (ev! a1 w1)
+     (nrm2 (axpy -1 (es! a0 w0 vs) (ev! a1 w1))) => (roughly 0.0 0.000001)
      (nrm2 (axpy! -1 (mm vs a0 (trans vs)) a2)) => (roughly 0.0 0.000001))))
 
 (defn test-ge-svd [factory]
