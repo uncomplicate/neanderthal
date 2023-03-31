@@ -12,8 +12,9 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang IFn$LLDD]
-           [uncomplicate.neanderthal.internal.api LayoutNavigator RealLayoutNavigator DenseStorage
-            FullStorage Region RealDefault RealAccessor RealChangeable RealMatrix Matrix]))
+           [uncomplicate.neanderthal.internal.api LayoutNavigator DenseStorage FullStorage Region
+            RealDefault RealAccessor IntegerAccessor RealChangeable IntegerChangeable RealMatrix
+            IntegerMatrix Matrix RealLayoutFlipper IntegerLayoutFlipper]))
 
 ;; ======================== Region  =================================================
 
@@ -161,10 +162,24 @@
 
 ;; =================== Navigator ==========================================
 
+(deftype RealNoFlip []
+  RealLayoutFlipper
+  (get [_ a i j]
+    (.entry ^RealMatrix a i j))
+  (set [_ a i j val]
+    (.set ^RealChangeable a i j val)))
+
+(deftype RealFlip []
+  RealLayoutFlipper
+  (get [_ a i j]
+    (.entry ^RealMatrix a j i))
+  (set [_ a i j val]
+    (.set ^RealChangeable a j i val)))
+
 (def ^:private real-column-navigator (volatile! nil))
 (def ^:private real-row-navigator (volatile! nil))
 
-(deftype RealColumnNavigator []
+(deftype ColumnNavigator [flipper]
   Info
   (info [n]
     {:layout :column})
@@ -183,18 +198,14 @@
     false)
   (layout [_]
     102)
-  RealLayoutNavigator
-  (get [_ a i j]
-    (.entry ^RealMatrix a i j))
-  (set [_ a i j val]
-    (.set ^RealChangeable a i j val))
-  (invokePrimitive [_ f i j val]
-    (.invokePrim ^IFn$LLDD f i j val))
   Flippable
   (flip [_]
-    @real-row-navigator))
+    @real-row-navigator)
+  Flipper
+  (flipper [_]
+    flipper))
 
-(deftype RealRowNavigator []
+(deftype RowNavigator [flipper]
   Info
   (info [n]
     {:layout :row})
@@ -213,18 +224,14 @@
     true)
   (layout [_]
     101)
-  RealLayoutNavigator
-  (get [_ a i j]
-    (.entry ^RealMatrix a j i))
-  (set [_ a i j val]
-    (.set ^RealChangeable a j i val))
-  (invokePrimitive [_ f i j val]
-    (.invokePrim ^IFn$LLDD f j i val))
   Flippable
   (flip [_]
-    @real-column-navigator))
+    @real-column-navigator)
+  Flipper
+  (flipper [_]
+    flipper))
 
-(deftype RealDiagonalNavigator []
+(deftype DiagonalNavigator [flipper]
   Info
   (info [n]
     {:layout :diagonal})
@@ -241,24 +248,26 @@
     false)
   (layout [_]
     -1)
-  RealLayoutNavigator
-  (get [_ a i j]
-    (.entry ^RealMatrix a i j))
-  (set [_ a i j val]
-    (.set ^RealChangeable a i j val))
-  (invokePrimitive [_ f i j val]
-    (.invokePrim ^IFn$LLDD f i j val)))
+  Flippable
+  (flip [this]
+    this)
+  Flipper
+  (flipper [_]
+    flipper))
 
-(vreset! real-column-navigator (RealColumnNavigator.))
-(vreset! real-row-navigator (RealRowNavigator.))
+(vreset! real-column-navigator (->ColumnNavigator (->RealNoFlip)))
+(vreset! real-row-navigator (->RowNavigator (->RealFlip)))
 
-(def  diagonal-navigator (RealDiagonalNavigator.))
+(def  diagonal-navigator (DiagonalNavigator. (->RealNoFlip)))
 
 (defn layout-navigator [^Boolean column?]
   (if column? @real-column-navigator @real-row-navigator))
 
-(defn real-navigator ^RealLayoutNavigator [a]
-  (navigator a))
+(defn real-flipper ^RealLayoutFlipper [nav]
+  (flipper nav))
+
+(defn integer-flipper ^IntegerLayoutFlipper [nav]
+  (flipper nav))
 
 ;; =================== Full Storage ========================================
 
@@ -495,14 +504,14 @@
 (deftype SYDefault []
   RealDefault
   (entry [_ nav stor da buf ofst i j]
-    (.get ^RealAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^DenseStorage stor j i)))))
+    (.get ^RealAccessor da buf (+ ofst (.index ^LayoutNavigator nav ^DenseStorage stor j i)))))
 
 (deftype SBDefault []
   RealDefault
   (entry [_ nav stor da buf ofst i j]
     (let [k (+ (.kl ^BandStorage stor) (.ku ^BandStorage stor))]
       (if (<= (- j k) i (+ j k))
-        (.get ^RealAccessor da buf (+ ofst (.index ^RealLayoutNavigator nav ^BandStorage stor j i)))
+        (.get ^RealAccessor da buf (+ ofst (.index ^LayoutNavigator nav ^BandStorage stor j i)))
         0.0))))
 
 (deftype STDefault []

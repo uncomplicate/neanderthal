@@ -33,7 +33,7 @@
            [uncomplicate.neanderthal.internal.api RealAccessor IntegerAccessor
             VectorSpace Vector RealVector Matrix IntegerVector DataAccessor RealChangeable IntegerChangeable
             RealNativeMatrix RealNativeVector IntegerNativeVector DenseStorage FullStorage RealDefault
-            LayoutNavigator RealLayoutNavigator Region MatrixImplementation GEMatrix UploMatrix
+            LayoutNavigator RealLayoutFlipper Region MatrixImplementation GEMatrix UploMatrix
             BandedMatrix PackedMatrix DiagonalMatrix]
            uncomplicate.neanderthal.internal.navigation.BandStorage))
 
@@ -290,11 +290,11 @@
       (and (instance? (class a) b)
            (= (.matrixType ^MatrixImplementation a) (.matrixType ^MatrixImplementation b))
            (compatible? a b) (= (.mrows a) (.mrows b)) (= (.ncols a) (.ncols b))
-           (let [nav (real-navigator a)
+           (let [flipper (real-flipper (navigator a))
                  da (real-accessor a)
                  buf (.buffer a)
                  ofst (.offset a)]
-             (and-layout a i j idx (= (.get da buf (+ ofst idx)) (.get nav b i j)))))))
+             (and-layout a i j idx (= (.get da buf (+ ofst idx)) (.get flipper b i j)))))))
 
 (defmacro ^:private transfer-matrix-matrix
   ([condition source destination]
@@ -302,11 +302,12 @@
       (if (and (<= (.mrows ~destination) (.mrows ~source)) (<= (.ncols ~destination) (.ncols ~source)))
         (if (and (compatible? ~source ~destination) (fits? ~source ~destination) ~condition)
           (copy (engine ~source) ~source ~destination)
-          (let [nav# (real-navigator ~destination)
+          (let [nav# (navigator ~destination)
+                flipper# (real-flipper nav#)
                 da# (real-accessor ~destination)
                 buf# (.buffer ~destination)
                 ofst# (.offset ~destination)]
-            (doall-layout ~destination i# j# idx# (.set da# buf# (+ ofst# idx#) (.get nav# ~source i# j#)))))
+            (doall-layout ~destination i# j# idx# (.set da# buf# (+ ofst# idx#) (.get flipper# ~source i# j#)))))
         (dragan-says-ex "There is not enough entries in the source matrix. Take appropriate submatrix of the destination.."
                         {:source (info ~source) :destination (info ~destination)}))
       ~destination))
@@ -876,6 +877,19 @@
 
 ;; =================== Real Matrix =============================================
 
+(defmacro matrix-alter [ifn-oo ifn-lloo f nav stor reg da buf ofst]
+  `(if (instance? ~ifn-oo ~f)
+    (doall-layout ~nav ~stor ~reg i# j# idx#
+                  (.set ~da ~buf (+ ~ofst idx#) (.invokePrim ~(with-meta f {:tag ifn-oo})
+                                                             (.get ~da ~buf (+ ~ofst idx#)))))
+    (if (.isRowMajor ~nav)
+      (doall-layout ~nav ~stor ~reg i# j# idx#
+                    (.set ~da ~buf (+ ~ofst idx#) (.invokePrim ~(with-meta f {:tag ifn-lloo})
+                                                               j# i# (.get ~da ~buf (+ ~ofst idx#)))))
+      (doall-layout ~nav ~stor ~reg i# j# idx#
+                    (.set ~da ~buf (+ ~ofst idx#) (.invokePrim ~(with-meta f {:tag ifn-lloo})
+                                                               i# j# (.get ~da ~buf (+ ~ofst idx#))))))))
+
 (deftype RealGEMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg
                        fact ^RealAccessor da eng master
                        ^ByteBuffer buf ^long m ^long n ^long ofst]
@@ -1049,12 +1063,7 @@
   (setBoxed [a i j val]
     (.set a i j val))
   (alter [a f]
-    (if (instance? IFn$DD f)
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrimitive ^RealLayoutNavigator nav f i j
-                                                                (.get da buf (+ ofst idx))))))
+    (matrix-alter IFn$DD IFn$LLDD f nav stor reg da buf ofst)
     a)
   (alter [a i j f]
     (let [idx (+ ofst (.index nav stor i j))]
@@ -1136,12 +1145,12 @@
 
 (extend RealGEMatrix
   Functor
-  {:fmap (matrix-fmap real-navigator real-accessor double)}
+  {:fmap (matrix-fmap real-flipper real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
+  {:fmap! (matrix-fmap real-flipper real-accessor identity double)}
   Foldable
-  {:fold (matrix-fold real-navigator double)
-   :foldmap (matrix-foldmap real-navigator double)}
+  {:fold (matrix-fold real-flipper double)
+   :foldmap (matrix-foldmap real-flipper double)}
   Magma
   {:op (constantly matrix-op)})
 
@@ -1323,12 +1332,7 @@
   (setBoxed [a i j val]
     (.set a i j val))
   (alter [a f]
-    (if (instance? IFn$DD f)
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrimitive ^RealLayoutNavigator nav f i j
-                                                                (.get da buf (+ ofst idx))))))
+    (matrix-alter IFn$DD IFn$LLDD f nav stor reg da buf ofst)
     a)
   (alter [a i j f]
     (let [idx (+ ofst (.index nav stor i j))]
@@ -1430,12 +1434,12 @@
 
 (extend RealUploMatrix
   Functor
-  {:fmap (matrix-fmap real-navigator real-accessor double)}
+  {:fmap (matrix-fmap real-flipper real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
+  {:fmap! (matrix-fmap real-flipper real-accessor identity double)}
   Foldable
-  {:fold (matrix-fold real-navigator double)
-   :foldmap (matrix-foldmap real-navigator double)}
+  {:fold (matrix-fold real-flipper double)
+   :foldmap (matrix-foldmap real-flipper double)}
   Magma
   {:op (constantly matrix-op)})
 
@@ -1650,12 +1654,7 @@
   (setBoxed [a i j val]
     (.set a i j val))
   (alter [a f]
-    (if (instance? IFn$DD f)
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrimitive ^RealLayoutNavigator nav f i j
-                                                                (.get da buf (+ ofst idx))))))
+    (matrix-alter IFn$DD IFn$LLDD f nav stor reg da buf ofst)
     a)
   (alter [a i j f]
     (let [idx (+ ofst (.index nav stor i j))]
@@ -1773,12 +1772,12 @@
 
 (extend RealBandedMatrix
   Functor
-  {:fmap (matrix-fmap real-navigator real-accessor double)}
+  {:fmap (matrix-fmap real-flipper real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
+  {:fmap! (matrix-fmap real-flipper real-accessor identity double)}
   Foldable
-  {:fold (matrix-fold real-navigator double)
-   :foldmap (matrix-foldmap real-navigator double)}
+  {:fold (matrix-fold real-flipper double)
+   :foldmap (matrix-foldmap real-flipper double)}
   Magma
   {:op (constantly matrix-op)})
 
@@ -1979,12 +1978,7 @@
   (setBoxed [a i j val]
     (.set a i j val))
   (alter [a f]
-    (if (instance? IFn$DD f)
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrim ^IFn$DD f (.get da buf (+ ofst idx)))))
-      (doall-layout nav stor reg i j idx
-                    (.set da buf (+ ofst idx) (.invokePrimitive ^RealLayoutNavigator nav f i j
-                                                                (.get da buf (+ ofst idx))))))
+    (matrix-alter IFn$DD IFn$LLDD f nav stor reg da buf ofst)
     a)
   (alter [a i j f]
     (let [idx (+ ofst (.index nav stor i j))]
@@ -2077,12 +2071,12 @@
 
 (extend RealPackedMatrix
   Functor
-  {:fmap (matrix-fmap real-navigator real-accessor double)}
+  {:fmap (matrix-fmap real-flipper real-accessor double)}
   PseudoFunctor
-  {:fmap! (matrix-fmap real-navigator real-accessor identity double)}
+  {:fmap! (matrix-fmap real-flipper real-accessor identity double)}
   Foldable
-  {:fold (matrix-fold real-navigator double)
-   :foldmap (matrix-foldmap real-navigator double)}
+  {:fold (matrix-fold real-flipper double)
+   :foldmap (matrix-foldmap real-flipper double)}
   Magma
   {:op (constantly matrix-op)})
 

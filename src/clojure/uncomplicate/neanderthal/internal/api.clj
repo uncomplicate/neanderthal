@@ -17,8 +17,19 @@
 
 ;; ================================ Storage =======================================
 
+(definterface RealLayoutFlipper
+  (^double get [a ^long i ^long j])
+  (set [a, ^long i ^long j ^double val]))
+
+(definterface IntegerLayoutFlipper
+  (^long get [a ^long i ^long j])
+  (set [a, ^long i ^long j ^long val]))
+
 (defprotocol Flippable
   (flip [this]))
+
+(defprotocol Flipper
+  (flipper [this]))
 
 (defprotocol Navigable
   (region ^Region [this])

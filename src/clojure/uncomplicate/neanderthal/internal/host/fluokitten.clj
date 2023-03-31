@@ -19,10 +19,10 @@
              [api :refer [factory compatible? engine raw subcopy sum data-accessor create-ge
                           navigator storage region view-vctr create-vector]]
              [common :refer [real-accessor]]
-             [navigation :refer [doall-layout real-navigator]]])
+             [navigation :refer [doall-layout]]])
   (:import [clojure.lang IFn IFn$DLDD IFn$ODO IFn$OLDO]
            [uncomplicate.neanderthal.internal.api RealAccessor RealVector RealMatrix
-            Vector Matrix DiagonalMatrix Changeable LayoutNavigator RealLayoutNavigator
+            Vector Matrix DiagonalMatrix Changeable LayoutNavigator
             DenseStorage Region]))
 
 (def ^{:no-doc true :const true} FITTING_DIMENSIONS_MATRIX_MSG
@@ -227,13 +227,14 @@
         (recur (+ pos (.ncols w)) (first ws) (next ws))))
     res))
 
-(defmacro map-entries-ij [nav f i j & xs]
-  `(~f ~@(map #(list `.get nav % i j) xs)))
+(defmacro map-entries-ij [flipper f i j & xs]
+  `(~f ~@(map #(list `.get flipper % i j) xs)))
 
-(defmacro matrix-fmap* [typed-navigator typed-accessor etype res f & as]
+(defmacro matrix-fmap* [typed-flipper typed-accessor etype res f & as]
   (if (< (count as) 5)
     `(if (check-matrix-dimensions ~@as)
-       (let [nav# (~typed-navigator ~res)
+       (let [nav# (navigator ~res)
+             flipper# (~typed-flipper nav#)
              stor# (storage ~res)
              reg# (region ~res)
              da# (~typed-accessor ~res)
@@ -241,15 +242,16 @@
              ofst# (offset ~res)]
          (doall-layout nav# stor# reg# i# j#
                        (.set da# buff# (+ ofst# (.index stor# i# j#))
-                             (~etype (map-entries-ij nav# ~f i# j# ~@as))))
+                             (~etype (map-entries-ij flipper# ~f i# j# ~@as))))
          ~res)
        (dragan-says-ex FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))
     `(dragan-says-ex "Matrix fmap supports up to 4 matrices.")))
 
-(defmacro matrix-reduce* [typed-navigator acctype f init & as]
+(defmacro matrix-reduce* [typed-flipper acctype f init & as]
   (if (< (long (count as)) 5)
     `(if (check-matrix-dimensions ~@as)
-       (let [nav# (~typed-navigator ~(first as))
+       (let [nav# (navigator ~(first as))
+             flipper# (~typed-flipper nav#)
              stor# (storage ~(first as))
              reg# (region ~(first as))
              fd# (.fd stor#)]
@@ -260,16 +262,17 @@
                      (let [end# (.end nav# reg# j#)]
                        (loop [i# (.start nav# reg# j#) acc# acc#]
                          (if (< i# end#)
-                           (recur (inc i#) (~acctype (~f acc# (map-entries-ij nav# + i# j# ~@as))))
+                           (recur (inc i#) (~acctype (~f acc# (map-entries-ij flipper# + i# j# ~@as))))
                            acc#)))))
              acc#)))
        (dragan-says-ex FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))
     `(dragan-says-ex "Matrix fold supports up to 4 matrices.")))
 
-(defmacro matrix-map-reduce* [typed-navigator acctype f init g & as]
+(defmacro matrix-map-reduce* [typed-flipper acctype f init g & as]
   (if (< (long (count as)) 5)
     `(if (check-matrix-dimensions ~@as)
-       (let [nav# (~typed-navigator ~(first as))
+       (let [nav# (navigator ~(first as))
+             flipper# (~typed-flipper nav#)
              stor# (storage ~(first as))
              reg# (region ~(first as))
              fd# (.fd stor#)]
@@ -281,31 +284,31 @@
                (let [end# (.end nav# reg# j#)]
                  (loop [i# (.start nav# reg# j#) acc# acc#]
                    (if (< i# end#)
-                     (recur (inc i#) (~acctype (~f acc# (map-entries-ij nav# ~g i# j# ~@as))))
+                     (recur (inc i#) (~acctype (~f acc# (map-entries-ij flipper# ~g i# j# ~@as))))
                      acc#)))))
              acc#)))
        (dragan-says-ex FITTING_DIMENSIONS_MATRIX_MSG {:as (map str ~as)}))
     `(dragan-says-ex "Matrix foldmap supports up to 4 matrices.")))
 
 (defmacro matrix-fmap
-  ([typed-navigator typed-accessor creator etype]
+  ([typed-flipper typed-accessor creator etype]
    `(fn
       ([a# f#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a#)))
+         (matrix-fmap* ~typed-flipper ~typed-accessor ~etype res# f# a#)))
       ([a# f# b#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a# b#)))
+         (matrix-fmap* ~typed-flipper ~typed-accessor ~etype res# f# a# b#)))
       ([a# f# b# c#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a# b# c#)))
+         (matrix-fmap* ~typed-flipper ~typed-accessor ~etype res# f# a# b# c#)))
       ([a# f# b# c# d#]
        (let-release [res# (~creator a#)]
-         (matrix-fmap* ~typed-navigator ~typed-accessor ~etype res# f# a# b# c# d#)))
+         (matrix-fmap* ~typed-flipper ~typed-accessor ~etype res# f# a# b# c# d#)))
       ([a# f# b# c# d# es#]
        (dragan-says-ex "Matrix fmap! supports up to 4 matrices."))))
-  ([typed-navigator typed-accessor etype]
-   `(let [fmap-fn# (matrix-fmap ~typed-navigator ~typed-accessor raw ~etype)]
+  ([typed-flipper typed-accessor etype]
+   `(let [fmap-fn# (matrix-fmap ~typed-flipper ~typed-accessor raw ~etype)]
       (fn
         ([a# f#]
          (fmap-fn# a# f#))
@@ -376,50 +379,50 @@
         ([a# f# as#]
          (apply fmap-fn# a# f# as#))))))
 
-(defmacro matrix-fold [typed-navigator acctype]
+(defmacro matrix-fold [typed-flipper acctype]
   `(fn
      ([a#]
       (sum (engine a#) a#))
      ([a# f# init#]
       (if (number? init#)
-        (matrix-reduce* ~typed-navigator ~acctype f# init# a#)
-        (matrix-reduce* ~typed-navigator identity f# init# a#)))
+        (matrix-reduce* ~typed-flipper ~acctype f# init# a#)
+        (matrix-reduce* ~typed-flipper identity f# init# a#)))
      ([a# f# init# b#]
       (if (number? init#)
-        (matrix-reduce* ~typed-navigator ~acctype f# init# a# b#)
-        (matrix-reduce* ~typed-navigator identity f# init# a# b#)))
+        (matrix-reduce* ~typed-flipper ~acctype f# init# a# b#)
+        (matrix-reduce* ~typed-flipper identity f# init# a# b#)))
      ([a# f# init# b# c#]
       (if (number? init#)
-        (matrix-reduce* ~typed-navigator ~acctype f# init# a# b# c#)
-        (matrix-reduce* ~typed-navigator identity f# init# a# b# c#)))
+        (matrix-reduce* ~typed-flipper ~acctype f# init# a# b# c#)
+        (matrix-reduce* ~typed-flipper identity f# init# a# b# c#)))
      ([a# f# init# b# c# d#]
       (if (number? init#)
-        (matrix-reduce* ~typed-navigator ~acctype f# init# a# b# c# d#)
-        (matrix-reduce* ~typed-navigator identity f# init# a# b# c# d#)))
+        (matrix-reduce* ~typed-flipper ~acctype f# init# a# b# c# d#)
+        (matrix-reduce* ~typed-flipper identity f# init# a# b# c# d#)))
      ([_# _# _# _# _# _# _#]
       (dragan-says-ex "fold with more than four arguments is not available for matrices."))))
 
-(defmacro matrix-foldmap [typed-navigator acctype]
+(defmacro matrix-foldmap [typed-flipper acctype]
   (let [f (double-fn +)]
     `(fn
        ([a# g#]
-        (matrix-map-reduce* ~typed-navigator ~acctype ~f 0 g# a#))
+        (matrix-map-reduce* ~typed-flipper ~acctype ~f 0 g# a#))
        ([a# g# f# init#]
         (if (number? init#)
-          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a#)
-          (matrix-map-reduce* ~typed-navigator identity f# init# g# a#)))
+          (matrix-map-reduce* ~typed-flipper ~acctype f# init# g# a#)
+          (matrix-map-reduce* ~typed-flipper identity f# init# g# a#)))
        ([a# g# f# init# b#]
         (if (number? init#)
-          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a# b#)
-          (matrix-map-reduce* ~typed-navigator identity f# init# g# a# b#)))
+          (matrix-map-reduce* ~typed-flipper ~acctype f# init# g# a# b#)
+          (matrix-map-reduce* ~typed-flipper identity f# init# g# a# b#)))
        ([a# g# f# init# b# c#]
         (if (number? init#)
-          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a# b# c#)
-          (matrix-map-reduce* ~typed-navigator identity f# init# g# a# b# c#)))
+          (matrix-map-reduce* ~typed-flipper ~acctype f# init# g# a# b# c#)
+          (matrix-map-reduce* ~typed-flipper identity f# init# g# a# b# c#)))
        ([a# g# f# init# b# c# d#]
         (if (number? init#)
-          (matrix-map-reduce* ~typed-navigator ~acctype f# init# g# a# b# c# d#)
-          (matrix-map-reduce* ~typed-navigator identity f# init# g# a# b# c# d#)))
+          (matrix-map-reduce* ~typed-flipper ~acctype f# init# g# a# b# c# d#)
+          (matrix-map-reduce* ~typed-flipper identity f# init# g# a# b# c# d#)))
        ([_# _# _# _# _# _# _# _#]
         (dragan-says-ex "foldmap with more than four arguments is not available for matrices.")))))
 

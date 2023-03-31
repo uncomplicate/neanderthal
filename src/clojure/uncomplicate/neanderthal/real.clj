@@ -32,7 +32,7 @@
 (defn entry
   "The primitive, much faster, version of [[uncomplicate.neanderthal.core/entry]]."
   (^double [^RealVector x ^long i]
-   (if (< -1 (.dim x))
+   (if (< -1 i (.dim x))
      (.entry x i)
      (throw (ex-info "Requested element is out of bounds of the vector." {:i i :dim (.dim x)}))))
   (^double [^RealMatrix a ^long i ^long j]
@@ -46,12 +46,12 @@
   ([^RealChangeable x ^double val]
    (.set x val))
   ([^RealChangeable x ^long i ^double val]
-   (if (< -1 (.dim x))
+   (if (< -1 i (.dim x))
      (.set x i val)
      (throw (ex-info "The element you're trying to set is out of bounds of the vector."
                      {:i i :dim (core/dim x)}))))
   ([^RealMatrix a ^long i ^long j ^double val]
-   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^RealChangeable a i j))
+   (if (and (< -1 i (.mrows a)) (< -1 j (.ncols a)) (.isAllowed ^RealChangeable a i j));; TODO isAllowed should check dimensions i and j.
      (.set ^RealChangeable a i j val)
      (throw (ex-info "The element you're trying to set is out of bounds of the matrix."
                      {:i i :j j :mrows (.mrows a) :ncols (.ncols a)})))))

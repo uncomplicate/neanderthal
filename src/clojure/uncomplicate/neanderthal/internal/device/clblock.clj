@@ -31,7 +31,7 @@
             [uncomplicate.neanderthal.internal.device.common :refer [device-vector-equals device-matrix-equals]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
            [uncomplicate.neanderthal.internal.api DataAccessor VectorSpace Vector CLVector Matrix
-            CLMatrix GEMatrix RealChangeable LayoutNavigator RealLayoutNavigator Region MatrixImplementation
+            CLMatrix GEMatrix RealChangeable LayoutNavigator Region MatrixImplementation
             NativeBlock FullStorage RealDefault UploMatrix RealNativeMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix
             RealUploMatrix]))
