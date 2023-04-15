@@ -128,7 +128,7 @@
       (transfer (fv [1 2 3]))
   "
   ([factory x]
-   (let-release [res (api/raw x factory)]
+   (let-release [res (api/raw x (api/factory factory))]
      (transfer! x res)
      res))
   ([x]
@@ -260,7 +260,7 @@
   ([factory ^long m ^long n]
    (ge factory m n nil nil))
   ([factory a]
-   (let-release [res (transfer (api/factory factory) a)]
+   (let-release [res (transfer factory a)]
      (if (matrix? res)
        res
        (dragan-says-ex "This is not a valid source for matrices.")))))
@@ -646,14 +646,14 @@
   ([x]
    (api/raw x))
   ([factory x]
-   (api/raw x factory)))
+   (api/raw x (api/factory factory))))
 
 (defn zero
   "Returns an instance of the same type and dimension(s) as the `x`, initialized with `0`."
   ([x]
    (api/zero x))
   ([factory x]
-   (api/zero x factory)))
+   (api/zero x (api/factory factory))))
 
 ;; ================= Vector ====================================================
 
