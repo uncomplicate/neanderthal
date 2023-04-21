@@ -213,8 +213,7 @@
            (fmap! f (fx) (fy) (fy) (fy)) => (vctr factory [7 11 15 19])
            (fmap! f x (fy) (fy) (fy)) => x
 
-           (fmap! + (fx) (fy) (fy) (fy) [(fy)])
-           => (throws ExceptionInfo))))
+           (fmap! + (fx) (fy) (fy) (fy) [(fy)]) => (throws ExceptionInfo))))
 
 (defn test-vctr-fold [factory]
   (with-release [x (vctr factory [1 2 3 4])

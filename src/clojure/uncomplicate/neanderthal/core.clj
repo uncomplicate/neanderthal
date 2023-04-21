@@ -122,8 +122,8 @@
   If `factory` is not provided, moves the data to the main host memory. If `x` is already in the
   main memory, makes a fresh copy.
 
-      (transfer (fv [1 2 3]) opencl-factory)
-      (transfer (sge 2 3 (range 6)) opencl-factory)
+      (transfer opencl-factory (fv [1 2 3]))
+      (transfer opencl-factory (sge 2 3 (range 6)))
 
       (transfer (fv [1 2 3]))
   "

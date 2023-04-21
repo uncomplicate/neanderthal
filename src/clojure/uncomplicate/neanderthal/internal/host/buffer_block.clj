@@ -604,7 +604,7 @@
 
 (defmethod print-method IntegerBlockVector
   [^Vector x ^java.io.Writer w]
-  (.write w (format "%s%s" (str x) (pr-str (take 100 (seq x))))))
+  (.write w (format "%s%s" (str x) (pr-str (seq x)))))
 
 (defmethod transfer! [IntegerBlockVector IntegerBlockVector]
   [^IntegerBlockVector source ^IntegerBlockVector destination]

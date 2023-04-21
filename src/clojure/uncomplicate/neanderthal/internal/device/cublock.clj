@@ -33,7 +33,7 @@
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
            [jcuda.jcublas JCublas2 cublasStatus]
            [uncomplicate.neanderthal.internal.api DataAccessor VectorSpace Vector CLVector CUVector
-            Matrix CLMatrix CUMatrix GEMatrix RealChangeable LayoutNavigator RealLayoutNavigator
+            Matrix CLMatrix CUMatrix GEMatrix RealChangeable LayoutNavigator
             Region MatrixImplementation NativeBlock FullStorage RealDefault UploMatrix
             RealNativeVector RealNativeMatrix Block]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector
