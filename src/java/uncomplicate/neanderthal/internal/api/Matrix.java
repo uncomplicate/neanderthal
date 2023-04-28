@@ -14,17 +14,17 @@ public interface Matrix extends VectorSpace {
 
     long ncols ();
 
-    Vector row (long i);
+    VectorSpace row (long i);
 
     Object rows ();
 
-    Vector col (long j);
+    VectorSpace col (long j);
 
     Object cols ();
 
-    Vector dia ();
+    VectorSpace dia ();
 
-    Vector dia (long k);
+    VectorSpace dia (long k);
 
     Object dias ();
 

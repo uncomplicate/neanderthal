@@ -57,7 +57,7 @@
   (mv [this alpha a x beta y] [this a x])
   (rk [this alpha x a] [this alpha x y a])
   (srk [this alpha a beta c])
-  (mm [this alpha a b beta c left] [this alpha a b left]))
+  (mm [this alpha a b beta c left] [this alpha a b left] [this alpha a b]))
 
 (defprotocol BlasPlus
   (amax [this x])
