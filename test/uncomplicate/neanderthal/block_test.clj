@@ -474,7 +474,7 @@
   (test-ge-contiguous factory)
   (test-uplo-contiguous factory tr))
 
-(defn test-both-factories [factory0 factory1]
+(defn test-two-factories [factory0 factory1]
   (test-vctr-transfer factory0 factory1)
   (test-ge-transfer factory0 factory1)
   (test-tr-transfer factory0 factory1))

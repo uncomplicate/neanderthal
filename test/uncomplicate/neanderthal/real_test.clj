@@ -965,7 +965,8 @@
          (with-release [a1 (ge factory 3 7 (range))
                         s1 (sy factory 3 (range))
                         s2 (sy factory 3 (range))]
-           (mmt! 2.0 a1 3.0 (trans s1)) => (view-sy (trans (mm! 2.0 a1 (trans a1) 3.0 (view-ge (trans s2))))))
+           (mmt! 2.0 a1 3.0 (trans s1))
+           => (view-sy (trans (mm! 2.0 a1 (trans a1) 3.0 (view-ge (trans s2))))))
 
          (with-release [a1 (ge factory 3 7 (range))
                         s3 (sy factory 7 (range))
@@ -973,7 +974,7 @@
            (mmt! 2.0 (trans a1) 3.0 s3) => (view-sy (mm! 2.0 (trans a1) a1 3.0 (view-ge s4))))
 
          (mmt! 2.0 (sy factory 3 [1 2 3 4 5 6]) 3.0 (sy factory 3 [1 2 3 4 5 6]))
-         => (throws ClassCastException)))
+         => (throws ExceptionInfo)))
 
 (defn test-sy-entry [factory sy]
   (facts "Symmetric Matrix entry."

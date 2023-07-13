@@ -32,7 +32,7 @@
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
            [uncomplicate.neanderthal.internal.api DataAccessor VectorSpace Vector CLVector Matrix
             CLMatrix GEMatrix RealChangeable LayoutNavigator Region MatrixImplementation
-            NativeBlock FullStorage RealDefault UploMatrix RealNativeMatrix]
+            NativeBlock FullStorage Default UploMatrix RealNativeMatrix]
            [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix
             RealUploMatrix]))
 
@@ -451,7 +451,7 @@
   (view-tr [_ lower? diag-unit?]
     (let [n (min m n)]
       (cl-uplo-matrix fact false buf n ofst nav (full-storage (.isColumnMajor nav) n n (.ld stor))
-                      (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?)
+                      (band-region n lower? diag-unit?) :tr (default :tr diag-unit?)
                       (tr-engine fact))))
   (view-sy [_ lower?]
     (let [n (min m n)]
@@ -582,7 +582,7 @@
 
 ;; ============ OpenCL Uplo Matrix =======================================
 
-(deftype CLUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^RealDefault default
+(deftype CLUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^Default default
                        fact ^DataAccessor da eng matrix-type master buf ^long n ^long ofst]
   Object
   (hashCode [this]
@@ -685,7 +685,7 @@
     (view-ge (view-ge a) m n))
   (view-tr [_ lower? diag-unit?]
     (cl-uplo-matrix fact false buf n ofst nav stor (band-region n lower? diag-unit?)
-                    :tr (real-default :tr diag-unit?) (tr-engine fact)))
+                    :tr (default :tr diag-unit?) (tr-engine fact)))
   (view-sy [_ lower?]
     (cl-uplo-matrix fact false buf n ofst nav stor (band-region n lower?)
                     :sy sy-default (sy-engine fact)))
@@ -859,7 +859,7 @@
      (cl-uplo-matrix fact true buf n 0 nav stor reg matrix-type default engine)))
   ([fact n column? lower? diag-unit? matrix-type]
    (cl-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
-                   (band-region n lower? diag-unit?) matrix-type (real-default matrix-type diag-unit?)
+                   (band-region n lower? diag-unit?) matrix-type (default matrix-type diag-unit?)
                    (case matrix-type
                      :tr (tr-engine fact)
                      :sy (sy-engine fact)
@@ -868,10 +868,10 @@
                                      {:type matrix-type}))))
   ([fact n column? lower? diag-unit?]
    (cl-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
-                   (band-region n lower? diag-unit?) :tr (real-default :tr diag-unit?) (tr-engine fact)))
+                   (band-region n lower? diag-unit?) :tr (default :tr diag-unit?) (tr-engine fact)))
   ([fact n column? lower?]
    (cl-uplo-matrix fact n (layout-navigator column?) (full-storage column? n n)
-                   (band-region n lower?) :sy (real-default :sy) (sy-engine fact))))
+                   (band-region n lower?) :sy (default :sy) (sy-engine fact))))
 
 (defmethod print-method CLUploMatrix [^CLUploMatrix a ^java.io.Writer w]
   (.write w (str a))

@@ -12,8 +12,9 @@
 
 ;; ================================ Default entry =================================
 
-(definterface RealDefault
-  (entry [nav stor da buf ^long ofst ^long i ^long j]))
+(definterface Default
+  (realEntry ^double [nav stor da buf ^long ofst ^long i ^long j])
+  (integerEntry ^long [nav stor da buf ^long ofst ^long i ^long j]))
 
 ;; ================================ Storage =======================================
 
@@ -29,7 +30,8 @@
   (flip [this]))
 
 (defprotocol Flipper
-  (flipper [this]))
+  (real-flipper ^RealLayoutFlipper [this])
+  (integer-flipper ^IntegerLayoutFlipper [this]))
 
 (defprotocol Navigable
   (region ^Region [this])

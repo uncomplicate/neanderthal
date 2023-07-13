@@ -46,7 +46,7 @@
   ([^IntegerChangeable x ^long val]
    (.set x val))
   ([^IntegerChangeable x ^long i ^long val]
-   (if (< -1 i (.dim x))
+   (if (< -1 i (core/dim x))
      (.set x i val)
      (throw (ex-info "The element you're trying to set is out of bounds of the vector."
                      {:i i :dim (core/dim x)}))))

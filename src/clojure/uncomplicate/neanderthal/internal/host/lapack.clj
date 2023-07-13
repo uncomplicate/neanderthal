@@ -136,6 +136,7 @@
       (.mrows ~a) (.buffer ~a) (.offset ~a) (.stride ~a))
      0.0))
 
+
 (defmacro sy-lacpy [lacpy copy a b]
   `(let [nav# (navigator ~a)
          reg-a# (region ~a)

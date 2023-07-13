@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.47.0-SNAPSHOT"
+(defproject uncomplicate/neanderthal "0.48.0-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -14,13 +14,15 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.11.1"]
-                 [uncomplicate/commons "0.13.1"]
+                 [uncomplicate/commons "0.14.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.9.1"]
-                 [uncomplicate/neanderthal-native "0.46.0"]
+                 #_[uncomplicate/neanderthal-native "0.46.0"] ;;TODO remove
+                 [org.uncomplicate/clojure-cpp "0.2.0-SNAPSHOT"]
+                 [org.bytedeco/mkl-platform "2023.1-1.5.9"]
                  [uncomplicate/clojurecl "0.15.1"]
                  [org.jocl/jocl-blast "1.5.2"]
-                 [uncomplicate/clojurecuda "0.17.0"]
-                 [org.jcuda/jcublas "11.8.0"]
+                 [uncomplicate/clojurecuda "0.18.0-SNAPSHOT"]
+                 #_[org.jcuda/jcublas "11.8.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -30,7 +32,9 @@
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
                    :dependencies [[midje "1.10.9"]
-                                  [codox-theme-rdash "0.1.2"]]
+                                  [codox-theme-rdash "0.1.2"]
+                                  [org.bytedeco/mkl-platform-redist "2023.1-1.5.9"]
+                                  [org.bytedeco/cuda-platform-redist "12.1-8.9-1.5.9"]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
                            :themes [:rdash]
@@ -50,8 +54,8 @@
                    ;; If building on Java 9+, uncomment the --add-opens=etc. line.
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
-                                        "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"
-                                        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
+                                        #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED" ;;TODO remove
+                                        #_"--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
              }
 
   :classifiers {:tests {:source-paths ^:replace ["test"]}}

@@ -13,10 +13,19 @@
             [uncomplicate.neanderthal.internal.api :refer :all])
   (:import [clojure.lang IFn$LLDD]
            [uncomplicate.neanderthal.internal.api LayoutNavigator DenseStorage FullStorage Region
-            RealDefault RealAccessor IntegerAccessor RealChangeable IntegerChangeable RealMatrix
-            IntegerMatrix Matrix RealLayoutFlipper IntegerLayoutFlipper]))
+            Default RealAccessor IntegerAccessor RealChangeable IntegerChangeable
+            RealMatrix IntegerMatrix Matrix RealLayoutFlipper IntegerLayoutFlipper]))
 
 ;; ======================== Region  =================================================
+
+(defn diag-unit? [^Region reg]
+  (.isDiagUnit reg))
+
+(defn lower? [^Region reg]
+  (.isLower reg))
+
+(defn upper? [^Region reg]
+  (.isUpper reg))
 
 (deftype BandRegion [^long m ^long n ^long kl ^long ku ^long uplo ^long diag]
   Object
@@ -176,10 +185,30 @@
   (set [_ a i j val]
     (.set ^RealChangeable a j i val)))
 
+(def ^:private real-no-flip (->RealNoFlip))
+(def ^:private real-flip (->RealFlip))
+
+(deftype IntegerNoFlip []
+  IntegerLayoutFlipper
+  (get [_ a i j]
+    (.entry ^IntegerMatrix a i j))
+  (set [_ a i j val]
+    (.set ^IntegerChangeable a i j val)))
+
+(deftype IntegerFlip []
+  IntegerLayoutFlipper
+  (get [_ a i j]
+    (.entry ^IntegerMatrix a j i))
+  (set [_ a i j val]
+    (.set ^IntegerChangeable a j i val)))
+
+(def ^:private integer-no-flip (->IntegerNoFlip))
+(def ^:private integer-flip (->IntegerFlip))
+
 (def ^:private real-column-navigator (volatile! nil))
 (def ^:private real-row-navigator (volatile! nil))
 
-(deftype ColumnNavigator [flipper]
+(deftype ColumnNavigator []
   Info
   (info [n]
     {:layout :column})
@@ -202,10 +231,12 @@
   (flip [_]
     @real-row-navigator)
   Flipper
-  (flipper [_]
-    flipper))
+  (real-flipper [_]
+    real-no-flip)
+  (integer-flipper [_]
+    integer-no-flip))
 
-(deftype RowNavigator [flipper]
+(deftype RowNavigator []
   Info
   (info [n]
     {:layout :row})
@@ -228,10 +259,12 @@
   (flip [_]
     @real-column-navigator)
   Flipper
-  (flipper [_]
-    flipper))
+  (real-flipper [_]
+    real-flip)
+  (integer-flipper [_]
+    integer-flip))
 
-(deftype DiagonalNavigator [flipper]
+(deftype DiagonalNavigator []
   Info
   (info [n]
     {:layout :diagonal})
@@ -252,22 +285,18 @@
   (flip [this]
     this)
   Flipper
-  (flipper [_]
-    flipper))
+  (real-flipper [_]
+    real-no-flip)
+  (integer-flipper [_]
+    integer-no-flip))
 
-(vreset! real-column-navigator (->ColumnNavigator (->RealNoFlip)))
-(vreset! real-row-navigator (->RowNavigator (->RealFlip)))
+(vreset! real-column-navigator (->ColumnNavigator))
+(vreset! real-row-navigator (->RowNavigator))
 
-(def  diagonal-navigator (DiagonalNavigator. (->RealNoFlip)))
+(def diagonal-navigator (DiagonalNavigator.))
 
 (defn layout-navigator [^Boolean column?]
   (if column? @real-column-navigator @real-row-navigator))
-
-(defn real-flipper ^RealLayoutFlipper [nav]
-  (flipper nav))
-
-(defn integer-flipper ^IntegerLayoutFlipper [nav]
-  (flipper nav))
 
 ;; =================== Full Storage ========================================
 
@@ -302,7 +331,7 @@
   (isGapless [_]
     (= sd ld))
   (capacity [_]
-    (* ld fd)))
+    (+ (* ld (max 0 (dec fd))) sd)))
 
 (defn full-storage
   ([^Boolean column? ^long m ^long n ^long ld]
@@ -502,34 +531,49 @@
 ;; ========================= Default value ===============================
 
 (deftype SYDefault []
-  RealDefault
-  (entry [_ nav stor da buf ofst i j]
-    (.get ^RealAccessor da buf (+ ofst (.index ^LayoutNavigator nav ^DenseStorage stor j i)))))
+  Default
+  (realEntry [_ nav stor da buf ofst i j]
+    (.get ^RealAccessor da buf (+ ofst (.index ^LayoutNavigator nav ^DenseStorage stor j i))))
+  (integerEntry [_ nav stor da buf ofst i j]
+    (.get ^IntegerAccessor da buf (+ ofst (.index ^LayoutNavigator nav ^DenseStorage stor j i)))))
 
 (deftype SBDefault []
-  RealDefault
-  (entry [_ nav stor da buf ofst i j]
+  Default
+  (realEntry [_ nav stor da buf ofst i j]
     (let [k (+ (.kl ^BandStorage stor) (.ku ^BandStorage stor))]
       (if (<= (- j k) i (+ j k))
         (.get ^RealAccessor da buf (+ ofst (.index ^LayoutNavigator nav ^BandStorage stor j i)))
-        0.0))))
+        0.0)))
+  (integerEntry [_ nav stor da buf ofst i j]
+    (let [k (+ (.kl ^BandStorage stor) (.ku ^BandStorage stor))]
+      (if (<= (- j k) i (+ j k))
+        (.get ^IntegerAccessor da buf (+ ofst (.index ^LayoutNavigator nav ^BandStorage stor j i)))
+        0))))
 
 (deftype STDefault []
-  RealDefault
-  (entry [_ nav stor da buf ofst i j]
+  Default
+  (realEntry [_ nav stor da buf ofst i j]
     (if (< -2 (- i j) 2)
       (.get ^RealAccessor da buf (+ ofst (.index ^DenseStorage stor j (Math/abs (- i j)))))
-      0.0)))
+      0.0))
+  (integerEntry [_ nav stor da buf ofst i j]
+    (if (< -2 (- i j) 2)
+      (.get ^IntegerAccessor da buf (+ ofst (.index ^DenseStorage stor j (Math/abs (- i j)))))
+      0)))
 
 (deftype ZeroDefault []
-  RealDefault
-  (entry [_ _ _ _ _ _ _ _]
-    0.0))
+  Default
+  (realEntry [_ _ _ _ _ _ _ _]
+    0.0)
+  (integerEntry [_ _ _ _ _ _ _ _]
+    0))
 
 (deftype UnitDefault []
-  RealDefault
-  (entry [_ _ _ _ _ _ i j]
-    (if (= i j) 1.0 0.0)))
+  Default
+  (realEntry [_ _ _ _ _ _ i j]
+    (if (= i j) 1.0 0.0))
+  (integerEntry [_ _ _ _ _ _ i j]
+    (if (= i j) 1 0)))
 
 (def ^:const sy-default (SYDefault.))
 (def ^:const sb-default (SBDefault.))
@@ -537,7 +581,7 @@
 (def ^:const zero-default (ZeroDefault.))
 (def ^:const unit-default (UnitDefault.))
 
-(defn real-default
+(defn default
   ([type diag-unit]
    (case type
      :sy sy-default

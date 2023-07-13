@@ -260,6 +260,7 @@
   ([factory ^long m ^long n]
    (ge factory m n nil nil))
   ([factory a]
+   ;;TODO check whether the result is :ge
    (let-release [res (transfer factory a)]
      (if (matrix? res)
        res

@@ -12,9 +12,9 @@
   [[uncomplicate.neanderthal.core]] functions."
   (:require [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
-            [uncomplicate.neanderthal.internal.host
-             [buffer-block :refer [map-channel]]
-             [mkl :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]])
+            [uncomplicate.neanderthal.internal.cpp.mkl
+             #_[buffer-block :refer [map-channel]] ;;TODO
+             [factory :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]])
   (:import java.nio.channels.FileChannel))
 
 ;; ============ Creating real constructs  ==============
@@ -373,7 +373,8 @@
   ([source]
    (st native-double source)))
 
-(defn map-vector
+;; TODO
+#_(defn map-vector
   "Maps a file or file channel to a vector of size `n`.
   Supported `flag`s are: `:read-write`, `:read` (or `:read-only`),
   `:private` (or `:copy-on-write`)."

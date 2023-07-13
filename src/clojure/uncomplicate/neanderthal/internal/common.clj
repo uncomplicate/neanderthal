@@ -42,6 +42,9 @@
        (dragan-says-ex "This operation requires matching navigators."
                        {:nav-a (info (navigator a)) :nav-b (info (navigator b)) :nav-c (info (navigator c))}))))
 
+(defn skip [name]
+  (dragan-says-ex (format "This branch in %s should never evaluate! Please report a bug." name)))
+
 ;; ================= Core Functions ===================================
 
 (defn dense-rows [^Matrix a]
