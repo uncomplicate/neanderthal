@@ -11,7 +11,7 @@
              [core :refer [with-release let-release info Releaseable release view]]
              [utils :refer [dragan-says-ex with-check generate-seed]]]
             [uncomplicate.fluokitten.core :refer [fmap!]]
-            [uncomplicate.clojure-cpp :refer [long-pointer float-pointer double-pointer]]
+            [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols matrix-type] :as core]
              [real :as real]
@@ -21,7 +21,7 @@
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage accu-layout dostripe-layout]]
-             [common :refer [check-stride check-eq-navigators flip-uplo]]]
+             [common :refer [check-stride check-eq-navigators flip-uplo real-accessor]]]
             [uncomplicate.neanderthal.internal.cpp
              [structures :refer :all]
              [lapack :refer :all]
@@ -551,8 +551,11 @@
         (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
        ([_# a# _#]
         (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
-     (rk [_# alpha# x# y# a#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+     (rk
+       ([_# alpha# x# y# a#]
+        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
+       ([_# _# _# a#]
+        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
      (mm
        ([_# alpha# a# b# _#]
         (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -610,10 +613,13 @@
         y#)
        ([_# a# _#]
         (dragan-says-ex "In-place mv! is not supported for GE matrices." {:a (info a#)})))
-     (rk [_# alpha# x# y# a#]
-       (. ~blas ~(cblas t 'ger) (.layout (navigator a#)) (mrows a#) (ncols a#)
-          (~cast alpha#) (~ptr x#) (stride x#) (~ptr y#) (stride y#) (~ptr a#) (stride a#))
-       a#)
+     (rk
+       ([_# alpha# x# y# a#]
+        (. ~blas ~(cblas t 'ger) (.layout (navigator a#)) (mrows a#) (ncols a#)
+           (~cast alpha#) (~ptr x#) (stride x#) (~ptr y#) (stride y#) (~ptr a#) (stride a#))
+        a#)
+       ([_# _# _# a#]
+        (dragan-says-ex "In-place rk! is not supported for GE matrices." {:a (info a#)})))
      (mm
        ([_# alpha# a# b# _#]
         (if-not (instance? GEMatrix b#)
@@ -792,8 +798,11 @@
           (. ~blas ~(cblas t 'trmv) (.layout (navigator a#)) (.uplo reg#) ~(:no-trans blas-transpose)
              (.diag reg#) (ncols a#) (~ptr a#) (stride a#) (~ptr x#) (stride x#))
           x#)))
-     (rk [_# _# _# _# a#]
-       (dragan-says-ex "rk! is not supported for TR matrices." {:a (info a#)}))
+     (rk
+       ([_# _# _# _# a#]
+        (dragan-says-ex "rk! is not supported for TR matrices." {:a (info a#)}))
+       ([_# _# _# a#]
+        (dragan-says-ex "rk! is not supported for TR matrices." {:a (info a#)})))
      (mm
        ([_# alpha# a# b# left#]
         (let [nav# (navigator b#)
@@ -883,7 +892,7 @@
            (~cast alpha#) (~ptr a#) (stride a#) (~ptr x#) (stride x#) (~cast beta#) (~ptr y#) (stride y#))
         y#)
        ([_# a# _#]
-        (dragan-says-ex "In-place mv! is not supported for GE matrices." {:a (info a#)})))
+        (dragan-says-ex "In-place mv! is not supported for SY matrices." {:a (info a#)})))
      (rk
        ([_# alpha# x# y# a#]
         (. ~blas ~(cblas t 'syr2) (.layout (navigator a#)) (.uplo (region a#)) (mrows a#)
@@ -905,7 +914,7 @@
        c#)
      (mm
        ([_# alpha# a# b# _#]
-        (dragan-says-ex "In-place mv! is not supported for GE matrices." {:a (info a#)}))
+        (dragan-says-ex "In-place mv! is not supported for SY matrices." {:a (info a#)}))
        ([_# alpha# a# b# beta# c# left#]
         (let [nav-c# (navigator c#)
               uplo# (int (if (= nav-c# (navigator a#)) (.uplo (region a#)) (flip-uplo (.uplo (region a#)))))]
@@ -959,9 +968,243 @@
 (deftype IntSYEngine [])
 ;;(integer-tr-blas* IntSYEngine "s" float-ptr int-float mkl_rt mkl_rt 1)
 
-(deftype ShortSYEngine []) ;; TODO
+(deftype ShortSYEngine []);; TODO
 
-(deftype ByteSYEngine []) ;; TODO
+(deftype ByteSYEngine []);; TODO
+
+;; ============================ GB matrix engines ==================================================
+
+(defmacro real-gb-blas* [name t ptr cpp-ptr cast blas lapack ones]
+  `(extend-type ~name
+     Blas
+     (swap [_# a# b#]
+       (gb-map ~blas ~(cblas t 'swap) ~ptr a# b#)
+       a#)
+     (copy [_# a# b#]
+       (gb-map ~lapack ~(cblas t 'copy) ~ptr a# b#)
+       b#)
+     (dot [_# a# b#]
+       (gb-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
+     (nrm1 [_# a#]
+       (gb-lan real-accessor ~lapack ~(lapacke t "" 'langb_64) ~(cblas 'cblas_i t 'amax) ~ptr ~cpp-ptr \O a#))
+     (nrm2 [_# a#]
+       (gb-lan real-accessor ~lapack ~(lapacke t "" 'langb_64) ~(cblas t 'nrm2) ~ptr ~cpp-ptr \F a#))
+     (nrmi [_# a#]
+       (gb-lan real-accessor ~lapack ~(lapacke t "" 'langb_64) ~(cblas 'cblas_i t 'amax) ~ptr ~cpp-ptr \I a#))
+     (asum [_# a#]
+       (gb-sum ~blas ~(cblas t 'asum) ~ptr a#))
+     (scal [_# alpha# a#]
+       (gb-scal ~blas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+     (axpy [_# alpha# a# b#]
+       (gb-axpy ~blas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+     (mv
+       ([_# alpha# a# x# beta# y#]
+        (gb-mv ~blas ~(cblas t 'gbmv) ~ptr (~cast alpha#) a# x# (~cast beta#) y#))
+       ([_# a# _#]
+        (dragan-says-ex "In-place mv! is not supported for GB matrices." {:a (info a#)})))
+     (rk
+       ([_# _# _# _# a#]
+        (dragan-says-ex "rk! is not supported for GB matrices." {:a (info a#)}))
+       ([_# _# _# a#]
+        (dragan-says-ex "rk! is not supported for GB matrices." {:a (info a#)})))
+     (mm
+       ([_# alpha# a# b# _#]
+        (gb-mm a#))
+       ([_# alpha# a# b# beta# c# left#]
+        (gb-mm ~blas ~(cblas t 'gbmv) ~ptr (~cast alpha#) a# b# (~cast beta#) c# left#)))))
+
+(defmacro real-gb-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
+  `(extend-type ~name
+     BlasPlus
+     (amax [_# a#]
+       (gb-lan real-accessor ~lapack ~(lapacke "" t 'langb_64) ~(cblas 'cblas_i t 'amax) ~ptr ~cpp-ptr \M a#))
+     (sum [_# a#]
+       (gb-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
+     (set-all [_# alpha# a#]
+       (gb-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
+     (axpby [_# alpha# a# beta# b#]
+       (gb-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
+     (trans [_# a#]
+       (dragan-says-ex "In-place transpose is not available for GB matrices." {:a (info a#)}))))
+
+(defmacro real-gb-lapack* [name t ptr cast lapack]
+  `(extend-type ~name
+     Lapack
+     (srt [_# a# increasing#]
+       (matrix-lasrt ~lapack ~(lapacke t 'lasrt) ~ptr a# increasing#))
+     ;;TODO
+     ))
+
+(deftype FloatGBEngine [])
+(real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
+(real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
+(real-gb-lapack* FloatGBEngine "s" float-ptr float mkl_rt)
+
+(deftype DoubleGBEngine [])
+(real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
+(real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
+(real-gb-lapack* DoubleGBEngine "d" double-ptr double mkl_rt)
+
+(deftype LongGBEngine [])
+(deftype IntGBEngine [])
+(deftype ShortGBEngine [])
+(deftype ByteGBEngine [])
+
+;; ============================ SB matrix engines ==================================================
+
+(defmacro real-sb-blas* [name t ptr cpp-ptr cast blas lapack ones]
+  `(extend-type ~name
+     Blas
+     (swap [_# a# b#]
+       (gb-map ~blas ~(cblas t 'swap) ~ptr a# b#)
+       a#)
+     (copy [_# a# b#]
+       (gb-map ~lapack ~(cblas t 'copy) ~ptr a# b#)
+       b#)
+     (dot [_# a# b#]
+       (gb-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
+     (nrm1 [_# a#]
+       (sb-lan real-accessor ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \O a#))
+     (nrm2 [_# a#]
+       (sb-lan real-accessor ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \F a#))
+     (nrmi [_# a#]
+       (sb-lan real-accessor ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \I a#))
+     (asum [_# a#]
+       (gb-sum ~blas ~(cblas t 'asum) ~ptr a#))
+     (scal [_# alpha# a#]
+       (gb-scal ~blas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+     (axpy [_# alpha# a# b#]
+       (gb-axpy ~blas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+     (mv
+       ([_# alpha# a# x# beta# y#]
+        (sb-mv ~blas ~(cblas t 'sbmv) ~ptr (~cast alpha#) a# x# (~cast beta#) y#))
+       ([_# a# _#]
+        (dragan-says-ex "In-place mv! is not supported for SB matrices." {:a (info a#)})))
+     (rk
+       ([_# _# _# _# a#]
+        (dragan-says-ex "rk! is not supported for SB matrices." {:a (info a#)}))
+       ([_# _# _# a#]
+        (dragan-says-ex "rk! is not supported for SB matrices." {:a (info a#)})))
+     (mm
+       ([_# alpha# a# b# _#]
+        (sb-mm a#))
+       ([_# alpha# a# b# beta# c# left#]
+        (sb-mm ~blas ~(cblas t 'sbmv) ~ptr (~cast alpha#) a# b# (~cast beta#) c# left#)))))
+
+(defmacro real-sb-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
+  `(extend-type ~name
+     BlasPlus
+     (amax [_# a#]
+       (sb-lan real-accessor ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \M a#))
+     (sum [_# a#]
+       (gb-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
+     (set-all [_# alpha# a#]
+       (gb-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
+     (axpby [_# alpha# a# beta# b#]
+       (gb-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
+     (trans [_# a#]
+       (dragan-says-ex "In-place transpose is not available for SB matrices." {:a (info a#)}))))
+
+(defmacro real-sb-lapack* [name t ptr cast lapack]
+  `(extend-type ~name
+     Lapack
+     (srt [_# a# increasing#]
+       (matrix-lasrt ~lapack ~(lapacke t 'lasrt) ~ptr a# increasing#))
+     ;;TODO
+     ))
+
+(deftype FloatSBEngine [])
+(real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
+(real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
+(real-sb-lapack* FloatSBEngine "s" float-ptr float mkl_rt)
+
+(deftype DoubleSBEngine [])
+(real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
+(real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
+(real-sb-lapack* DoubleSBEngine "d" double-ptr double mkl_rt)
+
+(deftype LongSBEngine [])
+(deftype IntSBEngine [])
+(deftype ShortSBEngine [])
+(deftype ByteSBEngine [])
+
+;; ============================ TB matrix engines ====================================================
+
+(defmacro real-tb-blas* [name t ptr cpp-ptr cast blas lapack ones]
+  `(extend-type ~name
+     Blas
+     (swap [_# a# b#]
+       (gb-map ~blas ~(cblas t 'swap) ~ptr a# b#)
+       a#)
+     (copy [_# a# b#]
+       (gb-map ~lapack ~(cblas t 'copy) ~ptr a# b#)
+       b#)
+     (dot [_# a# b#]
+       (gb-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
+     (nrm1 [_# a#]
+       (tb-lan real-accessor  ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \O a#))
+     (nrm2 [_# a#]
+       (tb-lan real-accessor ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \F a#))
+     (nrmi [_# a#]
+       (tb-lan real-accessor ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \I a#))
+     (asum [_# a#]
+       (gb-sum ~blas ~(cblas t 'asum) ~ptr a#))
+     (scal [_# alpha# a#]
+       (gb-scal ~blas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+     (axpy [_# alpha# a# b#]
+       (gb-axpy ~blas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+     (mv
+       ([_# _# a# _# _# _#]
+        (tb-mv a#))
+       ([_# a# x#]
+        (tb-mv ~blas ~(cblas t 'tbmv) ~ptr a# x#)))
+     (rk
+       ([_# _# _# _# a#]
+        (dragan-says-ex "rk! is not supported for TB matrices." {:a (info a#)}))
+       ([_# _# _# a#]
+        (dragan-says-ex "rk! is not supported for TB matrices." {:a (info a#)})))
+     (mm
+       ([_# alpha# a# b# left#]
+        (tb-mm ~blas ~(cblas t 'tbmv) ~ptr (~cast alpha#) a# b# left#))
+       ([_# _# a# _# _# _# _#]
+        (tb-mm a#)))))
+
+(defmacro real-tb-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
+  `(extend-type ~name
+     BlasPlus
+     (amax [_# a#]
+       (tb-lan real-accessor ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \M a#))
+     (sum [_# a#]
+       (gb-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
+     (set-all [_# alpha# a#]
+       (gb-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
+     (axpby [_# alpha# a# beta# b#]
+       (gb-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
+     (trans [_# a#]
+       (dragan-says-ex "In-place transpose is not available for TB matrices." {:a (info a#)}))))
+
+(defmacro real-tb-lapack* [name t ptr cast lapack]
+  `(extend-type ~name
+     Lapack
+     (srt [_# a# increasing#]
+       (matrix-lasrt ~lapack ~(lapacke t 'lasrt) ~ptr a# increasing#))
+     ;;TODO
+     ))
+
+(deftype FloatTBEngine [])
+(real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
+(real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
+(real-tb-lapack* FloatTBEngine "s" float-ptr float mkl_rt)
+
+(deftype DoubleTBEngine [])
+(real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
+(real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
+(real-tb-lapack* DoubleTBEngine "d" double-ptr double mkl_rt)
+
+(deftype LongTBEngine [])
+(deftype IntTBEngine [])
+(deftype ShortTBEngine [])
+(deftype ByteTBEngine [])
 
 ;; ========================= Sparse Vector engines ============================================
 
@@ -1143,7 +1386,8 @@
 ;; ================================================================================
 
 (deftype MKLRealFactory [index-fact ^DataAccessor da
-                         vector-eng ge-eng tr-eng sy-eng cs-vector-eng csr-eng]
+                         vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
+                         cs-vector-eng csr-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1188,6 +1432,32 @@
       (when init
         (.initialize da (.buffer ^Block res)))
       res))
+  (create-banded [this m n kl ku matrix-type column? init]
+    (let-release [res (real-banded-matrix this m n kl ku column? matrix-type)]
+      (when init
+        (.initialize da (.buffer ^Block res)))
+      res))
+  (create-gb [this m n kl ku lower? init]
+    (let-release [res (real-banded-matrix this m n kl ku lower?)]
+      (when init
+        (.initialize da (.buffer ^Block res)))
+      res))
+  (create-tb [this n k column? lower? diag-unit? init]
+    (if (or (and column? lower?) (and (not column?) (not lower?)))
+      (let-release [res (real-tb-matrix this n k column? lower? diag-unit?)]
+        (when init
+          (.initialize da (.buffer ^Block res)))
+        res)
+      (dragan-says-ex "TB matrices have to be either column-major lower or row-major upper."
+                      {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
+  (create-sb [this n k column? lower? init]
+    (if (or (and column? lower?) (and (not column?) (not lower?)))
+      (let-release [res (real-sb-matrix this n k column? lower?)]
+        (when init
+          (.initialize da (.buffer ^Block res)))
+        res)
+      (dragan-says-ex "SB matrices have to be either column-major lower or row-major upper."
+                      {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
   (vector-engine [_]
     vector-eng)
   (ge-engine [_]
@@ -1196,6 +1466,12 @@
     tr-eng)
   (sy-engine [_]
     sy-eng)
+  (gb-engine [_]
+    gb-eng)
+  (sb-engine [_]
+    sb-eng)
+  (tb-engine [_]
+    tb-eng)
   SparseFactory
   (create-ge-csr [this m n idx idx-b idx-e column? init]
     (ge-csr-matrix this m n idx idx-b (view idx-e) column? init))
@@ -1207,7 +1483,7 @@
     csr-eng))
 
 (deftype MKLIntegerFactory [index-fact ^DataAccessor da
-                            vector-eng ge-eng tr-eng sy-eng]
+                            vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1259,7 +1535,13 @@
   (tr-engine [_]
     tr-eng)
   (sy-engine [_]
-    sy-eng))
+    sy-eng)
+  (gb-engine [_]
+    gb-eng)
+  (sb-engine [_]
+    sb-eng)
+  (tb-engine [_]
+    tb-eng))
 
 (def float-accessor (->FloatPointerAccessor malloc! free!))
 (def double-accessor (->DoublePointerAccessor malloc! free!))
@@ -1268,16 +1550,25 @@
 (def short-accessor (->ShortPointerAccessor malloc! free!))
 (def byte-accessor (->BytePointerAccessor malloc! free!))
 
-(def mkl-int (->MKLIntegerFactory mkl-int int-accessor (->IntVectorEngine) (->IntGEEngine) (->IntTREngine) (->IntSYEngine)))
-(def mkl-long (->MKLIntegerFactory mkl-int long-accessor (->LongVectorEngine) (->LongGEEngine) (->LongTREngine) (->LongSYEngine)))
-(def mkl-short (->MKLIntegerFactory mkl-int short-accessor (->ShortVectorEngine) (->ShortGEEngine) (->ShortTREngine) (->ShortSYEngine)))
-(def mkl-byte (->MKLIntegerFactory mkl-int byte-accessor (->ByteVectorEngine) (->ByteGEEngine) (->ByteTREngine) (->ByteSYEngine)))
+(def mkl-int (->MKLIntegerFactory mkl-int int-accessor (->IntVectorEngine) (->IntGEEngine)
+                                  (->IntTREngine) (->IntSYEngine)
+                                  (->IntGBEngine) (->IntSBEngine) (->IntTBEngine)))
+(def mkl-long (->MKLIntegerFactory mkl-int long-accessor (->LongVectorEngine) (->LongGEEngine)
+                                   (->LongTREngine) (->LongSYEngine)
+                                   (->LongGBEngine) (->LongSBEngine) (->LongTBEngine)))
+(def mkl-short (->MKLIntegerFactory mkl-int short-accessor (->ShortVectorEngine) (->ShortGEEngine)
+                                    (->ShortTREngine) (->ShortSYEngine)
+                                    (->ShortGBEngine) (->ShortSBEngine) (->ShortTBEngine)))
+(def mkl-byte (->MKLIntegerFactory mkl-int byte-accessor (->ByteVectorEngine) (->ByteGEEngine)
+                                   (->ByteTREngine) (->ByteSYEngine)
+                                   (->ByteGBEngine) (->ByteSBEngine) (->ByteTBEngine)))
 
 (def mkl-float
   (->MKLRealFactory mkl-int float-accessor (->FloatVectorEngine) (->FloatGEEngine) (->FloatTREngine)
-                    (->FloatSYEngine) (->FloatCSVectorEngine) (->FloatCSREngine)))
+                    (->FloatSYEngine) (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
+                    (->FloatCSVectorEngine) (->FloatCSREngine)))
 
 (def mkl-double
-  (->MKLRealFactory mkl-int double-accessor (->DoubleVectorEngine) (->DoubleGEEngine)
-                    (->DoubleTREngine) (->DoubleSYEngine)
+  (->MKLRealFactory mkl-int double-accessor (->DoubleVectorEngine) (->DoubleGEEngine) (->DoubleTREngine)
+                    (->DoubleSYEngine) (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
                     (->DoubleCSVectorEngine)  (->DoubleCSREngine)))

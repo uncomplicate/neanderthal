@@ -18,11 +18,11 @@
                  [uncomplicate/fluokitten "0.9.1"]
                  #_[uncomplicate/neanderthal-native "0.46.0"] ;;TODO remove
                  [org.uncomplicate/clojure-cpp "0.2.0-SNAPSHOT"]
-                 [org.bytedeco/mkl-platform "2023.1-1.5.9"]
+                 [org.bytedeco/mkl-platform "2023.1-1.5.10-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.15.1"]
                  [org.jocl/jocl-blast "1.5.2"]
                  [uncomplicate/clojurecuda "0.18.0-SNAPSHOT"]
-                 #_[org.jcuda/jcublas "11.8.0"]
+                 #_[org.jcuda/jcublas "11.8.0"] ;;TODO remove
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -33,8 +33,8 @@
                                  *print-length* 128}
                    :dependencies [[midje "1.10.9"]
                                   [codox-theme-rdash "0.1.2"]
-                                  [org.bytedeco/mkl-platform-redist "2023.1-1.5.9"]
-                                  [org.bytedeco/cuda-platform-redist "12.1-8.9-1.5.9"]]
+                                  [org.bytedeco/mkl-platform-redist "2023.1-1.5.10-SNAPSHOT"]
+                                  [org.bytedeco/cuda-platform-redist "12.1-8.9-1.5.10-SNAPSHOT"]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
                            :themes [:rdash]
@@ -55,8 +55,9 @@
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
                                         #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED" ;;TODO remove
-                                        #_"--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
-             }
+                                        #_"--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}}
+
+  :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :classifiers {:tests {:source-paths ^:replace ["test"]}}
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]

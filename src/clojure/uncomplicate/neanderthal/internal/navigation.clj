@@ -27,6 +27,9 @@
 (defn upper? [^Region reg]
   (.isUpper reg))
 
+(defn uplo= [^Region reg1 ^Region reg2]
+  (= (.uplo reg1) (.uplo reg2)))
+
 (deftype BandRegion [^long m ^long n ^long kl ^long ku ^long uplo ^long diag]
   Object
   (hashCode [a]
@@ -383,7 +386,7 @@
   (isGapless [_]
     (= 0 kl ku))
   (capacity [_]
-    (* ld w)))
+    (+ (* ld (max 0 (dec w))) h)))
 
 (defn band-storage
   ([^Boolean column? m n ld kl ku]

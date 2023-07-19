@@ -33,7 +33,6 @@
   (block-test/test-vctr-fold factory)
   (block-test/test-vctr-reducible factory)
   (block-test/test-vctr-seq factory)
-  (block-test/test-ge-functor-laws factory ge)
   (block-test/test-ge-ifn factory)
   (block-test/test-ge-functor factory)
   (block-test/test-ge-fold factory)
@@ -45,8 +44,11 @@
   (block-test/test-tr-seq factory)
   (block-test/test-vctr-functor-laws factory)
   (block-test/test-ge-functor-laws factory ge)
+  (block-test/test-ge-functor-laws factory gb)
   (block-test/test-sspar-mat-functor-laws factory tr)
   (block-test/test-sspar-mat-functor-laws factory sy)
+  (block-test/test-sspar-mat-functor-laws factory tb)
+  (block-test/test-sspar-mat-functor-laws factory sb)
   ;;TODO
   ;; (test-sspar-mat-functor-laws factory sb)
   ;; (test-sspar-mat-functor-laws factory sp)
@@ -96,11 +98,11 @@
   (real-test/test-ge-swap factory)
   (real-test/test-uplo-srt factory tr)
   (real-test/test-uplo-srt factory sy)
+  (real-test/test-gb-srt factory)
+  (real-test/test-banded-uplo-srt factory tb)
+  (real-test/test-banded-uplo-srt factory sb)
   ;; (real-test/test-uplo-srt factory sp)
   ;; (real-test/test-uplo-srt factory tp)
-  ;; (test-gb-srt factory)
-  ;; (test-banded-uplo-srt factory tb)
-  ;; (test-banded-uplo-srt factory sb)
   ;; (test-gt-srt factory gt)
   ;; (test-gt-srt factory dt)
   ;; (test-gd-srt factory)
@@ -160,8 +162,8 @@
   ;; (math-test/test-math factory (partial math-test/diff-square-1 st) (partial math-test/diff-square-2 st))
   (math-test/test-math-host factory math-test/diff-vctr-1 math-test/diff-vctr-2)
   (math-test/test-math-host factory math-test/diff-ge-1 math-test/diff-ge-2)
-  ;;(math-test/test-math-host factory (partial math-test/diff-square-1 tr) (partial math-test/diff-square-2 tr))
-  ;;   (math-test/test-math-host factory (partial math-test/diff-square-1 sy) (partial math-test/diff-square-2 sy))
+  (math-test/test-math-host factory (partial math-test/diff-square-1 tr) (partial math-test/diff-square-2 tr))
+  (math-test/test-math-host factory (partial math-test/diff-square-1 sy) (partial math-test/diff-square-2 sy))
   ;; (math-test/test-math-host factory (partial math-test/diff-square-1 tp) (partial math-test/diff-square-2 tp))
   ;; (math-test/test-math-host factory (partial math-test/diff-square-1 sp) (partial math-test/diff-square-2 sp))
   ;; (math-test/test-math-host factory (partial math-test/diff-square-1 gd) (partial math-test/diff-square-2 gd))
@@ -171,7 +173,7 @@
   (math-test/test-math-inv factory math-test/diff-vctr-1 math-test/diff-vctr-2)
   (math-test/test-math-inv factory math-test/diff-ge-1 math-test/diff-ge-2)
   (math-test/test-math-inv factory (partial math-test/diff-square-1 tr) (partial math-test/diff-square-2 tr))
-  ;; (math-test/test-math-inv factory (partial math-test/diff-square-1 sy) (partial math-test/diff-square-2 sy))
+  (math-test/test-math-inv factory (partial math-test/diff-square-1 sy) (partial math-test/diff-square-2 sy))
   ;; (math-test/test-math-inv factory (partial math-test/diff-square-1 tp) (partial math-test/diff-square-2 tp))
   ;; (math-test/test-math-inv factory (partial math-test/diff-square-1 sp) (partial math-test/diff-square-2 sp))
   ;; (math-test/test-math-inv factory (partial math-test/diff-square-1 gd) (partial math-test/diff-square-2 gd))
@@ -182,6 +184,8 @@
   (math-test/test-ge-linear-frac factory)
   (math-test/test-tr-linear-frac factory)
   (math-test/test-sy-linear-frac factory))
+
+;; TODO math-test for GB, SB, TB
 
 (test-all-host mkl-double)
 
@@ -220,6 +224,21 @@
 (real-test/test-blas-sy-host mkl-double)
 (real-test/test-blas-sy-host mkl-float)
 
+(real-test/test-blas-gb mkl-double)
+(real-test/test-blas-gb mkl-float)
+(real-test/test-blas-gb-host mkl-double)
+(real-test/test-blas-gb-host mkl-float)
+
+(real-test/test-blas-sb mkl-double)
+(real-test/test-blas-sb mkl-float)
+(real-test/test-blas-sb-host mkl-double)
+(real-test/test-blas-sb-host mkl-float)
+
+(real-test/test-blas-tb mkl-double)
+(real-test/test-blas-tb mkl-float)
+(real-test/test-blas-tb-host mkl-double)
+(real-test/test-blas-tb-host mkl-float)
+
 
 (test-all-host mkl-double)
 (test-all-host mkl-float)
@@ -227,5 +246,7 @@
 (random-test/test-all mkl-float)
 (random-test/test-all-host mkl-double)
 (random-test/test-all-host mkl-float)
+
+
 
 ;; ================= Sparse tests ===============================

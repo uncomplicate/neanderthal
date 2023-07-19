@@ -18,13 +18,14 @@
                                      int-pointer short-pointer byte-pointer element-count null?
                                      PointerCreator capacity!]]
    [uncomplicate.neanderthal
-    [core :refer [transfer! copy! dim subvector vctr ge matrix-type mrows ncols symmetric?]]
+    [core :refer [transfer! copy! dim subvector vctr ge matrix-type mrows ncols matrix-type
+                  triangular? dia]]
     [math :as math :refer [ceil]]
     [block :refer [entry-type offset stride buffer column?]]]
    [uncomplicate.neanderthal.internal
     [api :refer :all]
     [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
-    [common :refer [dense-rows dense-cols dense-dias region-dias require-trf real-accessor integer-accessor]]
+    [common :refer :all]
     [navigation :refer :all]]
    [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
   (:import [java.nio Buffer ByteBuffer]
@@ -40,8 +41,10 @@
             MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix DiagonalMatrix
             RealAccessor IntegerAccessor RealLayoutFlipper IntegerLayoutFlipper]))
 
+(def ^:private f* (double-fn *))
+
 (declare real-block-vector integer-block-vector cs-vector integer-ge-matrix real-ge-matrix
-         real-uplo-matrix integer-uplo-matrix)
+         real-uplo-matrix integer-uplo-matrix real-banded-matrix integer-banded-matrix)
 
 ;; TODO move to API
 (defprotocol SparseBlas
@@ -896,7 +899,7 @@
 
 ;; =================== Matrices ================================================
 
-(defmacro extend-ge-matrix [name block-vector ge-matrix uplo-matrix]
+(defmacro extend-matrix [name]
   `(extend-type ~name
      Info
      (info
@@ -904,10 +907,10 @@
         {:entry-type (.entryType (data-accessor this#))
          :class ~name
          :device :cpu
-         :matrix-type :ge
+         :matrix-type (.matrixType this#)
          :dim (dim this#)
-         :m (.-m this#)
-         :n (.-n this#)
+         :m (mrows this#)
+         :n (ncols this#)
          :offset (offset this#)
          :stride (stride this#)
          :master (.-master this#)
@@ -920,10 +923,10 @@
           :entry-type (.entryType (data-accessor this#))
           :class ~name
           :device :cpu
-          :matrix-type :ge
+          :matrix-type (.matrixType this#)
           :dim (dim this#)
-          :m (.-m this#)
-          :n (.-n this#)
+          :m (mrows this#)
+          :n (ncols this#)
           :offset (offset this#)
           :stride (stride this#)
           :master (.-master this#)
@@ -938,7 +941,10 @@
      (storage [this#]
        (.-stor this#))
      (region [this#]
-       (.-reg this#))
+       (.-reg this#))))
+
+(defmacro extend-ge-matrix [name block-vector ge-matrix uplo-matrix]
+  `(extend-type ~name
      Container
      (raw
        ([this#]
@@ -1001,6 +1007,8 @@
        (compatible? (.-da this#) y#))
      (fits? [this# b#]
        (and (instance? GEMatrix b#) (= (.-reg this#) (region b#))))
+     (fits-navigation? [this# b#]
+       (= (.-nav this#) (navigator b#)))
      (device [this#]
        :cpu)
      Monoid
@@ -1052,47 +1060,6 @@
 
 (defmacro extend-uplo-matrix [name block-vector ge-matrix uplo-matrix]
   `(extend-type ~name
-     Info
-     (info
-       ([this#]
-        {:entry-type (.entryType (data-accessor this#))
-         :class ~name
-         :device :cpu
-         :matrix-type (.-matrix-type this#)
-         :dim (dim this#)
-         :m (.-n this#)
-         :n (.-n this#)
-         :offset (offset this#)
-         :stride (stride this#)
-         :master (.-master this#)
-         :layout (:layout (info (.-nav this#)))
-         :storage (info (.-stor this#))
-         :region (info (.-reg this#))
-         :engine (info (.-eng this#))})
-       ([this# info-type#]
-        (case info-type#
-          :entry-type (.entryType (data-accessor this#))
-          :class ~name
-          :device :cpu
-          :matrix-type (.-matrix-type this#)
-          :dim (dim this#)
-          :m (.-n this#)
-          :n (.-n this#)
-          :offset (offset this#)
-          :stride (stride this#)
-          :master (.-master this#)
-          :layout (:layout (info (.-nav this#)))
-          :storage (info (.-stor this#))
-          :region (info (.-reg this#))
-          :engine (info (.-eng this#))
-          nil)))
-     Navigable
-     (navigator [this#]
-       (.-nav this#))
-     (storage [this#]
-       (.-stor this#))
-     (region [this#]
-       (.-reg this#))
      Container
      (raw
        ([this#]
@@ -1133,18 +1100,30 @@
         (view-ge (view-ge this#) stride-mult#))
        ([this# m# n#]
         (view-ge (view-ge this#) m# n#)))
+     (view-tr [this# lower?# diag-unit?#]
+       (let [n# (.-n this#)
+             fact# (.-fact this#)]
+         (~uplo-matrix fact# false (.-buf-ptr this#) n# (.-nav this#) (.-stor this#)
+          (band-region n# lower?# diag-unit?#) :tr (default :tr diag-unit?#) (tr-engine fact#))))
+     (view-sy [this# lower?#]
+       (let [n# (.-n this#)
+             fact# (.-fact this#)]
+         (~uplo-matrix fact# false (.-buf-ptr this#) n# (.-nav this#) (.-stor this#)
+          (band-region n# lower?#) :sy sy-default (sy-engine fact#))))
      MemoryContext
      (compatible? [this# y#]
        (compatible? (.-da this#) y#))
      (fits? [this# b#]
-       (and (instance? UploMatrix b#) (= (.-reg this#) (region b#)))
        (and (instance? UploMatrix b#)
-            (let [reg-b# (region b#)
-                  reg# (region this#)]
-              (or (=  reg# reg-b#)
-                  (and (= :sy (.-matrix-type this#)) (symmetric? b#)
-                       (not= (.-nav this#) (navigator b#)) (not= (.uplo reg#) (.uplo reg-b#))
+            (let [reg# (.-reg this#)
+                  reg-b# (region b#)]
+              (or (= reg# reg-b#)
+                  (and (= :sy (.-matrix-type this#)) (matrix-type b#)
+                       (not= (.-nav this#) (navigator b#)) (not (uplo= reg# reg-b#))
                        (= (.-n this#) (ncols b#)))))))
+     (fits-navigation? [this# b#]
+       (and (= (.-nav this#) (navigator b#))
+            (or (instance? GEMatrix b#) (= (.-reg this#) (region b#)))))
      (device [this#]
        :cpu)
      Monoid
@@ -1161,7 +1140,7 @@
                               (column? this#) (.-matrix-type this#))]
             (transfer! source# res#)))))))
 
-(defmacro extend-uplo-trf [name]
+(defmacro extend-uplo-triangularizable [name]
   `(extend-type ~name
      Triangularizable
      (create-trf [a# pure#]
@@ -1171,50 +1150,169 @@
      (create-ptrf [a#]
        (if (= :sy (.-matrix-type a#))
          (pivotless-lu-factorization a# false)
-         a#))
+         a#))))
+
+(defmacro extend-trf [name]
+  `(extend-type ~name
      TRF
      (trtrs [a# b#]
-       (if (= :tr (.-matrix-type a#))
+       (if (triangular? a#)
          (let-release [res# (raw b#)]
            (copy (engine b#) b# res#)
-           (trs (.-eng a#) a# res#))))
+           (trs (.-eng a#) a# res#))
+         (require-trf)))
      (trtrs! [a# b#]
-       (if (= :tr (.-matrix-type a#))
+       (if (triangular? a#)
          (trs (.-eng a#) a# b#)
          (require-trf)))
      (trtri! [a#]
-       (if (= :tr (.-matrix-type a#))
+       (if (triangular? a#)
          (tri (.-eng a#) a#)
          (require-trf)))
      (trtri [a#]
-       (if (= :tr (.-matrix-type a#))
+       (if (triangular? a#)
          (let-release [res# (raw a#)
                        eng# (.-eng a#)]
            (tri eng# (copy eng# a# res#)))
          (require-trf)))
      (trcon
-       ([a# _ nrm1?#]
-        (if (= :tr (.-matrix-type a#))
+       ([a# _# nrm1?#]
+        (if (triangular? a#)
           (con (.-eng a#) a# nrm1?#)
           (require-trf)))
        ([a# nrm1?#]
-        (if (= :tr (.-matrix-type a#))
+        (if (triangular? a#)
           (con (.-eng a#) a# nrm1?#)
           (require-trf))))
      (trdet [a#]
-       (if (= :tr (.-matrix-type a#))
-         (if (diag-unit? (.-reg a#)) 1.0 (fold (dia a) f* 1.0))
+       (if (triangular? a#)
+         (if (diag-unit? (.-reg a#)) 1.0 (fold (dia a#) f* 1.0))
          (require-trf)))))
+
+(defn create-banded* [this fact master]
+  (let [reg (region this)]
+    (create-banded (factory fact) (mrows this) (ncols this) (.kl reg) (.ku reg)
+                   (matrix-type this) (column? this) master)))
+
+(defmacro extend-banded-matrix [name block-vector ge-matrix banded-matrix]
+  `(extend-type ~name
+     Container
+     (raw
+       ([this#]
+        (~banded-matrix (.-fact this#) (.-m this#) (.-n this#) (.-nav this#) (.-stor this#)
+         (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
+       ([this# fact#]
+        (create-banded* this# (.-fact this#) false)))
+     (zero
+       ([this#]
+        (create-banded* this# (.-fact this#) true))
+       ([this# fact#]
+        (create-banded* this# fact# true)))
+     (host [this#]
+       (let-release [res# (raw this#)]
+         (copy (.-eng this#) this# res#)
+         res#))
+     (native [this#]
+       this#)
+     Viewable
+     (view [this#]
+       (~banded-matrix (.-fact this#) false (.-buf-ptr this#) (.-m this#) (.-n this#) 0 (.-nav this#)
+        (.-stor this#) (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
+     DenseContainer
+     (view-vctr
+       ([this#]
+        (view-vctr (view-ge this#)))
+       ([this# stride-mult#]
+        (view-vctr (view-ge this#) stride-mult#)))
+     (view-ge
+       ([this#]
+        (let [stor# (full-storage this#)
+              m# (if (column? this#) (.sd stor#) (.fd stor#))
+              n# (if (column? this#) (.fd stor#) (.sd stor#))]
+          (~ge-matrix (.-fact this#) false (.-buf-ptr this#) m# n# (.-nav this#)
+           (full-storage (column? this#) m# n# (.ld stor#)) (ge-region m# n#))))
+       ([this# stride-mult#]
+        (dragan-says-ex "GB matrices do not support stride when viewed as GE."))
+       ([this# m# n#]
+        (if (<= (* (long m#) (long n#)) (.capacity (storage this#)))
+          (view-ge (view-ge this#) m# n#)
+          (dragan-says-ex "This GB matrix does not have sufficient storage space for required m and n dimensions."))))
+     (view-tr [this# lower?# diag-unit?#]
+       (if-not (= :gb matrix-type)
+         (let [reg# (region this#)
+               n# (.-n this#)
+               k# (max (.kl reg#) (.ku reg#))
+               fact# (.-fact this#)]
+           (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
+            (uplo-storage (column? this#) n# k# (lower? this#))
+            (tb-region n# k# (lower? this#) diag-unit?#) :tb (default :tb diag-unit?#)
+            (tb-engine fact#)))
+         (dragan-says-ex "GB cannot be viewed as a TB due to specific factorization requirements.")))
+     (view-sy [this# lower?#]
+       (if-not (= :gb matrix-type)
+         (let [reg# (region this#)
+               n# (.-n this#)
+               k# (max (.kl reg#) (.ku reg#))
+               fact# (.-fact this#)]
+           (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
+            (uplo-storage (column? this#) n# k# (lower? this#))
+            (sb-region n# k# (lower? this#)) :sb sb-default (sb-engine fact#)))
+         (dragan-says-ex "GB cannot be viewed as a SB due to specific factorization requirements.")))
+     MemoryContext
+     (compatible? [this# y#]
+       (compatible? (.-da this#) y#))
+     (fits? [this# b#]
+       (and (instance? BandedMatrix b#)
+            (let [reg# (region this#)
+                  reg-b# (region b#)]
+              (or (= reg# reg-b#)
+                  (and (= :sb (.matrixType this#)) (matrix-type b#)
+                       (not= (.-nav this#) (navigator b#))
+                       (= (+ (.kl reg#) (.ku reg#)) (+ (.kl reg-b#) (.ku reg-b#)))
+                       (= (.-n this#) (ncols b#)))))))
+     (fits-navigation? [this# b#]
+       (= (.-nav this#) (navigator b#)))
+     (device [this#]
+       :cpu)
+     Monoid
+     (id [this#]
+       (~banded-matrix (.-fact this#) 0 0 0 0 (column? this#) (.matrixType this#)))
+     Applicative
+     (pure
+       ([this# v#]
+        (let-release [res# (~banded-matrix (.-fact this#) 1 1 (.-nav this#) (.-stor this#)
+                            (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
+          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+       ([this# v# vs#]
+        (dragan-says-ex "Vararg pure is not available for banded matrices.")))))
+
+(defmacro extend-banded-triangularizable [name]
+  `(extend-type ~name
+     Triangularizable
+     (create-trf [a# pure#]
+       (case (.-matrix-type a#)
+         :tb a#
+         :sb (pivotless-lu-factorization a# pure#)
+         :gb (lu-factorization a# pure#)
+         (dragan-says-ex "Triangular factorization is not available for this matrix type"
+                         {:matrix-type (.-matrix-type a#)})))
+     (create-ptrf [a#]
+       (case (.-matrix-type a#)
+         :tb a#
+         :sb (pivotless-lu-factorization a# false)
+         (dragan-says-ex "Pivotless factorization is not available for this matrix type"
+                         {:matrix-type (.-matrix-type a#)})))))
 
 ;; =================== Real Matrix =============================================
 
 (defmacro matrix-equals [flipper da a b]
-  `(or (identical? ~a ~b) (= (.buffer ~a) (buffer ~b))
+  `(or (identical? ~a ~b)
        (and (instance? (class ~a) ~b)
             (= (.matrixType ~a) (matrix-type ~b))
             (compatible? ~a ~b) (= (.mrows ~a) (mrows ~b)) (= (.ncols ~a) (ncols ~b))
-            (let [buf# (.buffer ~a)]
-              (and-layout ~a i# j# idx# (= (.get ~da buf# idx#) (.get ~flipper ~b i# j#)))))))
+            (let [buff-a# (.buffer ~a)]
+              (or (= buff-a# (buffer ~b))
+                  (and-layout ~a i# j# idx# (= (.get ~da buff-a# idx#) (.get ~flipper ~b i# j#))))))))
 
 (deftype RealGEMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg
                        fact ^RealAccessor da eng master buf-ptr ^long m ^long n]
@@ -1325,7 +1423,9 @@
     (real-ge-matrix fact false buf-ptr n m 0 (flip nav) stor (flip reg))))
 
 (extend-base RealGEMatrix)
+(extend-matrix RealGEMatrix)
 (extend-ge-matrix RealGEMatrix real-block-vector real-ge-matrix real-uplo-matrix)
+(extend-ge-trf RealGEMatrix)
 (extend-matrix-fluokitten RealGEMatrix double real-flipper real-accessor)
 
 (defmethod print-method RealGEMatrix [a ^java.io.Writer w]
@@ -1442,7 +1542,9 @@
     (integer-ge-matrix fact false buf-ptr n m 0 (flip nav) stor (flip reg))))
 
 (extend-base IntegerGEMatrix)
+(extend-matrix IntegerGEMatrix)
 (extend-ge-matrix IntegerGEMatrix integer-block-vector integer-ge-matrix integer-uplo-matrix)
+(extend-ge-trf IntegerGEMatrix)
 (extend-matrix-fluokitten IntegerGEMatrix long integer-flipper integer-accessor)
 
 (defmethod print-method IntegerGEMatrix [a ^java.io.Writer w]
@@ -1474,11 +1576,10 @@
 ;; =================== Real Uplo Matrix ==================================
 
 (deftype RealUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^Default default
-                         fact ^RealAccessor da eng matrix-type master
-                         buf-ptr ^long n]
+                         fact ^RealAccessor da eng matrix-type master buf-ptr ^long n]
   Object
   (hashCode [a]
-    (-> (hash :RealUploMatrix) (hash-combine n) (hash-combine (nrm2 eng a))))
+    (-> (hash :RealUploMatrix) (hash-combine matrix-type) (hash-combine n) (hash-combine (nrm2 eng a))))
   (equals [a b]
     (let [fl (real-flipper nav)]
       (matrix-equals fl da a b)))
@@ -1497,7 +1598,7 @@
     (map #(seq (.stripe nav a %)) (range 0 n)))
   IFn$LLDD
   (invokePrim [a i j v]
-    (if (and (< -1 i n) (< -1 j n))
+    (if (.accessible reg i j)
       (.set a i j v)
       (throw (ex-info "Requested element is out of bounds of the matrix."
                       {:i i :j j :mrows n :ncols n}))))
@@ -1593,7 +1694,10 @@
     (real-uplo-matrix fact false buf-ptr n (flip nav) stor (flip reg) matrix-type default eng)))
 
 (extend-base RealUploMatrix)
+(extend-matrix RealUploMatrix)
 (extend-uplo-matrix RealUploMatrix real-block-vector real-ge-matrix real-uplo-matrix)
+(extend-uplo-triangularizable RealUploMatrix)
+(extend-trf RealUploMatrix)
 (extend-matrix-fluokitten RealUploMatrix double real-flipper real-accessor)
 
 (defmethod print-method RealUploMatrix [a ^java.io.Writer w]
@@ -1720,7 +1824,10 @@
     (integer-uplo-matrix fact false buf-ptr n (flip nav) stor (flip reg) matrix-type default eng)))
 
 (extend-base IntegerUploMatrix)
+(extend-matrix IntegerUploMatrix)
 (extend-uplo-matrix IntegerUploMatrix integer-block-vector integer-ge-matrix integer-uplo-matrix)
+(extend-uplo-triangularizable IntegerUploMatrix)
+(extend-trf IntegerUploMatrix)
 (extend-matrix-fluokitten IntegerUploMatrix long integer-flipper integer-accessor)
 
 (defn uplo-matrix
@@ -1755,6 +1862,188 @@
 
 (def real-uplo-matrix (partial uplo-matrix ->RealUploMatrix))
 (def integer-uplo-matrix (partial uplo-matrix ->IntegerUploMatrix))
+
+;; ================= Banded Matrix ==============================================================
+
+(deftype RealBandedMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^Default default
+                           fact ^RealAccessor da eng matrix-type
+                           master buf-ptr ^long m ^long n]
+  Object
+  (hashCode [a]
+    (-> (hash :RealBandedMatrix) (hash-combine matrix-type) (hash-combine m) (hash-combine n)
+        (hash-combine (nrm2 eng a))))
+  (equals [a b]
+    (let [fl (real-flipper nav)]
+      (matrix-equals fl da a b)))
+  (toString [a]
+    (format "#RealBandedMatrix[%s, type%s, mxn:%dx%d, layout%s]"
+            (entry-type da) matrix-type m n (dec-property (.layout nav))))
+  BandedMatrix
+  (matrixType [_]
+    matrix-type)
+  (isTriangular [_]
+    (= :tb matrix-type))
+  (isSymmetric [_]
+    (= :sb matrix-type))
+  Seqable
+  (seq [a]
+    (map seq (.dias a)))
+  IFn$LLDD
+  (invokePrim [a i j v]
+    (if (.accessible reg i j)
+      (.set a i j v)
+      (throw (ex-info "Requested element is out of bounds of the matrix."
+                      {:i i :j j :mrows n :ncols n}))))
+  IFn$LLD
+  (invokePrim [a i j]
+    (if (and (< -1 i n) (< -1 j n))
+      (.entry a i j)
+      (throw (ex-info "The element you're trying to set is out of bounds of the matrix."
+                      {:i i :j j :mrows n :ncols n}))))
+  IFn
+  (invoke [a i j v]
+    (.invokePrim a i j v))
+  (invoke [a i j]
+    (.invokePrim a i j))
+  (invoke [a]
+    (.fd stor))
+  IFn$L
+  (invokePrim [a]
+    (.fd stor))
+  RealChangeable
+  (isAllowed [a i j]
+    (.accessible reg i j))
+  (set [a val]
+    (if-not (Double/isNaN val)
+      (set-all eng val a)
+      (doall-layout nav stor reg i j idx (.set da buf-ptr idx val)))
+    a)
+  (set [a i j val]
+    (.set da buf-ptr (.index nav stor i j) val)
+    a)
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a f]
+    (matrix-alter IFn$DD IFn$LLDD f nav stor reg da buf-ptr)
+    a)
+  (alter [a i j f]
+    (let [idx (.index nav stor i j)]
+      (.set da buf-ptr idx (.invokePrim ^IFn$DD f (.get da buf-ptr idx)))
+      a))
+  RealNativeMatrix
+  (buffer [_]
+    buf-ptr)
+  (offset [_]
+    0)
+  (stride [_]
+    (.ld stor))
+  (isContiguous [_]
+    (.isGapless stor))
+  (dim [_]
+    (* m n))
+  (mrows [_]
+    m)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (if (.accessible reg i j)
+      (.get da buf-ptr (.index nav stor i j))
+      (.realEntry default nav stor da buf-ptr 0 i j)))
+  (boxedEntry [a i j]
+    (.entry a i j))
+  (row [a i]
+    (let [start (.rowStart reg i)]
+      (real-block-vector fact false buf-ptr (- (.rowEnd reg i) start) (.index nav stor i start)
+                         (if (.isRowMajor nav) 1 (dec (.ld stor))))))
+  (rows [a]
+    (region-rows a))
+  (col [a j]
+    (let [start (.colStart reg j)]
+      (real-block-vector fact false buf-ptr (- (.colEnd reg j) start) (.index nav stor start j)
+                         (if (.isColumnMajor nav) 1 (dec (.ld stor))))))
+  (cols [a]
+    (region-cols a))
+  (dia [a]
+    (.dia a 0))
+  (dia [a k]
+    (if (<= (- (.kl reg)) k (.ku reg))
+      (if (< 0 k)
+        (real-block-vector fact false buf-ptr (min m (- n k)) (.index nav stor 0 k) (.ld stor))
+        (real-block-vector fact false buf-ptr (min (+ m k) n) (.index nav stor (- k) 0) (.ld stor)))
+      (real-block-vector fact false buf-ptr 0 1)))
+  (dias [a]
+    (region-dias a))
+  (submatrix [a i j k l]
+    (if (= i j)
+      (let [kl (min (.kl reg) (dec k))
+            ku (min (.ku reg) (dec l))]
+        (real-banded-matrix fact false buf-ptr k l (- (.index nav stor i j) (inc kl))
+                            nav (band-storage (.isColumnMajor nav) k l (.ld stor) kl ku)
+                            (band-region k l kl ku) matrix-type default eng))
+      (dragan-says-ex "You cannot create a submatrix of a banded (GB, TB, or SB) matrix outside its region. No way around that."
+                      {:a (info a) :i i :j j :k k :l l})))
+  (transpose [a]
+    (real-banded-matrix fact false buf-ptr n m 0 (flip nav) stor (flip reg) matrix-type default eng))
+  Subband
+  (subband [a kl ku]
+    (if (and (<= 0 (long kl) (.kl reg)) (<= 0 (long ku) (.ku reg)))
+      (let [sub-stor (band-storage (.isColumnMajor nav) m n (.ld stor) kl ku)]
+        (real-banded-matrix fact false buf-ptr m n
+                            (- (.index stor 0 0) (.index ^DenseStorage sub-stor 0 0))
+                            nav sub-stor (band-region m n kl ku) matrix-type default eng))
+      (dragan-says-ex "You cannot create a subband outside available region. No way around that."
+                      {:a (info a) :kl kl :ku ku}))))
+
+(extend-base RealBandedMatrix)
+(extend-matrix RealBandedMatrix)
+(extend-banded-matrix RealBandedMatrix real-block-vector real-ge-matrix real-banded-matrix)
+(extend-banded-triangularizable RealBandedMatrix)
+(extend-trf RealBandedMatrix)
+(extend-matrix-fluokitten RealBandedMatrix double real-flipper real-accessor)
+
+(defmethod print-method RealBandedMatrix [a ^java.io.Writer w]
+  (.write w (str a))
+  (when-not (null? (buffer a))
+    (print-banded w a)))
+
+(defn banded-matrix
+  ([constructor fact master buf-ptr m n ofst nav ^FullStorage stor reg matrix-type default engine]
+   (let [da (data-accessor fact)
+         buf-ptr (pointer buf-ptr ofst)]
+     (if (<= 0 (.capacity stor) (.count da buf-ptr))
+       (constructor nav stor reg default fact da engine matrix-type master buf-ptr m n)
+       (throw (ex-info "Insufficient buffer size."
+                       {:dim (.capacity stor) :buffer-size (.count da buf-ptr)})))))
+  ([constructor fact m n nav ^DenseStorage stor reg matrix-type default engine]
+   (let-release [buf-ptr (.createDataSource (data-accessor fact) (.capacity stor))]
+     (banded-matrix constructor fact true buf-ptr m n 0 nav stor reg matrix-type default engine)))
+  ([constructor fact m n kl ku column? matrix-type]
+   (banded-matrix constructor fact m n (layout-navigator column?) (band-storage column? m n kl ku)
+                  (band-region m n kl ku) matrix-type (default matrix-type)
+                  (case matrix-type
+                    :gb (gb-engine fact)
+                    :sb (sb-engine fact)
+                    :tb (tb-engine fact)
+                    (dragan-says-ex (format "%s is not a valid banded matrix type. Please send me a bug report."
+                                            matrix-type)))))
+  ([constructor fact m n kl ku column?]
+   (banded-matrix constructor fact m n (layout-navigator column?) (band-storage column? m n kl ku)
+                  (band-region m n kl ku) :gb zero-default (gb-engine fact))))
+
+(defn tb-matrix [constructor fact n k column? lower? diag-unit?]
+  (banded-matrix constructor fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
+                 (tb-region n k lower? diag-unit?) :tb (default :tb diag-unit?) (tb-engine fact)))
+
+(defn sb-matrix [constructor fact n k column? lower?]
+  (banded-matrix constructor fact n n (layout-navigator column?) (uplo-storage column? n k lower?)
+                 (sb-region n k lower?) :sb sb-default (sb-engine fact)))
+
+(def real-banded-matrix (partial banded-matrix ->RealBandedMatrix))
+(def real-tb-matrix (partial tb-matrix ->RealBandedMatrix))
+(def real-sb-matrix (partial sb-matrix ->RealBandedMatrix))
+;;(def integer-banded-matrix (partial banded-matrix ->IntegerBandedMatrix)) TODO
 
 ;; =================== transfer method implementations =========================================
 

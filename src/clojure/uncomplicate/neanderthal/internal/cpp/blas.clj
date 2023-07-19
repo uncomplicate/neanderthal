@@ -10,12 +10,13 @@
   (:require [uncomplicate.commons
              [core :refer [with-release let-release Info info Releaseable release]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.clojure-cpp :refer [position! pointer] :as cpp]
+            [uncomplicate.clojure-cpp :refer [pointer] :as cpp]
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride contiguous?]]
-             [core :refer [dim entry ncols symmetric?]]]
+             [core :refer [dim entry mrows ncols symmetric? trans]]
+             [math :refer [f=]]]
             [uncomplicate.neanderthal.internal
-             [api :refer [iamax engine navigator storage region]]
+             [api :refer [iamax engine navigator storage region mm scal]]
              [common :refer [check-eq-navigators skip]]
              [navigation :refer [full-storage accu-layout diag-unit?]]])
   (:import [org.bytedeco.mkl.global mkl_rt]
@@ -98,8 +99,8 @@
                (recur (inc j#)
                       (let [start# (.start nav-a# reg-a# j#)
                             ~len (- (.end nav-a# reg-a# j#) start#)]
-                        (position! ~buff-a (.index stor-a# start# j#))
-                        (position! ~buff-b (.index stor-b# start# j#))
+                        (.position ~buff-a (.index stor-a# start# j#))
+                        (.position ~buff-b (.index stor-b# start# j#))
                         ~expr))
                ~acc))))
        (let [~ld-b (.ld stor-b#)]
@@ -108,8 +109,8 @@
              (recur (inc j#)
                     (let [start# (.start nav-a# reg-a# j#)
                           ~len (- (.end nav-a# reg-a# j#) start#)]
-                      (position! ~buff-a (.index stor-a# start# j#))
-                      (position! ~buff-b (.index stor-b# j# start#))
+                      (.position ~buff-a (.index stor-a# start# j#))
+                      (.position ~buff-b (.index stor-b# j# start#))
                       ~expr))
              ~acc))))))
 
@@ -127,15 +128,15 @@
             (dotimes [j# fd-b#]
               (let [start# (.start nav-b# reg-b# j#)
                     ~len (- (.end nav-b# reg-b# j#) start#)]
-                (position! ~buff-a (.index stor-a# start# j#))
-                (position! ~buff-b (.index stor-b# start# j#))
+                (.position ~buff-a (.index stor-a# start# j#))
+                (.position ~buff-b (.index stor-b# start# j#))
                 ~expr))))
         (let [~ld-a (.ld stor-a#)]
           (dotimes [j# fd-b#]
             (let [start# (.start nav-b# reg-b# j#)
                   ~len (- (.end nav-b# reg-b# j#) start#)]
-              (position! ~buff-a (.index stor-a# j# start#))
-              (position! ~buff-b (.index stor-b# start# j#))
+              (.position ~buff-a (.index stor-a# j# start#))
+              (.position ~buff-b (.index stor-b# start# j#))
               ~expr)))))))
 
 (defmacro full-matching-map
@@ -151,8 +152,8 @@
         (dotimes [j# fd-a#]
           (let [start# (.start nav-a# reg# j#)
                 ~len (- (.end nav-a# reg# j#) start#)]
-            (position! ~buff-a (.index stor-a# start# j#))
-            (position! ~buff-b (.index stor-b# start# j#))
+            (.position ~buff-a (.index stor-a# start# j#))
+            (.position ~buff-b (.index stor-b# start# j#))
             ~expr)))))
   ([a b c len buff-a buff-b buff-c expr-direct expr]
    `(let [nav-a# (navigator ~a)
@@ -167,9 +168,9 @@
         (dotimes [j# fd-a#]
           (let [start# (.start nav-a# reg# j#)
                 ~len (- (.end nav-a# reg# j#) start#)]
-            (position! ~buff-a (.index stor-a# start# j#))
-            (position! ~buff-b (.index stor-b# start# j#))
-            (position! ~buff-c (.index stor-c# start# j#))
+            (.position ~buff-a (.index stor-a# start# j#))
+            (.position ~buff-b (.index stor-b# start# j#))
+            (.position ~buff-c (.index stor-c# start# j#))
             ~expr))))))
 
 (defmacro matrix-map [blas method ptr a b]
@@ -194,20 +195,20 @@
 (defmacro ge-sum
   ([blas method ptr a]
    `(if (< 0 (dim ~a))
-      (let [buff# (~ptr ~a 0)]
+      (let [buff-a# (~ptr ~a 0)]
         (if (contiguous?  ~a)
-          (. ~blas ~method (dim ~a) (~ptr ~a) 1)
+          (. ~blas ~method (dim ~a) buff-a# 1)
           (accu-layout ~a len# idx# acc# 0.0
-                       (+ acc# (double (. ~blas ~method len# (.position buff# idx#) 1))))))
+                       (+ acc# (double (. ~blas ~method len# (.position buff-a# idx#) 1))))))
       0.0))
   ([blas method ptr a ones]
    `(if (< 0 (dim ~a))
       (if (contiguous? ~a)
         (. ~blas ~method (dim ~a) (~ptr ~a) 1 (~ptr ~ones) 0)
-        (let [buff# (~ptr ~a 0)
+        (let [buff-a# (~ptr ~a 0)
               ones# (~ptr ~ones)]
           (accu-layout ~a len# idx# acc# 0.0
-                       (+ acc# (double (. ~blas ~method len# (.position buff# idx#) 1 ones# 0))))))
+                       (+ acc# (double (. ~blas ~method len# (.position buff-a# idx#) 1 ones# 0))))))
       0.0)))
 
 ;;TODO there's saxpy_batch_strided in new MKL. Explore whether that can simplify our code.
@@ -276,3 +277,304 @@
         (- (* 2.0 (double (ge-sum ~blas ~method ~ptr ~a ~ones)))
            (. ~blas ~method n# (~ptr ~a) (inc (.ld stor#)) (~ptr ~ones) 0)))
       0.0)))
+
+;; ========================== Banded matrix macros =========================================
+
+(defmacro band-storage-map
+  ([a len buff-a expr]
+   `(let [reg# (region ~a)
+          nav# (navigator ~a)
+          stor# (full-storage ~a)
+          m# (mrows ~a)
+          n# (ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)]
+      (dotimes [k# (inc kl#)]
+        (let [~len (min (- m# k#) n#)]
+          (.position ~buff-a (.index nav# stor# k# 0))
+          ~expr))
+      (dotimes [k# ku#]
+        (let [~len (min m# (- n# (inc k#)))]
+          (.position ~buff-a (.index nav# stor# 0 (inc k#)))
+          ~expr))
+      ~a))
+  ([a b len buff-a buff-b expr]
+   `(let [reg# (region ~a)
+          nav-a# (navigator ~a)
+          nav-b# (if (symmetric? ~a) nav-a# (navigator ~b))
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          m# (mrows ~a)
+          n# (ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)]
+      (dotimes [k# (inc kl#)]
+        (let [~len (min (- m# k#) n#)]
+          (.position ~buff-a (.index nav-a# stor-a# k# 0))
+          (.position ~buff-b (.index nav-b# stor-b# k# 0))
+          ~expr))
+      (dotimes [k# ku#]
+        (let [~len (min m# (- n# (inc k#)))]
+          (.position ~buff-a (.index nav-a# stor-a# 0 (inc k#)))
+          (.position ~buff-b (.index nav-b# stor-b# 0 (inc k#)))
+          ~expr))
+      ~b)))
+
+(defmacro band-storage-reduce
+  ([a len buff-a acc init expr]
+   `(let [reg# (region ~a)
+          nav# (navigator ~a)
+          stor# (full-storage ~a)
+          m# (mrows ~a)
+          n# (ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)
+          coeff# (double (if (symmetric? ~a) 2.0 1.0))]
+      (let [acc# (loop [k# 1 ~acc ~init]
+                   (if (< k# (inc ku#))
+                     (recur (inc k#)
+                            (let [~len (min m# (- n# k#))]
+                              (.position ~buff-a (.index nav# stor# 0 k#))
+                              ~expr))
+                     ~acc))]
+        (let [~acc (* coeff# (double
+                              (loop [k# 1 ~acc (double acc#)]
+                                (if (< k# (inc kl#))
+                                  (recur (inc k#)
+                                         (let [~len (min (- m# k#) n#)]
+                                           (.position ~buff-a (.index nav# stor# k# 0))
+                                           ~expr))
+                                  ~acc))))
+              ~len (min m# n#)]
+          (.position ~buff-a (.index nav# stor# 0 0))
+          ~expr))))
+  ([a b len buff-a buff-b acc init expr]
+   `(let [reg# (region ~a)
+          nav-a# (navigator ~a)
+          nav-b# (if (symmetric? ~a) nav-a# (navigator ~b))
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          m# (mrows ~a)
+          n# (ncols ~a)
+          kl# (.kl reg#)
+          ku# (.ku reg#)
+          coeff# (double (if (symmetric? ~a) 2.0 1.0))]
+      (let [acc# (loop [k# 1 ~acc ~init]
+                   (if (< k# (inc ku#))
+                     (recur (inc k#)
+                            (let [~len (min m# (- n# k#))]
+                              (.position ~buff-a (.index nav-a# stor-a# 0 k#))
+                              (.position ~buff-b (.index nav-b# stor-b# 0 k#))
+                              ~expr))
+                     ~acc))]
+        (let [~acc (* coeff# (double
+                              (loop [k# 1 ~acc (double acc#)]
+                                (if (< k# (inc kl#))
+                                  (recur (inc k#)
+                                         (let [~len (min (- m# k#) n#)]
+                                           (.position ~buff-a (.index nav-a# stor-a# k# 0))
+                                           (.position ~buff-b (.index nav-b# stor-b# k# 0))
+                                           ~expr))
+                                  ~acc))))
+              ~len (min m# n#)]
+          (.position ~buff-a (.index nav-a# stor-a# 0 0))
+          (.position ~buff-b (.index nav-b# stor-b# 0 0))
+          ~expr)))))
+
+(defmacro gb-map [blas method ptr a b]
+  `(if (< 0 (dim ~a))
+     (if (and (contiguous? ~a) (contiguous? ~b) (not (symmetric? ~a)))
+       (. ~blas ~method (dim ~a) (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b))
+       (let [buff-a# (~ptr ~a 0)
+             buff-b# (~ptr ~b 0)
+             ld-a# (stride ~a)
+             ld-b# (stride ~b)]
+         (band-storage-map ~a ~b len# buff-a# buff-b#
+                           (. ~blas ~method len# buff-a# ld-a# buff-b# ld-b#))))
+     ~b))
+
+(defmacro gb-dot [blas method ptr a b]
+  `(if (< 0 (dim ~a))
+     (if (and (contiguous? ~a) (contiguous? ~b) (not (symmetric? ~a)))
+       (. ~blas ~method (dim ~a) (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b))
+       (let [buff-a# (~ptr ~a 0)
+             buff-b# (~ptr ~b 0)
+             ld-a# (stride ~a)
+             ld-b# (stride ~b)]
+         (band-storage-reduce ~a ~b len# buff-a# buff-b# acc# 0.0
+                              (+ acc# (. ~blas ~method len# buff-a# ld-a# buff-b# ld-b#)))))
+     0.0))
+
+(defmacro gb-scal [blas method ptr alpha a]
+  `(if (< 0 (dim ~a))
+     (if (and (contiguous? ~a) (not (symmetric? ~a)))
+       (. ~blas ~method (dim ~a) ~alpha (~ptr ~a) (stride ~a))
+       (let [buff-a# (~ptr ~a 0)
+             ld-a# (stride ~a)]
+         (band-storage-map ~a len# buff-a# (. ~blas ~method len# ~alpha buff-a# ld-a#))))
+     ~a))
+
+(defmacro gb-sum
+  ([blas method ptr a]
+   `(if (< 0 (dim ~a))
+      (if (and (contiguous? ~a) (not (symmetric? ~a)))
+        (. ~blas ~method (dim ~a) (~ptr ~a) (stride ~a))
+        (let [buff-a# (~ptr ~a 0)
+              ld-a# (stride ~a)]
+          (band-storage-reduce ~a len# buff-a# acc# 0.0 (+ acc# (. ~blas ~method len# buff-a# ld-a#)))))
+      0.0))
+  ([blas method ptr a ones]
+   `(if (< 0 (dim ~a))
+      (if (and (contiguous? ~a) (not (symmetric? ~a)))
+        (. ~blas ~method (dim ~a) (~ptr ~a) 1 (~ptr ~ones) 0)
+        (let [buff-a# (~ptr ~a 0)
+              ld-a# (stride ~a)
+              ones# (~ptr ~ones)]
+          (band-storage-reduce ~a len# buff-a# acc# 0.0
+                               (double (+ acc# (. ~blas ~method len# buff-a# ld-a# ones# 0))))))
+      0.0)))
+
+(defmacro gb-axpy [blas method ptr alpha a b]
+  `(if (< 0 (dim ~a))
+     (if (and (contiguous? ~a) (contiguous? ~b) (not (symmetric? ~a)))
+       (. ~blas ~method (dim ~a) ~alpha (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b))
+       (let [buff-a# (~ptr ~a 0)
+             buff-b# (~ptr ~b 0)
+             ld-a# (stride ~a)
+             ld-b# (stride ~b)]
+         (band-storage-map ~a ~b len# buff-a# buff-b#
+                           (. ~blas ~method len# ~alpha buff-a# ld-a# buff-b# ld-b#))))
+     ~b))
+
+(defmacro gb-mv
+  ([blas method ptr alpha a x beta y]
+   `(let [reg# (region ~a)]
+      (. ~blas ~method (.layout (navigator ~a)) ~(:no-trans blas-transpose) (mrows ~a) (ncols ~a)
+         (.kl reg#) (.ku reg#) ~alpha (~ptr ~a) (stride ~a) (~ptr ~x) (stride ~x)
+         ~beta (~ptr ~y) (stride ~y))
+      ~y))
+  ([a]
+   `(dragan-says-ex "In-place mv! is not supported for GB matrices." {:a (info ~a)})))
+
+(defmacro sb-mv
+  ([blas method ptr alpha a x beta y]
+   `(let [reg# (region ~a)]
+      (. ~blas ~method ~(:column blas-layout) ~(:lower blas-uplo) (ncols ~a) (max (.kl reg#) (.ku reg#))
+         ~alpha (~ptr ~a) (stride ~a) (~ptr ~x) (stride ~x) ~beta (~ptr ~y) (stride ~y))
+      ~y))
+  ([a]
+   `(dragan-says-ex "In-place mv! is not supported for SB matrices." {:a (info ~a)})))
+
+(defmacro tb-mv
+  ([blas method ptr a x]
+   `(let [reg# (region ~a)]
+      (. ~blas ~method ~(:column blas-layout) ~(:lower blas-uplo)
+         (if (.isLower reg#) ~(:no-trans blas-transpose) ~(:trans blas-transpose)) (.diag reg#)
+         (ncols ~a) (max (.kl reg#) (.ku reg#)) (~ptr ~a) (stride ~a) (~ptr ~x) (stride ~x))
+      ~x))
+  ([a]
+   `(dragan-says-ex "Out-of-place mv! is not supported for TB matrices." {:a (info ~a)})))
+
+(defmacro gb-mm
+  ([blas method ptr alpha a b beta c left]
+   `(do
+      (if ~left
+        (let [reg# (region ~a)
+              layout# (.layout (navigator ~a))
+              nav-b# (navigator ~b)
+              nav-c# (navigator ~c)
+              stor-b# (full-storage ~b)
+              stor-c# (full-storage ~c)
+              m-a# (mrows ~a)
+              n-a# (ncols ~a)
+              kl-a# (.kl reg#)
+              ku-a# (.ku reg#)
+              buff-a# (~ptr ~a)
+              ld-a# (stride ~a)
+              buff-b# (~ptr ~b 0)
+              buff-c# (~ptr ~c 0)
+              stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (.ld stor-b#))
+              stride-col-c# (if (.isColumnMajor (navigator ~c)) 1 (.ld stor-c#))]
+          (dotimes [j# (ncols ~b)]
+            (.position buff-b# (.index nav-b# stor-b# 0 j#))
+            (.position buff-c# (.index nav-c# stor-c# 0 j#))
+            (. ~blas ~method layout# ~(:no-trans blas-transpose) m-a# n-a# kl-a# ku-a#
+               ~alpha buff-a# ld-a# buff-b# stride-col-b# ~beta buff-c# stride-col-c#)))
+        (mm (engine ~a) ~alpha (trans ~a) (trans ~b) ~beta (trans ~c) true))
+      ~c))
+  ([a]
+   `(dragan-says-ex "In-place mm! is not supported by GB matrices. Copy GB to GE." {:a (info ~a)})))
+
+(defmacro sb-mm
+  ([blas method ptr alpha a b beta c left]
+   `(do
+      (if ~left
+        (let [reg# (region ~a)
+              nav-b# (navigator ~b)
+              nav-c# (navigator ~c)
+              stor-b# (storage ~b)
+              stor-c# (storage ~c)
+              uplo# (.uplo reg#)
+              n-a# (ncols ~a)
+              k-a# (max (.kl reg#) (.ku reg#))
+              m-b# (mrows ~b)
+              n-b# (ncols ~b)
+              buff-a# (~ptr ~a)
+              ld-a# (stride ~a)
+              buff-b# (~ptr ~b 0)
+              buff-c# (~ptr ~c 0)
+              stride-x# (if (.isColumnMajor (navigator ~b))
+                          (if ~left 1 (stride ~b))
+                          (if ~left (stride ~b) 1))
+              stride-col-c# (if (.isColumnMajor nav-c#) 1 (stride ~c))]
+          (dotimes [j# n-b#]
+            (.position buff-b# (.index nav-b# stor-b# 0 j#))
+            (.position buff-c# (.index nav-c# stor-c# 0 j#))
+            (. ~blas ~method ~(:column blas-layout) ~(:lower blas-uplo) n-a# k-a#
+               ~alpha buff-a# ld-a# buff-b# stride-x# ~beta buff-c# stride-col-c#)))
+        (mm (engine ~a) ~alpha (trans ~a) (trans ~b) ~beta (trans ~c) true))
+      ~c))
+  ([a]
+   `(dragan-says-ex "In-place mm! is not supported by SB matrices. Copy SB to GE." {:a (info ~a)})))
+
+(defmacro tb-mm
+  ([blas method ptr alpha a b left]
+   `(do
+      (if ~left
+        (let [reg# (region ~a)
+              layout# (.layout (navigator ~a))
+              nav-b# (navigator ~b)
+              stor-b# (storage ~b)
+              uplo# (.uplo reg#)
+              diag# (.diag reg#)
+              n-a# (ncols ~a)
+              k-a# (max (.kl reg#) (.ku reg#))
+              m-b# (mrows ~b)
+              n-b# (ncols ~b)
+              buff-a# (~ptr ~a)
+              ld-a# (stride ~a)
+              buff-b# (~ptr ~b 0)
+              stride-x# (if (.isColumnMajor (navigator ~b)) (if ~left 1 (stride ~b)) (if ~left (stride ~b) 1))
+              transpose# (if (.isLower reg#) ~(:no-trans blas-transpose) ~(:trans blas-transpose))]
+          (dotimes [j# n-b#]
+            (.position buff-b# (.index nav-b# stor-b# 0 j#))
+            (. ~blas ~method ~(:column blas-layout) ~(:lower blas-uplo) transpose# diag# n-a# k-a#
+               buff-a# ld-a# buff-b# stride-x#))
+          (when-not (f= 1.0 ~alpha)
+            (scal (engine ~b) ~alpha ~b)))
+        (mm (engine ~a) ~alpha (trans ~a) (trans ~b) true))
+      ~b))
+  ([a]
+   `(dragan-says-ex "Out-of-place mm! is not supported by TB matrices. Copy TB to GE." {:a (info ~a)})))
+
+(defmacro gb-axpby [blas method ptr alpha a beta b]
+  `(if (< 0 (dim ~a))
+     (if (and (contiguous? ~a) (contiguous? ~b) (not (symmetric? ~a)))
+       (. ~blas ~method (dim ~a) ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b))
+       (let [buff-a# (~ptr ~a 0)
+             buff-b# (~ptr ~b 0)
+             ld-a# (stride ~a)
+             ld-b# (stride ~b)]
+         (band-storage-map ~a ~b len# buff-a# buff-b#
+                           (.~blas ~method len# ~alpha buff-a# ld-a# ~beta buff-b# ld-b#))))
+     ~b))
