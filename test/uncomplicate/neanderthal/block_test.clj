@@ -460,9 +460,10 @@
            (fmap-keeps-type p+ (creator factory 0) (creator factory 0)))))
 
 (defn test-extend-buffer [factory]
-  (with-release [x (vctr factory (range 16))
-                 y (vctr factory (range 16))]
-    (view (buffer x)) => y))
+  (facts "Test extend buffer"
+         (with-release [x (vctr factory (range 16))
+                        y (vctr factory (range 16))]
+           (view-vctr (buffer x)) => y)))
 
 (defn test-all [factory]
   (test-create factory)

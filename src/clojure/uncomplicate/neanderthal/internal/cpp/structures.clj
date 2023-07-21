@@ -19,7 +19,7 @@
                                      PointerCreator capacity!]]
    [uncomplicate.neanderthal
     [core :refer [transfer! copy! dim subvector vctr ge matrix-type mrows ncols matrix-type
-                  triangular? dia]]
+                  triangular? symmetric? dia]]
     [math :as math :refer [ceil]]
     [block :refer [entry-type offset stride buffer column?]]]
    [uncomplicate.neanderthal.internal
@@ -44,7 +44,8 @@
 (def ^:private f* (double-fn *))
 
 (declare real-block-vector integer-block-vector cs-vector integer-ge-matrix real-ge-matrix
-         real-uplo-matrix integer-uplo-matrix real-banded-matrix integer-banded-matrix)
+         real-uplo-matrix integer-uplo-matrix real-banded-matrix integer-banded-matrix
+         real-packed-matrix integer-packed-matrix real-diagonal-matrix integer-diagonal)
 
 ;; TODO move to API
 (defprotocol SparseBlas
@@ -1058,251 +1059,6 @@
      Magma
      {:op (constantly matrix-op)}))
 
-(defmacro extend-uplo-matrix [name block-vector ge-matrix uplo-matrix]
-  `(extend-type ~name
-     Container
-     (raw
-       ([this#]
-        (~uplo-matrix (.-fact this#) (.-n this#) (.-nav this#) (.-stor this#) (.-reg this#)
-         (.-matrix-type this#) (.-default this#) (.-eng this#)))
-       ([this# fact#]
-        (create-uplo (factory fact#) (.-n this#) (.-matrix-type this#) (column? this#)
-                     (lower? (.-reg this#)) (diag-unit? (.-reg this#)) false)))
-     (zero
-       ([this#]
-        (create-uplo (.-fact this#) (.-n this#) (.-matrix-type this#) (column? this#)
-                     (lower? (.-reg this#)) (diag-unit? (.-reg this#)) true))
-       ([this# fact#]
-        (create-uplo (factory fact#) (.-n this#) (.-matrix-type this#) (column? this#)
-                     (lower? (.-reg this#)) (diag-unit? (.-reg this#)) true)))
-     (host [this#]
-       (let-release [res# (raw this#)]
-         (copy (.-eng this#) this# res#)
-         res#))
-     (native [this#]
-       this#)
-     Viewable
-     (view [this#]
-       (~uplo-matrix (.-fact this#) false (.-buf-ptr this#) (.-n this#) (.-nav this#) (.-stor this#)
-        (.-reg this#) (.-matrix-type this#) (.-default this#) (.-eng this#)))
-     DenseContainer
-     (view-vctr
-       ([this#]
-        (view-vctr (view-ge this#)))
-       ([this# stride-mult#]
-        (view-vctr (view-ge this#) stride-mult#)))
-     (view-ge
-       ([this#]
-        (let [n# (.-n this#)]
-          (~ge-matrix (.-fact this#) false (.-buf-ptr this#) n# n#
-           (.-nav this#) (.-stor this#) (ge-region n# n#))))
-       ([this# stride-mult#]
-        (view-ge (view-ge this#) stride-mult#))
-       ([this# m# n#]
-        (view-ge (view-ge this#) m# n#)))
-     (view-tr [this# lower?# diag-unit?#]
-       (let [n# (.-n this#)
-             fact# (.-fact this#)]
-         (~uplo-matrix fact# false (.-buf-ptr this#) n# (.-nav this#) (.-stor this#)
-          (band-region n# lower?# diag-unit?#) :tr (default :tr diag-unit?#) (tr-engine fact#))))
-     (view-sy [this# lower?#]
-       (let [n# (.-n this#)
-             fact# (.-fact this#)]
-         (~uplo-matrix fact# false (.-buf-ptr this#) n# (.-nav this#) (.-stor this#)
-          (band-region n# lower?#) :sy sy-default (sy-engine fact#))))
-     MemoryContext
-     (compatible? [this# y#]
-       (compatible? (.-da this#) y#))
-     (fits? [this# b#]
-       (and (instance? UploMatrix b#)
-            (let [reg# (.-reg this#)
-                  reg-b# (region b#)]
-              (or (= reg# reg-b#)
-                  (and (= :sy (.-matrix-type this#)) (matrix-type b#)
-                       (not= (.-nav this#) (navigator b#)) (not (uplo= reg# reg-b#))
-                       (= (.-n this#) (ncols b#)))))))
-     (fits-navigation? [this# b#]
-       (and (= (.-nav this#) (navigator b#))
-            (or (instance? GEMatrix b#) (= (.-reg this#) (region b#)))))
-     (device [this#]
-       :cpu)
-     Monoid
-     (id [this#]
-       (~uplo-matrix (.-fact this#) 0 (column? this#)))
-     Applicative
-     (pure
-       ([this# v#]
-        (let-release [res# (~uplo-matrix (.-fact this#) 1 (column? this#) (.-matrix-type this#))]
-          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
-       ([this# v# vs#]
-        (let [source# (cons v# vs#)]
-          (let-release [res# (~uplo-matrix (.-fact this#) (math/sqrt (count source#))
-                              (column? this#) (.-matrix-type this#))]
-            (transfer! source# res#)))))))
-
-(defmacro extend-uplo-triangularizable [name]
-  `(extend-type ~name
-     Triangularizable
-     (create-trf [a# pure#]
-       (if (= :sy (.-matrix-type a#))
-         (dual-lu-factorization a# pure#)
-         a#))
-     (create-ptrf [a#]
-       (if (= :sy (.-matrix-type a#))
-         (pivotless-lu-factorization a# false)
-         a#))))
-
-(defmacro extend-trf [name]
-  `(extend-type ~name
-     TRF
-     (trtrs [a# b#]
-       (if (triangular? a#)
-         (let-release [res# (raw b#)]
-           (copy (engine b#) b# res#)
-           (trs (.-eng a#) a# res#))
-         (require-trf)))
-     (trtrs! [a# b#]
-       (if (triangular? a#)
-         (trs (.-eng a#) a# b#)
-         (require-trf)))
-     (trtri! [a#]
-       (if (triangular? a#)
-         (tri (.-eng a#) a#)
-         (require-trf)))
-     (trtri [a#]
-       (if (triangular? a#)
-         (let-release [res# (raw a#)
-                       eng# (.-eng a#)]
-           (tri eng# (copy eng# a# res#)))
-         (require-trf)))
-     (trcon
-       ([a# _# nrm1?#]
-        (if (triangular? a#)
-          (con (.-eng a#) a# nrm1?#)
-          (require-trf)))
-       ([a# nrm1?#]
-        (if (triangular? a#)
-          (con (.-eng a#) a# nrm1?#)
-          (require-trf))))
-     (trdet [a#]
-       (if (triangular? a#)
-         (if (diag-unit? (.-reg a#)) 1.0 (fold (dia a#) f* 1.0))
-         (require-trf)))))
-
-(defn create-banded* [this fact master]
-  (let [reg (region this)]
-    (create-banded (factory fact) (mrows this) (ncols this) (.kl reg) (.ku reg)
-                   (matrix-type this) (column? this) master)))
-
-(defmacro extend-banded-matrix [name block-vector ge-matrix banded-matrix]
-  `(extend-type ~name
-     Container
-     (raw
-       ([this#]
-        (~banded-matrix (.-fact this#) (.-m this#) (.-n this#) (.-nav this#) (.-stor this#)
-         (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
-       ([this# fact#]
-        (create-banded* this# (.-fact this#) false)))
-     (zero
-       ([this#]
-        (create-banded* this# (.-fact this#) true))
-       ([this# fact#]
-        (create-banded* this# fact# true)))
-     (host [this#]
-       (let-release [res# (raw this#)]
-         (copy (.-eng this#) this# res#)
-         res#))
-     (native [this#]
-       this#)
-     Viewable
-     (view [this#]
-       (~banded-matrix (.-fact this#) false (.-buf-ptr this#) (.-m this#) (.-n this#) 0 (.-nav this#)
-        (.-stor this#) (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
-     DenseContainer
-     (view-vctr
-       ([this#]
-        (view-vctr (view-ge this#)))
-       ([this# stride-mult#]
-        (view-vctr (view-ge this#) stride-mult#)))
-     (view-ge
-       ([this#]
-        (let [stor# (full-storage this#)
-              m# (if (column? this#) (.sd stor#) (.fd stor#))
-              n# (if (column? this#) (.fd stor#) (.sd stor#))]
-          (~ge-matrix (.-fact this#) false (.-buf-ptr this#) m# n# (.-nav this#)
-           (full-storage (column? this#) m# n# (.ld stor#)) (ge-region m# n#))))
-       ([this# stride-mult#]
-        (dragan-says-ex "GB matrices do not support stride when viewed as GE."))
-       ([this# m# n#]
-        (if (<= (* (long m#) (long n#)) (.capacity (storage this#)))
-          (view-ge (view-ge this#) m# n#)
-          (dragan-says-ex "This GB matrix does not have sufficient storage space for required m and n dimensions."))))
-     (view-tr [this# lower?# diag-unit?#]
-       (if-not (= :gb matrix-type)
-         (let [reg# (region this#)
-               n# (.-n this#)
-               k# (max (.kl reg#) (.ku reg#))
-               fact# (.-fact this#)]
-           (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
-            (uplo-storage (column? this#) n# k# (lower? this#))
-            (tb-region n# k# (lower? this#) diag-unit?#) :tb (default :tb diag-unit?#)
-            (tb-engine fact#)))
-         (dragan-says-ex "GB cannot be viewed as a TB due to specific factorization requirements.")))
-     (view-sy [this# lower?#]
-       (if-not (= :gb matrix-type)
-         (let [reg# (region this#)
-               n# (.-n this#)
-               k# (max (.kl reg#) (.ku reg#))
-               fact# (.-fact this#)]
-           (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
-            (uplo-storage (column? this#) n# k# (lower? this#))
-            (sb-region n# k# (lower? this#)) :sb sb-default (sb-engine fact#)))
-         (dragan-says-ex "GB cannot be viewed as a SB due to specific factorization requirements.")))
-     MemoryContext
-     (compatible? [this# y#]
-       (compatible? (.-da this#) y#))
-     (fits? [this# b#]
-       (and (instance? BandedMatrix b#)
-            (let [reg# (region this#)
-                  reg-b# (region b#)]
-              (or (= reg# reg-b#)
-                  (and (= :sb (.matrixType this#)) (matrix-type b#)
-                       (not= (.-nav this#) (navigator b#))
-                       (= (+ (.kl reg#) (.ku reg#)) (+ (.kl reg-b#) (.ku reg-b#)))
-                       (= (.-n this#) (ncols b#)))))))
-     (fits-navigation? [this# b#]
-       (= (.-nav this#) (navigator b#)))
-     (device [this#]
-       :cpu)
-     Monoid
-     (id [this#]
-       (~banded-matrix (.-fact this#) 0 0 0 0 (column? this#) (.matrixType this#)))
-     Applicative
-     (pure
-       ([this# v#]
-        (let-release [res# (~banded-matrix (.-fact this#) 1 1 (.-nav this#) (.-stor this#)
-                            (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
-          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
-       ([this# v# vs#]
-        (dragan-says-ex "Vararg pure is not available for banded matrices.")))))
-
-(defmacro extend-banded-triangularizable [name]
-  `(extend-type ~name
-     Triangularizable
-     (create-trf [a# pure#]
-       (case (.-matrix-type a#)
-         :tb a#
-         :sb (pivotless-lu-factorization a# pure#)
-         :gb (lu-factorization a# pure#)
-         (dragan-says-ex "Triangular factorization is not available for this matrix type"
-                         {:matrix-type (.-matrix-type a#)})))
-     (create-ptrf [a#]
-       (case (.-matrix-type a#)
-         :tb a#
-         :sb (pivotless-lu-factorization a# false)
-         (dragan-says-ex "Pivotless factorization is not available for this matrix type"
-                         {:matrix-type (.-matrix-type a#)})))))
-
 ;; =================== Real Matrix =============================================
 
 (defmacro matrix-equals [flipper da a b]
@@ -1573,7 +1329,144 @@
 (def real-ge-matrix (partial ge-matrix ->RealGEMatrix))
 (def integer-ge-matrix (partial ge-matrix ->IntegerGEMatrix))
 
+(defn real-ge ^RealGEMatrix [x]
+  x)
+
+(defn integer-ge ^IntegerGEMatrix [x]
+  x)
+
 ;; =================== Real Uplo Matrix ==================================
+
+(defmacro extend-uplo-matrix [name block-vector ge-matrix uplo-matrix]
+  `(extend-type ~name
+     Container
+     (raw
+       ([this#]
+        (~uplo-matrix (.-fact this#) (.-n this#) (.-nav this#) (.-stor this#) (.-reg this#)
+         (.-matrix-type this#) (.-default this#) (.-eng this#)))
+       ([this# fact#]
+        (create-uplo (factory fact#) (.-n this#) (.-matrix-type this#) (column? this#)
+                     (lower? (.-reg this#)) (diag-unit? (.-reg this#)) false)))
+     (zero
+       ([this#]
+        (create-uplo (.-fact this#) (.-n this#) (.-matrix-type this#) (column? this#)
+                     (lower? (.-reg this#)) (diag-unit? (.-reg this#)) true))
+       ([this# fact#]
+        (create-uplo (factory fact#) (.-n this#) (.-matrix-type this#) (column? this#)
+                     (lower? (.-reg this#)) (diag-unit? (.-reg this#)) true)))
+     (host [this#]
+       (let-release [res# (raw this#)]
+         (copy (.-eng this#) this# res#)
+         res#))
+     (native [this#]
+       this#)
+     Viewable
+     (view [this#]
+       (~uplo-matrix (.-fact this#) false (.-buf-ptr this#) (.-n this#) (.-nav this#) (.-stor this#)
+        (.-reg this#) (.-matrix-type this#) (.-default this#) (.-eng this#)))
+     DenseContainer
+     (view-vctr
+       ([this#]
+        (view-vctr (view-ge this#)))
+       ([this# stride-mult#]
+        (view-vctr (view-ge this#) stride-mult#)))
+     (view-ge
+       ([this#]
+        (let [n# (.-n this#)]
+          (~ge-matrix (.-fact this#) false (.-buf-ptr this#) n# n#
+           (.-nav this#) (.-stor this#) (ge-region n# n#))))
+       ([this# stride-mult#]
+        (view-ge (view-ge this#) stride-mult#))
+       ([this# m# n#]
+        (view-ge (view-ge this#) m# n#)))
+     (view-tr [this# lower?# diag-unit?#]
+       (let [n# (.-n this#)
+             fact# (.-fact this#)]
+         (~uplo-matrix fact# false (.-buf-ptr this#) n# (.-nav this#) (.-stor this#)
+          (band-region n# lower?# diag-unit?#) :tr (default :tr diag-unit?#) (tr-engine fact#))))
+     (view-sy [this# lower?#]
+       (let [n# (.-n this#)
+             fact# (.-fact this#)]
+         (~uplo-matrix fact# false (.-buf-ptr this#) n# (.-nav this#) (.-stor this#)
+          (band-region n# lower?#) :sy sy-default (sy-engine fact#))))
+     MemoryContext
+     (compatible? [this# y#]
+       (compatible? (.-da this#) y#))
+     (fits? [this# b#]
+       (and (instance? UploMatrix b#)
+            (let [reg# (.-reg this#)
+                  reg-b# (region b#)]
+              (or (= reg# reg-b#)
+                  (and (= :sy (.-matrix-type this#)) (matrix-type b#)
+                       (not= (.-nav this#) (navigator b#)) (not (uplo= reg# reg-b#))
+                       (= (.-n this#) (ncols b#)))))))
+     (fits-navigation? [this# b#]
+       (and (= (.-nav this#) (navigator b#))
+            (or (instance? GEMatrix b#) (= (.-reg this#) (region b#)))))
+     (device [this#]
+       :cpu)
+     Monoid
+     (id [this#]
+       (~uplo-matrix (.-fact this#) 0 (column? this#)))
+     Applicative
+     (pure
+       ([this# v#]
+        (let-release [res# (~uplo-matrix (.-fact this#) 1 (column? this#) (.-matrix-type this#))]
+          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+       ([this# v# vs#]
+        (let [source# (cons v# vs#)]
+          (let-release [res# (~uplo-matrix (.-fact this#) (math/sqrt (count source#))
+                              (column? this#) (.-matrix-type this#))]
+            (transfer! source# res#)))))))
+
+(defmacro extend-uplo-triangularizable [name]
+  `(extend-type ~name
+     Triangularizable
+     (create-trf [a# pure#]
+       (if (symmetric? a#)
+         (dual-lu-factorization a# pure#)
+         a#))
+     (create-ptrf [a#]
+       (if (symmetric? a#)
+         (pivotless-lu-factorization a# false)
+         a#))))
+
+(defmacro extend-trf [name]
+  `(extend-type ~name
+     TRF
+     (trtrs [a# b#]
+       (if (triangular? a#)
+         (let-release [res# (raw b#)]
+           (copy (engine b#) b# res#)
+           (trs (.-eng a#) a# res#))
+         (require-trf)))
+     (trtrs! [a# b#]
+       (if (triangular? a#)
+         (trs (.-eng a#) a# b#)
+         (require-trf)))
+     (trtri! [a#]
+       (if (triangular? a#)
+         (tri (.-eng a#) a#)
+         (require-trf)))
+     (trtri [a#]
+       (if (triangular? a#)
+         (let-release [res# (raw a#)
+                       eng# (.-eng a#)]
+           (tri eng# (copy eng# a# res#)))
+         (require-trf)))
+     (trcon
+       ([a# _# nrm1?#]
+        (if (triangular? a#)
+          (con (.-eng a#) a# nrm1?#)
+          (require-trf)))
+       ([a# nrm1?#]
+        (if (triangular? a#)
+          (con (.-eng a#) a# nrm1?#)
+          (require-trf))))
+     (trdet [a#]
+       (if (triangular? a#)
+         (if (diag-unit? (.-reg a#)) 1.0 (fold (dia a#) f* 1.0))
+         (require-trf)))))
 
 (deftype RealUploMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^Default default
                          fact ^RealAccessor da eng matrix-type master buf-ptr ^long n]
@@ -1835,15 +1728,14 @@
    (let [da (data-accessor fact)
          buf-ptr (pointer buf-ptr ofst)]
      (if (<= 0 (.capacity stor) (.count da buf-ptr))
-       (constructor nav stor reg default fact (data-accessor fact) engine matrix-type
-                    master buf-ptr n)
+       (constructor nav stor reg default fact da engine matrix-type master buf-ptr n)
        (throw (ex-info "Insufficient buffer size."
                        {:dim (.capacity stor) :buffer-size (.count da buf-ptr)})))))
   ([constructor fact master buf-ptr n nav stor reg matrix-type default engine]
    (uplo-matrix constructor fact master buf-ptr n 0 nav stor reg matrix-type default engine))
   ([constructor fact n nav ^FullStorage stor reg matrix-type default engine]
-   (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
-     (uplo-matrix constructor fact true buf n 0 nav stor reg matrix-type default engine)))
+   (let-release [buf-ptr (.createDataSource (data-accessor fact) (.capacity stor))]
+     (uplo-matrix constructor fact true buf-ptr n 0 nav stor reg matrix-type default engine)))
   ([constructor fact n column? lower? diag-unit? matrix-type]
    (uplo-matrix constructor fact n (layout-navigator column?) (full-storage column? n n)
                 (band-region n lower? diag-unit?) matrix-type (default matrix-type diag-unit?)
@@ -1863,7 +1755,127 @@
 (def real-uplo-matrix (partial uplo-matrix ->RealUploMatrix))
 (def integer-uplo-matrix (partial uplo-matrix ->IntegerUploMatrix))
 
+(defn real-uplo ^RealUploMatrix [x]
+  x)
+
+(defn integer-uplo ^IntegerUploMatrix [x]
+  x)
+
 ;; ================= Banded Matrix ==============================================================
+
+(defn create-banded* [this fact master]
+  (let [reg (region this)]
+    (create-banded (factory fact) (mrows this) (ncols this) (.kl reg) (.ku reg)
+                   (matrix-type this) (column? this) master)))
+
+(defmacro extend-banded-matrix [name block-vector ge-matrix banded-matrix]
+  `(extend-type ~name
+     Container
+     (raw
+       ([this#]
+        (~banded-matrix (.-fact this#) (.-m this#) (.-n this#) (.-nav this#) (.-stor this#)
+         (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
+       ([this# fact#]
+        (create-banded* this# (.-fact this#) false)))
+     (zero
+       ([this#]
+        (create-banded* this# (.-fact this#) true))
+       ([this# fact#]
+        (create-banded* this# fact# true)))
+     (host [this#]
+       (let-release [res# (raw this#)]
+         (copy (.-eng this#) this# res#)
+         res#))
+     (native [this#]
+       this#)
+     Viewable
+     (view [this#]
+       (~banded-matrix (.-fact this#) false (.-buf-ptr this#) (.-m this#) (.-n this#) 0 (.-nav this#)
+        (.-stor this#) (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
+     DenseContainer
+     (view-vctr
+       ([this#]
+        (view-vctr (view-ge this#)))
+       ([this# stride-mult#]
+        (view-vctr (view-ge this#) stride-mult#)))
+     (view-ge
+       ([this#]
+        (let [stor# (full-storage this#)
+              m# (if (column? this#) (.sd stor#) (.fd stor#))
+              n# (if (column? this#) (.fd stor#) (.sd stor#))]
+          (~ge-matrix (.-fact this#) false (.-buf-ptr this#) m# n# (.-nav this#)
+           (full-storage (column? this#) m# n# (.ld stor#)) (ge-region m# n#))))
+       ([this# stride-mult#]
+        (dragan-says-ex "GB matrices do not support stride when viewed as GE."))
+       ([this# m# n#]
+        (if (<= (* (long m#) (long n#)) (.capacity (storage this#)))
+          (view-ge (view-ge this#) m# n#)
+          (dragan-says-ex "This GB matrix does not have sufficient storage space for required m and n dimensions."))))
+     (view-tr [this# lower?# diag-unit?#]
+       (if-not (= :gb matrix-type)
+         (let [reg# (region this#)
+               n# (.-n this#)
+               k# (max (.kl reg#) (.ku reg#))
+               fact# (.-fact this#)]
+           (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
+            (uplo-storage (column? this#) n# k# (lower? this#))
+            (tb-region n# k# (lower? this#) diag-unit?#) :tb (default :tb diag-unit?#)
+            (tb-engine fact#)))
+         (dragan-says-ex "GB cannot be viewed as a TB due to specific factorization requirements.")))
+     (view-sy [this# lower?#]
+       (if-not (= :gb matrix-type)
+         (let [reg# (region this#)
+               n# (.-n this#)
+               k# (max (.kl reg#) (.ku reg#))
+               fact# (.-fact this#)]
+           (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
+            (uplo-storage (column? this#) n# k# (lower? this#))
+            (sb-region n# k# (lower? this#)) :sb sb-default (sb-engine fact#)))
+         (dragan-says-ex "GB cannot be viewed as a SB due to specific factorization requirements.")))
+     MemoryContext
+     (compatible? [this# y#]
+       (compatible? (.-da this#) y#))
+     (fits? [this# b#]
+       (and (instance? BandedMatrix b#)
+            (let [reg# (region this#)
+                  reg-b# (region b#)]
+              (or (= reg# reg-b#)
+                  (and (= :sb (.matrixType this#)) (matrix-type b#)
+                       (not= (.-nav this#) (navigator b#))
+                       (= (+ (.kl reg#) (.ku reg#)) (+ (.kl reg-b#) (.ku reg-b#)))
+                       (= (.-n this#) (ncols b#)))))))
+     (fits-navigation? [this# b#]
+       (= (.-nav this#) (navigator b#)))
+     (device [this#]
+       :cpu)
+     Monoid
+     (id [this#]
+       (~banded-matrix (.-fact this#) 0 0 0 0 (column? this#) (.matrixType this#)))
+     Applicative
+     (pure
+       ([this# v#]
+        (let-release [res# (~banded-matrix (.-fact this#) 1 1 (.-nav this#) (.-stor this#)
+                            (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
+          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+       ([this# v# vs#]
+        (dragan-says-ex "Vararg pure is not available for banded matrices.")))))
+
+(defmacro extend-banded-triangularizable [name]
+  `(extend-type ~name
+     Triangularizable
+     (create-trf [a# pure#]
+       (case (.-matrix-type a#)
+         :tb a#
+         :sb (pivotless-lu-factorization a# pure#)
+         :gb (lu-factorization a# pure#)
+         (dragan-says-ex "Triangular factorization is not available for this matrix type"
+                         {:matrix-type (.-matrix-type a#)})))
+     (create-ptrf [a#]
+       (case (.-matrix-type a#)
+         :tb a#
+         :sb (pivotless-lu-factorization a# false)
+         (dragan-says-ex "Pivotless factorization is not available for this matrix type"
+                         {:matrix-type (.-matrix-type a#)})))))
 
 (deftype RealBandedMatrix [^LayoutNavigator nav ^FullStorage stor ^Region reg ^Default default
                            fact ^RealAccessor da eng matrix-type
@@ -2043,7 +2055,250 @@
 (def real-banded-matrix (partial banded-matrix ->RealBandedMatrix))
 (def real-tb-matrix (partial tb-matrix ->RealBandedMatrix))
 (def real-sb-matrix (partial sb-matrix ->RealBandedMatrix))
+
+(defn real-banded ^RealBandedMatrix [x]
+  x)
+
+#_(defn integer-banded ^IntegerBandedMatrix [x]
+  x)
+
 ;;(def integer-banded-matrix (partial banded-matrix ->IntegerBandedMatrix)) TODO
+
+;; =================== Packed Matrix ==================================
+
+(defmacro extend-packed-matrix [name block-vector ge-matrix packed-matrix]
+  `(extend-type ~name
+     Container
+     (raw
+       ([this#]
+        (~packed-matrix (.-fact this#) (.-n this#) (.-nav this#) (.-stor this#) (.-reg this#)
+         (.matrixType this#) (.-default this#) (.-eng this#)))
+       ([this# fact#]
+        (create-packed (.-fact this#) (.-n this#)
+                       (.matrixType this#) (column? this#) (lower? this#) (diag-unit? this#) false)))
+     (zero
+       ([this#]
+        (create-packed (.-fact this#) (.-n this#)
+                       (.matrixType this#) (column? this#) (lower? this#) (diag-unit? this#) true))
+       ([this# fact#]
+        (create-packed (factory fact#) (.-n this#)
+                       (.matrixType this#) (column? this#) (lower? this#) (diag-unit? this#) true)))
+     (host [this#]
+       (let-release [res# (raw this#)]
+         (copy (.-eng this#) this# res#)
+         res#))
+     (native [this#]
+       this#)
+     Viewable
+     (view [this#]
+       (~packed-matrix (.-fact this#) false (.-buf-ptr this#) (.-n this#) 0 (.-nav this#)
+        (.-stor this#) (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
+     DenseContainer
+     (view-vctr
+       ([this#]
+        (~block-vector (.-fact this#) false (.-buf-ptr this#) (.surface (region this#)) 0 1))
+       ([this# stride-mult#]
+        (view-vctr (view-vctr this#) stride-mult#)))
+     (view-ge
+       ([this#]
+        (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix."))
+       ([this# stride-mult#]
+        (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix."))
+       ([this# m# n#]
+        (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix.")))
+     (view-tr [this# lower?# diag-unit?#] ;;TODO lower?#  or (lower? this#)?
+       (~packed-matrix (.-fact this#) false (.-buf-ptr this#) (.-n this#) 0
+        (.-nav this#) (.-stor this#) (band-region (.-n this#) lower?# diag-unit?#)
+        :tp (default :tp diag-unit?#) (tp-engine (.-fact this#))))
+     (view-sy [this# lower?#]
+       (~packed-matrix (.-fact this#) false (.-buf-ptr this#) (.-n this#) 0
+        (.-nav this#) (.-stor this#) (band-region (.-n this#) lower?#)
+        :sp sy-default (sp-engine (.-fact this#))))
+     MemoryContext
+     (compatible? [this# b#]
+       (compatible? (.-da this#) b#))
+     (fits? [this# b#]
+       (and (instance? PackedMatrix b#) (= (.-reg this#) (region b#))))
+     (fits-navigation? [this# b#]
+       (= (.-nav this#) (navigator b#)))
+     (device [this#]
+       :cpu)
+     Monoid
+     (id [this#]
+       (~packed-matrix (.-fact this#) 0 (column? this#) (lower? this#) (diag-unit? this#)
+        (.matrixType this#)))
+     Applicative
+     (pure
+       ([this# v#]
+        (let-release [res# (~packed-matrix (.-fact this#) 1 (.-nav this#) (.-stor this#)
+                            (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
+          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+       ([this# v# vs#]
+        (let [source# (cons v# vs#)]
+          (let-release [res# (~packed-matrix (.-fact this#) (long (math/sqrt (count source#)))
+                              (column? this#) (lower? this#) (diag-unit? this#) (.matrixType this#))]
+            (transfer! source# res#)))))))
+
+(deftype RealPackedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^Default default
+                           fact ^RealAccessor da eng matrix-type master buf-ptr ^long n]
+  Object
+  (hashCode [a]
+    (-> (hash :RealPackedMatrix) (hash-combine matrix-type) (hash-combine n)
+        (hash-combine (nrm2 eng a))))
+  (equals [a b]
+    (let [fl (real-flipper nav)]
+      (matrix-equals fl da a b)))
+  (toString [a]
+    (format "#RealPackedMatrix[%s, type%s, mxn:%dx%d, layout%s]"
+            (.entryType da) matrix-type n n (dec-property (.layout nav))))
+  PackedMatrix
+  (matrixType [_]
+    matrix-type)
+  (isTriangular [_]
+    (= :tp matrix-type))
+  (isSymmetric [_]
+    (= :sp matrix-type))
+  Seqable
+  (seq [a]
+    (map #(seq (.stripe nav a %)) (range 0 n)))
+  IFn$LLDD
+  (invokePrim [a i j v]
+    (if (.accessible reg i j)
+      (.set a i j v)
+      (throw (ex-info "Requested element is out of bounds of the matrix."
+                      {:i i :j j :mrows n :ncols n}))))
+  IFn$LLD
+  (invokePrim [a i j]
+    (if (and (< -1 i n) (< -1 j n))
+      (.entry a i j)
+      (throw (ex-info "The element you're trying to set is out of bounds of the matrix."
+                      {:i i :j j :mrows n :ncols n}))))
+  IFn
+  (invoke [a i j v]
+    (.invokePrim a i j v))
+  (invoke [a i j]
+    (.invokePrim a i j))
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
+  RealChangeable
+  (isAllowed [a i j]
+    (.accessible reg i j))
+  (set [a val]
+    (if-not (Double/isNaN val)
+      (set-all eng val a)
+      (doall-layout nav stor reg i j idx (.set da buf-ptr idx val)))
+    a)
+  (set [a i j val]
+    (.set da buf-ptr (.index nav stor i j) val)
+    a)
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a f]
+    (matrix-alter IFn$DD IFn$LLDD f nav stor reg da buf-ptr)
+    a)
+  (alter [a i j f]
+    (let [idx (.index nav stor i j)]
+      (.set da buf-ptr idx (.invokePrim ^IFn$DD f (.get da buf-ptr idx))))
+    a)
+  RealNativeMatrix
+  (buffer [_]
+    buf-ptr)
+  (offset [_]
+    0)
+  (stride [_]
+    1)
+  (isContiguous [_]
+    true)
+  (dim [_]
+    (* n n))
+  (mrows [_]
+    n)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (if (.accessible reg i j)
+      (.get da buf-ptr (.index nav stor i j))
+      (.realEntry default nav stor da buf-ptr 0 i j)))
+  (boxedEntry [a i j]
+    (.entry a i j))
+  (row [a i]
+    (if (.isRowMajor nav)
+      (let [j (.rowStart reg i)]
+        (real-block-vector fact false buf-ptr (- (.rowEnd reg i) j) (.index nav stor i j) 1))
+      (dragan-says-ex "You have to unpack column-major packed matrix to access its rows."
+                      {:a a :layout :column})))
+  (rows [a]
+    (dense-rows a))
+  (col [a j]
+    (if (.isColumnMajor nav)
+      (let [i (.colStart reg j)]
+        (real-block-vector fact false buf-ptr (- (.colEnd reg j) i) (.index nav stor i j) 1))
+      (dragan-says-ex "You have to unpack row-major packed matrix to access its columns."
+                      {:a a :layout :row})))
+  (cols [a]
+    (dense-cols a))
+  (dia [a]
+    (dragan-says-ex "You have to unpack a packed matrix to access its diagonals." {:a a}))
+  (dia [a k]
+    (dragan-says-ex "You have to unpack a packed matrix to access its diagonals." {:a a}))
+  (dias [a]
+    (dragan-says-ex "You have to unpack a packed matrix to access its diagonals." {:a a}))
+  (submatrix [a i j k l]
+    (dragan-says-ex "You have to unpack a packed matrix to access its submatrices." {:a a}))
+  (transpose [a]
+    (real-packed-matrix fact false buf-ptr n 0 (flip nav) stor (flip reg) matrix-type default eng)))
+
+(extend-base RealPackedMatrix)
+(extend-matrix RealPackedMatrix)
+(extend-packed-matrix RealPackedMatrix real-block-vector real-ge-matrix real-packed-matrix)
+(extend-uplo-triangularizable RealPackedMatrix)
+(extend-trf RealPackedMatrix)
+(extend-matrix-fluokitten RealPackedMatrix double real-flipper real-accessor)
+
+(defmethod print-method RealPackedMatrix [a ^java.io.Writer w]
+  (.write w (str a))
+  (when-not (null? (buffer a))
+    (print-uplo w a "*")))
+
+(defn packed-matrix
+  ([constructor fact master buf-ptr n ofst nav ^DenseStorage stor reg matrix-type default engine]
+   (let [da (data-accessor fact)
+         buf-ptr (pointer buf-ptr ofst)]
+     (if (<= 0 (.capacity stor) (.count da buf-ptr))
+       (constructor nav stor reg default fact da engine matrix-type master buf-ptr n)
+       (throw (ex-info "Insufficient buffer size."
+                       {:dim (.capacity stor) :buffer-size (.count da buf-ptr)}))))) ;;TODO extract capacity check function
+  ([constructor fact master buf-ptr n nav stor reg matrix-type default engine]
+   (packed-matrix constructor fact master buf-ptr n 0 nav stor reg matrix-type default engine))
+  ([constructor fact n nav ^DenseStorage stor reg matrix-type default engine]
+   (let-release [buf-ptr (.createDataSource (data-accessor fact) (.capacity stor))]
+     (packed-matrix constructor fact true buf-ptr n 0 nav stor reg matrix-type default engine)))
+  ([constructor fact n column? lower? diag-unit? matrix-type]
+   (case matrix-type
+     :tp (packed-matrix constructor fact n column? lower? diag-unit?)
+     :sy (packed-matrix constructor fact n column? lower?)
+     (dragan-says-ex "Packed matrices have to be either triangular or symmetric."
+                     {:matrix-type matrix-type})))
+  ([constructor fact n column? lower? diag-unit?]
+   (packed-matrix constructor fact n (layout-navigator column?) (packed-storage column? lower? n)
+                  (band-region n lower? diag-unit?) :tp (default :tp diag-unit?) (tp-engine fact)))
+  ([constructor fact n column? lower?]
+   (packed-matrix constructor fact n (layout-navigator column?) (packed-storage column? lower? n)
+                  (band-region n lower?) :sp sy-default (sp-engine fact))))
+
+(def real-packed-matrix (partial packed-matrix ->RealPackedMatrix))
+;;TODO (def integer-packed-matrix (partial packed-matrix ->IntegerPackedMatrix))
+
+(defn real-packed ^RealPackedMatrix [x]
+  x)
+
+#_(defn integer-packed ^IntegerPackedMatrix [x]
+  x)
 
 ;; =================== transfer method implementations =========================================
 
@@ -2318,3 +2573,23 @@
 (defmethod transfer! [RealNativeMatrix IntegerNativeMatrix]
   [^RealNativeMatrix source ^IntegerNativeMatrix destination]
   (transfer-matrix-matrix integer-accessor real-flipper source destination))
+
+(defmacro extend-pointer [name fact]
+  `(extend-type ~name
+     DenseContainer
+     (view-vctr
+       ([this#]
+        (create-vector ~fact false this# (element-count this#) 0 1))
+       ([this# stride-mult#]
+        (view-vctr (view-vctr this#) stride-mult#)))
+     (view-ge
+       ([this#]
+        (view-ge (view-vctr this#)))
+       ([this# stride-mult#]
+        (view-ge (view-vctr this#) stride-mult#))
+       ([this# m# n#]
+        (view-ge (view-vctr this#) m# n#)))
+     (view-tr [this# lower?# diag-unit?#]
+       (view-tr (view-vctr this#) lower?# diag-unit?#))
+     (view-sy [this# lower?#]
+       (view-sy (view-vctr this#) lower?#))))

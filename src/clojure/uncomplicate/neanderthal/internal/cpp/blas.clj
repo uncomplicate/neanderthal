@@ -17,7 +17,7 @@
              [math :refer [f=]]]
             [uncomplicate.neanderthal.internal
              [api :refer [iamax engine navigator storage region mm scal]]
-             [common :refer [check-eq-navigators skip]]
+             [common :refer [check-eq-navigators skip real-accessor]]
              [navigation :refer [full-storage accu-layout diag-unit?]]])
   (:import [org.bytedeco.mkl.global mkl_rt]
            [org.bytedeco.javacpp Pointer FloatPointer DoublePointer IntPointer]
@@ -383,7 +383,7 @@
 
 (defmacro gb-map [blas method ptr a b]
   `(if (< 0 (dim ~a))
-     (if (and (contiguous? ~a) (contiguous? ~b) (not (symmetric? ~a)))
+     (if (and (contiguous? ~a) (contiguous? ~b) (not (symmetric? ~a))) ;;TODO band-storage-map should take care of this, similarly to matrix-map
        (. ~blas ~method (dim ~a) (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b))
        (let [buff-a# (~ptr ~a 0)
              buff-b# (~ptr ~b 0)
@@ -578,3 +578,175 @@
          (band-storage-map ~a ~b len# buff-a# buff-b#
                            (.~blas ~method len# ~alpha buff-a# ld-a# ~beta buff-b# ld-b#))))
      ~b))
+
+;; ===================== Packed Matrix ==============================
+
+(defmacro packed-map
+  ([blas method ptr a]
+   `(do
+      (. ~blas ~method (.surface (region ~a)) (~ptr ~a) 1)
+      ~a))
+  ([blas method ptr a b]
+   `(do
+      (check-eq-navigators ~a ~b)
+      (. ~blas ~method (.surface (region ~a)) (~ptr ~a) 1 (~ptr ~b) 1)
+      ~b)))
+
+(defmacro packed-scal [blas method ptr alpha a]
+  `(do
+     (. ~blas ~method (.surface (region ~a)) ~alpha (~ptr ~a) 1)
+     ~a))
+
+(defmacro packed-axpy [blas method ptr alpha a b]
+  `(do
+     (check-eq-navigators ~a ~b)
+     (. ~blas ~method (.surface (region ~a)) ~alpha (~ptr ~a) 1 (~ptr ~b) 1)
+     ~b))
+
+(defmacro packed-axpby [blas method ptr alpha a beta b]
+  `(do
+     (check-eq-navigators ~a ~b)
+     (. ~blas ~method (.surface (region ~a)) ~alpha (~ptr ~a) 1 ~beta (~ptr ~b) 1)
+     ~b))
+
+(defmacro tp-dot [blas method ptr a b]
+  `(do
+     (check-eq-navigators ~a ~b)
+     (if (< 0 (dim ~a))
+       (let [da# (real-accessor ~a)
+             n# (ncols ~a)
+             buff-a# (~ptr ~a)
+             buff-b# (~ptr ~b)
+             stor-a# (storage ~a)
+             stor-b# (storage ~b)
+             dot# (. ~blas ~method (.surface (region ~a)) buff-a# 1 buff-b# 1)]
+         (if-not (.isDiagUnit (region ~a))
+           dot#
+           (loop [i# 0 acc# (double (+ n# dot#))]
+             (if (< i# n#)
+               (recur (inc i#) (- acc# (* (.get da# buff-a# (.index stor-a# i# i#))
+                                          (.get da# buff-b# (.index stor-b# i# i#)))))
+               acc#))))
+       0.0)))
+
+(defmacro sp-dot [blas method ptr a b]
+  `(do
+     (check-eq-navigators ~a ~b)
+     (if (< 0 (dim ~a))
+       (let [da# (real-accessor ~a)
+             n# (ncols ~a)
+             buff-a# (~ptr ~a)
+             buff-b# (~ptr ~b)
+             stor-a# (storage ~a)
+             stor-b# (storage ~b)
+             dot# (. ~blas ~method (.surface (region ~a)) buff-a# 1 buff-b# 1)]
+         (loop [i# 0 acc# (double (* 2.0 dot#))]
+           (if (< i# n#)
+             (recur (inc i#) (- acc# (* (.get da# buff-a# (.index stor-a# i# i#))
+                                        (.get da# buff-b# (.index stor-b# i# i#)))))
+             acc#)))
+       0.0)))
+
+(defmacro tp-mm
+  ([blas method ptr alpha a b left]
+   `(do
+      (if ~left
+        (let [reg# (region ~a)
+              layout# (.layout (navigator ~a))
+              nav-b# (navigator ~b)
+              stor-b# (storage ~b)
+              uplo# (.uplo reg#)
+              diag# (.diag reg#)
+              n-a# (ncols ~a)
+              buff-a# (~ptr ~a)
+              buff-b# (~ptr ~b 0)
+              stride-col-b# (if (.isColumnMajor nav-b#) 1 (stride ~b))]
+          (dotimes [j# (ncols ~b)]
+            (. ~blas ~method layout# uplo# ~(:no-trans blas-transpose) diag# n-a#
+               buff-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
+          (when-not (f= 1.0 ~alpha)
+            (scal (engine ~b) ~alpha ~b)))
+        (mm (engine ~a) ~alpha (trans ~a) (trans ~b) true))
+      ~b))
+  ([a]
+   `(dragan-says-ex "Out-of-place mm! is not supported by TP matrices. Copy to GE." {:a (info ~a)})))
+
+(defmacro sp-mm
+  ([blas method ptr alpha a b beta c left]
+   `(do
+      (if ~left
+        (let [reg# (region ~a)
+              layout# (.layout (navigator ~a))
+              nav-b# (navigator ~b)
+              nav-c# (navigator ~c)
+              stor-b# (storage ~b)
+              stor-c# (storage ~c)
+              uplo# (.uplo reg#)
+              n-a# (ncols ~a)
+              buff-a# (~ptr ~a)
+              buff-b# (~ptr ~b 0)
+              buff-c# (~ptr ~c 0)
+              stride-col-b# (if (.isColumnMajor nav-b#) 1 (stride ~b))
+              stride-col-c# (if (.isColumnMajor nav-c#) 1 (stride ~b))]
+          (dotimes [j# (ncols ~b)]
+            (. ~blas ~method layout# uplo# n-a#
+               ~alpha buff-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#
+               ~beta (.position buff-c# (.index nav-c# stor-c# 0 j#)) stride-col-c#)))
+        (mm (engine ~a) ~alpha (trans ~a) (trans ~b) ~beta (trans ~c) true))
+      ~b))
+  ([a]
+   `(dragan-says-ex "In-place mm! is not supported by SP matrices. Copy to GE." {:a (info ~a)})))
+
+(defmacro tp-sum
+  ([blas method ptr etype a]
+   `(if (< 0 (dim ~a))
+      (let [stor# (storage ~a)
+            da# (real-accessor ~a)
+            n# (ncols ~a)
+            buff# (~ptr ~a)]
+        (if-not (.isDiagUnit (region ~a))
+          (. ~blas ~method (.surface (region ~a)) buff# 1)
+          (loop [i# 0 acc# (+ n# (. ~blas ~method (+ n# (.surface (region ~a))) buff# 1))]
+            (if (< i# n#)
+              (recur (inc i#) (- acc# (~etype (.get da# buff# (.index stor# i# i#)))))
+              acc#))))
+      0.0))
+  ([blas method ptr etype a ones]
+   `(if (< 0 (dim ~a))
+      (let [stor# (storage ~a)
+            da# (real-accessor ~a)
+            n# (ncols ~a)
+            buff-a# (~ptr ~a)
+            ones# (~ptr ~ones)]
+        (if-not (.isDiagUnit (region ~a))
+          (. ~blas ~method (.surface (region ~a)) buff-a# 1 ones# 0)
+          (loop [i# 0 acc# (+ n# (~etype (. ~blas ~method (+ n# (.surface (region ~a)))
+                                            buff-a# 1 ones# 0)))]
+            (if (< i# n#)
+              (recur (inc i#) (- acc# (~etype (.get da# buff-a# (.index stor# i# i#)))))
+              acc#))))
+      0.0)))
+
+(defmacro sp-sum
+  ([blas method ptr etype a]
+   `(if (< 0 (dim ~a))
+      (let [da# (real-accessor ~a)
+            n# (ncols ~a)
+            buff-a# (~ptr ~a)
+            stor# (storage ~a)]
+        (loop [i# 0 acc# (* 2.0 (. ~blas ~method (.surface (region ~a)) buff-a# 1))]
+          (if (< i# n#)
+            (recur (inc i#) (- acc# (~etype (.get da# buff-a# (.index stor# i# i#)))))
+            acc#)))
+      0.0))
+  ([blas method ptr etype a ones]
+   `(if (< 0 (dim ~a))
+      (let [da# (real-accessor ~a)
+            n# (ncols ~a)
+            buff-a# (~ptr ~a)
+            stor# (storage ~a)]
+        (loop [i# 0 acc# (* 2.0 (~etype (. ~blas ~method (.surface (region ~a)) buff-a# 1 (~ptr ~ones) 0)))]
+          (if (< i# n#)
+            (recur (inc i#) (- acc# (~etype (.get da# buff-a# (.index stor# i# i#)))))
+            acc#)))
+      0.0)))
