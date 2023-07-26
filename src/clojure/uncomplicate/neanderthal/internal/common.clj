@@ -197,8 +197,7 @@
   (trtri [_]
     (if @fresh
       (let-release [res (raw lu)]
-        (let [eng (engine lu)]
-          (tri eng (copy eng lu res)))
+        (tri (engine res) (copy (engine lu) lu res))
         res)
       (stale-factorization)))
   (trcon [_ nrm nrm1?]

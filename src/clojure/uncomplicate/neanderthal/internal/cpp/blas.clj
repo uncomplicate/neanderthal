@@ -14,7 +14,7 @@
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride contiguous?]]
              [core :refer [dim entry mrows ncols symmetric? trans]]
-             [math :refer [f=]]]
+             [math :refer [f= sqr sqrt]]]
             [uncomplicate.neanderthal.internal
              [api :refer [iamax engine navigator storage region mm scal]]
              [common :refer [check-eq-navigators skip real-accessor]]
@@ -41,6 +41,10 @@
 (def ^:const blas-side
   {:left 141
    :right 142})
+
+(def ^:const blas-diag
+  {:unit 131
+   :non-unit 132})
 
 ;; TODO move to structures
 
@@ -248,6 +252,54 @@
    `(if (diag-unit? (region ~a))
       (+ (ncols ~a) (double (ge-sum ~blas ~method ~ptr ~a ~ones)))
       (ge-sum ~blas ~method ~ptr ~a ~ones))))
+
+(defmacro tr-sv [blas method ptr a b]
+  `(let [nav-a# (navigator ~a)
+         nav-b# (navigator ~b)
+         reg# (region ~a)
+         uplo# (if (= nav-a# nav-b#)
+                 (if (.isLower reg#) ~(:lower blas-uplo) ~(:upper blas-uplo))
+                 (if (.isLower reg#) ~(:upper blas-uplo) ~(:lower blas-uplo)))]
+     (. ~blas ~method (.layout nav-b#) ~(:left blas-side) uplo#
+      (if (= nav-a# nav-b#) ~(:no-trans blas-transpose) ~(:trans blas-transpose))
+      (.diag reg#) (mrows ~b) (ncols ~b) 1.0 (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b))
+     ~b))
+
+(defmacro tb-sv
+  ([blas method ptr a b]
+   `(let [reg# (region ~a)
+          layout# (.layout (navigator ~a))
+          nav-b# (navigator ~b)
+          stor-b# (storage ~b)
+          uplo# (.uplo reg#)
+          diag# (.diag reg#)
+          m-b# (mrows ~b)
+          n-a# (ncols ~a)
+          ku-a# (.ku reg#)
+          buff-a# (~ptr ~a)
+          ld-a# (stride ~a)
+          buff-b# (~ptr ~b 0)
+          stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (stride ~b))]
+      (dotimes [j# (ncols ~b)]
+        (. ~blas ~method layout# uplo# ~(:no-trans blas-transpose) diag# n-a# ku-a#
+           buff-a# ld-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
+      ~b)))
+
+(defmacro tp-sv [blas method ptr a b]
+  `(let [reg# (region ~a)
+         layout# (.layout (navigator ~a))
+         nav-b# (navigator ~b)
+         stor-b# (storage ~b)
+         uplo# (.uplo reg#)
+         diag# (.diag reg#)
+         n-a# (ncols ~a)
+         buff-a# (~ptr ~a)
+         buff-b# (~ptr ~b 0)
+         stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (stride ~b))]
+     (dotimes [j# (ncols ~b)]
+       (. ~blas ~method layout# uplo# ~(:no-trans blas-transpose) diag# n-a#
+          buff-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
+     ~b))
 
 ;; ========================= SY matrix macros ===============================================
 
@@ -703,12 +755,12 @@
       (let [stor# (storage ~a)
             da# (real-accessor ~a)
             n# (ncols ~a)
-            buff# (~ptr ~a)]
+            buff-a# (~ptr ~a)]
         (if-not (.isDiagUnit (region ~a))
-          (. ~blas ~method (.surface (region ~a)) buff# 1)
-          (loop [i# 0 acc# (+ n# (. ~blas ~method (+ n# (.surface (region ~a))) buff# 1))]
+          (. ~blas ~method (.surface (region ~a)) buff-a# 1)
+          (loop [i# 0 acc# (+ n# (. ~blas ~method (+ n# (.surface (region ~a))) buff-a# 1))]
             (if (< i# n#)
-              (recur (inc i#) (- acc# (~etype (.get da# buff# (.index stor# i# i#)))))
+              (recur (inc i#) (- acc# (~etype (.get da# buff-a# (.index stor# i# i#)))))
               acc#))))
       0.0))
   ([blas method ptr etype a ones]
@@ -750,3 +802,55 @@
             (recur (inc i#) (- acc# (~etype (.get da# buff-a# (.index stor# i# i#)))))
             acc#)))
       0.0)))
+
+;; ===================== Tridiagonal matrix ==================================================
+
+(defmacro diagonal-method
+  ([blas method ptr a]
+   `(. ~blas ~method (.surface (region ~a)) (~ptr ~a) (stride ~a)))
+  ([blas method ptr a b]
+   `(. ~blas ~method (.surface (region ~a)) (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b)))
+  ([blas method ptr a b c]
+   `(do
+      (. ~blas ~method (.surface (region ~a))
+         (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b) (~ptr ~c) (stride ~c))
+      ~c)))
+
+(defmacro diagonal-scal [blas method ptr alpha a]
+  `(do
+     (when (< 0 (dim ~a))
+       (. ~blas ~method (.surface (region ~a)) ~alpha (~ptr ~a) (stride ~a)))
+     ~a))
+
+(defmacro diagonal-axpy [blas method ptr alpha a b]
+  `(do
+     (when (< 0 (dim ~a))
+      (. ~blas ~method (.surface (region ~a)) ~alpha (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b)))
+    ~b))
+
+(defmacro diagonal-axpby [blas method ptr alpha a beta b]
+  `(do
+     (when (< 0 (dim ~a))
+       (. ~blas ~method (.surface (region ~a)) ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b)))
+     ~b))
+
+(defmacro diagonal-amax [blas method ptr a]
+  `(if (< 0 (dim ~a))
+     (let [da# (real-accessor ~a)
+           buff-a# (~ptr ~a)]
+       (Math/abs (.get da# buff-a# (. ~blas ~method (.surface (region ~a)) buff-a# (stride ~a)))))
+     0.0))
+
+(defmacro st-sum [blas method ptr a b]
+  `(let [n# (ncols ~a)
+         buff-a# (~ptr ~a 0)
+         buff-b# (~ptr ~b 0)]
+     (+ (. ~blas ~method n# buff-a# 1 buff-b# 1)
+        (* 2.0 (. ~blas ~method (dec n#) (.position buff-a# n#) (stride ~a)
+                  (.position buff-b# n#) (stride ~b))))))
+
+(defmacro st-nrm2 [blas method ptr a]
+  `(let [n# (ncols ~a)
+         buff-a# (~ptr ~a 0)]
+     (sqrt (+ (sqr (. ~blas ~method n# buff-a# (stride ~a)))
+                   (* 2.0 (sqr (. ~blas ~method (dec n#) (.position buff-a# n#) (stride ~a)) ))))))

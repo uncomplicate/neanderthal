@@ -1,4 +1,4 @@
-;;   Copyright (c) Dragan Djuric. All rights reserved.
+ ;;   Copyright (c) Dragan Djuric. All rights reserved.
 ;;   The use and distribution terms for this software are covered by the
 ;;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php) or later
 ;;   which can be found in the file LICENSE at the root of this distribution.
@@ -90,7 +90,8 @@
      (count [_# p#]
        (element-count p#))
      (createDataSource [_# n#]
-       (capacity! (~pointer (construct# (* (. ~entry-class BYTES) (max 1 n#)))) n#))
+       (let [n# (max 1 n#)]
+         (capacity! (~pointer (construct# (* (. ~entry-class BYTES) n#))) n#)))
      (initialize [_# p#]
        (fill! p# 0))
      (initialize [_# p# v#]
@@ -720,16 +721,16 @@
     (cs-vector fact 0))
   Applicative
   (pure [_ v]
-   (let-release [res (cs-vector fact 1 (vctr (index-factory fact) 1) false)]
-     (uncomplicate.neanderthal.core/entry! (indices res) 0 0)
-     (uncomplicate.neanderthal.core/entry! (entries res) 0 v)
-     res))
+    (let-release [res (cs-vector fact 1 (vctr (index-factory fact) 1) false)]
+      (uncomplicate.neanderthal.core/entry! (indices res) 0 0)
+      (uncomplicate.neanderthal.core/entry! (entries res) 0 v)
+      res))
   (pure [_ v vs]
-   (let [cnt (inc (count vs))]
-     (let-release [res (cs-vector fact cnt (vctr (index-factory fact) cnt) false)]
-       (transfer! (range) (indices res))
-       (transfer! (cons v vs) (entries res))
-       res)))
+    (let [cnt (inc (count vs))]
+      (let-release [res (cs-vector fact cnt (vctr (index-factory fact) cnt) false)]
+        (transfer! (range) (indices res))
+        (transfer! (cons v vs) (entries res))
+        res)))
   ;; TODO Magma
   )
 
@@ -1329,12 +1330,6 @@
 (def real-ge-matrix (partial ge-matrix ->RealGEMatrix))
 (def integer-ge-matrix (partial ge-matrix ->IntegerGEMatrix))
 
-(defn real-ge ^RealGEMatrix [x]
-  x)
-
-(defn integer-ge ^IntegerGEMatrix [x]
-  x)
-
 ;; =================== Real Uplo Matrix ==================================
 
 (defmacro extend-uplo-matrix [name block-vector ge-matrix uplo-matrix]
@@ -1693,7 +1688,7 @@
   (col [a j]
     (let [start (.colStart reg j)]
       (integer-block-vector fact false buf-ptr (- (.colEnd reg j) start) (.index nav stor start j)
-                         (if (.isColumnMajor nav) 1 (.ld stor)))))
+                            (if (.isColumnMajor nav) 1 (.ld stor)))))
   (cols [a]
     (dense-cols a))
   (dia [a]
@@ -1709,8 +1704,8 @@
   (submatrix [a i j k l]
     (if (and (= i j) (= k l))
       (integer-uplo-matrix fact false buf-ptr k (.index nav stor i j) nav
-                        (full-storage (.isColumnMajor nav) k k (.ld stor))
-                        (band-region k (.isLower reg) (.isDiagUnit reg)) matrix-type default eng)
+                           (full-storage (.isColumnMajor nav) k k (.ld stor))
+                           (band-region k (.isLower reg) (.isDiagUnit reg)) matrix-type default eng)
       (dragan-says-ex "You cannot create a non-uplo submatrix of a uplo (TR or SY) matrix. Take a view-ge."
                       {:a (info a) :i i :j j :k k :l l})))
   (transpose [a]
@@ -1754,12 +1749,6 @@
 
 (def real-uplo-matrix (partial uplo-matrix ->RealUploMatrix))
 (def integer-uplo-matrix (partial uplo-matrix ->IntegerUploMatrix))
-
-(defn real-uplo ^RealUploMatrix [x]
-  x)
-
-(defn integer-uplo ^IntegerUploMatrix [x]
-  x)
 
 ;; ================= Banded Matrix ==============================================================
 
@@ -2056,12 +2045,6 @@
 (def real-tb-matrix (partial tb-matrix ->RealBandedMatrix))
 (def real-sb-matrix (partial sb-matrix ->RealBandedMatrix))
 
-(defn real-banded ^RealBandedMatrix [x]
-  x)
-
-#_(defn integer-banded ^IntegerBandedMatrix [x]
-  x)
-
 ;;(def integer-banded-matrix (partial banded-matrix ->IntegerBandedMatrix)) TODO
 
 ;; =================== Packed Matrix ==================================
@@ -2294,11 +2277,303 @@
 (def real-packed-matrix (partial packed-matrix ->RealPackedMatrix))
 ;;TODO (def integer-packed-matrix (partial packed-matrix ->IntegerPackedMatrix))
 
-(defn real-packed ^RealPackedMatrix [x]
-  x)
+;; =================== Diagonal Matrix implementations =========================================
 
-#_(defn integer-packed ^IntegerPackedMatrix [x]
-  x)
+(defmacro extend-diagonal-matrix [name block-vector ge-matrix diagonal-matrix]
+  `(extend-type ~name
+     Container
+     (raw
+       ([this#]
+        (~diagonal-matrix (.-fact this#) (.-n this#) (.-nav this#) (.-stor this#) (.-reg this#)
+         (.matrixType this#) (.-default this#) (.-eng this#)))
+       ([this# fact#]
+        (create-diagonal (.-fact this#) (.-n this#) (.matrixType this#) false)))
+     (zero
+       ([this#]
+        (create-diagonal (.-fact this#) (.-n this#) (.matrixType this#) true))
+       ([this# fact#]
+        (create-diagonal (factory fact#) (.-n this#) (.matrixType this#) true)))
+     (host [this#]
+       (let-release [res# (raw this#)]
+         (copy (.-eng this#) this# res#)
+         res#))
+     (native [this#]
+       this#)
+     Viewable
+     (view [this#]
+       (~diagonal-matrix (.-fact this#) false (.-buf-ptr this#) (.-n this#) 0 (.-nav this#)
+        (.-stor this#) (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#)))
+     DenseContainer
+     (view-vctr
+       ([this#]
+        (~block-vector (.-fact this#) false (.-buf-ptr this#) (.surface (region this#)) 0 1))
+       ([this# stride-mult#]
+        (dragan-says-ex "TD cannot be viewed as a strided vector.")))
+     (view-ge
+       ([this#]
+        (dragan-says-ex "TD cannot be viewed as a GE matrix."))
+       ([this# stride-mult#]
+        (dragan-says-ex "TD cannot be viewed as a GE matrix."))
+       ([this# m# n#]
+        (dragan-says-ex "TD cannot be viewed as a GE matrix.")))
+     (view-tr [this# lower?# diag-unit?#] ;;TODO lower?#  or (lower? this#)?
+       (dragan-says-ex "TD cannot be viewed as a TR matrix."))
+     (view-sy [this# lower?#]
+       (dragan-says-ex "TD cannot be viewed as a TR matrix."))
+     MemoryContext
+     (compatible? [this# b#]
+       (compatible? (.-da this#) b#))
+     (fits? [this# b#]
+       (and (instance? DiagonalMatrix b#) (= (.-reg this#) (region b#))))
+     (fits-navigation? [this# b#]
+       true)
+     (device [this#]
+       :cpu)
+     Monoid
+     (id [this#]
+       (~diagonal-matrix (.-fact this#) 0 (.matrixType this#)))
+     Applicative
+     (pure
+       ([this# v#]
+        (let-release [res# (~diagonal-matrix (.-fact this#) 1 (.-nav this#) (.-stor this#)
+                            (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
+          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+       ([this# v# vs#]
+        (let [source# (cons v# vs#)]
+          (let-release [res# (~diagonal-matrix (.-fact this#) (count source#) (.matrixType this#))]
+            (transfer! source# res#)))))))
+
+(defmacro extend-diagonal-triangularizable [name]
+  `(extend-type ~name
+     Triangularizable
+     (create-trf [this# pure#]
+       (case (.matrixType this#)
+         :gd this#
+         :gt (lu-factorization this# pure#)
+         :dt (pivotless-lu-factorization this# pure#)
+         :st (pivotless-lu-factorization this# pure#)
+         (dragan-says-ex "Triangular factorization is not available for this matrix type."
+                         {:matrix-type (.matrixType this#)})))
+     (create-ptrf [this#]
+       (if (symmetric? this#)
+         (pivotless-lu-factorization this# false)
+         (dragan-says-ex "Pivotless factorization is not available for this matrix type."
+                         {:matrix-type (.matrixType this#)})))))
+
+(defmacro extend-diagonal-trf [name]
+  `(extend-type ~name
+     TRF
+     (trtrs [a# b#]
+       (if (= :gd (.matrixType a#))
+         (let-release [res# (raw b#)]
+           (copy (engine b#) b# res#)
+           (trs (.-eng a#) a# res#))
+         (require-trf)))
+     (trtrs! [a# b#]
+       (if (= :gd (.matrixType a#))
+         (trs (.-eng a#) a# b#)
+         (require-trf)))
+     (trtri! [a#]
+       (if (= :gd (.matrixType a#))
+         (tri (.-eng a#) a#)
+         (require-trf)))
+     (trtri [a#]
+       (if (= :gd (.matrixType a#))
+         (let-release [res# (raw a#)
+                       eng# (.-eng a#)]
+           (tri eng# (copy eng# a# res#)))
+         (require-trf)))
+     (trcon
+       ([a# _# nrm1?#]
+        (if (= :gd (.matrixType a#))
+          (con (.-eng a#) a# nrm1?#)
+          (require-trf)))
+       ([a# nrm1?#]
+        (if (= :gd (.matrixType a#))
+          (con (.-eng a#) a# nrm1?#)
+          (require-trf))))
+     (trdet [a#]
+       (if (= :gd (.matrixType a#))
+         (if (diag-unit? (.-reg a#)) 1.0 (fold (dia a#) f* 1.0))
+         (require-trf)))))
+
+(defmacro extend-diagonal-fluokitten [t cast typed-flipper vtype]
+  `(extend ~t
+     Functor
+     {:fmap (diagonal-fmap ~vtype ~cast)}
+     PseudoFunctor
+     {:fmap! (diagonal-fmap identity ~vtype ~cast)}
+     Foldable
+     {:fold diagonal-fold
+      :foldmap diagonal-foldmap}
+     Magma
+     {:op (constantly matrix-op)}))
+
+(deftype RealDiagonalMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^Default default
+                             fact ^RealAccessor da eng matrix-type master buf-ptr ^long n]
+  Object
+  (hashCode [a]
+    (-> (hash :RealDiagonalMatrix) (hash-combine matrix-type) (hash-combine n)
+        (hash-combine (nrm2 eng a))))
+  (equals [a b]
+    (or (identical? a b)
+        (and (instance? RealDiagonalMatrix b) (compatible? a b) (fits? a b)
+             (let [n (.surface reg)
+                   buf-b (.buffer ^RealDiagonalMatrix b)]
+               (loop [i 0]
+                 (if (< i n)
+                   (and (= (.get da buf-ptr i) (.get da buf-b i))
+                        (recur (inc i)))
+                   true))))))
+  (toString [a]
+    (format "#RealDiagonalMatrix[%s, type%s mxn:%dx%d]"
+            (.entryType da) matrix-type n n))
+  DiagonalMatrix
+  (matrixType [_]
+    matrix-type)
+  (isTriangular [_]
+    false)
+  (isSymmetric [_]
+    (= :st matrix-type))
+  Seqable
+  (seq [a]
+    (map seq (.dias a)))
+  IFn$LLDD
+  (invokePrim [a i j v]
+    (if (.accessible reg i j)
+      (.set a i j v)
+      (throw (ex-info "Requested element is out of bounds of the matrix."
+                      {:i i :j j :mrows n :ncols n}))))
+  IFn$LLD
+  (invokePrim [a i j]
+    (if (and (< -1 i n) (< -1 j n))
+      (.entry a i j)
+      (throw (ex-info "The element you're trying to set is out of bounds of the matrix."
+                      {:i i :j j :mrows n :ncols n}))))
+  IFn
+  (invoke [a i j v]
+    (.invokePrim a i j v))
+  (invoke [a i j]
+    (.invokePrim a i j))
+  (invoke [a]
+    n)
+  IFn$L
+  (invokePrim [a]
+    n)
+  RealChangeable
+  (isAllowed [a i j]
+    (.accessible reg i j))
+  (set [a val]
+    (if-not (Double/isNaN val)
+      (set-all eng val a)
+      (dotimes [idx (.capacity stor)]
+        (.set da buf-ptr idx val)))
+    a)
+  (set [a i j val]
+    (.set da buf-ptr (.index nav stor i j) val)
+    a)
+  (setBoxed [a val]
+    (.set a val))
+  (setBoxed [a i j val]
+    (.set a i j val))
+  (alter [a f]
+    (if (instance? IFn$DD f)
+      (dotimes [idx (.capacity stor)]
+        (.set da buf-ptr idx (.invokePrim ^IFn$DD f (.get da buf-ptr idx))))
+      (dragan-says-ex "You cannot call indexed alter on diagonal matrices. Use banded matrix."))
+    a)
+  (alter [a i j f]
+    (let [idx (.index nav stor i j)]
+      (.set da buf-ptr idx (.invokePrim ^IFn$DD f (.get da buf-ptr idx)))
+      a))
+  RealNativeMatrix
+  (buffer [_]
+    buf-ptr)
+  (offset [_]
+    0)
+  (stride [_]
+    1)
+  (isContiguous [_]
+    true)
+  (dim [_]
+    (* n n))
+  (mrows [_]
+    n)
+  (ncols [_]
+    n)
+  (entry [a i j]
+    (if (.accessible reg i j)
+      (.get da buf-ptr (.index nav stor i j))
+      (.realEntry default nav stor da buf-ptr 0 i j)))
+  (boxedEntry [a i j]
+    (.entry a i j))
+  (row [a i]
+    (dragan-says-ex "You cannot access rows of a (tri)diagonal matrix."))
+  (rows [a]
+    (dragan-says-ex "You cannot access rows of a (tri)diagonal matrix."))
+  (col [a j]
+    (dragan-says-ex "You cannot access columns of a (tri)diagonal matrix."))
+  (cols [a]
+    (dragan-says-ex "You cannot access columns of a (tri)diagonal matrix."))
+  (dia [a]
+    (real-block-vector fact false buf-ptr n 1))
+  (dia [a k]
+    (if (<= (- (.kl reg)) k (.ku reg))
+      (real-block-vector fact false buf-ptr (- n (Math/abs k)) (.index stor 0 k) 1)
+      (real-block-vector fact false buf-ptr 0 1)))
+  (dias [a]
+    (region-dias a))
+  (submatrix [a i j k l]
+    (if (and (= i j) (= k l))
+      (real-diagonal-matrix fact false buf-ptr k (.index nav stor i j) nav
+                            (diagonal-storage k matrix-type) (band-region k l (.kl reg) (.ku reg))
+                            matrix-type default eng)
+      (dragan-says-ex "You cannot create such submatrix of a (tri)diagonal matrix."
+                      {:a (info a)})))
+  (transpose [a]
+    (if (or (= :gd matrix-type) (= :st matrix-type))
+      a
+      (dragan-says-ex "You cannot transpose this (tri)diagonal matrix."))))
+
+(extend-base RealDiagonalMatrix)
+(extend-matrix RealDiagonalMatrix)
+(extend-diagonal-matrix RealDiagonalMatrix real-block-vector real-ge-matrix real-diagonal-matrix)
+(extend-diagonal-triangularizable RealDiagonalMatrix)
+(extend-diagonal-trf RealDiagonalMatrix)
+(extend-diagonal-fluokitten RealDiagonalMatrix double real-flipper RealBlockVector)
+
+(defmethod print-method RealDiagonalMatrix [a ^java.io.Writer w]
+  (.write w (str a))
+  (when-not (null? (buffer a))
+    (print-diagonal w a)))
+
+(defn diagonal-matrix
+  ([constructor fact master buf-ptr n ofst nav ^DenseStorage stor reg matrix-type default engine]
+   (let [da (data-accessor fact)
+         buf-ptr (pointer buf-ptr ofst)]
+     (if (<= 0 (.capacity stor) (.count da buf-ptr))
+       (constructor nav stor reg default fact (data-accessor fact) engine
+                    matrix-type master buf-ptr n)
+       (throw (ex-info "Insufficient buffer size."
+                       {:dim (.capacity stor) :buffer-size (.count da buf-ptr)})))))
+  ([constructor fact n nav ^DenseStorage stor reg matrix-type default engine]
+   (let-release [buf (.createDataSource (data-accessor fact) (.capacity stor))]
+     (diagonal-matrix constructor fact true buf n 0 nav stor reg matrix-type default engine)))
+  ([constructor fact ^long n matrix-type]
+   (let [kl (case matrix-type :st 0 :gd 0 :gt 1 :dt 1 1)
+         ku (if (= :gd matrix-type) 0 1)]
+     (diagonal-matrix constructor fact n diagonal-navigator (diagonal-storage n matrix-type)
+                      (band-region n n kl ku) matrix-type (default matrix-type)
+                      (case matrix-type
+                        :gd (gd-engine fact)
+                        :gt (gt-engine fact)
+                        :dt (dt-engine fact)
+                        :st (st-engine fact)
+                        (dragan-says-ex (format "%s is not a valid (tri)diagonal matrix type."
+                                                matrix-type)))))))
+
+(def real-diagonal-matrix (partial diagonal-matrix ->RealDiagonalMatrix))
+;;(def integer-diagonal-matrix (partial diagonal-matrix ->IntegerDiagonalMatrix)) TODO
 
 ;; =================== transfer method implementations =========================================
 
@@ -2573,6 +2848,29 @@
 (defmethod transfer! [RealNativeMatrix IntegerNativeMatrix]
   [^RealNativeMatrix source ^IntegerNativeMatrix destination]
   (transfer-matrix-matrix integer-accessor real-flipper source destination))
+
+(defmethod transfer! [RealPackedMatrix RealPackedMatrix]
+  [^RealPackedMatrix source ^RealPackedMatrix destination]
+  (transfer-matrix-matrix real-accessor real-flipper (= (navigator source) (navigator destination))
+                          source destination))
+
+(defmethod transfer! [DiagonalMatrix DiagonalMatrix]
+  [source destination]
+  (transfer! (view-vctr source) (view-vctr destination)))
+
+(defmethod transfer! [DiagonalMatrix Matrix]
+  [source destination]
+  (let [reg (region source)]
+    (doseq [k (range (.kl reg) (.ku reg))]
+      (transfer! (dia source k) (dia destination k))
+      destination)))
+
+(defmethod transfer! [Matrix DiagonalMatrix]
+  [source destination]
+  (let [reg (region destination)]
+    (doseq [k (range (.kl reg) (.ku reg))]
+      (transfer! (dia source k) (dia destination k))
+      destination)))
 
 (defmacro extend-pointer [name fact]
   `(extend-type ~name
