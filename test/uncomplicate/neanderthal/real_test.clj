@@ -1257,11 +1257,13 @@
 
 (defn test-gb-asum [factory]
   (facts "BLAS 1 GB asum."
+         (asum (gb factory 5 4 0 0 (range -1 -100 -1))) => 10.0
          (asum (gb factory 5 4 2 3 (range 1 100))) => 153.0
          (asum (gb factory 0 0 0 0 [])) => 0.0))
 
 (defn test-gb-sum [factory]
   (facts "BLAS 1 gb sum."
+         (asum (gb factory 5 4 0 0  (range 1 100))) => 10.0
          (sum (gb factory 5 4 2 3 (range 1 100))) => 153.0
          (sum (gb factory 0 0 0 0 [])) => 0.0))
 
@@ -1856,11 +1858,13 @@
 
 (defn test-st-asum [factory]
   (facts "BLAS 1 ST asum."
+         (asum (st factory 5 (range -1 -100 -1))) => 75.0
          (asum (st factory 5 (range 1 100))) => 75.0
          (asum (st factory 0 [])) => 0.0))
 
 (defn test-st-sum [factory]
   (facts "BLAS 1 ST sum."
+         (sum (st factory 5 (range -1 -100 -1))) => -75.0
          (sum (st factory 5 (range 1 100))) => 75.0))
 
 ;; ==================== LAPACK tests =======================================

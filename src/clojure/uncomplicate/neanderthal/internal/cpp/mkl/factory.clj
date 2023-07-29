@@ -202,18 +202,23 @@
      (iamin [this# x#]
        (. ~blas ~(cblas 'cblas_i t 'amin) (dim x#) (~ptr x#) (stride x#)))
      (rot [this# x# y# c# s#]
-       (. ~blas ~(cblas t 'rot) (dim x#)
-          (~ptr x#) (stride x#) (~ptr y#) (stride y#) (~cast c#) (~cast s#)))
+       (. ~blas ~(cblas t 'rot) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#)
+          (~cast c#) (~cast s#))
+       x#)
      (rotg [this# abcs#]
-       (check-stride abcs#)
-       (. ~blas ~(cblas t 'rotg) (~ptr abcs#) (~ptr abcs# 1) (~ptr abcs# 2) (~ptr abcs# 3))
-       abcs#)
+       (let [stride# (stride abcs#)]
+         (. ~blas ~(cblas t 'rotg) (~ptr abcs#) (~ptr abcs# stride#) (~ptr abcs# (* 2 stride#))
+            (~ptr abcs# (* 3 stride#)))
+         abcs#))
      (rotm [this# x# y# param#]
-       (. ~blas ~(cblas t 'rotm) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#) (~ptr param#)))
+       (check-stride param#)
+       (. ~blas ~(cblas t 'rotm) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#) (~ptr param#))
+       x#)
      (rotmg [this# d1d2xy# param#]
        (check-stride d1d2xy# param#)
-       (. ~blas ~(cblas t 'rotmg)
-          (~ptr d1d2xy#) (~ptr d1d2xy# 1) (~ptr d1d2xy# 2) (~cast (real/entry d1d2xy# 3)) (~ptr param#)))
+       (. ~blas ~(cblas t 'rotmg) (~ptr d1d2xy#) (~ptr d1d2xy# 1) (~ptr d1d2xy# 2)
+          (~cast (real/entry d1d2xy# 3)) (~ptr param#))
+       param#)
      (scal [this# alpha# x#]
        (. ~blas ~(cblas t 'scal) (dim x#) (~cast alpha#) (~ptr x#) (stride x#))
        x#)
@@ -1540,7 +1545,7 @@
      (amax [_# a#]
        (sp-lan ~lapack ~(lapacke "" t 'lansp_64) ~ptr ~cpp-ptr \M a#))
      (sum [_# a#]
-       (sp-sum ~blas ~(cblas t 'dot) ~ptr Math/abs a# ~ones))
+       (sp-sum ~blas ~(cblas t 'dot) ~ptr ~cast a# ~ones))
      (set-all [_# alpha# a#]
        (packed-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
      (axpby [_# alpha# a# beta# b#]
@@ -1810,35 +1815,35 @@
        (diagonal-method ~mkl ~(cblas t 'copy) ~ptr a# b#)
        b#)
      (dot [_# a# b#]
-       (st-sum ~mkl ~(cblas t 'dot) ~ptr a# b#))
+       (st-dot ~mkl ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'lanst_64) ~ptr \O a#))
+       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \O a#))
      (nrm2 [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'lanst_64) ~ptr \F a#))
+       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \F a#))
      (nrmi [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'lanst_64) ~ptr \I a#))
+       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \I a#))
      (asum [_# a#]
-       (st-sum ~mkl ~(cblas t 'asum) ~ptr a#))
+       (st-asum ~mkl ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
        (diagonal-scal ~mkl ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
      (axpy [_# alpha# a# b#]
        (diagonal-axpy ~mkl ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
      (mv
        ([_# alpha# a# x# beta# y#]
-        (tridiagonal-mv ~mkl ~(lapacke "" t 'lastm_64) ~ptr ~cpp-ptr
+        (tridiagonal-mv ~mkl ~(lapacke "" t 'lagtm_64) ~ptr ~cpp-ptr
                         (~cast alpha#) a# x# (~cast beta#) y#))
        ([_# a# x#]
         (tridiagonal-mv a#)))
      (rk
        ([_# _# _# _# a#]
-        (dragan-says-ex "rk! is not supported for GT matrices." {:a (info a#)}))
+        (dragan-says-ex "rk! is not supported for ST matrices." {:a (info a#)}))
        ([_# _# _# a#]
-        (dragan-says-ex "rk! is not supported for GT matrices." {:a (info a#)})))
+        (dragan-says-ex "rk! is not supported for ST matrices." {:a (info a#)})))
      (mm
        ([_# _# a# _# _#]
         (tridiagonal-mm a#))
        ([_# alpha# a# b# beta# c# left#]
-        (tridiagonal-mm ~mkl ~(lapacke "" t 'lastm_64) ~ptr ~cpp-ptr
+        (tridiagonal-mm ~mkl ~(lapacke "" t 'lagtm_64) ~ptr ~cpp-ptr
                         (~cast alpha#) a# b# (~cast beta#) c# left#)))))
 
 (defmacro real-st-blas-plus* [name t ptr cast mkl ones]
@@ -1853,7 +1858,7 @@
      (axpby [_# alpha# a# beta# b#]
        (diagonal-axpby ~mkl ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
-       (dragan-says-ex "In-place transpose is not available for diagonal matrices." {:a (info a#)}))))
+       (dragan-says-ex "In-place transpose is not available for ST matrices." {:a (info a#)}))))
 
 (defmacro real-st-lapack* [name t ptr cast mkl]
   `(extend-type ~name
@@ -1861,7 +1866,7 @@
      (srt [_# a# increasing#]
        (diagonal-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (laswp [_# _# _# _# _#]
-       (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
+       (dragan-says-ex "Pivoted swap is not available for ST matrices."))
      (trf
        ([_# _# _#]
         (dragan-says-ex "Pivoted factorization is not available for ST matrices."))
@@ -1877,14 +1882,14 @@
        (dragan-says-ex "Condition number is not available for ST matrices."))))
 
 (deftype FloatSTEngine [])
-(real-tridiagonal-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float mkl_rt)
-(real-diagonal-blas-plus* FloatSTEngine "s" float-ptr float mkl_rt ones-float)
+(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float mkl_rt)
+(real-st-blas-plus* FloatSTEngine "s" float-ptr float mkl_rt ones-float)
 (real-st-lapack* FloatSTEngine "s" float-ptr float mkl_rt)
 (real-matrix-math* FloatSTEngine "s" float-ptr float)
 
 (deftype DoubleSTEngine [])
-(real-tridiagonal-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double mkl_rt)
-(real-diagonal-blas-plus* DoubleSTEngine "d" double-ptr double mkl_rt ones-double)
+(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double mkl_rt)
+(real-st-blas-plus* DoubleSTEngine "d" double-ptr double mkl_rt ones-double)
 (real-st-lapack* DoubleSTEngine "d" double-ptr double mkl_rt)
 (real-matrix-math* DoubleSTEngine "d" double-ptr double)
 
@@ -2146,6 +2151,11 @@
         res)
       (dragan-says-ex "SB matrices have to be either column-major lower or row-major upper."
                       {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
+  (create-packed [this n matrix-type column? lower? diag-unit? init]
+    (let-release [res (real-packed-matrix this n column? lower? diag-unit? matrix-type)]
+      (when init
+        (.initialize da (.buffer ^Block res)))
+      res))
   (create-tp [this n column? lower? diag-unit? init]
     (let-release [res (real-packed-matrix this n column? lower? diag-unit?)]
       (when init

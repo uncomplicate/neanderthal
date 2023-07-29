@@ -1807,8 +1807,8 @@
                k# (max (.kl reg#) (.ku reg#))
                fact# (.-fact this#)]
            (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
-            (uplo-storage (column? this#) n# k# (lower? this#))
-            (tb-region n# k# (lower? this#) diag-unit?#) :tb (default :tb diag-unit?#)
+            (uplo-storage (column? this#) n# k# (lower? reg#))
+            (tb-region n# k# (lower? reg#) diag-unit?#) :tb (default :tb diag-unit?#)
             (tb-engine fact#)))
          (dragan-says-ex "GB cannot be viewed as a TB due to specific factorization requirements.")))
      (view-sy [this# lower?#]
@@ -1818,8 +1818,8 @@
                k# (max (.kl reg#) (.ku reg#))
                fact# (.-fact this#)]
            (~banded-matrix fact# false (.-buf-ptr this#) n# n# 0 (.-nav this#)
-            (uplo-storage (column? this#) n# k# (lower? this#))
-            (sb-region n# k# (lower? this#)) :sb sb-default (sb-engine fact#)))
+            (uplo-storage (column? this#) n# k# (lower? reg#))
+            (sb-region n# k# (lower? reg#)) :sb sb-default (sb-engine fact#)))
          (dragan-says-ex "GB cannot be viewed as a SB due to specific factorization requirements.")))
      MemoryContext
      (compatible? [this# y#]
@@ -2057,15 +2057,15 @@
         (~packed-matrix (.-fact this#) (.-n this#) (.-nav this#) (.-stor this#) (.-reg this#)
          (.matrixType this#) (.-default this#) (.-eng this#)))
        ([this# fact#]
-        (create-packed (.-fact this#) (.-n this#)
-                       (.matrixType this#) (column? this#) (lower? this#) (diag-unit? this#) false)))
+        (create-packed (.-fact this#) (.-n this#) (.matrixType this#) (column? this#)
+                       (lower? (.-reg this#)) (diag-unit? (.-reg this#)) false)))
      (zero
        ([this#]
-        (create-packed (.-fact this#) (.-n this#)
-                       (.matrixType this#) (column? this#) (lower? this#) (diag-unit? this#) true))
+        (create-packed (.-fact this#) (.-n this#) (.matrixType this#) (column? this#)
+                       (lower? (.-reg this#)) (diag-unit? (.-reg this#)) true))
        ([this# fact#]
-        (create-packed (factory fact#) (.-n this#)
-                       (.matrixType this#) (column? this#) (lower? this#) (diag-unit? this#) true)))
+        (create-packed (factory fact#) (.-n this#) (.matrixType this#) (column? this#)
+                       (lower? (.-reg this#)) (diag-unit? (.-reg this#)) true)))
      (host [this#]
        (let-release [res# (raw this#)]
          (copy (.-eng this#) this# res#)
@@ -2089,7 +2089,7 @@
         (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix."))
        ([this# m# n#]
         (dragan-says-ex "Packed matrices cannot be viewed as a GE matrix.")))
-     (view-tr [this# lower?# diag-unit?#] ;;TODO lower?#  or (lower? this#)?
+     (view-tr [this# lower?# diag-unit?#]
        (~packed-matrix (.-fact this#) false (.-buf-ptr this#) (.-n this#) 0
         (.-nav this#) (.-stor this#) (band-region (.-n this#) lower?# diag-unit?#)
         :tp (default :tp diag-unit?#) (tp-engine (.-fact this#))))
@@ -2108,8 +2108,8 @@
        :cpu)
      Monoid
      (id [this#]
-       (~packed-matrix (.-fact this#) 0 (column? this#) (lower? this#) (diag-unit? this#)
-        (.matrixType this#)))
+       (~packed-matrix (.-fact this#) 0 (column? this#) (lower? (.-reg this#))
+        (diag-unit? (.-reg this#)) (.matrixType this#)))
      Applicative
      (pure
        ([this# v#]
@@ -2119,7 +2119,8 @@
        ([this# v# vs#]
         (let [source# (cons v# vs#)]
           (let-release [res# (~packed-matrix (.-fact this#) (long (math/sqrt (count source#)))
-                              (column? this#) (lower? this#) (diag-unit? this#) (.matrixType this#))]
+                              (column? this#) (lower? (.-reg this#)) (diag-unit? (.-reg this#))
+                              (.matrixType this#))]
             (transfer! source# res#)))))))
 
 (deftype RealPackedMatrix [^LayoutNavigator nav ^DenseStorage stor ^Region reg ^Default default
@@ -2264,7 +2265,7 @@
   ([constructor fact n column? lower? diag-unit? matrix-type]
    (case matrix-type
      :tp (packed-matrix constructor fact n column? lower? diag-unit?)
-     :sy (packed-matrix constructor fact n column? lower?)
+     :sp (packed-matrix constructor fact n column? lower?)
      (dragan-says-ex "Packed matrices have to be either triangular or symmetric."
                      {:matrix-type matrix-type})))
   ([constructor fact n column? lower? diag-unit?]
@@ -2316,7 +2317,7 @@
         (dragan-says-ex "TD cannot be viewed as a GE matrix."))
        ([this# m# n#]
         (dragan-says-ex "TD cannot be viewed as a GE matrix.")))
-     (view-tr [this# lower?# diag-unit?#] ;;TODO lower?#  or (lower? this#)?
+     (view-tr [this# lower?# diag-unit?#]
        (dragan-says-ex "TD cannot be viewed as a TR matrix."))
      (view-sy [this# lower?#]
        (dragan-says-ex "TD cannot be viewed as a TR matrix."))
@@ -2854,18 +2855,19 @@
   (transfer-matrix-matrix real-accessor real-flipper (= (navigator source) (navigator destination))
                           source destination))
 
-(defmethod transfer! [DiagonalMatrix DiagonalMatrix]
+(defmethod transfer! [RealDiagonalMatrix RealDiagonalMatrix]
   [source destination]
-  (transfer! (view-vctr source) (view-vctr destination)))
+  (transfer! (view-vctr source) (view-vctr destination))
+  destination)
 
-(defmethod transfer! [DiagonalMatrix Matrix]
+(defmethod transfer! [RealDiagonalMatrix Matrix]
   [source destination]
   (let [reg (region source)]
     (doseq [k (range (.kl reg) (.ku reg))]
       (transfer! (dia source k) (dia destination k))
       destination)))
 
-(defmethod transfer! [Matrix DiagonalMatrix]
+(defmethod transfer! [Matrix RealDiagonalMatrix]
   [source destination]
   (let [reg (region destination)]
     (doseq [k (range (.kl reg) (.ku reg))]

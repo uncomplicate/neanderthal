@@ -14,7 +14,7 @@
             [uncomplicate.clojure-cpp
              :refer [long-ptr byte-pointer int-pointer long-pointer pointer get-entry]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols col trans]]
+             [core :refer [dim mrows ncols col trans symmetric?]]
              [block :refer [stride row?]]
              [math :refer [f=]]]
             [uncomplicate.neanderthal.math :refer [sqrt pow abs]]
@@ -148,20 +148,24 @@
            ku# (band-storage-ku stor#)
            buff-a# (~ptr ~a 0)
            da# (real-accessor ~a)]
-       (cond
-         (= (mrows ~a) (ncols ~a)) (with-release [work# (~cpp-ptr (.createDataSource da# fd#))
-                                                  fd# (long-ptr (pointer fd#))
-                                                  ld# (long-ptr (pointer ld#))
-                                                  kl# (long-ptr (pointer kl#))
-                                                  ku# (long-ptr (pointer ku#))
-                                                  norm# (byte-pointer (pointer ~norm))]
-                                     (. ~lapack ~langb norm# fd# kl# ku# buff-a# ld# work#))
-         (= \F ~norm) (sqrt (band-storage-reduce ~a len# buff-a# acc# 0.0
-                                                 (+ acc# (pow (. ~lapack ~nrm len# buff-a# ld#) 2))))
-         (= \M ~norm) (band-storage-reduce ~a len# buff-a# amax# 0.0
-                                           (let [iamax# (. ~lapack ~nrm len# buff-a# ld#)]
-                                             (max amax# (abs (.get da# buff-a# (* ld# iamax#))))))
-         :default (dragan-says-ex "This operation has not been implemented for non-square banded matrix.")))
+       (with-release [norm# (byte-pointer (pointer ~norm))
+                      work# (~cpp-ptr (.createDataSource da# fd#))
+                      fd-ptr# (long-ptr (pointer fd#))
+                      ld-ptr# (long-ptr (pointer ld#))
+                      kl-ptr# (long-ptr (pointer kl#))
+                      ku-ptr# (long-ptr (pointer ku#))]
+         (cond
+           (= (mrows ~a) (ncols ~a)) (. ~lapack ~langb norm# fd-ptr# kl-ptr# ku-ptr# buff-a# ld-ptr# work#)
+           (= \F ~norm) (sqrt (band-storage-reduce ~a len# buff-a# acc# 0.0
+                                                   (double (. ~lapack ~langb norm# fd-ptr# kl-ptr#
+                                                              ku-ptr# buff-a# ld-ptr# work#))
+                                                   (+ acc# (pow (. ~lapack ~nrm len# buff-a# ld#) 2))))
+           (= \M ~norm) (band-storage-reduce ~a len# buff-a# amax# 0.0
+                                             (let [iamax# (. ~lapack ~nrm (.surface (region ~a)) buff-a# 1)]
+                                               (abs (.get da# buff-a# iamax#)))
+                                             (let [iamax# (. ~lapack ~nrm len# buff-a# ld#)]
+                                               (max amax# (abs (.get da# buff-a# (* ld# iamax#))))))
+           :default (dragan-says-ex "This operation has not been implemented for non-square banded matrix."))))
      0.0))
 
 (defmacro sb-lan [lapack lansb ptr cpp-ptr norm a]
@@ -200,6 +204,9 @@
      (let [buff-a# (~ptr ~a 0)
            ld# (stride ~a)]
        (band-storage-map ~a len# buff-a#
+                         (with-lapack-check "laset"
+                           (. ~blas ~method ~(:row blas-layout) ~(byte (int \g))
+                              (.surface (region ~a)) 1 ~alpha ~alpha buff-a# 1))
                          (with-lapack-check "laset"
                            (. ~blas ~method ~(:row blas-layout) ~(byte (int \g))
                               len# 1 ~alpha ~alpha buff-a# ld#)))
@@ -278,8 +285,8 @@
   `(if (< 0 (dim ~a))
      (let [n# (mrows ~a)
            n1# (if (< 0 n#) (dec n#) 0)
-           dl# (~ptr ~a (+ n# n1#))
-           du# (~ptr ~a n#)]
+           du# (~ptr ~a n#)
+           dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
        (with-release [norm# (byte-pointer (pointer ~norm))
                       n# (long-ptr (pointer (mrows ~a)))]
          (. ~lapack ~method norm# n# dl# (~ptr ~a) du#)))
@@ -290,8 +297,8 @@
    `(if (or (= 0.0 ~alpha) (= 1.0 ~alpha) (= -1.0 ~alpha))
       (let [n# (ncols ~a)
             n1# (if (< 0 n#) (dec n#) 0)
-            dl# (~ptr ~a (+ n# n1#))
-            du# (~ptr ~a n#)]
+            du# (~ptr ~a n#)
+            dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
         (with-release [beta# (~cpp-ptr (pointer (.wrapPrim (real-accessor ~a) (if (f= 0.0 ~beta) 0.0 1.0))))
                        trans# (byte-pointer (pointer \N))
                        n# (long-ptr (pointer n#))
@@ -304,9 +311,9 @@
           (. ~lapack ~method trans# n# nrhs# alpha# dl# (~ptr ~a) du#
              (~ptr ~x) ldx# beta# (~ptr ~y) ldy#)
           ~y))
-      (dragan-says-ex "GT mv! supports only 0.0, 1.0, or -1.0 for alpha." {:alpha (info ~alpha)})))
+      (dragan-says-ex "Tridiagonal mv! supports only 0.0, 1.0, or -1.0 for alpha." {:alpha (info ~alpha)})))
   ([a]
-   `(dragan-says-ex "In-place mv! is not supported for GT matrices." {:a (info ~a)})))
+   `(dragan-says-ex "In-place mv! is not supported for trigiagonal matrices." {:a (info ~a)})))
 
 (defmacro tridiagonal-mm
   ([lapack method ptr cpp-ptr alpha a b beta c left]
@@ -315,8 +322,8 @@
         (if (= nav-b# (navigator ~c))
           (let [n# (ncols ~a)
                 n1# (if (< 0 n#) (dec n#) 0)
-                dl# (~ptr ~a (+ n# n1#))
-                du# (~ptr ~a n#)]
+                du# (~ptr ~a n#)
+                dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
             (with-release [beta# (~cpp-ptr (pointer (.wrapPrim (real-accessor ~a)
                                                                (if (f= 0.0 ~beta) 0.0 1.0))))
                            n# (long-ptr (pointer n#))
@@ -336,8 +343,8 @@
                                  nrhs# (long-ptr (pointer (ncols b-t#)))]
                     (. ~lapack ~method trans# n# nrhs# alpha# dl# (~ptr ~a) du#
                        (~ptr ~b) ldb# beta# (~ptr ~c) ldc#))))))
-          (dragan-says-ex "GT mm! supports only b and c with the same layout." {:b (info ~b) :c (info ~c)}))
-        (dragan-says-ex "GT mm! supports only 0.0, 1.0, or -1.0 for alpha." {:alpha (info ~alpha)}))
+          (dragan-says-ex "Tridiagonal mm! supports only b and c with the same layout." {:b (info ~b) :c (info ~c)}))
+        (dragan-says-ex "Tridiagonal mm! supports only 0.0, 1.0, or -1.0 for alpha." {:alpha (info ~alpha)}))
       ~c))
   ([a]
    `(dragan-says-ex "In-place mm! is not supported for GT matrices." {:a (info ~a)})))
@@ -400,7 +407,7 @@
 (defmacro gd-mv
   ([lapack method ptr a x]
    `(with-release [m# (long-ptr (pointer (mrows ~a)))
-                   n# (long-ptr [1])
+                   n# (long-ptr (pointer 1))
                    ldx# (long-ptr (pointer (stride ~x)))]
       (. ~lapack ~method m# n# (~ptr ~a) (~ptr ~x) ldx#)
       ~x))
