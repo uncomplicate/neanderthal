@@ -47,27 +47,6 @@
          real-uplo-matrix integer-uplo-matrix real-banded-matrix integer-banded-matrix
          real-packed-matrix integer-packed-matrix real-diagonal-matrix integer-diagonal)
 
-;; TODO move to API
-(defprotocol SparseBlas
-  (gthr [this y x]))
-
-;; TODO Move to a more general namespace.
-
-(defprotocol CompressedSparse
-  (entries [this])
-  (indices [this]))
-
-(defprotocol CSR
-  (columns [this])
-  (indexb [this])
-  (indexe [this]))
-
-(defprotocol SparseFactory ;;TODO move to api.
-  (create-ge-csr [this m n ind ind-b ind-e column? init] [this a b indices?])
-  (create-tr-csr [this m n ind ind-b ind-e column? lower? diag-unit? init])
-  (create-sy-csr [this m n ind ind-b ind-e column? lower? diag-unit? init])
-  (cs-vector-engine [this])
-  (csr-engine [this]))
 
 ;; ================ Pointer data accessors  ====================================
 

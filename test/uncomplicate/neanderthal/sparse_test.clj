@@ -12,8 +12,8 @@
             [uncomplicate.fluokitten.core :refer [fmap fmap! fold foldmap]]
             [uncomplicate.neanderthal.core :refer :all]
             [uncomplicate.neanderthal.sparse :refer [csv csr csv? csr?]]
-            [uncomplicate.neanderthal.internal.cpp.structures
-             :refer [entries indices columns indexb indexe]] ;;TODO
+            [uncomplicate.neanderthal.internal.api
+             :refer [entries indices columns indexb indexe]]
             [uncomplicate.neanderthal.internal.cpp.mkl
              [factory :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]])
   (:import  clojure.lang.ExceptionInfo))
@@ -373,6 +373,3 @@
 (defn test-all [factory0 factory1]
   (test-block factory0 factory1)
   (test-core factory0))
-
-(test-all mkl-float mkl-double)
-(test-all mkl-double mkl-float)

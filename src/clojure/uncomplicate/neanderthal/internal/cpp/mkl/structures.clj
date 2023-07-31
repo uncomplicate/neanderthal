@@ -25,8 +25,7 @@
     [printing :refer [print-vector]]]
    [uncomplicate.neanderthal.internal.host.fluokitten :refer :all]
    [uncomplicate.neanderthal.internal.cpp.structures
-    :refer [CompressedSparse entries indices vector-seq csr-engine CSR indexb indexe columns
-            real-block-vector integer-block-vector cs-vector]]
+    :refer [vector-seq real-block-vector integer-block-vector cs-vector]]
    [uncomplicate.neanderthal.internal.cpp.mkl
     [constants :refer [mkl-sparse-request]]
     [core :refer [create-csr matrix-descr export-csr sparse-error sparse-matrix]]])

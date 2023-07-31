@@ -14,7 +14,8 @@
              [block-test :as block-test]
              [real-test :as real-test]
              [math-test :as math-test]
-             [random-test :as random-test]]
+             [random-test :as random-test]
+             [sparse-test :as sparse-test]]
             [uncomplicate.neanderthal.internal.cpp.mkl.factory
              :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]))
 
@@ -116,6 +117,5 @@
 (random-test/test-all-host mkl-double)
 (random-test/test-all-host mkl-float)
 
-
-
-;; ================= Sparse tests ===============================
+(sparse-test/test-all mkl-float mkl-double)
+(sparse-test/test-all mkl-double mkl-float)

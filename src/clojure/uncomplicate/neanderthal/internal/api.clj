@@ -264,6 +264,27 @@
 (defprotocol Subband
   (subband [this kl ku]))
 
+;; ============ Sparse API =====================================================
+
+(defprotocol SparseBlas
+  (gthr [this y x]))
+
+(defprotocol CompressedSparse
+  (entries [this])
+  (indices [this]))
+
+(defprotocol CSR
+  (columns [this])
+  (indexb [this])
+  (indexe [this]))
+
+(defprotocol SparseFactory
+  (create-ge-csr [this m n ind ind-b ind-e column? init] [this a b indices?])
+  (create-tr-csr [this m n ind ind-b ind-e column? lower? diag-unit? init])
+  (create-sy-csr [this m n ind ind-b ind-e column? lower? diag-unit? init])
+  (cs-vector-engine [this])
+  (csr-engine [this]))
+
 ;; ============ Realeaseable ===================================================
 
 (extend-type clojure.lang.Sequential

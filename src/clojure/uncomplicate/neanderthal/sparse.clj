@@ -14,13 +14,10 @@
              [core :refer [dim transfer transfer! subvector matrix?]]
              [integer :refer [amax]]]
             [uncomplicate.neanderthal.internal
-             [api :as api]
+             [api :refer :all :exclude [amax]]
              [navigation :refer :all]]
-            [uncomplicate.neanderthal.internal.cpp.structures
-             :refer [cs-vector CompressedSparse indices entries CSR columns indexb indexe
-                     create-ge-csr]]
-            [uncomplicate.neanderthal.internal.cpp.mkl.structures
-             :refer [seq-to-csr]])
+            [uncomplicate.neanderthal.internal.cpp.structures :refer [cs-vector]]
+            [uncomplicate.neanderthal.internal.cpp.mkl.structures :refer [seq-to-csr]])
   (:import [uncomplicate.neanderthal.internal.cpp.structures CSVector]))
 
 (defn csv?
@@ -30,29 +27,29 @@
 
 (defn csv
   "TODO"
-  ([factory n idx nz & nzs]
-   (let [factory (api/factory factory)
-         idx-factory (api/index-factory factory)
+  ([fact n idx nz & nzs]
+   (let [fact (factory fact)
+         idx-fact (index-factory fact)
          idx (or idx [])
          nz (or nz [])]
-     (let-release [idx (if (api/compatible? idx-factory idx)
+     (let-release [idx (if (compatible? idx-fact idx)
                          (view idx)
-                         (transfer idx-factory idx))
-                   res (cs-vector factory n (view idx) true)]
+                         (transfer idx-fact idx))
+                   res (cs-vector fact n (view idx) true)]
        (if-not nzs
          (transfer! nz (entries res))
          (transfer! (cons nz nzs) (entries res)))
        res)))
-  ([factory ^long n source]
+  ([fact ^long n source]
    (if (csv? source)
-     (csv factory n (indices source) (entries source))
+     (csv fact n (indices source) (entries source))
      (if (number? (first source))
-       (csv factory n source nil)
-       (csv factory n (first source) (second source)))))
-  ([factory cs]
+       (csv fact n source nil)
+       (csv fact n (first source) (second source)))))
+  ([fact cs]
    (if (number? cs)
-     (csv factory cs nil)
-     (csv factory (dim cs) (indices cs) (entries cs)))))
+     (csv fact cs nil)
+     (csv fact (dim cs) (indices cs) (entries cs)))))
 
 (defn csr?
   "TODO"
@@ -61,51 +58,51 @@
 
 (defn csr
   "TODO"
-  ([factory m n idx idx-b idx-e nz options] ;; TODO error messages
+  ([fact m n idx idx-b idx-e nz options] ;; TODO error messages
    (if (and (<= 0 (long m)) (<= 0 (long n)))
-     (let [idx-factory (api/index-factory factory)
+     (let [idx-fact (index-factory fact)
            column? (= :column (:layout options))]
-       (let-release [idx (if (api/compatible? idx-factory idx)
+       (let-release [idx (if (compatible? idx-fact idx)
                            (view idx)
-                           (transfer idx-factory idx))
-                     idx-b (if (api/compatible? idx-factory idx-b)
+                           (transfer idx-fact idx))
+                     idx-b (if (compatible? idx-fact idx-b)
                              (view idx-b)
-                             (transfer idx-factory idx-b))
-                     idx-e (if (api/compatible? idx-factory idx-e)
+                             (transfer idx-fact idx-b))
+                     idx-e (if (compatible? idx-fact idx-e)
                              (view idx-e)
-                             (transfer idx-factory idx-e))
-                     res (create-ge-csr (api/factory factory) m n idx idx-b idx-e
+                             (transfer idx-fact idx-e))
+                     res (create-ge-csr (factory fact) m n idx idx-b idx-e
                                         column? true)]
-         (when-not (and (< (long (amax idx)) (max 1 (long (if column? m n))))
-                        (or (zero? (dim idx)) (< (long (amax idx-b)) (dim idx)))
-                        (<= (long (amax idx-e)) (dim idx)))
+         (when-not (and (< (amax idx) (max 1 (long (if column? m n))))
+                        (or (zero? (dim idx)) (< (amax idx-b) (dim idx)))
+                        (<= (amax idx-e) (dim idx)))
            (dragan-says-ex "Sparse index outside of bounds."
                            {:requested (amax idx) :available (dim (entries res))}))
          (when nz (transfer! nz (entries res)))
          res))
      (dragan-says-ex "Compressed sparse matrix cannot have a negative dimension." {:m m :n n})))
-  ([factory m n idx idx-be nz options]
-   (csr factory m n idx (pop idx-be) (rest idx-be) nz options))
-  ([factory m n idx idx-be options]
-   (csr factory m n idx (pop idx-be) (rest idx-be) nil options))
-  ([factory m n source options]
+  ([fact m n idx idx-be nz options]
+   (csr fact m n idx (pop idx-be) (rest idx-be) nz options))
+  ([fact m n idx idx-be options]
+   (csr fact m n idx (pop idx-be) (rest idx-be) nil options))
+  ([fact m n source options]
    (if (csr? source)
-     (csr factory m n (columns source) (indexb source) (indexe source) (entries source) options)
+     (csr fact m n (columns source) (indexb source) (indexe source) (entries source) options)
      (if (nil? source)
        (let-release [idx-be (repeat (if (= :column (:layout options)) n m) 0)]
-         (csr factory m n [] idx-be idx-be [] options))
+         (csr fact m n [] idx-be idx-be [] options))
        (let [[_ ptrs idx vals] (seq-to-csr source)]
-         (csr factory m n idx (pop ptrs) (rest ptrs) vals options)))))
-  ([factory m n arg]
+         (csr fact m n idx (pop ptrs) (rest ptrs) vals options)))))
+  ([fact m n arg]
    (if (map? arg)
-     (csr factory m n nil arg)
-     (csr factory m n arg nil)))
+     (csr fact m n nil arg)
+     (csr fact m n arg nil)))
   ([arg0 arg1 arg2]
    (if (csr? arg0)
-     (create-ge-csr (api/factory arg0) arg0 arg1 (= true (:index arg2)))
+     (create-ge-csr (factory arg0) arg0 arg1 (= true (:index arg2)))
      (csr arg0 arg1 arg2 nil nil)))
-  ([factory a]
-   (let-release [res (transfer (api/factory factory) a)]
+  ([fact a]
+   (let-release [res (transfer (factory fact) a)]
      (if (csr? res)
        res
        (dragan-says-ex "This is not a valid source for CSR matrices.")))))
