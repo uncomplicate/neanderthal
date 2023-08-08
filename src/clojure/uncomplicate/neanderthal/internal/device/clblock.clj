@@ -14,6 +14,8 @@
                            Viewable view]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
+            [uncomplicate.clojure-cpp
+             :refer [double-pointer float-pointer int-pointer long-pointer byte-buffer]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.clojurecl.internal.protocols :refer [size]]
             [uncomplicate.neanderthal
@@ -25,16 +27,14 @@
              [common :refer [dense-rows dense-cols dense-dias region-dias require-trf]]
              [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
-            [uncomplicate.neanderthal.internal.host
-             [fluokitten :refer [vector-op matrix-op]]
-             [buffer-block :refer [real-block-vector real-ge-matrix real-uplo-matrix]]]
+            [uncomplicate.neanderthal.internal.host.fluokitten :refer [vector-op matrix-op]];;TODO move fluokitten to internal.fluokitten
+            [uncomplicate.neanderthal.internal.cpp.structures
+             :refer [real-block-vector real-ge-matrix real-uplo-matrix]]
             [uncomplicate.neanderthal.internal.device.common :refer [device-vector-equals device-matrix-equals]])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
            [uncomplicate.neanderthal.internal.api DataAccessor VectorSpace Vector CLVector Matrix
             CLMatrix GEMatrix RealChangeable LayoutNavigator Region MatrixImplementation
-            NativeBlock FullStorage Default UploMatrix RealNativeMatrix]
-           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector RealGEMatrix
-            RealUploMatrix]))
+            NativeBlock FullStorage Default UploMatrix RealNativeMatrix RealNativeVector]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -49,31 +49,32 @@
 (defn cl-to-host [cl host]
   (let [mapped-host (mmap cl :read)]
     (try
-      (copy! mapped-host host)
-      (finally (unmap cl mapped-host)))))
+      (copy! (second mapped-host) host)
+      (finally (unmap cl (first mapped-host))))))
 
 (defn host-to-cl [host cl]
   (let [mapped-host (mmap cl :write-invalidate-region)]
     (try
-      (copy! host mapped-host)
+      (copy! host (second mapped-host))
       cl
-      (finally (unmap cl mapped-host)))))
+      (finally (unmap cl (first mapped-host))))))
 
 (defn cl-to-obj [cl obj]
   (let [mapped-host (mmap cl :read)]
     (try
-      (transfer! mapped-host obj)
-      (finally (unmap cl mapped-host)))))
+      (transfer! (second mapped-host) obj)
+      (finally (unmap cl (first mapped-host))))))
 
 (defn obj-to-cl [obj cl]
   (let [mapped-host (mmap cl :write-invalidate-region)]
     (try
-      (transfer! obj mapped-host)
+      (transfer! obj (second mapped-host))
       cl
-      (finally (unmap cl mapped-host)))))
+      (finally (unmap cl (first mapped-host))))))
 
 (defprotocol CLAccessor
-  (active? [this]))
+  (active? [this])
+  (buf-pointer [this buf]))
 
 ;; ================== Declarations ============================================
 
@@ -86,7 +87,7 @@
   (extract [_]
     nil))
 
-(deftype TypedCLAccessor [active ctx queue et ^long w array-fn wrap-fn cast-fn]
+(deftype TypedCLAccessor [active ctx queue et ^long w array-fn wrap-fn cast-fn pointer-fn]
   Releaseable
   (release [this]
     (vreset! active false)
@@ -113,6 +114,8 @@
   CLAccessor
   (active? [_]
     @active)
+  (buf-pointer [_ buf]
+    (pointer-fn buf))
   FlowProvider
   (flow [_]
     queue)
@@ -130,16 +133,16 @@
        (= et o)))))
 
 (defn cl-float-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Float/TYPE Float/BYTES float-array wrap-float float))
+  (->TypedCLAccessor (volatile! true) ctx queue Float/TYPE Float/BYTES float-array wrap-float float float-pointer))
 
 (defn cl-double-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Double/TYPE Double/BYTES double-array wrap-double double))
+  (->TypedCLAccessor (volatile! true) ctx queue Double/TYPE Double/BYTES double-array wrap-double double float-pointer))
 
 (defn cl-int-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Integer/TYPE Integer/BYTES int-array wrap-int int))
+  (->TypedCLAccessor (volatile! true) ctx queue Integer/TYPE Integer/BYTES int-array wrap-int int int-pointer))
 
 (defn cl-long-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Long/TYPE Long/BYTES long-array wrap-long long))
+  (->TypedCLAccessor (volatile! true) ctx queue Long/TYPE Long/BYTES long-array wrap-long long long-pointer))
 
 ;; =============================================================================
 
@@ -287,12 +290,12 @@
           mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
                                       (* strd n (.entryWidth da)) flags nil nil)]
       (try
-        (real-block-vector host-fact true mapped-buf n 0 strd)
+        [mapped-buf (real-block-vector host-fact true (buf-pointer da mapped-buf) n 0 strd)]
         (catch Exception e
           (enq-unmap! queue buf mapped-buf)
           (throw e)))))
   (unmap [x mapped]
-    (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) buf mapped)
     x))
 
 (defn cl-block-vector
@@ -315,18 +318,18 @@
   (when (and (< 0 (.dim x)) (extract (.buffer x)) (active? (.da x)))
     (let [mapped-x (mmap x :read)]
       (try
-        (print-vector w mapped-x)
-        (finally (unmap x mapped-x))))))
+        (print-method (second mapped-x) w)
+        (finally (unmap x (first mapped-x)))))))
 
 (defmethod transfer! [CLBlockVector CLBlockVector]
   [source destination]
   (copy! source destination))
 
-(defmethod transfer! [CLBlockVector RealBlockVector]
+(defmethod transfer! [CLBlockVector RealNativeVector]
   [source destination]
   (cl-to-host source destination))
 
-(defmethod transfer! [RealBlockVector CLBlockVector]
+(defmethod transfer! [RealNativeVector CLBlockVector]
   [source destination]
   (host-to-cl source destination))
 
@@ -549,12 +552,12 @@
           mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
-        (real-ge-matrix host-fact true mapped-buf m n 0 nav stor reg)
+        [mapped-buf (real-ge-matrix host-fact true (buf-pointer da mapped-buf) m n 0 nav stor reg)]
         (catch Exception e
           (enq-unmap! queue buf mapped-buf)
           (throw e)))))
   (unmap [this mapped]
-    (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) buf mapped)
     this))
 
 (defn cl-ge-matrix
@@ -577,8 +580,8 @@
   (when (and (< 0 (.dim a)) (extract (.buffer a)) (active? (.da a)))
     (let [mapped-a (mmap a :read)]
       (try
-        (print-ge w mapped-a)
-        (finally (unmap a mapped-a))))))
+        (print-ge w (second mapped-a))
+        (finally (unmap a (first mapped-a)))))))
 
 ;; ============ OpenCL Uplo Matrix =======================================
 
@@ -799,12 +802,13 @@
           mapped-buf (enq-map-buffer! queue buf true (* ofst (.entryWidth da))
                                       (* (.capacity stor) (.entryWidth da)) flags nil nil)]
       (try
-        (real-uplo-matrix host-fact true mapped-buf n 0 nav stor reg matrix-type default (tr-engine host-fact))
+        [mapped-buf (real-uplo-matrix host-fact true (buf-pointer da mapped-buf) n 0 nav stor reg matrix-type default
+                                      (tr-engine host-fact))]
         (catch Exception e
           (enq-unmap! queue buf mapped-buf)
           (throw e)))))
   (unmap [this mapped]
-    (enq-unmap! (flow da) buf (.buffer ^NativeBlock mapped))
+    (enq-unmap! (flow da) buf mapped)
     this)
   Triangularizable
   (create-trf [a pure]
@@ -878,8 +882,8 @@
   (when (and (< 0 (.dim a)) (extract (.buffer a)) (active? (.da a)))
     (let [mapped-a (mmap a :read)]
       (try
-        (print-uplo w mapped-a "*")
-        (finally (unmap a mapped-a))))))
+        (print-uplo w (second mapped-a) "*")
+        (finally (unmap a (first mapped-a)))))))
 
 (defmethod transfer! [CLGEMatrix CLGEMatrix]
   [source destination]

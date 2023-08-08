@@ -25,9 +25,10 @@
                           nrm1 nrmi copy nrm2 amax trf tri trs con sv navigator region storage
                           view-ge]]
              [navigation :refer [diag-unit? lower? upper? dostripe-layout full-storage]]]
+            [uncomplicate.neanderthal.internal.constants
+             :refer [blas-layout blas-uplo blas-transpose blas-diag]]
             [uncomplicate.neanderthal.internal.cpp.blas
-             :refer [full-storage-map blas-layout blas-uplo blas-transpose blas-diag band-storage-map
-                     band-storage-reduce]])
+             :refer [full-storage-map band-storage-map band-storage-reduce]])
   (:import [uncomplicate.neanderthal.internal.api DiagonalMatrix LayoutNavigator Region]
            uncomplicate.neanderthal.internal.navigation.BandStorage))
 
@@ -299,7 +300,7 @@
             n1# (if (< 0 n#) (dec n#) 0)
             du# (~ptr ~a n#)
             dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
-        (with-release [beta# (~cpp-ptr (pointer (.wrapPrim (real-accessor ~a) (if (f= 0.0 ~beta) 0.0 1.0))))
+        (with-release [beta# (~cpp-ptr (.wrapPrim (real-accessor ~a) (if (f= 0.0 ~beta) 0.0 1.0)))
                        trans# (byte-pointer (pointer \N))
                        n# (long-ptr (pointer n#))
                        nrhs# (long-ptr (pointer 1))
@@ -324,8 +325,8 @@
                 n1# (if (< 0 n#) (dec n#) 0)
                 du# (~ptr ~a n#)
                 dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
-            (with-release [beta# (~cpp-ptr (pointer (.wrapPrim (real-accessor ~a)
-                                                               (if (f= 0.0 ~beta) 0.0 1.0))))
+            (with-release [beta# (~cpp-ptr (.wrapPrim (real-accessor ~a)
+                                                                (if (f= 0.0 ~beta) 0.0 1.0)))
                            n# (long-ptr (pointer n#))
                            alpha# (~cpp-ptr (pointer ~alpha))
                            ldb# (long-ptr (pointer (stride ~b)))

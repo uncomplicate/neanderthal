@@ -22,6 +22,7 @@
              [core :refer [transfer!]]
              [native :refer [native-float native-double]]]
             [uncomplicate.neanderthal.internal
+             [constants :refer :all]
              [api :refer :all]
              [navigation :refer [full-storage]]
              [common :refer [check-eq-navigators flip-uplo]]]
@@ -29,8 +30,7 @@
              [common :refer [name-transp uplo-bottom? layout-match? symmetric-match?]]
              [clblock :refer :all]
              [random123 :refer [temp-dir]]])
-  (:import uncomplicate.neanderthal.internal.host.CBLAS
-           [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide CLBlastLayout
+  (:import [org.jocl.blast CLBlast CLBlastStatusCode CLBlastTranspose CLBlastSide CLBlastLayout
             CLBlastTriangle]
            [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix Block DataAccessor Region
             DenseStorage FullStorage LayoutNavigator]
@@ -363,7 +363,7 @@
       (if (< 0 (.dim ~a))
         (if (.isGapless stor#)
           (with-check error
-            (~method CBLAS/ORDER_COLUMN_MAJOR CLBlastTranspose/CLBlastTransposeYes
+            (~method ~(:column blas-layout) CLBlastTranspose/CLBlastTransposeYes
              (.sd stor#) (.fd stor#) 1.0 (extract (.buffer ~a)) (.offset ~a) (.ld stor#)
              (extract (.buffer ~a)) (.offset ~a) (.fd stor#)
              (extract ~queue) nil)

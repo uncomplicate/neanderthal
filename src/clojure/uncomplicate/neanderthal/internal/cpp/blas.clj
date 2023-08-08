@@ -10,58 +10,17 @@
   (:require [uncomplicate.commons
              [core :refer [with-release let-release Info info Releaseable release]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.clojure-cpp :refer [pointer] :as cpp]
             [uncomplicate.neanderthal
              [block :refer [buffer offset stride contiguous?]]
              [core :refer [dim entry mrows ncols symmetric? trans]]
              [math :refer [f= sqr sqrt]]]
             [uncomplicate.neanderthal.internal
+             [constants :refer :all]
              [api :refer [iamax engine navigator storage region mm scal]]
              [common :refer [check-eq-navigators skip real-accessor]]
-             [navigation :refer [full-storage accu-layout diag-unit?]]])
-  (:import [org.bytedeco.mkl.global mkl_rt]
-           [org.bytedeco.javacpp Pointer FloatPointer DoublePointer IntPointer]
-           [uncomplicate.neanderthal.internal.api VectorSpace Block RealVector]))
-
-(def ^:const blas-layout
-  {:row 101
-   :column 102
-   :col 102})
-
-(def ^:const blas-uplo
-  {:upper 121
-   :lower 122
-   :up 121
-   :low 122})
-
-(def ^:const blas-transpose
-  {:no-trans 111
-   :trans 112})
-
-(def ^:const blas-side
-  {:left 141
-   :right 142})
-
-(def ^:const blas-diag
-  {:unit 131
-   :non-unit 132})
-
-;; TODO move to structures
-
-(defn float-ptr
-  (^FloatPointer [^Block x]
-   (cpp/float-ptr (pointer (.buffer x))))
-  (^FloatPointer [^Block x ^long i]
-   (cpp/float-ptr (pointer (.buffer x)) i)))
-
-(defn double-ptr
-  (^DoublePointer [^Block x]
-   (cpp/double-ptr (pointer (.buffer x))))
-  (^DoublePointer [^Block x ^long i]
-   (cpp/double-ptr (pointer (.buffer x)) i)))
-
-(defn int-ptr ^IntPointer [^Block x]
-  (cpp/int-ptr (pointer (.buffer x))))
+             [navigation :refer [full-storage accu-layout diag-unit?]]]
+            [uncomplicate.neanderthal.internal.cpp.common :refer :all])
+  (:import org.bytedeco.mkl.global.mkl_rt))
 
 ;; TODO Copied from host
 (defmacro vector-iopt [opt x entry]

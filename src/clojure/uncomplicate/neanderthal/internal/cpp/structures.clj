@@ -10,7 +10,7 @@
   (:require
    [uncomplicate.commons
     [core :refer [Releaseable release let-release Info info double-fn wrap-float wrap-double
-                  wrap-int wrap-long wrap-short wrap-byte Viewable view]]
+                  wrap-int wrap-long wrap-short wrap-byte Viewable view Wrapper extract]]
     [utils :refer [dragan-says-ex]]]
    [uncomplicate.fluokitten.protocols
     :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold foldmap fmap fmap!]]
@@ -41,12 +41,11 @@
             MatrixImplementation GEMatrix UploMatrix BandedMatrix PackedMatrix DiagonalMatrix
             RealAccessor IntegerAccessor RealLayoutFlipper IntegerLayoutFlipper]))
 
-(def ^:private f* (double-fn *))
-
 (declare real-block-vector integer-block-vector cs-vector integer-ge-matrix real-ge-matrix
          real-uplo-matrix integer-uplo-matrix real-banded-matrix integer-banded-matrix
          real-packed-matrix integer-packed-matrix real-diagonal-matrix integer-diagonal)
 
+(def f* (double-fn *))
 
 ;; ================ Pointer data accessors  ====================================
 
@@ -59,7 +58,7 @@
 (defprotocol Destructor
   (destruct [this p]))
 
-(defmacro def-accessor-type [name accessor-interface pointer-class entry-class pointer wrap-fn cast cast-get]
+(defmacro def-accessor-type [name accessor-interface pointer-class entry-class pointer cast cast-get]
   `(deftype ~name [construct# destruct#]
      DataAccessor
      (entryType [_#]
@@ -76,7 +75,7 @@
      (initialize [_# p# v#]
        (fill! p# v#))
      (wrapPrim [_# v#]
-       (~wrap-fn v#))
+       (pointer (~cast v#)))
      (castPrim [_# v#]
        (~cast v#))
      DataAccessorProvider
@@ -92,6 +91,8 @@
      (compatible? [this# o#]
        (let [da# (data-accessor o#)]
          (or (identical? this# da#) (instance? ~name da#))))
+     (device [_#]
+       :cpu)
      ~accessor-interface
      (get [_# p# i#]
        (~cast-get (get* ~pointer-class p# i#)))
@@ -99,12 +100,12 @@
        (put* ~pointer-class p# i# val#)
        p#)))
 
-(def-accessor-type DoublePointerAccessor RealAccessor DoublePointer Double double-pointer wrap-double double double)
-(def-accessor-type FloatPointerAccessor RealAccessor FloatPointer Float float-pointer wrap-float float float)
-(def-accessor-type LongPointerAccessor IntegerAccessor LongPointer Long long-pointer wrap-long long long)
-(def-accessor-type IntPointerAccessor IntegerAccessor IntPointer Integer int-pointer wrap-int int int)
-(def-accessor-type ShortPointerAccessor IntegerAccessor ShortPointer Short short-pointer wrap-short short long)
-(def-accessor-type BytePointerAccessor IntegerAccessor BytePointer Byte byte-pointer wrap-byte byte long)
+(def-accessor-type DoublePointerAccessor RealAccessor DoublePointer Double double-pointer double double)
+(def-accessor-type FloatPointerAccessor RealAccessor FloatPointer Float float-pointer float float)
+(def-accessor-type LongPointerAccessor IntegerAccessor LongPointer Long long-pointer long long)
+(def-accessor-type IntPointerAccessor IntegerAccessor IntPointer Integer int-pointer int int)
+(def-accessor-type ShortPointerAccessor IntegerAccessor ShortPointer Short short-pointer short long)
+(def-accessor-type BytePointerAccessor IntegerAccessor BytePointer Byte byte-pointer byte long)
 
 ;; =======================================================================
 
@@ -283,11 +284,12 @@
   `(extend-type ~name
      Releaseable
      (release [this#]
-       (if (.-master this#)
-         (if (destruct (data-accessor this#) (buffer this#))
-           true
-           false)
-         true))
+       (when (.-master this#)
+         (destruct (data-accessor this#) (buffer this#)))
+       true)
+     Wrapper
+     (extract [this#]
+       (extract (.-buf-ptr this#)))
      EngineProvider
      (engine [this#]
        (.-eng this#))
@@ -308,14 +310,14 @@
        nil)))
 
 ;; TODO extract general cpu/gpu parts to a more general macro
-(defmacro extend-block-vector [name block-vector ge-matrix]
+(defmacro extend-vector [name block-vector ge-matrix]
   `(extend-type ~name
      Info
      (info
        ([this#]
         {:entry-type (.entryType (data-accessor this#))
          :class ~name
-         :device :cpu
+         :device (device this#)
          :dim (dim this#)
          :offset (offset this#)
          :stride (.-strd this#)
@@ -325,29 +327,13 @@
         (case info-type#
           :entry-type (.entryType (data-accessor this#))
           :class ~name
-          :device :cpu
+          :device (device this#)
           :dim (dim this#)
           :offset (offset this#)
           :stride (.-strd this#)
           :master (.-master this#)
           :engine (info (.-eng this#))
           nil)))
-     Container
-     (raw
-       ([this#]
-        (~block-vector (.-fact this#) (.-n this#)))
-       ([this# fact#]
-        (create-vector (factory fact#) (.-n this#) false)))
-     (zero
-       ([this#]
-        (create-vector (.-fact this#) (.-n this#) true))
-       ([this# fact#]
-        (create-vector (factory fact#) (.-n this#) true)))
-     (host [this#]
-       (let-release [res# (raw this#)]
-         (copy (.-eng this#) this# res#)))
-     (native [this#]
-       this#)
      Viewable
      (view [this#]
        (~block-vector (.-fact this#) false (.-buf-ptr this#) (.-n this#) 0 (.-strd this#)))
@@ -371,8 +357,8 @@
        (compatible? (.-da this#) y#))
      (fits? [this# y#]
        (= (.-n this#) (dim y#)))
-     (device [_#]
-       :cpu) ;; TODO Perhaps move this to factory?
+     (device [this#]
+       (device (.-da this#)))
      Monoid
      (id [this#]
        (~block-vector (.-fact this#) 0))
@@ -380,9 +366,28 @@
      (pure
        ([this# v#]
         (let-release [res# (~block-vector (.-fact this#) 1)]
-          (uncomplicate.neanderthal.core/entry! res# 0 v#)))
+          (uncomplicate.neanderthal.core/entry! res# v#)))
        ([this# v# vs#]
         (vctr (.-fact this#) (cons v# vs#))))))
+
+(defmacro extend-block-vector [name block-vector]
+  `(extend-type ~name
+     Container
+     (raw
+       ([this#]
+        (~block-vector (.-fact this#) (.-n this#)))
+       ([this# fact#]
+        (create-vector (factory fact#) (.-n this#) false)))
+     (zero
+       ([this#]
+        (create-vector (.-fact this#) (.-n this#) true))
+       ([this# fact#]
+        (create-vector (factory fact#) (.-n this#) true)))
+     (host [this#]
+       (let-release [res# (raw this#)]
+         (copy (.-eng this#) this# res#)))
+     (native [this#]
+       this#)))
 
 (defmacro extend-vector-fluokitten [t cast indexed-fn]
   `(extend ~t
@@ -480,7 +485,8 @@
     (integer-block-vector fact false buf-ptr l (* k strd) strd)))
 
 (extend-base IntegerBlockVector)
-(extend-block-vector IntegerBlockVector integer-block-vector integer-ge-matrix)
+(extend-vector IntegerBlockVector integer-block-vector integer-ge-matrix)
+(extend-block-vector IntegerBlockVector integer-block-vector)
 (extend-vector-fluokitten IntegerBlockVector long IFn$LLL)
 
 (def integer-block-vector (partial block-vector ->IntegerBlockVector))
@@ -576,7 +582,8 @@
     (real-block-vector fact false buf-ptr l (* k strd) strd)))
 
 (extend-base RealBlockVector)
-(extend-block-vector RealBlockVector real-block-vector real-ge-matrix)
+(extend-vector RealBlockVector real-block-vector real-ge-matrix)
+(extend-block-vector RealBlockVector real-block-vector)
 (extend-vector-fluokitten RealBlockVector double IFn$LDD)
 
 (def real-block-vector (partial block-vector ->RealBlockVector))
@@ -969,7 +976,8 @@
         (if (.isContiguous this#)
           (~ge-matrix (.-fact this#) false (.-buf-ptr this#) m# n# (.-nav this#)
            (full-storage (column? this#) m# n#) (ge-region m# n#))
-          (throw (ex-info "Strided GE matrix cannot be viewed through different dimensions." {:a (info this#)})))))
+          (throw (ex-info "Strided GE matrix cannot be viewed through different dimensions."
+                          {:a (info this#)})))))
      (view-tr [this# lower?# diag-unit?#]
        (let [n# (min (.-m this#) (.-n this#))
              fact# (.-fact this#)]
@@ -991,7 +999,7 @@
      (fits-navigation? [this# b#]
        (= (.-nav this#) (navigator b#)))
      (device [this#]
-       :cpu)
+       (device (.-da this#)))
      Monoid
      (id [this#]
        (~ge-matrix (.-fact this#) 0 0 (column? this#)))
@@ -999,7 +1007,7 @@
      (pure
        ([this# v#]
         (let-release [res# (~ge-matrix (.-fact this#) 1 1 (column? this#))]
-          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+          (uncomplicate.neanderthal.core/entry! res# v#)))
        ([this# v# vs#]
         (ge (.-fact this#) (cons v# vs#))))))
 
@@ -1378,7 +1386,7 @@
        (and (= (.-nav this#) (navigator b#))
             (or (instance? GEMatrix b#) (= (.-reg this#) (region b#)))))
      (device [this#]
-       :cpu)
+       (device (.-da this#)))
      Monoid
      (id [this#]
        (~uplo-matrix (.-fact this#) 0 (column? this#)))
@@ -1386,7 +1394,7 @@
      (pure
        ([this# v#]
         (let-release [res# (~uplo-matrix (.-fact this#) 1 (column? this#) (.-matrix-type this#))]
-          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+          (uncomplicate.neanderthal.core/entry! res# v#)))
        ([this# v# vs#]
         (let [source# (cons v# vs#)]
           (let-release [res# (~uplo-matrix (.-fact this#) (math/sqrt (count source#))
@@ -1815,7 +1823,7 @@
      (fits-navigation? [this# b#]
        (= (.-nav this#) (navigator b#)))
      (device [this#]
-       :cpu)
+       (device (.-da this#)))
      Monoid
      (id [this#]
        (~banded-matrix (.-fact this#) 0 0 0 0 (column? this#) (.matrixType this#)))
@@ -1824,7 +1832,7 @@
        ([this# v#]
         (let-release [res# (~banded-matrix (.-fact this#) 1 1 (.-nav this#) (.-stor this#)
                             (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
-          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+          (uncomplicate.neanderthal.core/entry! res# v#)))
        ([this# v# vs#]
         (dragan-says-ex "Vararg pure is not available for banded matrices.")))))
 
@@ -2084,7 +2092,7 @@
      (fits-navigation? [this# b#]
        (= (.-nav this#) (navigator b#)))
      (device [this#]
-       :cpu)
+       (device (.-da this#)))
      Monoid
      (id [this#]
        (~packed-matrix (.-fact this#) 0 (column? this#) (lower? (.-reg this#))
@@ -2094,7 +2102,7 @@
        ([this# v#]
         (let-release [res# (~packed-matrix (.-fact this#) 1 (.-nav this#) (.-stor this#)
                             (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
-          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+          (uncomplicate.neanderthal.core/entry! res# v#)))
        ([this# v# vs#]
         (let [source# (cons v# vs#)]
           (let-release [res# (~packed-matrix (.-fact this#) (long (math/sqrt (count source#)))
@@ -2308,7 +2316,7 @@
      (fits-navigation? [this# b#]
        true)
      (device [this#]
-       :cpu)
+       (device (.-da this#)))
      Monoid
      (id [this#]
        (~diagonal-matrix (.-fact this#) 0 (.matrixType this#)))
@@ -2317,7 +2325,7 @@
        ([this# v#]
         (let-release [res# (~diagonal-matrix (.-fact this#) 1 (.-nav this#) (.-stor this#)
                             (.-reg this#) (.matrixType this#) (.-default this#) (.-eng this#))]
-          (uncomplicate.neanderthal.core/entry! res# 0 0 v#)))
+          (uncomplicate.neanderthal.core/entry! res# v#)))
        ([this# v# vs#]
         (let [source# (cons v# vs#)]
           (let-release [res# (~diagonal-matrix (.-fact this#) (count source#) (.matrixType this#))]

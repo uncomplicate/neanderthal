@@ -1,9 +1,9 @@
 extern "C" {
-    
+
 #include "Random123/philox.h"
 #include <stdint.h>
 #include <float.h>
-    
+
 #ifndef M_2PI_FLOAT
 #define M_2PI_FLOAT 6.2831855f
 #endif
@@ -77,10 +77,10 @@ extern "C" {
         g[3] = cos(M_2PI_DOUBLE * u01_double(i[2]))
             * sqrt(-2.0f * log(u01_double(i[3])));
     }
-    
+
     __global__ void vector_uniform_float (const int n, const uint64_t seed,
                                           const float lower, const float upper,
-                                          float* x, const uint32_t offset_x, const uint32_t stride_x) {
+                                          float* x, const uint32_t stride_x) {
 
         const uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x;
         const int i = gid * 4;
@@ -91,13 +91,13 @@ extern "C" {
 
         const int limit = (i + 3) < n ? 4 : n - i;
         for (int j = 0; j < limit; j++) {
-            x[offset_x + ((i + j) * stride_x)] = u01_float(rand.v[j]) * upplow + low;
+            x[((i + j) * stride_x)] = u01_float(rand.v[j]) * upplow + low;
         }
     }
 
     __global__ void vector_uniform_double (const int n, const uint64_t seed,
                                            const double lower, const double upper,
-                                           double* x, const uint32_t offset_x, const uint32_t stride_x) {
+                                           double* x, const uint32_t stride_x) {
 
         const uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x;
         const int i = gid * 4;
@@ -108,13 +108,13 @@ extern "C" {
 
         const int limit = (i + 3) < n ? 4 : n - i;
         for (int j = 0; j < limit; j++) {
-            x[offset_x + ((i + j) * stride_x)] = u01_double(rand.v[j]) * upplow + low;
+            x[((i + j) * stride_x)] = u01_double(rand.v[j]) * upplow + low;
         }
     }
 
     __global__ void vector_normal_float (const int n, const uint64_t seed,
                                          const float mu, const float sigma,
-                                         float* x, const uint32_t offset_x, const uint32_t stride_x) {
+                                         float* x, const uint32_t stride_x) {
 
         const uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x;
         const int i = gid * 4;
@@ -123,13 +123,13 @@ extern "C" {
         box_muller_float(rand.v, g);
         const int limit = (i + 3) < n ? 4 : n - i;
         for (int j = 0; j < limit; j++) {
-            x[offset_x + ((i + j) * stride_x)] = g[j] * sigma + mu;
+            x[((i + j) * stride_x)] = g[j] * sigma + mu;
         }
     }
 
     __global__ void vector_normal_double (const int n, const uint64_t seed,
                                           const double mu, const double sigma,
-                                          double* x, const uint32_t offset_x, const uint32_t stride_x) {
+                                          double* x, const uint32_t stride_x) {
 
         const uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x;
         const int i = gid * 4;
@@ -138,13 +138,13 @@ extern "C" {
         box_muller_double(rand.v, g);
         const int limit = (i + 3) < n ? 4 : n - i;
         for (int j = 0; j < limit; j++) {
-            x[offset_x + ((i + j) * stride_x)] = g[j] * sigma + mu;
+            x[((i + j) * stride_x)] = g[j] * sigma + mu;
         }
     }
 
     __global__ void ge_uniform_float (const int sd, const int fd, const uint64_t seed,
                                       const float lower, const float upper,
-                                      float* a, const int offset_a, const int ld_a) {
+                                      float* a, const int ld_a) {
 
         const uint32_t gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const uint32_t gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
@@ -153,17 +153,17 @@ extern "C" {
             const philox4x32_ctr_t rand = rand_arr_32(seed);
             const float low = lower;
             const float upplow = upper - low;
-        
+
             const int limit = (i + 3) < sd ? 4 : sd - i;
             for (int j = 0; j < limit; j++) {
-                a[offset_a + i + j + gid_1 * ld_a] = u01_float(rand.v[j]) * upplow + low;
+                a[i + j + gid_1 * ld_a] = u01_float(rand.v[j]) * upplow + low;
             }
         }
     }
 
     __global__ void ge_uniform_double (const int sd, const int fd, const uint64_t seed,
                                        const double lower, const double upper,
-                                       double* a, const int offset_a, const int ld_a) {
+                                       double* a, const int ld_a) {
 
         const uint32_t gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const uint32_t gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
@@ -174,33 +174,33 @@ extern "C" {
             const double upplow = upper - low;
             const int limit = (i + 3) < sd ? 4 : sd - i;
             for (int j = 0; j < limit; j++) {
-                a[offset_a + i + j + gid_1 * ld_a] = u01_double(rand.v[j]) * upplow + low;
+                a[+ i + j + gid_1 * ld_a] = u01_double(rand.v[j]) * upplow + low;
             }
         }
     }
 
     __global__ void ge_normal_float (const int sd, const int fd, const uint64_t seed,
                                      const float mu, const float sigma,
-                                     float* a, const int offset_a, const int ld_a) {
+                                     float* a, const int ld_a) {
 
         const uint32_t gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const uint32_t gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const int i = gid_0 * 4;
-        if (gid_1 < fd) {    
+        if (gid_1 < fd) {
             const philox4x32_ctr_t rand = rand_arr_32(seed);
             float g[4];
             box_muller_float(rand.v, g);
 
             const int limit = (i + 3) < sd ? 4 : sd - i;
             for (int j = 0; j < limit; j++) {
-                a[offset_a + i + j + gid_1 * ld_a] = g[j] * sigma + mu;
+                a[i + j + gid_1 * ld_a] = g[j] * sigma + mu;
             }
         }
     }
 
     __global__ void ge_normal_double (const int sd, const int fd, const uint64_t seed,
                                       const double mu, const double sigma,
-                                      double* a, const int offset_a, const int ld_a) {
+                                      double* a, const int ld_a) {
 
         const uint32_t gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const uint32_t gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
@@ -211,9 +211,9 @@ extern "C" {
             box_muller_double(rand.v, g);
             const int limit = (i + 3) < sd ? 4 : sd - i;
             for (int j = 0; j < limit; j++) {
-                a[offset_a + i + j + gid_1 * ld_a] = g[j] * sigma + mu;
+                a[i + j + gid_1 * ld_a] = g[j] * sigma + mu;
             }
         }
     }
-    
+
 }

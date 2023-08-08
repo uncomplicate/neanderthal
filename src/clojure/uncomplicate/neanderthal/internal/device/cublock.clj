@@ -11,11 +11,10 @@
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Info info
                            Wrapper extract wrap-float wrap-double wrap-int wrap-long
-                           wrap-short wrap-byte Viewable view]]
+                           wrap-short wrap-byte Viewable view size]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
-            [uncomplicate.clojurecuda.internal.protocols :refer [size ptr with-offset]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge]]
              [real :refer [entry]]
@@ -25,19 +24,17 @@
              [common :refer [dense-rows dense-cols dense-dias region-dias require-trf]]
              [printing :refer [print-vector print-ge print-uplo]]
              [navigation :refer :all]]
-            [uncomplicate.neanderthal.internal.host
-             [fluokitten :refer [vector-op matrix-op]]
-             [buffer-block :refer [real-block-vector real-ge-matrix real-uplo-matrix]]]
+            [uncomplicate.neanderthal.internal.host.fluokitten :refer [vector-op matrix-op]];;TODO move fluokitten to internal.fluokitten
+            [uncomplicate.neanderthal.internal.cpp.structures
+             :refer [real-block-vector real-ge-matrix real-uplo-matrix]]
             [uncomplicate.neanderthal.internal.device.common :refer [device-matrix-equals]]
             [uncomplicate.neanderthal.internal.device.clblock :as clblock])
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
-           [jcuda.jcublas JCublas2 cublasStatus]
+           ;;[jcuda.jcublas JCublas2 cublasStatus] TODO
            [uncomplicate.neanderthal.internal.api DataAccessor VectorSpace Vector CLVector CUVector
             Matrix CLMatrix CUMatrix GEMatrix RealChangeable LayoutNavigator
             Region MatrixImplementation NativeBlock FullStorage Default UploMatrix
-            RealNativeVector RealNativeMatrix Block]
-           [uncomplicate.neanderthal.internal.host.buffer_block RealBlockVector
-            IntegerBlockVector RealGEMatrix RealUploMatrix]))
+            RealNativeVector RealNativeMatrix RealNativeVector Block]))
 
 (def ^{:private true :const true} INEFFICIENT_STRIDE_MSG
   "This operation would be inefficient when stride is not 1.")
@@ -75,7 +72,7 @@
   (entryWidth [_]
     w)
   (count [_ b]
-    (quot (long (size b)) w))
+    (quot (size b) w))
   (createDataSource [_ n]
     (mem-alloc (* w (max 1 (long n)))))
   (initialize [_ buf]
@@ -366,11 +363,11 @@
   [source destination]
   (copy! source destination))
 
-(defmethod transfer! [CUBlockVector RealBlockVector]
+(defmethod transfer! [CUBlockVector RealNativeVector]
   [source destination]
   (get-vector! source destination))
 
-(defmethod transfer! [RealBlockVector CUBlockVector]
+(defmethod transfer! [RealNativeVector CUBlockVector]
   [source destination]
   (set-vector! source destination))
 
@@ -934,7 +931,7 @@
     (set-matrix! source destination)
     (with-release [h (raw destination (factory host))]
       (set-matrix! (copy! source h) destination))))
-
+xo
 (defmethod transfer! [CUMatrix Object]
   [source destination]
   (with-release [h (host source)]

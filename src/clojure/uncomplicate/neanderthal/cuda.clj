@@ -16,7 +16,7 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
-            [uncomplicate.neanderthal.internal.device.cublas
+            [uncomplicate.neanderthal.internal.cpp.cuda.factory
              :refer [cublas-double cublas-float cublas-long cublas-int cublas-short cublas-byte]]))
 
 (def ^{:dynamic true

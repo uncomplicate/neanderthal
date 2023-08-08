@@ -8,7 +8,7 @@
 
 (ns uncomplicate.neanderthal.internal.cpp.mkl.factory
   (:require [uncomplicate.commons
-             [core :refer [with-release let-release info Releaseable release view]]
+             [core :refer [with-release let-release info Releaseable release view extract]]
              [utils :refer [dragan-says-ex with-check generate-seed]]]
             [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer]]
@@ -19,10 +19,12 @@
              [math :refer [f=] :as math]
              [block :refer [create-data-source initialize offset stride contiguous?]]]
             [uncomplicate.neanderthal.internal
+             [constants :refer :all]
              [api :refer :all]
              [navigation :refer [full-storage accu-layout dostripe-layout]]
              [common :refer [check-stride check-eq-navigators flip-uplo real-accessor]]]
             [uncomplicate.neanderthal.internal.cpp
+             [common :refer :all]
              [structures :refer :all]
              [lapack :refer :all]
              [blas :refer :all]]
@@ -31,7 +33,7 @@
              [core :refer [malloc! free! mkl-sparse sparse-matrix mkl-sparse-copy sparse-error]]
              [structures :refer [ge-csr-matrix spmat descr sparse-transpose sparse-layout csr-ge-sp2m]]])
   (:import java.nio.ByteBuffer
-           [uncomplicate.neanderthal.internal.api DataAccessor Block Vector LayoutNavigator Region
+           [uncomplicate.neanderthal.internal.api DataAccessor Vector LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer BytePointer]
            [org.bytedeco.mkl.global mkl_rt mkl_rt$VSLStreamStatePtr]))
@@ -553,7 +555,7 @@
             1.0 (~ptr ~a) (quot (stride ~a) ~chunk) (~ptr ~b) (quot (.ld stor-b#) ~chunk)))
        (dragan-says-ex SHORT_UNSUPPORTED_MSG {:mrows (mrows ~a) :ncols (ncols ~a)}))))
 
-(defmacro integer-ge-blas* [name t ptr cast blas lapack chunk]
+(defmacro integer-ge-blas* [name t ptr blas chunk]
   `(extend-type ~name
      Blas
      (swap [_# a# b#]
@@ -862,10 +864,10 @@
 
 ;;TODO
 (deftype LongGEEngine [])
-(integer-ge-blas* LongGEEngine "d" double-ptr long-double mkl_rt mkl_rt 1)
+(integer-ge-blas* LongGEEngine "d" double-ptr mkl_rt 1)
 
 (deftype IntGEEngine [])
-(integer-ge-blas* IntGEEngine "s" float-ptr int-float mkl_rt mkl_rt 1)
+(integer-ge-blas* IntGEEngine "s" float-ptr mkl_rt 1)
 
 (deftype ShortGEEngine []) ;; TODO
 
@@ -2094,6 +2096,8 @@
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
+  (device [_]
+    :cpu)
   RngStreamFactory
   (create-rng-state [_ seed]
     (create-stream-ars5 seed))
@@ -2101,45 +2105,45 @@
   (create-vector [this n init]
     (let-release [res (real-block-vector this n)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-vector [this master buf-ptr n ofst strd]
     (real-block-vector this master buf-ptr n ofst strd))
   (create-ge [this m n column? init]
     (let-release [res (real-ge-matrix this m n column?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-uplo [this n mat-type column? lower? diag-unit? init]
     (let-release [res (real-uplo-matrix this n column? lower? diag-unit? mat-type)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-tr [this n column? lower? diag-unit? init]
     (let-release [res (real-uplo-matrix this n column? lower? diag-unit?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-sy [this n column? lower? init]
     (let-release [res (real-uplo-matrix this n column? lower?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-banded [this m n kl ku matrix-type column? init]
     (let-release [res (real-banded-matrix this m n kl ku column? matrix-type)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-gb [this m n kl ku lower? init]
     (let-release [res (real-banded-matrix this m n kl ku lower?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-tb [this n k column? lower? diag-unit? init]
     (if (or (and column? lower?) (and (not column?) (not lower?)))
       (let-release [res (real-tb-matrix this n k column? lower? diag-unit?)]
         (when init
-          (.initialize da (.buffer ^Block res)))
+          (.initialize da (extract res)))
         res)
       (dragan-says-ex "TB matrices have to be either column-major lower or row-major upper."
                       {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
@@ -2147,29 +2151,29 @@
     (if (or (and column? lower?) (and (not column?) (not lower?)))
       (let-release [res (real-sb-matrix this n k column? lower?)]
         (when init
-          (.initialize da (.buffer ^Block res)))
+          (.initialize da (extract res)))
         res)
       (dragan-says-ex "SB matrices have to be either column-major lower or row-major upper."
                       {:layout (if column? :column :row) :uplo (if lower? :lower :upper)})))
   (create-packed [this n matrix-type column? lower? diag-unit? init]
     (let-release [res (real-packed-matrix this n column? lower? diag-unit? matrix-type)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-tp [this n column? lower? diag-unit? init]
     (let-release [res (real-packed-matrix this n column? lower? diag-unit?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-sp [this n column? lower? init]
     (let-release [res (real-packed-matrix this n column? lower?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-diagonal [this n matrix-type init]
     (let-release [res (real-diagonal-matrix this n matrix-type)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (vector-engine [_]
     vector-eng)
@@ -2223,6 +2227,8 @@
   MemoryContext
   (compatible? [_ o]
     (compatible? da o))
+  (device [_]
+    :cpu)
   RngStreamFactory
   (create-rng-state [_ seed]
     (create-stream-ars5 seed))
@@ -2230,29 +2236,29 @@
   (create-vector [this n init]
     (let-release [res (integer-block-vector this n)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-vector [this master buf-ptr n ofst strd]
     (integer-block-vector this master buf-ptr n ofst strd))
   (create-ge [this m n column? init]
     (let-release [res (integer-ge-matrix this m n column?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-uplo [this n mat-type column? lower? diag-unit? init]
     (let-release [res (integer-uplo-matrix this n column? lower? diag-unit? mat-type)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-tr [this n column? lower? diag-unit? init]
     (let-release [res (integer-uplo-matrix this n column? lower? diag-unit?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (create-sy [this n column? lower? init]
     (let-release [res (integer-uplo-matrix this n column? lower?)]
       (when init
-        (.initialize da (.buffer ^Block res)))
+        (.initialize da (extract res)))
       res))
   (vector-engine [_]
     vector-eng)
