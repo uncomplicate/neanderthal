@@ -20,10 +20,10 @@
              [info :refer [driver-version]]
              [toolbox :refer [launch-reduce! read-int]]]
             [uncomplicate.neanderthal
-             [core :refer [transfer! dim ncols mrows entry]]
+             [core :refer [transfer! dim ncols mrows entry matrix-type]]
              [native :refer [native-float native-double native-long native-int
                              native-short native-byte]]
-             [block :refer [stride buffer contiguous? column?]]]
+             [block :refer [stride offset contiguous? column?]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
              [navigation :refer [full-storage diag-unit?]]
@@ -61,7 +61,7 @@
       (with-release [random-kernel (function modl (str "vector_" kernel-name))]
         (launch! random-kernel (grid-1d (count-groups 4 (dim x))) hstream
                  (parameters (dim x) (long (swap! rng-state inc))
-                             (.castPrim da a) (.castPrim da b) (extract x) (stride x))))))
+                             (.castPrim da a) (.castPrim da b) (extract x) (offset x) (stride x))))))
   x)
 
 (defn ^:private ge-random [modl hstream kernel-name rng-state a b x]
@@ -71,7 +71,8 @@
       (with-release [random-kernel (function modl (str "ge_" kernel-name))]
         (launch! random-kernel (grid-2d (count-groups 4 (.sd stor)) (.fd stor)) hstream
                  (parameters (.sd stor) (.fd stor) (long (swap! rng-state inc))
-                             (.castPrim da a) (.castPrim da b) (extract x) (.ld stor))))))
+                             (.castPrim da a) (.castPrim da b)
+                             (extract x) (offset x) (.ld stor))))))
   x)
 
 ;; =============== Common vector macros and functions =======================
@@ -83,29 +84,29 @@
                      eq-flag-buf (mem-alloc-driver Integer/BYTES)]
         (memset! eq-flag-buf 0)
         (launch! equals-kernel (grid-1d cnt) hstream
-                 (parameters cnt (extract x) (stride x) (extract y) (stride y)
+                 (parameters cnt (extract x) (offset x) (stride x) (extract y) (offset y) (stride y)
                              eq-flag-buf))
         (= 0 (read-int hstream eq-flag-buf)))
       (= 0 (dim y)))))
 
 (defn ^:private vector-copy
   ([modl hstream x y kx lx ky]
-   (when (< 0 (long lx))
+   (when (< 0 (int lx))
      (with-release [copy-kernel (function modl "vector_copy")]
        (launch! copy-kernel (grid-1d lx) hstream
-                (parameters (long lx) (extract x) (* (long kx) (stride x)) (stride x)
-                            (extract y) (* (long ky) (stride y)) (stride y)))))
+                (parameters lx (extract x) (* (offset x) (long kx) (stride x)) (stride x)
+                            (extract y) (+ (offset y) (* (long ky) (stride y))) (stride y)))))
    y)
   ([modl hstream x y]
    (with-release [copy-kernel (function modl "vector_copy")]
      (launch! copy-kernel (grid-1d (dim x)) hstream
-              (parameters (dim x) (extract x) (stride x) (extract y) (stride y))))
+              (parameters (dim x) (extract x) (offset x) (stride x) (extract y) (offset y) (stride y))))
    y))
 
 (defn ^:private vector-swap [modl hstream x y]
   (with-release [copy-kernel (function modl "vector_swap")]
     (launch! copy-kernel (grid-1d (dim x)) hstream
-             (parameters (dim x) (extract x) (stride x) (extract y) (stride y))))
+             (parameters (dim x) (extract x) (offset x) (stride x) (extract y) (offset y) (stride y))))
   x)
 
 (defn ^:private vector-sum [modl hstream x]
@@ -118,7 +119,7 @@
                      cu-acc (mem-alloc-driver (* (.entryWidth da) (count-groups block-dim cnt)))
                      res (.wrapPrim da 0.0)]
         (launch-reduce! hstream sum-kernel sum-reduction-kernel
-                        [(extract x) (stride x) cu-acc] [cu-acc] cnt block-dim)
+                        [(extract x) (offset x) (stride x) cu-acc] [cu-acc] cnt block-dim)
         (get-entry (memcpy-host! cu-acc res hstream) 0))
       0.0)))
 
@@ -126,7 +127,7 @@
   (when (< 0 (dim x))
     (with-release [set-kernel (function modl "vector_set")]
       (launch! set-kernel (grid-1d (dim x)) hstream
-               (parameters (dim x) (.castPrim (data-accessor x) alpha) (extract x) (stride x)))))
+               (parameters (dim x) (.castPrim (data-accessor x) alpha) (extract x) (offset x) (stride x)))))
   x)
 
 (defn ^:private vector-axpby [modl hstream alpha x beta y]
@@ -135,8 +136,8 @@
       (with-release [axpby-kernel (function modl "vector_axpby")]
         (launch! axpby-kernel (grid-1d (dim x)) hstream
                  (parameters (dim x)
-                             (.castPrim da alpha) (extract x) (stride x)
-                             (.castPrim da beta) (extract y) (stride y))))))
+                             (.castPrim da alpha) (extract x) (offset x) (stride x)
+                             (.castPrim da beta) (extract y) (offset y) (stride y))))))
   y)
 
 (defmacro ^:private vector-method
@@ -228,8 +229,8 @@
                      eq-flag-buf (mem-alloc-driver Integer/BYTES)]
         (memset! eq-flag-buf 0)
         (launch! equals-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.fd stor) (extract a) (.ld stor)
-                             (extract b) (stride b) eq-flag-buf))
+                 (parameters (.sd stor) (.fd stor) (extract a) (offset a) (.ld stor)
+                             (extract b) (offset b) (stride b) eq-flag-buf))
         (= 0 (read-int hstream eq-flag-buf))))
     (= 0 (dim b))))
 
@@ -239,7 +240,7 @@
           stor (full-storage a)]
       (with-release [ge-set-kernel (function modl "ge_set")]
         (launch! ge-set-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.fd stor) (.castPrim da alpha) (extract a) (.ld stor))))
+                 (parameters (.sd stor) (.fd stor) (.castPrim da alpha) (extract a) (offset a) (.ld stor))))
       a)))
 
 (defmacro ^:private ge-swap [cublas-handle cublas method modl hstream ptr a b]
@@ -252,7 +253,8 @@
            ~a)
          (with-release [ge-swap-kernel# (function ~modl (name-transp "ge_swap" ~a ~b))]
            (launch! ge-swap-kernel# (grid-2d (.sd stor#) (.fd stor#)) ~hstream
-                    (parameters (.sd stor#) (.fd stor#) (extract ~a) (.ld stor#) (extract ~b) (stride ~b)))
+                    (parameters (.sd stor#) (.fd stor#) (extract ~a) (offset ~a) (.ld stor#)
+                                (extract ~b) (offset ~b) (stride ~b)))
            ~a)))
      ~a))
 
@@ -286,7 +288,7 @@
         wgs 1024
         grid-dim-x (count-groups wgs-sd cnt-sd)
         grid-dim-y (count-groups wgs-fd cnt-fd)
-        acc-count (* grid-dim-x grid-dim-y)]
+        acc-count (int (* grid-dim-x grid-dim-y))]
     (if (< 0 (dim a))
       (with-release [sum-kernel (function modl "ge_sum")
                      sum-reduction-kernel (function modl "sum_reduction")
@@ -294,7 +296,7 @@
                      res (.wrapPrim da 0.0)
                      params (parameters acc-count cu-acc)]
         (launch! sum-kernel (grid-2d cnt-sd cnt-fd wgs-sd wgs-fd) hstream
-                 (parameters (int cnt-sd) (int cnt-fd) cu-acc (extract a) (stride a)));;TODO change to long?
+                 (parameters cnt-sd cnt-fd cu-acc (extract a) (offset a) (stride a)))
         (if (< 1 acc-count)
           (launch-reduce! hstream sum-reduction-kernel sum-reduction-kernel
                           params params acc-count wgs))
@@ -304,7 +306,7 @@
 (defmacro ^:private ge-am
   ([cublas-handle cublas method ptr cpp-ptr alpha a beta b]
    `(if (< 0 (dim ~a))
-      (let [b# (~ptr (extract ~b))
+      (let [b# (~ptr ~b)
             stor-b# (full-storage ~b)
             da# (data-accessor ~a)]
         (with-check cublas-error
@@ -396,7 +398,7 @@
         (memset! eq-flag-buf 0)
         (launch! equals-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             (extract a) (.ld stor) (extract b) (stride b)
+                             (extract a) (offset a) (.ld stor) (extract b) (offset b) (stride b)
                              eq-flag-buf))
         (= 0 (read-int hstream eq-flag-buf))))
     (= 0 (dim b))))
@@ -407,7 +409,7 @@
       (with-release [map-kernel (function modl (name-transp (transpf a b) op-name a b))]
         (launch! map-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             (extract a) (.ld stor) (extract b) (stride b))))))
+                             (extract a) (offset a) (.ld stor) (extract b) (offset b) (stride b))))))
   b)
 
 (defn ^:private uplo-axpby [modl hstream transpf alpha a beta b]
@@ -417,8 +419,8 @@
       (with-release [axpby-kernel (function modl (name-transp (transpf a b) "uplo_axpby" a b))]
         (launch! axpby-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             (.castPrim da alpha) (extract a) (.ld stor)
-                             (.castPrim da beta) (extract b) (stride b))))))
+                             (.castPrim da alpha) (extract a) (offset a) (.ld stor)
+                             (.castPrim da beta) (extract b) (offset b) (stride b))))))
   b)
 
 (defn ^:private uplo-set-scal [modl hstream op-name alpha a]
@@ -428,7 +430,7 @@
       (with-release [op-kernel (function modl op-name)]
         (launch! op-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             (.castPrim da alpha) (extract a) (.ld stor))))))
+                             (.castPrim da alpha) (extract a) (offset a) (.ld stor))))))
   a)
 
 (defn ^:private uplo-sum ^double [modl hstream sum-kernel-name a]
@@ -450,7 +452,7 @@
                      params (parameters acc-count cu-acc)]
         (launch! sum-kernel (grid-2d cnt-sd cnt-fd wgs-sd wgs-fd) hstream
                  (parameters cnt-sd cnt-fd (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             cu-acc (extract a) (stride a)))
+                             cu-acc (extract a) (offset a) (stride a)))
         (if (< 1 acc-count)
           (launch-reduce! hstream sum-reduction-kernel sum-reduction-kernel
                           params params acc-count wgs))
@@ -520,7 +522,7 @@
       ~a)))
 
 (defmacro ^:private sy-rk [cublas-handle cublas method ptr cpp-ptr alpha a beta c]
-  `(if (instance? CUUploMatrix ~c)
+  `(if (and (= :ge (matrix-type ~a)) (= :sy (matrix-type ~c)))
      (let [da# (data-accessor (native-factory ~a))]
        (with-release [alpha# (~cpp-ptr (.wrapPrim da# ~alpha))
                       beta# (~cpp-ptr (.wrapPrim da# ~beta))]
@@ -529,7 +531,7 @@
             (if (column? ~a) ~(:no-trans cublas-trans) ~(:trans cublas-trans))
             (mrows ~c) (ncols ~a) alpha# (~ptr ~a) (stride ~a) beta# (~ptr ~c) (stride ~c)))
        ~c)
-     (throw (ex-info "sy-rk is only available for symmetric matrices." {:c (info ~c)}))))
+     (throw (ex-info "sy-rk is only available for symmetric matrices." {:a (info ~a) :c (info ~c)}))))
 
 (defmacro ^:private sy-mm
   ([cublas-handle cublas method ptr cpp-ptr alpha a b beta c left]
@@ -561,7 +563,7 @@
            (. ~cublas ~method ~cublas-handle ~(:left cublas-side-mode)
               (if (uplo-bottom? ~a) ~(:lower cublas-uplo) ~(:upper cublas-uplo))
               (if (= (navigator ~a) (navigator ~b)) ~(:no-trans cublas-trans) ~(:trans cublas-trans))
-              (if (diag-unit? ~a) ~(:unit cublas-diag-unit) ~(:non-unit cublas-diag-unit))
+              (if (diag-unit? (region ~a)) ~(:unit cublas-diag-unit) ~(:non-unit cublas-diag-unit))
               (.sd stor-b#) (.fd stor-b#) alpha# (~ptr ~a) (stride ~a) (~ptr ~b) (.ld stor-b#)))
          ~b))
      ~b))
@@ -573,13 +575,14 @@
    (when (< 0 (dim x))
      (with-release [math-kernel (function modl (str "vector_" kernel-name))]
        (launch! math-kernel (grid-1d (dim x)) hstream
-                (parameters (dim x) (extract x) (stride x) (extract y) (stride y)))))
+                (parameters (dim x) (extract x) (offset x) (stride x) (extract y) (offset y) (stride y)))))
    y)
   ([modl hstream kernel-name x y z]
    (when (< 0 (dim x))
-     (with-release [math-kernel (function modl kernel-name)]
+     (with-release [math-kernel (function modl (str "vector_" kernel-name))]
        (launch! math-kernel (grid-1d (dim x)) hstream
-                (parameters (dim x) (extract x) (stride x) (extract y) (stride y) (extract z) (stride z)))))
+                (parameters (dim x) (extract x) (offset x) (stride x) (extract y) (offset y) (stride y)
+                            (extract z) (offset z) (stride z)))))
    z))
 
 (defn ^:private vector-linear-frac [modl hstream x y scalea shifta scaleb shiftb z]
@@ -588,16 +591,17 @@
       (if (and (= 0.0 scaleb) (= 1.0 shiftb))
         (with-release [math-kernel (function modl "vector_scale_shift")]
           (launch! math-kernel (grid-1d (dim x)) hstream
-                   (parameters (dim x) (extract x) (stride x)
+                   (parameters (dim x) (extract x) (offset x) (stride x)
                                (.castPrim da scalea) (.castPrim da shifta)
                                (.castPrim da scaleb) (.castPrim da shiftb)
-                               (extract z) (stride z))))
+                               (extract z) (offset z) (stride z))))
         (with-release [math-kernel (function modl "vector_linear_frac")]
           (launch! math-kernel (grid-1d (dim x)) hstream
-                   (parameters (dim x) (extract x) (stride x) (extract y) (stride y)
+                   (parameters (dim x) (extract x) (offset x) (stride x)
+                               (extract y) (offset y) (stride y)
                                (.castPrim da scalea) (.castPrim da shifta)
                                (.castPrim da scaleb) (.castPrim da shiftb)
-                               (extract z) (stride z)))))))
+                               (extract z) (offset z) (stride z)))))))
   z)
 
 (defn ^:private vector-powx [modl hstream x b y]
@@ -605,7 +609,8 @@
     (let [da (data-accessor x)]
       (with-release [math-kernel (function modl "vector_powx")]
         (launch! math-kernel (grid-1d (dim x)) hstream
-                 (parameters (dim x) (extract x) (stride x) (.castPrim da b) (extract y) (stride y))))))
+                 (parameters (dim x) (extract x) (offset x) (stride x) (.castPrim da b)
+                             (extract y) (offset y) (stride y))))))
   y)
 
 (defn ^:private vector-relu [modl hstream kernel-name alpha x y]
@@ -613,7 +618,8 @@
     (let [da (data-accessor x)]
       (with-release [math-kernel (function modl (str "vector_" kernel-name))]
         (launch! math-kernel (grid-1d (dim x)) hstream
-                 (parameters (dim x) (.castPrim da alpha) (extract x) (stride x) (extract y) (stride y))))))
+                 (parameters (dim x) (.castPrim da alpha) (extract x) (offset x) (stride x)
+                             (extract y) (offset y) (stride y))))))
   y)
 
 (defn ^:private ge-math
@@ -623,7 +629,8 @@
      (let [stor (full-storage a)]
        (with-release [math-kernel (function modl (str "ge_" kernel-name))]
          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                  (parameters (.sd stor) (.fd stor) (extract a) (stride a) (extract b) (stride b))))))
+                  (parameters (.sd stor) (.fd stor) (extract a) (offset a) (stride a)
+                              (extract b) (offset b) (stride b))))))
    b)
   ([modl hstream kernel-name a b c]
    (when (< 0 (dim a))
@@ -631,8 +638,9 @@
      (let [stor (full-storage a)]
        (with-release [math-kernel (function modl (str "ge_" kernel-name))]
          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                  (parameters (.sd stor) (.fd stor) (extract a) (stride a) (extract b) (stride b)
-                              (extract c) (stride c))))))
+                  (parameters (.sd stor) (.fd stor) (extract a) (offset a) (stride a)
+                              (extract b) (offset b) (stride b)
+                              (extract c) (offset c) (stride c))))))
    c))
 
 (defn ^:private ge-linear-frac [modl hstream a b scalea shifta scaleb shiftb c]
@@ -643,17 +651,17 @@
       (if (and (= 0.0 scaleb) (= 1.0 shiftb))
         (with-release [math-kernel (function modl "ge_scale_shift")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                   (parameters (.sd stor) (.fd stor) (extract a) (stride a)
+                   (parameters (.sd stor) (.fd stor) (extract a) (offset a) (stride a)
                                (.castPrim da scalea) (.castPrim da shifta)
                                (.castPrim da scaleb) (.castPrim da shiftb)
-                               (extract c) (stride c))))
+                               (extract c) (offset c) (stride c))))
         (with-release [math-kernel (function modl "ge_linear_frac")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                    (parameters (.sd stor) (.fd stor)
-                               (extract a) (stride a) (extract b) (stride b)
+                               (extract a) (offset a) (stride a) (extract b) (offset b) (stride b)
                                (.castPrim da scalea) (.castPrim da shifta)
                                (.castPrim da scaleb) (.castPrim da shiftb)
-                               (extract c) (stride c)))))))
+                               (extract c) (offset c) (stride c)))))))
   c)
 
 (defn ^:private ge-powx [modl hstream a b c]
@@ -663,8 +671,8 @@
           da (data-accessor a)]
       (with-release [math-kernel (function modl "ge_powx")]
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.fd stor) (extract a) (stride a)
-                             (.castPrim da b) (extract c) (stride c))))))
+                 (parameters (.sd stor) (.fd stor) (extract a) (offset a) (stride a)
+                             (.castPrim da b) (extract c) (offset c) (stride c))))))
   c)
 
 (defn ^:private ge-relu [modl hstream kernel-name alpha a c]
@@ -675,7 +683,7 @@
       (with-release [math-kernel (function modl (str "ge_" kernel-name))]
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.fd stor) (.castPrim da alpha)
-                             (extract a) (stride a) (extract c) (stride c))))))
+                             (extract a) (offset a) (stride a) (extract c) (offset c) (stride c))))))
   c)
 
 (defn ^:private uplo-math
@@ -686,7 +694,7 @@
        (with-release [math-kernel (function modl (str "uplo_" kernel-name))]
          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                   (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                              (extract a) (stride a) (extract b) (stride b))))))
+                              (extract a) (offset a) (stride a) (extract b) (offset b) (stride b))))))
    b)
   ([modl hstream kernel-name a b c]
    (when (< 0 (dim a))
@@ -695,7 +703,8 @@
        (with-release [math-kernel (function modl (str "uplo_" kernel-name))]
          (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                   (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                              (extract a) (stride a) (extract b) (stride b) (extract c) (stride c))))))
+                              (extract a) (offset a) (stride a) (extract b) (offset b) (stride b)
+                              (extract c) (offset c) (stride c))))))
    c))
 
 (defn ^:private uplo-linear-frac [modl hstream a b scalea shifta scaleb shiftb c]
@@ -707,16 +716,17 @@
         (with-release [math-kernel (function modl "uplo_scale_shift")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                    (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                               (extract a) (stride a) (.castPrim da scalea) (.castPrim da shifta)
+                               (extract a) (offset a) (stride a)
+                               (.castPrim da scalea) (.castPrim da shifta)
                                (.castPrim da scaleb) (.castPrim da shiftb)
-                               (extract c) (stride c))))
+                               (extract c) (offset c) (stride c))))
         (with-release [math-kernel (function modl "uplo_linear_frac")]
           (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                    (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                               (extract a) (stride a) (extract b) (stride b)
+                               (extract a) (offset a) (stride a) (extract b) (offset b) (stride b)
                                (.castPrim da scalea) (.castPrim da shifta)
                                (.castPrim da scaleb) (.castPrim da shiftb)
-                               (extract c) (stride c)))))))
+                               (extract c) (offset c) (stride c)))))))
   c)
 
 (defn ^:private uplo-powx [modl hstream a b c]
@@ -727,7 +737,8 @@
       (with-release [math-kernel (function modl "uplo_powx")]
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             (extract a) (stride a) (.castPrim da b) (extract c) (stride c))))))
+                             (extract a) (offset a) (stride a) (.castPrim da b)
+                             (extract c) (offset c) (stride c))))))
   c)
 
 (defn ^:private uplo-relu [modl hstream kernel-name alpha a c]
@@ -738,7 +749,8 @@
       (with-release [math-kernel (function modl (str "uplo_" kernel-name))]
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             (.castPrim da alpha) (extract a) (stride a) (extract c) (stride c))))))
+                             (.castPrim da alpha) (extract a) (offset a) (stride a)
+                             (extract c) (offset c) (stride c))))))
   c)
 
 ;; ======================== Integer Vector Engines ===========================================
@@ -889,7 +901,7 @@
      (iamax [this# x#]
        (max 0 (dec (long (vector-imaxmin (handle this#) ~cublas ~(cu-blas 'cublasI t 'amax_v2) ~ptr x#)))))
      (iamin [this# x#]
-       (max 0 (dec (long (vector-imaxmin (handle this#) ~cublas ~(cu-blas 'cublasI t 'amax_v2) ~ptr x#)))))
+       (max 0 (dec (long (vector-imaxmin (handle this#) ~cublas ~(cu-blas 'cublasI t 'amin_v2) ~ptr x#)))))
      (rot [this# x# y# c# s#]
        (vector-rot (handle this#) ~cublas ~(cu-blas T 'rot_v2) ~ptr ~cpp-ptr x# y# c# s#))
      (rotg [this# abcs#]
@@ -917,7 +929,7 @@
      (imin [this# x#]
        (not-available))
      (set-all [this# alpha# x#]
-       (vector-set (.-modl this#) (.-hstream this#) x#)
+       (vector-set (.-modl this#) (.-hstream this#) alpha# x#)
        x#)
      (axpby [this# alpha# x# beta# y#]
        (vector-axpby (.-modl this#) (.-hstream this#) alpha# x# beta# y#)
@@ -1025,7 +1037,7 @@
      (floor [this# a# y#]
        (~math-method (.-modl this#) (.-hstream this#) "floor"  a# y#))
      (fceil [this# a# y#]
-       (~math-method (.-modl this#) (.-hstream this#) "fceil" a# y#))
+       (~math-method (.-modl this#) (.-hstream this#) "ceil" a# y#))
      (trunc [this# a# y#]
        (~math-method (.-modl this#) (.-hstream this#) "trunc" a# y#))
      (round [this# a# y#]
@@ -1049,15 +1061,15 @@
      (elu [this# alpha# a# y#]
        (~relu (.-modl this#) (.-hstream this#) "elu" alpha# a# y#))))
 
-(defmacro real-rng* [name random]
+(defmacro real-rng* [name random type]
   `(extend-type ~name
      RandomNumberGenerator
      (rand-uniform [this# rng-stream# lower# upper# x#]
-       (~random (.-modl this#) (.-hstream this#) "uniform_double"
+       (~random (.-modl this#) (.-hstream this#) ~(str "uniform_" type)
         (or rng-stream# (atom (generate-seed))) lower# upper# x#)
        x#)
      (rand-normal [this# rng-stream# mu# sigma# x#]
-       (~random (.-modl this#) (.-hstream this#) "normal_double"
+       (~random (.-modl this#) (.-hstream this#) ~(str "normal_" type)
         (or rng-stream# (atom (generate-seed))) mu# sigma# x#)
        x#)))
 
@@ -1068,7 +1080,7 @@
 (real-vector-blas* FloatVectorEngine "s" "S" float-ptr cpp/float-ptr cublas)
 (real-vector-blas-plus* FloatVectorEngine)
 (real-math* FloatVectorEngine vector-math vector-linear-frac vector-powx vector-relu)
-(real-rng* FloatVectorEngine vector-random)
+(real-rng* FloatVectorEngine vector-random "float")
 
 (deftype DoubleVectorEngine [cublas-handle modl hstream]
   HandleProvider
@@ -1077,7 +1089,7 @@
 (real-vector-blas* DoubleVectorEngine "d" "D" double-ptr cpp/double-ptr cublas)
 (real-vector-blas-plus* DoubleVectorEngine)
 (real-math* DoubleVectorEngine vector-math vector-linear-frac vector-powx vector-relu)
-(real-rng* DoubleVectorEngine vector-random)
+(real-rng* DoubleVectorEngine vector-random "double")
 
 ;; ================= Real GE Engines ========================================
 
@@ -1088,9 +1100,11 @@
        (ge-equals (.-modl this#) (.-hstream this#) a# b#))
      Blas
      (swap [this# a# b#]
-       (ge-swap (handle this#) ~cublas ~(cu-blas t 'swap_v2) (.-modl this#) (.-hstream this#) ~ptr a# b#))
+       (ge-swap (handle this#) ~cublas ~(cu-blas t 'swap_v2) (.-modl this#) (.-hstream this#) ~ptr a# b#)
+       a#)
      (copy [this# a# b#]
-       (ge-am (handle this#) ~cublas ~(cu-blas t 'geam) ~ptr ~cpp-ptr 1.0 a# 0.0 b#))
+       (ge-am (handle this#) ~cublas ~(cu-blas t 'geam) ~ptr ~cpp-ptr 1.0 a# 0.0 b#)
+       b#)
      (dot [this# a# b#]
        (ge-dot (handle this#) ~cublas ~(cu-blas t 'dot_v2) ~ptr a# b#))
      (nrm1 [_# _#]
@@ -1139,7 +1153,7 @@
 (real-ge-blas* FloatGEEngine "S" float-ptr cpp/float-ptr cublas)
 (real-ge-blas-plus* FloatGEEngine "S" float-ptr cpp/float-ptr)
 (real-math* FloatGEEngine ge-math ge-linear-frac ge-powx ge-relu)
-(real-rng* FloatVectorEngine ge-random)
+(real-rng* FloatGEEngine ge-random "float")
 
 (deftype DoubleGEEngine [cublas-handle modl hstream]
   HandleProvider
@@ -1148,7 +1162,7 @@
 (real-ge-blas* DoubleGEEngine "D" double-ptr cpp/double-ptr cublas)
 (real-ge-blas-plus* DoubleGEEngine "D" double-ptr cpp/double-ptr)
 (real-math* DoubleGEEngine ge-math ge-linear-frac ge-powx ge-relu)
-(real-rng* DoubleVectorEngine ge-random)
+(real-rng* DoubleGEEngine ge-random "double")
 
 ;; ================= Real TR Engines ========================================
 
@@ -1159,9 +1173,11 @@
        (uplo-equals (.-modl this#) (.-hstream this#) layout-match? a# b#))
      Blas
      (swap [this# a# b#]
-       (uplo-map (.-modl this#) (.-hstream this#) layout-match? "uplo_swap" a# b#))
+       (uplo-map (.-modl this#) (.-hstream this#) layout-match? "uplo_swap" a# b#)
+       a#)
      (copy [this# a# b#]
-       (uplo-map (.-modl this#) (.-hstream this#) layout-match? "uplo_copy" a# b#))
+       (uplo-map (.-modl this#) (.-hstream this#) layout-match? "uplo_copy" a# b#)
+       b#)
      (dot [_# _# _#]
        (not-available))
      (nrm1 [_# _#]
@@ -1173,14 +1189,14 @@
      (asum [_# _#]
        (not-available))
      (scal [this# alpha# a#]
-       (uplo-set-scal (.-modl this#) (.-hstream this#) layout-match? "uplo_scal" alpha# a#))
+       (uplo-set-scal (.-modl this#) (.-hstream this#) "uplo_scal" alpha# a#))
      (axpy [this# alpha# a# b#]
        (uplo-axpby (.-modl this#) (.-hstream this#) layout-match? alpha# a# 1.0 b#))
      (mv
-       ([this# alpha# a# x# beta# y#]
-        (tr-mv (handle this#) ~cublas ~(cu-blas t 'trmv_v2) ~ptr a# x#))
-       ([_# a# _#]
-        (tr-mv a#)))
+       ([_# _# a# _# _# _#]
+        (tr-mv a#))
+       ([this# a# x#]
+        (tr-mv (handle this#) ~cublas ~(cu-blas t 'trmv_v2) ~ptr a# x#)))
      (rk [_# _# _# _# _#]
        (not-available))
      (mm
@@ -1195,7 +1211,7 @@
      (amax [_# _#]
        (not-available))
      (sum [this# a#]
-       (uplo-sum (.-modl this#) (.-hstream this#) "uplo_sum" a#))
+       (uplo-sum (.-modl this#) (.-hstream this#) "tr_sum" a#))
      (set-all [this# alpha# a#]
        (uplo-set-scal (.-modl this#) (.-hstream this#) "uplo_set" alpha# a#))
      (axpby [this# alpha# a# beta# b#]
@@ -1255,9 +1271,11 @@
        (uplo-equals (.-modl this#) (.-hstream this#) symmetric-match? a# b#))
      Blas
      (swap [this# a# b#]
-       (uplo-map (.-modl this#) (.-hstream this#) symmetric-match? "uplo_swap" a# b#))
+       (uplo-map (.-modl this#) (.-hstream this#) symmetric-match? "uplo_swap" a# b#)
+       a#)
      (copy [this# a# b#]
-       (uplo-map (.-modl this#) (.-hstream this#) symmetric-match? "uplo_copy" a# b#))
+       (uplo-map (.-modl this#) (.-hstream this#) symmetric-match? "uplo_copy" a# b#)
+       b#)
      (dot [_# _# _#]
        (not-available))
      (nrm1 [_# _#]
@@ -1269,7 +1287,7 @@
      (asum [_# _#]
        (not-available))
      (scal [this# alpha# a#]
-       (uplo-set-scal (.-modl this#) (.-hstream this#) symmetric-match? "uplo_scal" alpha# a#))
+       (uplo-set-scal (.-modl this#) (.-hstream this#) "uplo_scal" alpha# a#))
      (axpy [this# alpha# a# b#]
        (uplo-axpby (.-modl this#) (.-hstream this#) symmetric-match? alpha# a# 1.0 b#))
      (mv
@@ -1282,11 +1300,8 @@
         (sy-r (handle this#) ~cublas ~(cu-blas t 'syr2_v2) ~ptr ~cpp-ptr alpha# x# y# a#))
        ([this# alpha# x# a#]
         (sy-r (handle this#) ~cublas ~(cu-blas t 'syr_v2) ~ptr ~cpp-ptr alpha# x# a#)))
-     (srk
-       ([this# alpha# x# beta# c#]
-        (sy-rk (handle this#) ~cublas ~(cu-blas t 'syrk_v2) ~ptr ~cpp-ptr alpha# x# beta# c#))
-       ([this# alpha# x# a#]
-        (sy-r (handle this#) ~cublas ~(cu-blas t 'syr_v2) ~ptr ~cpp-ptr alpha# x# a#)))
+     (srk [this# alpha# a# beta# c#]
+       (sy-rk (handle this#) ~cublas ~(cu-blas t 'syrk_v2) ~ptr ~cpp-ptr alpha# a# beta# c#))
      (mm
        ([this# alpha# a# b# beta# c# left#]
         (sy-mm (handle this#) ~cublas ~(cu-blas t 'symm_v2) ~ptr ~cpp-ptr alpha# a# b# beta# c# left#))
@@ -1299,7 +1314,7 @@
      (amax [_# _#]
        (not-available))
      (sum [this# a#]
-       (uplo-sum (.-modl this#) (.-hstream this#) "uplo_sum" a#))
+       (uplo-sum (.-modl this#) (.-hstream this#) "sy_sum" a#))
      (set-all [this# alpha# a#]
        (uplo-set-scal (.-modl this#) (.-hstream this#) "uplo_set" alpha# a#))
      (axpby [this# alpha# a# beta# b#]
@@ -1311,8 +1326,8 @@
   HandleProvider
   (handle [_]
     cublas-handle))
-(real-sy-blas* FloatTREngine "S" float-ptr cpp/float-ptr cublas)
-(real-sy-blas-plus* FloatTREngine )
+(real-sy-blas* FloatSYEngine "S" float-ptr cpp/float-ptr cublas)
+(real-sy-blas-plus* FloatSYEngine )
 (real-math* FloatSYEngine ge-math ge-linear-frac ge-powx ge-relu)
 
 (deftype DoubleSYEngine [cublas-handle modl hstream]
@@ -1470,7 +1485,7 @@
                                                             (cuda-malloc size :long))
                                                           cuda-free!)]
          (->CUFactory modl hstream long-accessor native-long
-                      (->LongVectorEngine modl hstream) nil nil nil)))))
+                      (->LongVectorEngine handle modl hstream) nil nil nil)))))
 
   (defn cublas-int [ctx hstream]
     (in-context

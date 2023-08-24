@@ -980,14 +980,12 @@
   See related info about [cblas_?swap](https://software.intel.com/en-us/node/520744).
   "
   [^VectorSpace x y]
-  (if-not (identical? x y)
+  (when (and (not (identical? x y)) (< 0 (.dim x)))
     (if (and (api/compatible? x y) (api/fits? x y))
-      (if (< 0 (.dim x))
-        (api/swap (api/engine x) x y)
-        x)
+      (api/swap (api/engine x) x y)
       (dragan-says-ex "You cannot swap data of incompatible or ill-fitting structures."
-                      {:x (info x) :y (info y)}))
-    x))
+                      {:x (info x) :y (info y)})))
+  x)
 
 (defn copy!
   "Copies all entries of a vector or a matrix `x` to the compatible structure `y`.

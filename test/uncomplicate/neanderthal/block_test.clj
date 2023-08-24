@@ -182,7 +182,7 @@
                  t5 (vctr factory [1 2 3 4 5 1 2 3 4 5 1 2 3])]
     (facts
      "BlockVector should be a Monoid."
-     v1 => t1
+     (seq (native v1)) => (seq (native t1))
      v2 => t2
      v3 => t3
      v4 => t4

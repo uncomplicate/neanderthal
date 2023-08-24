@@ -62,9 +62,7 @@
        (let [n# (max 1 n#)]
          (capacity! (~pointer (construct# (* (. ~entry-class BYTES) n#))) n#)))
      (initialize [_# p#]
-       (memset! p# 0 hstream#))
-     (initialize [_# p# v#]
-       (memset! p# v# hstream#))
+       (memset! p# (byte 0) hstream#))
      (wrapPrim [_# v#]
        (pointer (~cast v#)))
      (castPrim [_# v#]
@@ -178,7 +176,7 @@
        ([this# fact#]
         (create-vector (factory fact#) (.-n this#) true)))
      (host [this#]
-       (let-release [res# (raw (native-factory this#))]
+       (let-release [res# (raw this# (native-factory this#))]
          (get-vector! this# res#)))
      (native [this#]
        (host this#))))
@@ -298,7 +296,7 @@
        ([this# fact#]
         (create-ge (factory fact#) (.-m this#) (.-n this#) (column? this#) true)))
      (host [this#]
-       (let-release [res# (raw (native-factory this#))]
+       (let-release [res# (raw this# (native-factory this#))]
          (get-matrix! this# res#)))
      (native [this#]
        (host this#))))
@@ -415,8 +413,8 @@
         (create-uplo (factory fact#) (.-n this#) (.-matrix-type this#) (column? this#)
                      (lower? (.-reg this#)) (diag-unit? (.-reg this#)) true)))
      (host [this#]
-       (let-release [res# (raw (native-factory this#))]
-         (copy (.-eng this#) this# res#)
+       (let-release [res# (raw this# (native-factory this#))]
+         (get-matrix! this# res#)
          res#))
      (native [this#]
        (host this#))))

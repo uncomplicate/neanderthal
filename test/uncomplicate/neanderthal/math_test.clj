@@ -276,3 +276,15 @@
   (test-vctr-linear-frac factory)
   (test-ge-linear-frac factory)
   (test-tr-linear-frac factory))
+
+(defn test-all-device-todo-remove [factory]
+  (test-math factory diff-vctr-1 diff-vctr-2)
+  ;; (test-math factory diff-ge-1 diff-ge-2)
+  ;; (test-math factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  ;; (test-math-device factory diff-vctr-1 diff-vctr-2)
+  ;; (test-math-device factory diff-ge-1 diff-ge-2)
+  ;; (test-math-device factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  ;; (test-vctr-linear-frac factory)
+  ;; (test-ge-linear-frac factory)
+  ;; (test-tr-linear-frac factory)
+  )

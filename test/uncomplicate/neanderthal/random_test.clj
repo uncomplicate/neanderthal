@@ -27,7 +27,7 @@
              => (roughly 50 1)
              (/ (double (sum (rand-uniform! seed -100 10 (col a 0)))) m)
              => (roughly -45 1)
-             (rand-normal! seed 0 1 x0) => x0))))
+             (rand-uniform! seed 0 1 x0) => x0))))
 
 (defn test-vctr-rand-normal [factory]
   (facts "Test vector rand-normal."

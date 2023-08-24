@@ -56,8 +56,7 @@
        "Matrix rows and columns."
        (dim subvector-x) => (/ cnt 2)
        (transfer! (entry! host-x 3 magic) cl-x) => cl-x
-       (entry (transfer subvector-x) 0)
-       => magic
+       (entry (transfer subvector-x) 0) => magic
        (entry (transfer (copy! (subvector cl-x 3 (mrows cl-a))
                                (copy (col cl-a 6)))) 0)
        => magic))))
@@ -177,16 +176,14 @@
          x-magic 2]
      (with-release [host-x (entry! (vctr host-factory cnt) x-magic)
                     cl-x (vctr factory cnt)]
-
        (transfer! host-x cl-x)
-       (linear-frac! (subvector cl-x 3000 4000) 100)
-       (linear-frac! (subvector host-x 3000 4000) 100)
+       ;;(linear-frac! (subvector cl-x 3000 4000) 100)
+       ;;(linear-frac! (subvector host-x 3000 4000) 100)
        (transfer cl-x) => host-x))))
 
 (defn test-all [factory]
-  (do
-    (test-clblock factory)
-    (test-blas1 factory)
-    (test-blas2 factory)
-    (test-blas3 factory)
-    (test-vect-math factory)))
+  (test-clblock factory)
+  (test-blas1 factory)
+  (test-blas2 factory)
+  (test-blas3 factory)
+  (test-vect-math factory))

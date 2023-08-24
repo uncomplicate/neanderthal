@@ -15,7 +15,7 @@
   cublas-status-codes
   {cublas/CUBLAS_STATUS_ALLOC_FAILED :alloc-failed
    cublas/CUBLAS_STATUS_ARCH_MISMATCH :arch-mismatch
-   cublas/CUBLAS_STATUS_EXECUTION_FAILED :executin-failed
+   cublas/CUBLAS_STATUS_EXECUTION_FAILED :execution-failed
    cublas/CUBLAS_STATUS_INTERNAL_ERROR :internal-error
    cublas/CUBLAS_STATUS_INVALID_VALUE :invalid-value
    cublas/CUBLAS_STATUS_LICENSE_ERROR :license-error
