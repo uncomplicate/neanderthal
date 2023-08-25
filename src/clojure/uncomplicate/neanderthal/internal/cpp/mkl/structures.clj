@@ -22,8 +22,8 @@
     [api :refer :all]
     [navigation :refer :all]
     [common :refer [dense-rows dense-cols]]
-    [printing :refer [print-vector]]]
-   [uncomplicate.neanderthal.internal.host.fluokitten :refer :all]
+    [printing :refer [print-vector]]
+    [fluokitten :refer :all]]
    [uncomplicate.neanderthal.internal.cpp.structures
     :refer [vector-seq real-block-vector integer-block-vector cs-vector]]
    [uncomplicate.neanderthal.internal.cpp.mkl

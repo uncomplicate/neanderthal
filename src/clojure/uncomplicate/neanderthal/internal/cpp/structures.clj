@@ -26,8 +26,8 @@
     [api :refer :all]
     [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
     [common :refer :all]
-    [navigation :refer :all]]
-   [uncomplicate.neanderthal.internal.host.fluokitten :refer :all])
+    [navigation :refer :all]
+    [fluokitten :refer :all]])
   (:import [java.nio Buffer ByteBuffer]
            [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL IFn$LLLL]

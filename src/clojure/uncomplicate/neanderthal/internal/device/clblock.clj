@@ -26,8 +26,8 @@
              [api :refer :all]
              [common :refer [dense-rows dense-cols dense-dias region-dias require-trf]]
              [printing :refer [print-vector print-ge print-uplo]]
-             [navigation :refer :all]]
-            [uncomplicate.neanderthal.internal.host.fluokitten :refer [vector-op matrix-op]];;TODO move fluokitten to internal.fluokitten
+             [navigation :refer :all]
+             [fluokitten :refer [vector-op matrix-op]]]
             [uncomplicate.neanderthal.internal.cpp.structures
              :refer [real-block-vector real-ge-matrix real-uplo-matrix]]
             [uncomplicate.neanderthal.internal.device.common :refer [device-vector-equals device-matrix-equals]])

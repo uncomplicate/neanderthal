@@ -16,13 +16,11 @@
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [uncomplicate/commons "0.14.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.9.1"]
-                 #_[uncomplicate/neanderthal-native "0.46.0"] ;;TODO remove
                  [org.uncomplicate/clojure-cpp "0.2.0-SNAPSHOT"]
                  [org.bytedeco/mkl-platform "2023.1-1.5.10-SNAPSHOT"]
-                 [uncomplicate/clojurecl "0.15.1"]
+                 [uncomplicate/clojurecl "0.15.2-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.5.2"]
                  [uncomplicate/clojurecuda "0.18.0-SNAPSHOT"]
-                 #_[org.jcuda/jcublas "11.8.0"] ;;TODO remove
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
