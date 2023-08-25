@@ -974,7 +974,7 @@
            (mmt! 2.0 (trans a1) 3.0 s3) => (view-sy (mm! 2.0 (trans a1) a1 3.0 (view-ge s4))))
 
          (mmt! 2.0 (sy factory 3 [1 2 3 4 5 6]) 3.0 (sy factory 3 [1 2 3 4 5 6]))
-         => (throws ExceptionInfo)))
+         => (throws Exception)))
 
 (defn test-sy-entry [factory sy]
   (facts "Symmetric Matrix entry."

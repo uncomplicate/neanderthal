@@ -136,7 +136,7 @@
   (->TypedCLAccessor (volatile! true) ctx queue Float/TYPE Float/BYTES float-array wrap-float float float-pointer))
 
 (defn cl-double-accessor [ctx queue]
-  (->TypedCLAccessor (volatile! true) ctx queue Double/TYPE Double/BYTES double-array wrap-double double float-pointer))
+  (->TypedCLAccessor (volatile! true) ctx queue Double/TYPE Double/BYTES double-array wrap-double double double-pointer))
 
 (defn cl-int-accessor [ctx queue]
   (->TypedCLAccessor (volatile! true) ctx queue Integer/TYPE Integer/BYTES int-array wrap-int int int-pointer))

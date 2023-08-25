@@ -12,7 +12,7 @@ computations on.
 
 Neanderthal supports any pluggable infrastructure ([GPU computation is already
 available!](/articles/tutorial_native.html)), and the default is to use vectors
-and matrices backed by direct byte buffers, that can be sent to native libraries
+and matrices backed by native arrays, that can be sent to native libraries
 or GPU via JNI without copying overhead.
 
 ### Creating Vectors and Matrices
@@ -31,12 +31,12 @@ $code"
 (ns uncomplicate.neanderthal.examples.guides.tutorial-native-test
   (:require [midje.sweet :refer :all]
             [uncomplicate.fluokitten.core :refer [fmap! fold]]
+            [uncomplicate.clojure-cpp :refer [put-entry!]]
             [uncomplicate.neanderthal
              [block :refer [buffer]]
              [core :refer :all]
              [native :refer :all]])
-  (:import [java.nio ByteBuffer ByteOrder]
-           clojure.lang.ExceptionInfo))
+  (:import clojure.lang.ExceptionInfo))
 
 "$text
 
@@ -77,27 +77,18 @@ $code"
 
 "$text
 
-### Neanderthal keeps data in direct byte buffers
+### Neanderthal keeps data in native JavaCPP pointers
 
-Please note that a non-buffer input source (numbers, varargs,
+Please note that a non pointer input source (numbers, varargs,
 sequences) is suitable only as a convenience for smallish data and test code.
 Be careful about the performance when working with large data, though
 - sequences are slow and contain boxed numbers! Thus, the preferred way
 for fast population of your matrices is to create a raw matrix, and use entry!,
-or to extract its raw ByteBuffer, and work on it **carefully**.
+or to extract its raw pointer, and work on it **carefully**.
 
-It is awkward and cumbersome to directly work with buffers. You should take care
-of endianess: java uses BIG_ENDIAN, while Intel processors and most native
-platforms natively support LITTLE_ENDIAN. If you pre-load your data in buffers,
-you, or the library you use, have to take care of using the proper native
-endianess. Also take care to revert the buffer position to 0. Neanderthal does not care how you prepare the buffers
-as long as the data is prepared well. You can use some of the existing libraries that
-work with native buffers (Vertigo, etc.), check out Neanderthal API to see what
-utilities are currently available, or roll your own.
-
-Matrix data is also kept in a one-dimensional byte buffer, and NOT in a object
-buffer or array that holds raw buffers, for performance reasons. By default,
-when used in 2D matrices, Neanderthal treats a 1D buffer as a sequence of columns.
+Matrix data is also kept in a one-dimensional native array that holds primitives,
+and NOT in a Java array or array that holds raw pointers, for performance reasons. By default,
+when used in 2D matrices, Neanderthal treats a 1D array as a sequence of columns.
 Column-oriented order is commonly used in numerical software, contrary to
 row-oriented order used by the C language. Java uses neither; 2D arrays are
 arrays of array references, and this difference has a huge performance impact.
@@ -106,7 +97,7 @@ need to care about this, unless you write a pluggable Neanderthal implementation
 When you need to harness other structures, Neanderthal's constructors take
 additional options, though!
 
-The same ByteBuffer can hold data for vectors as well as matrices.
+The same native array can hold data for vectors as well as matrices.
 
 $code"
 
@@ -120,9 +111,8 @@ in raw byte buffers."
        empty-buf (buffer empty-matrix)
        filled-buf (loop [i 0 buf empty-buf]
                     (if (< i (* m n))
-                      (recur (inc i) (.putDouble ^ByteBuffer buf (double i)))
-                      buf))
-       rewind-buf (.position ^ByteBuffer filled-buf 0)]
+                      (recur (inc i) (put-entry! buf i (double i)))
+                      buf))]
    empty-matrix => (dge 2 3 (range (* m n)))))
 
 "$text

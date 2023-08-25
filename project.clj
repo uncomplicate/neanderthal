@@ -49,16 +49,11 @@
                            :output-path "docs/codox"}
 
                    ;;also replaces lein's default JVM argument TieredStopAtLevel=1
-                   ;; If building on Java 9+, uncomment the --add-opens=etc. line.
-                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
-                                        "-XX:MaxDirectMemorySize=16g" "-XX:+UseLargePages"
-                                        #_"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED" ;;TODO remove
-                                        #_"--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}}
+                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :classifiers {:tests {:source-paths ^:replace ["test"]}}
-  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :source-paths ["src/clojure" "src/device"]
   :java-source-paths ["src/java"]
   :test-paths ["test"])
