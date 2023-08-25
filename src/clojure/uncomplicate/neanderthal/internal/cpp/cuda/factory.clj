@@ -755,72 +755,6 @@
 
 ;; ======================== Integer Vector Engines ===========================================
 
-(defmacro integer-vector-blas* [name t ptr cublas]
-  `(extend-type ~name
-     BlockEngine
-     (equals-block [this# x# y#]
-       (vector-equals (.-modl this#) (.-hstream this#) x# y#))
-     Blas
-     (swap [this# x# y#]
-       (vector-method (handle this#) ~cublas ~(cu-blas t 'swap_v2) ~ptr x# y#)
-       x#)
-     (copy [this# x# y#]
-       (vector-method (handle this#) ~cublas ~(cu-blas t 'copy_v2) ~ptr x# y#)
-       y#)
-     (dot [_# _#  _#]
-       (not-available))
-     (nrm1 [_# _#]
-       (not-available))
-     (nrm2 [_# _#]
-       (not-available))
-     (nrmi [_# _#]
-       (not-available))
-     (asum [_# _#]
-       (not-available))
-     (iamax [_# _#]
-       (not-available))
-     (iamin [_# _#]
-       (not-available))
-     (rot [_# _# _# _# _#]
-       (not-available))
-     (rotg [_# _#]
-       (not-available))
-     (rotm [_# _# _# _#]
-       (not-available))
-     (rotmg [_# _# _#]
-       (not-available))
-     (scal [_# _# _#]
-       (not-available))
-     (axpy [_# _# _# _#]
-       (not-available))
-     BlasPlus
-     (amax [_# _#]
-       (not-available))
-     (subcopy [this# x# y# kx# lx# ky#]
-       (vector-copy (.-modl this#) (.-hstream this#) x# y# kx# lx# ky#))
-     (sum [_# _#]
-       (not-available))
-     (imax [_# _#]
-       (not-available))
-     (imin [_# _#]
-       (not-available))
-     (set-all [this# alpha# x#]
-       (vector-set (.-modl this#) (.-hstream this#) alpha# x#))
-     (axpby [_# alpha# x# beta# y#]
-       (not-available))))
-
-(deftype LongVectorEngine [cublas-handle modl hstream]
-  HandleProvider
-  (handle [_]
-    cublas-handle))
-(integer-vector-blas* LongVectorEngine "D" double-ptr cublas)
-
-(deftype IntVectorEngine [cublas-handle modl hstream]
-  HandleProvider
-  (handle [_]
-    cublas-handle))
-(integer-vector-blas* IntVectorEngine "S" float-ptr cublas)
-
 (deftype IntegerVectorEngine [modl hstream]
   BlockEngine
   (equals-block [this x y]
@@ -1485,7 +1419,7 @@
                                                             (cuda-malloc size :long))
                                                           cuda-free!)]
          (->CUFactory modl hstream long-accessor native-long
-                      (->LongVectorEngine handle modl hstream) nil nil nil)))))
+                      (->IntegerVectorEngine modl hstream) nil nil nil)))))
 
   (defn cublas-int [ctx hstream]
     (in-context
@@ -1500,7 +1434,7 @@
                                                           (cuda-malloc size :int))
                                                         cuda-free!)]
          (->CUFactory modl hstream int-accessor native-int
-                      (->IntVectorEngine handle modl hstream) nil nil nil)))))
+                      (->IntegerVectorEngine modl hstream) nil nil nil)))))
 
   (defn cublas-short [ctx hstream]
     (in-context

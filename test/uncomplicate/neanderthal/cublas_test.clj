@@ -64,15 +64,14 @@
     (random-test/test-all *cuda-factory*)
     (random-test/test-all-device *cuda-factory*))
 
-  ;; (with-engine cuda-long default-stream
-  ;;   (real-test/test-basic-integer *cuda-factory*))
+  (with-engine cuda-long default-stream
+    (real-test/test-basic-integer *cuda-factory*))
 
-  ;; (with-engine cuda-int default-stream
-  ;;   (real-test/test-basic-integer *cuda-factory*))
+  (with-engine cuda-int default-stream
+    (real-test/test-basic-integer *cuda-factory*))
 
-  ;; (with-engine cuda-short default-stream
-  ;;   (real-test/test-basic-integer *cuda-factory*))
+  (with-engine cuda-short default-stream
+    (real-test/test-basic-integer *cuda-factory*))
 
-  ;; (with-engine cuda-byte default-stream
-  ;;   (real-test/test-basic-integer *cuda-factory*))
-  )
+  (with-engine cuda-byte default-stream
+    (real-test/test-basic-integer *cuda-factory*)))
