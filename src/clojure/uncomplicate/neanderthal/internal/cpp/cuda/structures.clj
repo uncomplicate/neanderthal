@@ -6,7 +6,7 @@
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
-                                              int-pointer short-pointer byte-pointer element-count null?
+                                              int-pointer short-pointer byte-pointer null?
                                               PointerCreator capacity!]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
             [uncomplicate.neanderthal
@@ -57,7 +57,7 @@
      (entryWidth [_#]
        (. ~entry-class BYTES))
      (count [_# p#]
-       (element-count p#))
+       (size p#))
      (createDataSource [_# n#]
        (let [n# (max 1 n#)]
          (capacity! (~pointer (construct# (* (. ~entry-class BYTES) n#))) n#)))

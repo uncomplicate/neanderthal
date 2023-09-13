@@ -10,12 +10,12 @@
   (:require
    [uncomplicate.commons
     [core :refer [Releaseable release let-release Info info double-fn wrap-float wrap-double
-                  wrap-int wrap-long wrap-short wrap-byte Viewable view Wrapper extract]]
+                  wrap-int wrap-long wrap-short wrap-byte Viewable view Wrapper extract size]]
     [utils :refer [dragan-says-ex]]]
    [uncomplicate.fluokitten.protocols
     :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold foldmap fmap fmap!]]
    [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
-                                     int-pointer short-pointer byte-pointer element-count null?
+                                     int-pointer short-pointer byte-pointer null?
                                      PointerCreator capacity!]]
    [uncomplicate.neanderthal
     [core :refer [transfer! copy! dim subvector vctr ge matrix-type mrows ncols matrix-type
@@ -66,7 +66,7 @@
      (entryWidth [_#]
        (. ~entry-class BYTES))
      (count [_# p#]
-       (element-count p#))
+       (size p#))
      (createDataSource [_# n#]
        (let [n# (max 1 n#)]
          (capacity! (~pointer (construct# (* (. ~entry-class BYTES) n#))) n#)))
@@ -2866,7 +2866,7 @@
      DenseContainer
      (view-vctr
        ([this#]
-        (create-vector ~fact false this# (element-count this#) 0 1))
+        (create-vector ~fact false this# (size this#) 0 1))
        ([this# stride-mult#]
         (view-vctr (view-vctr this#) stride-mult#)))
      (view-ge
