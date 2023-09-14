@@ -11,7 +11,7 @@
              [core :refer [with-release let-release Info info Releaseable release Viewable]]
              [utils :refer [dragan-says-ex with-check]]]
             [uncomplicate.clojure-cpp
-             :refer [float-ptr double-ptr int-ptr int-ptr* null? get-entry capacity!]]
+             :refer [float-ptr double-ptr int-ptr int-ptr* null? get-entry capacity! safe]]
             [uncomplicate.neanderthal.internal.api :refer [Flippable]]
             [uncomplicate.neanderthal.internal.cpp.mkl.constants :refer :all])
   (:import [org.bytedeco.javacpp Pointer FloatPointer DoublePointer IntPointer]
@@ -44,8 +44,9 @@
   (mkl_rt/MKL_realloc p size))
 
 (defn free! [^Pointer p]
-  (mkl_rt/MKL_free p)
-  (.setNull p)
+  (when-not (null? p)
+    (mkl_rt/MKL_free (.position p 0))
+    (.setNull p))
   p)
 
 (defn free-buffers! []
