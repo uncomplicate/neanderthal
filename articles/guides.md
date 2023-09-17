@@ -11,7 +11,7 @@ layout: article
 
 ## Books
 
-[New book available for subscription.]("https://aiprobook.com/deep-learning-for-programmers")
+[New book available for subscription.](https://aiprobook.com/deep-learning-for-programmers)
 
 <a href="https://aiprobook.com/deep-learning-for-programmers">
 <img src="http://aiprobook.com/img/dlfp-cover.png" style="max-width: 100%"/>
