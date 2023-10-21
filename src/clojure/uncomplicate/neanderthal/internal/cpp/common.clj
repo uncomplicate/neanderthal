@@ -16,13 +16,13 @@
   (^FloatPointer [^Block x]
    (cpp/float-ptr (.buffer x)))
   (^FloatPointer [^Block x ^long i]
-   (.getPointer ^Pointer (.buffer x) FloatPointer (max 0 i))))
+   (.getPointer ^Pointer (.buffer x) FloatPointer i)))
 
 (defn double-ptr
   (^DoublePointer [^Block x]
    (cpp/double-ptr (.buffer x)))
   (^DoublePointer [^Block x ^long i]
-   (.getPointer ^Pointer (.buffer x) DoublePointer (max 0 i))))
+   (.getPointer ^Pointer (.buffer x) DoublePointer i)))
 
 (defn int-ptr ^IntPointer [^Block x]
   (cpp/int-ptr (.buffer x)))

@@ -3014,7 +3014,7 @@
   (test-sy-sv factory)
   (test-sy-trx factory sy)
   (test-sy-potrx factory)
-  ;; (test-gb-trx factory) TODO gb-trf throws MKL error when values are not random. If I introduced a bug, I can't find it...
+  (test-gb-trx factory)
   (test-sb-trx factory)
   (test-tb-trx factory)
   (test-sy-trx factory sp)
