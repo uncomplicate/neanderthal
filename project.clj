@@ -24,7 +24,8 @@
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
-                             [lein-codox "0.10.8"]]
+                             [lein-codox "0.10.8"]
+                             [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
                    :global-vars {*warn-on-reflection* true
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
@@ -36,16 +37,19 @@
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
                            :themes [:rdash]
-                           :namespaces [uncomplicate.neanderthal.core
+                           :namespaces [uncomplicate.neanderthal.auxil
+                                        uncomplicate.neanderthal.block
+                                        uncomplicate.neanderthal.core
+                                        uncomplicate.neanderthal.cuda
+                                        uncomplicate.neanderthal.integer
                                         uncomplicate.neanderthal.linalg
+                                        uncomplicate.neanderthal.math
                                         uncomplicate.neanderthal.native
                                         uncomplicate.neanderthal.opencl
-                                        uncomplicate.neanderthal.cuda
-                                        uncomplicate.neanderthal.math
-                                        uncomplicate.neanderthal.vect-math
+                                        uncomplicate.neanderthal.random
                                         uncomplicate.neanderthal.real
-                                        uncomplicate.neanderthal.auxil
-                                        uncomplicate.neanderthal.random]
+                                        uncomplicate.neanderthal.vect-math
+                                        uncomplicate.neanderthal.sparse]
                            :output-path "docs/codox"}
 
                    ;;also replaces lein's default JVM argument TieredStopAtLevel=1
