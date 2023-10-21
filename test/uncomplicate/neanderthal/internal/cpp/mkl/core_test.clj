@@ -17,8 +17,6 @@
 
 ;; ================= Sparse tests ===============================
 
-
-
 (facts "MKL export_csr test."
        (let [m 4
              n 3

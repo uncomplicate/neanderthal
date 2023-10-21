@@ -126,7 +126,7 @@
        (. mkl_rt ~method (sparse-matrix ~source) indexing# rows# cols# start# end# indx# ~nz)
        (let [m# (long (get-entry rows# 0))
              nnz# (- (long (get-entry end# (dec m#))) (long (get-entry start# 0)))]
-         (capacity! start# m#)
+         (capacity! start# m#);;TODO see about using limit!
          (capacity! end# m#)
          (capacity! indx# nnz#)
          (capacity! ~nz nnz#)

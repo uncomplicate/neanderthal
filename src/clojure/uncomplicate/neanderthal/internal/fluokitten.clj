@@ -112,7 +112,7 @@
       (when w
         (if (compatible? res w)
           (subcopy (engine w) w res 0 (dim w) pos)
-          (dragan-says-ex "You can not apply op on incompatiple vectors." {:res res :w w}))
+          (dragan-says-ex "You can not apply op on incompatible vectors." {:res res :w w}))
         (recur (+ pos (dim w)) (first ws) (next ws))))
     res))
 

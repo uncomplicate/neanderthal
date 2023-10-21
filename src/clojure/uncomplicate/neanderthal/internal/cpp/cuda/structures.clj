@@ -7,7 +7,7 @@
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
                                               int-pointer short-pointer byte-pointer null?
-                                              PointerCreator capacity!]]
+                                              PointerCreator capacity! byte-pointer]]
             [uncomplicate.clojurecuda.core :refer :all :exclude [device]]
             [uncomplicate.neanderthal
              [core :refer [transfer! copy! vctr ge dim]]
@@ -22,7 +22,7 @@
              [fluokitten :refer [vector-op matrix-op]]]
             [uncomplicate.neanderthal.internal.cpp.structures
              :refer [extend-base extend-vector extend-matrix extend-ge-matrix extend-uplo-matrix
-                     extend-trf block-vector ge-matrix uplo-matrix Destructor]]
+                     extend-trf block-vector ge-matrix uplo-matrix]]
             [uncomplicate.neanderthal.internal.cpp.cuda.constants :refer :all]
             [uncomplicate.neanderthal.internal.device.common :refer [device-matrix-equals]]
             [uncomplicate.neanderthal.internal.device.clblock :as clblock])
@@ -78,7 +78,9 @@
        this#)
      Destructor
      (destruct [_# p#]
-       (destruct# p#))
+       (if-not (null? p#)
+         (destruct# p#)
+         p#))
      PointerCreator
      (pointer* [_#]
        (~pointer nil))
@@ -110,8 +112,9 @@
           width (.entryWidth da)]
       (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
         (with-check cublas-error
-          (cublas/cublasGetVector_64 (dim cu) width (extract cu) (stride cu)
-                                     (extract host) (stride host))
+          (cublas/cublasGetVector_64 (dim cu) width
+                                     (byte-pointer (extract cu)) (stride cu)
+                                     (byte-pointer (extract host)) (stride host))
           host)
         (throw (ex-info "You cannot get incompatible or ill-fitting vector."
                         {:cu (info cu) :host (info host)}))))
@@ -123,8 +126,9 @@
           width (.entryWidth da)]
       (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
         (with-check cublas-error
-          (cublas/cublasSetVector_64 (dim cu) width (extract host) (stride host)
-                                     (extract cu) (stride cu))
+          (cublas/cublasSetVector_64 (dim cu) width
+                                     (byte-pointer (extract host)) (stride host)
+                                     (byte-pointer (extract cu)) (stride cu))
           cu)
         (throw (ex-info "You cannot set incompatible or ill-fitting vector."
                         {:cu (info cu) :host (info host)}))))
@@ -138,8 +142,9 @@
       (if (and (fits? cu host) (= width (.entryWidth (data-accessor host)))
                (= (navigator cu) (navigator host)))
         (with-check cublas-error
-          (cublas/cublasGetMatrix_64 (.sd stor) (.fd stor) width (extract cu) (.ld stor)
-                                     (extract host) (stride host))
+          (cublas/cublasGetMatrix_64 (.sd stor) (.fd stor) width
+                                     (byte-pointer (extract cu)) (.ld stor)
+                                     (byte-pointer (extract host)) (stride host))
           host)
         (throw (ex-info "You cannot get an incompatible or ill-fitting matrix."
                         {:cu (info cu) :host (info host)}))))
@@ -153,8 +158,9 @@
       (if (and (fits? cu host) (= width (.entryWidth (data-accessor host)))
                (= (navigator cu) (navigator host)))
         (with-check cublas-error
-          (cublas/cublasSetMatrix_64 (.sd stor) (.fd stor) width (extract host) (stride host)
-                                     (extract cu) (.ld stor))
+          (cublas/cublasSetMatrix_64 (.sd stor) (.fd stor) width
+                                     (byte-pointer (extract host)) (stride host)
+                                     (byte-pointer (extract cu)) (.ld stor))
           cu)
         (throw (ex-info "You cannot set an incompatible or ill-fitting matrix."
                         {:cu (info cu) :host (info host)}))))

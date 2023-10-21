@@ -13,11 +13,11 @@
             [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols matrix-type] :as core]
+             [core :refer [dim mrows ncols matrix-type entry]]
              [real :as real]
              [integer :as integer]
              [math :refer [f=] :as math]
-             [block :refer [create-data-source initialize offset stride contiguous?]]]
+             [block :refer [initialize offset stride contiguous?]]]
             [uncomplicate.neanderthal.internal
              [constants :refer :all]
              [api :refer :all]
@@ -219,7 +219,7 @@
      (rotmg [this# d1d2xy# param#]
        (check-stride d1d2xy# param#)
        (. ~blas ~(cblas t 'rotmg) (~ptr d1d2xy#) (~ptr d1d2xy# 1) (~ptr d1d2xy# 2)
-          (~cast (real/entry d1d2xy# 3)) (~ptr param#))
+          (~cast (entry d1d2xy# 3)) (~ptr param#))
        param#)
      (scal [this# alpha# x#]
        (. ~blas ~(cblas t 'scal) (dim x#) (~cast alpha#) (~ptr x#) (stride x#))
@@ -240,7 +240,7 @@
      BlasPlus
      (amax [this# x#]
        (if (< 0 (dim x#))
-         (Math/abs (real/entry x# (iamax this# x#)))
+         (Math/abs (~cast (entry x# (iamax this# x#))))
          0.0))
      (subcopy [this# x# y# kx# lx# ky#]
        (. ~blas ~(cblas t 'copy) (int lx#) (~ptr x# kx#) (stride x#) (~ptr y# ky#) (stride y#))
@@ -1934,9 +1934,9 @@
      (asum [this# x#]
        (asum (engine (entries x#)) (entries x#)))
      (iamax [this# x#]
-       (real/entry (indices x#) (iamax (engine (entries x#)) (entries x#))))
+       (entry (indices x#) (iamax (engine (entries x#)) (entries x#))))
      (iamin [this# x#]
-       (real/entry (indices x#) (iamin (engine (entries x#)) (entries x#))))
+       (entry (indices x#) (iamin (engine (entries x#)) (entries x#))))
      (rot [this# x# y# c# s#]
        (if (indices y#)
          (rot (engine (entries x#)) (entries x#) (entries y#) c# s#)

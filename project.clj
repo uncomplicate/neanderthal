@@ -24,7 +24,7 @@
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
-                             [lein-codox "0.10.7"]]
+                             [lein-codox "0.10.8"]]
                    :global-vars {*warn-on-reflection* true
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
@@ -52,7 +52,6 @@
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
-
   :classifiers {:tests {:source-paths ^:replace ["test"]}}
   :source-paths ["src/clojure" "src/device"]
   :java-source-paths ["src/java"]

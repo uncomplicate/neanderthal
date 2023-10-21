@@ -110,6 +110,7 @@
          (dim (vctr factory [])) => 0
 
          (subvector (vctr factory 1 2 3 4 5 6) 1 3) => (vctr factory 2 3 4)
+         (native (subvector (vctr factory 1 2 3 4 5 6) 1 3)) => (native (vctr factory 2 3 4))
          (subvector (vctr factory 1 2 3) 2 3) => (throws ExceptionInfo)))
 
 (defn test-vctr-entry [factory]

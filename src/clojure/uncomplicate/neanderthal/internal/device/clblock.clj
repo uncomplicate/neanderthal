@@ -15,7 +15,7 @@
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
             [uncomplicate.clojure-cpp
-             :refer [double-pointer float-pointer int-pointer long-pointer byte-buffer]]
+             :refer [double-pointer float-pointer int-pointer long-pointer byte-pointer]]
             [uncomplicate.clojurecl.core :refer :all]
             [uncomplicate.clojurecl.internal.protocols :refer [size]]
             [uncomplicate.neanderthal

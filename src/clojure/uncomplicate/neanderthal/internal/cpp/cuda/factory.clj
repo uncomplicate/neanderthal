@@ -39,7 +39,8 @@
            org.bytedeco.cuda.cudart.CUstream_st
            [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix DataAccessor Region
             DenseStorage FullStorage LayoutNavigator]
-           [uncomplicate.neanderthal.internal.cpp.cuda.structures CUBlockVector CUGEMatrix CUUploMatrix]))
+           [uncomplicate.neanderthal.internal.cpp.cuda.structures
+            CUBlockVector CUGEMatrix CUUploMatrix]))
 
 (defprotocol HandleProvider
   (handle ^cublasContext [this]))

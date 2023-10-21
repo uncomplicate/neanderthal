@@ -287,6 +287,9 @@
 
 ;; ============ Realeaseable ===================================================
 
+(defprotocol Destructor
+  (destruct [this p]))
+
 (extend-type clojure.lang.Sequential
   Releaseable
   (release [this]

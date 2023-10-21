@@ -9,7 +9,7 @@
 (ns uncomplicate.neanderthal.sparse
   (:require [uncomplicate.commons
              [core :refer [with-release let-release Info info Releaseable release view]]
-             [utils :refer [dragan-says-ex direct-buffer]]]
+             [utils :refer [dragan-says-ex]]]
             [uncomplicate.neanderthal
              [core :refer [dim transfer transfer! subvector matrix?]]
              [integer :refer [amax]]]

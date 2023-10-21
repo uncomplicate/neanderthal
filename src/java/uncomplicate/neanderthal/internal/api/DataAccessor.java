@@ -8,8 +8,6 @@
 
 package uncomplicate.neanderthal.internal.api;
 
-import java.nio.ByteBuffer;
-
 public interface DataAccessor {
 
     Object entryType ();

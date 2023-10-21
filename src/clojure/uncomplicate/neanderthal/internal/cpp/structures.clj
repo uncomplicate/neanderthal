@@ -11,12 +11,12 @@
    [uncomplicate.commons
     [core :refer [Releaseable release let-release Info info double-fn wrap-float wrap-double
                   wrap-int wrap-long wrap-short wrap-byte Viewable view Wrapper extract size]]
-    [utils :refer [dragan-says-ex]]]
+    [utils :refer [dragan-says-ex mapped-buffer]]]
    [uncomplicate.fluokitten.protocols
     :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold foldmap fmap fmap!]]
    [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
                                      int-pointer short-pointer byte-pointer null?
-                                     PointerCreator capacity!]]
+                                     PointerCreator capacity! type-pointer]]
    [uncomplicate.neanderthal
     [core :refer [transfer! copy! dim subvector vctr ge matrix-type mrows ncols matrix-type
                   triangular? symmetric? dia]]
@@ -28,9 +28,9 @@
     [common :refer :all]
     [navigation :refer :all]
     [fluokitten :refer :all]])
-  (:import [java.nio Buffer ByteBuffer]
-           [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
+  (:import [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LLL IFn$LLLL]
+           java.nio.channels.FileChannel
            org.bytedeco.mkl.global.mkl_rt
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer
             BytePointer]
@@ -54,9 +54,6 @@
 
 (defmacro get* [pt p i]
   `(. ~(with-meta p {:tag pt}) get (long ~i)))
-
-(defprotocol Destructor
-  (destruct [this p]))
 
 (defmacro def-accessor-type [name accessor-interface pointer-class entry-class pointer cast cast-get]
   `(deftype ~name [construct# destruct#]
@@ -83,7 +80,9 @@
        this#)
      Destructor
      (destruct [_# p#]
-       (destruct# p#))
+       (if-not (null? p#)
+         (destruct# p#)
+         p#))
      PointerCreator
      (pointer* [_#]
        (~pointer nil))
@@ -2880,3 +2879,21 @@
        (view-tr (view-vctr this#) lower?# diag-unit?#))
      (view-sy [this# lower?#]
        (view-sy (view-vctr this#) lower?#))))
+
+(defn map-channel
+  ([fact channel n flag offset-bytes]
+   (let [fact (factory fact)
+         da ^DataAccessor (data-accessor fact)
+         entry-width (.entryWidth da)]
+     (let-release [buf ((type-pointer (.entryType da))
+                        (mapped-buffer channel offset-bytes (* (long n) entry-width) flag))]
+       (create-vector fact true buf n 0 1))));;TODO check whether MKL destructor works with this.
+  ([fact channel n flag]
+   (map-channel fact channel n flag 0))
+  ([fact ^FileChannel channel n-or-flag]
+   (if (integer? n-or-flag)
+     (map-channel fact channel n-or-flag :read-write)
+     (let [n (quot (.size channel) (.entryWidth ^DataAccessor (data-accessor fact)))]
+       (map-channel fact channel n n-or-flag))))
+  ([fact channel]
+   (map-channel fact channel :read-write)))
