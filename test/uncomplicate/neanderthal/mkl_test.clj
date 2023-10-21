@@ -60,7 +60,7 @@
 (real-test/test-basic-integer-host mkl-byte)
 (real-test/test-lapack mkl-double)
 (real-test/test-lapack mkl-float)
-
+(real-test/test-gb-trx mkl-double);;TODO remove
 (real-test/test-blas-sy-host mkl-double)
 (real-test/test-blas-sy-host mkl-float)
 

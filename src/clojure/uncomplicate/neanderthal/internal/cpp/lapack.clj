@@ -495,7 +495,7 @@
      (check-gb-submatrix ~a)
      (with-sv-check (check-stride ~ipiv)
        (. ~lapack ~method (.layout (navigator ~a)) (mrows ~a) (ncols ~a) (.kl reg#) (.ku reg#)
-          (~ptr ~a #_(- (.kl reg#))) (stride ~a) (~idx-ptr ~ipiv)))))
+          (~ptr ~a (- (.kl reg#))) (stride ~a) (~idx-ptr ~ipiv)))))
 
 (defmacro sb-trf
   ([lapack method ptr a]
@@ -592,7 +592,7 @@
      (with-sv-check ~b
        (. ~lapack ~method (.layout nav-b#) (byte (int (if (= nav-b# (navigator ~lu)) \N \T)))
           (mrows ~b) (.kl reg#) (.ku reg#) (ncols ~b)
-          (~ptr ~lu #_(- (.kl reg#))) (stride ~lu) (~idx-ptr ~ipiv) (~ptr ~b) (stride ~b)))))
+          (~ptr ~lu (- (.kl reg#))) (stride ~lu) (~idx-ptr ~ipiv) (~ptr ~b) (stride ~b)))))
 
 (defmacro sb-trs [lapack method ptr a b]
   `(let [nav-b# (navigator ~b)
@@ -785,7 +785,7 @@
             (check-stride ipiv#)
             (with-sv-check ~b
               (. ~lapack ~method (.layout nav-b#) (mrows ~b) (.kl reg#) (.ku reg#) (ncols ~b)
-                 (~ptr ~a #_(- (.kl reg#))) (stride ~a) (~idx-ptr ipiv#) (~ptr ~b) (stride ~b))))
+                 (~ptr ~a (- (.kl reg#))) (stride ~a) (~idx-ptr ipiv#) (~ptr ~b) (stride ~b))))
           (dragan-says-ex "GB solver requires that both matrices have the same layout."
                           {:a (info ~a) :b (info ~b)})))
       ~b)))
@@ -883,7 +883,7 @@
      (with-sv-check (.get da# res# 0)
        (. ~lapack ~method (.layout (navigator ~lu)) (byte (int (if ~nrm1? \O \I)))
         (min (mrows ~lu) (ncols ~lu)) (.kl reg#) (.ku reg#)
-        (~ptr ~lu #_(- (.kl reg#))) (stride ~lu) (~idx-ptr ~ipiv) ~nrm res#))))
+        (~ptr ~lu (- (.kl reg#))) (stride ~lu) (~idx-ptr ~ipiv) ~nrm res#))))
 
 (defmacro sb-con [lapack method ptr cpp-ptr gg nrm]
   `(let [da# (real-accessor ~gg)
