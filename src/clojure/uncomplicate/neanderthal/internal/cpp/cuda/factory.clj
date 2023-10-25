@@ -11,9 +11,9 @@
   (:refer-clojure :exclude [abs])
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
-             [core :refer [Releaseable release let-release with-release info
-                           extract wrap wrap-int wrap-double wrap-float]]
+             [core :refer [Releaseable release let-release with-release info]]
              [utils :refer [with-check dragan-says-ex count-groups generate-seed count-groups]]]
+            [uncomplicate.fluokitten.protocols :refer [extract]]
             [uncomplicate.clojure-cpp :as cpp :refer [get-entry]]
             [uncomplicate.clojurecuda
              [core :refer :all :exclude [device]]

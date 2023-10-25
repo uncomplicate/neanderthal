@@ -11,8 +11,9 @@
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info
-                           extract wrap-int wrap-long wrap-double wrap-float]]
+                           wrap-int wrap-long wrap-double wrap-float]]
              [utils :refer [with-check dragan-says-ex generate-seed count-groups]]]
+            [uncomplicate.fluokitten.protocols :refer [extract]]
             [uncomplicate.clojurecl
              [core :refer :all]
              [info :refer [max-work-group-size queue-device platform name-info]]

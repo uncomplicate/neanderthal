@@ -10,10 +10,10 @@
   (:require
    [uncomplicate.commons
     [core :refer [Releaseable release let-release Info info double-fn wrap-float wrap-double
-                  wrap-int wrap-long wrap-short wrap-byte Viewable view Wrapper extract size]]
+                  Viewable view size]]
     [utils :refer [dragan-says-ex mapped-buffer]]]
-   [uncomplicate.fluokitten.protocols
-    :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative fold foldmap fmap fmap!]]
+   [uncomplicate.fluokitten.protocols :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative
+                                              fold foldmap fmap fmap! Comonad extract]]
    [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
                                      int-pointer short-pointer byte-pointer null?
                                      PointerCreator capacity! type-pointer]]
@@ -286,7 +286,7 @@
        (when (.-master this#)
          (destruct (data-accessor this#) (buffer this#)))
        true)
-     Wrapper
+     Comonad
      (extract [this#]
        (extract (.-buf-ptr this#)))
      EngineProvider

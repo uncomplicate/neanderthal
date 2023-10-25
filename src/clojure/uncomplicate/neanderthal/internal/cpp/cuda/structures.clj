@@ -1,10 +1,8 @@
 (ns uncomplicate.neanderthal.internal.cpp.cuda.structures
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release with-release Info info
-                           Wrapper extract wrap-float wrap-double wrap-int wrap-long
-                           wrap-short wrap-byte Viewable view size]]
+             [core :refer [Releaseable release let-release with-release Info info Viewable view size]]
              [utils :refer [with-check dragan-says-ex]]]
-            [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
+            [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative extract]]
             [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
                                               int-pointer short-pointer byte-pointer null?
                                               PointerCreator capacity! byte-pointer]]

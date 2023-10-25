@@ -10,10 +10,11 @@
     uncomplicate.neanderthal.internal.device.clblock
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Mappable mmap unmap
-                           Info info Wrapper extract wrap-float wrap-double wrap-int wrap-long
+                           Info info wrap-float wrap-double wrap-int wrap-long
                            Viewable view]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative]]
+            [uncomplicate.fluokitten.protocols
+             :refer [Magma Monoid Foldable Applicative Comonad extract]]
             [uncomplicate.clojure-cpp
              :refer [double-pointer float-pointer int-pointer long-pointer byte-pointer]]
             [uncomplicate.clojurecl.core :refer :all]
@@ -83,7 +84,7 @@
 ;; ================== Accessors ================================================
 
 (extend-type Object
-  Wrapper
+  Comonad
   (extract [_]
     nil))
 

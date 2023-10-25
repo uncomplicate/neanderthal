@@ -8,9 +8,9 @@
 
 (ns uncomplicate.neanderthal.internal.cpp.mkl.factory
   (:require [uncomplicate.commons
-             [core :refer [with-release let-release info Releaseable release view extract]]
+             [core :refer [with-release let-release info Releaseable release view]]
              [utils :refer [dragan-says-ex with-check generate-seed]]]
-            [uncomplicate.fluokitten.core :refer [fmap!]]
+            [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols matrix-type entry]]
