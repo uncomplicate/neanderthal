@@ -245,8 +245,7 @@ $code"
       (with-release [host-x (fv (range cnt))
                      gpu-x (transfer! host-x (clv cnt))]
         (facts
-         "Let's try with 2^28. That's 1GB, half the maximum that Java buffers can
-currently handle. Java 9 would hopefully increase that."
+         "Let's try with 2^28. That's 1GB."
 
          ;; note the less precise result in the CPU vector. That's because single
          ;; precision floats are not precise enough for so many accumulations.

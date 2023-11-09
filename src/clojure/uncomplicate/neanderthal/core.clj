@@ -8,23 +8,23 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.core
-  "Contains core type-agnostic linear algebraic functions roughly corresponding to functionality
-  defined in BLAS 123, and functions to create and work with various kinds of vectors and matrices.
+  "Contains type-agnostic linear algebraic functions roughly corresponding to functionality
+  defined in BLAS 123, and functions that create and work with various kinds of vectors and matrices.
   Typically, you would want to require this namespace regardless of the actual type
   (real, complex, CPU, GPU, pure Java etc.) of the vectors and matrices that you use.
 
   In cases when you need to repeatedly call a function from this namespace that accesses
   individual entries, and the entries are primitive, it is better to use a primitive version
-  of the function from [[uncomplicate.neanderthal.real]] namespace. Constructor functions
-  for different specialized types (native, GPU, pure java) are in respective specialized namespaces
-  ([[uncomplicate.neanderthal.native]], [[uncomplicate.neanderthal.opencl]], etc).
+  of the function from [[uncomplicate.neanderthal.real]] or [[uncomplicate.neanderthal.integer]]
+  namespaces. Constructor functions for different specialized types (native, GPU, pure java) are
+  in respective specialized namespaces ([[uncomplicate.neanderthal.native]], [[uncomplicate.neanderthal.cuda]], etc).
 
   Please take care to only use vectors and matrices of the same type in one call of a
   linear algebra operation. Compute operations typically (and on purpose!) do not support arguments
   of mixed types. For example, you can not call the [[dot]] function with one double vector (dv) and
-  one float vector (fv), or for one vector in the CPU memory and one in the GPU memory.
-  If you try to do bthat, an `ex-info` is thrown. You can use those different types side-by-side
-  and transfer data between them though.
+  one float vector (fv), or with one vector in the CPU memory and one in the GPU memory.
+  If you'd try, an `ex-info` would be thrown. You can use those different types side-by-side
+  and transfer the data between them though.
 
   ### How to use
 
@@ -32,22 +32,29 @@
         (:require [uncomplicate.neanderthal core native]))
 
       (ns test
-        (:require [uncomplicate.neanderthal core native opencl]))
+        (:require [uncomplicate.neanderthal core native cuda]))
 
   ### Examples
 
   The best and most accurate examples can be found in the
   [comprehensive test suite](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal):
-  see [here](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/real_test.clj),
-  [here](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/block_test.clj),
-  and [here](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/opencl_test.clj).
+  see [real-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/real_test.clj),
+  [block-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/block_test.clj),
+  [mkl-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/mkl_test.clj),
+  [cublas-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/cublas_test.clj),
+  and [opencl-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/opencl_test.clj).
   Also, there are tutorial test examples [here](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples),
   the tutorials at [the Neanderthal web site](http://neanderthal.uncomplicate.org),
-  and [my blog dragan.rocks](http://dragan.rocks).
+  and [on my blog dragan.rocks](http://dragan.rocks).
+
+  For the comprehensive real-world examples, with detailed tutorials and guides, see the
+  [Interactive Programming for Artificial intelligence book series](aiprobook.com).
 
   ### Cheat Sheet
 
-  [Naming conventions for BLAS routines](https://software.intel.com/en-us/node/468382).
+  Most Neanderthal function names are short, and cryptic at the first sight. But there is a very good
+  reason for that! Please see [Naming conventions for BLAS routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/naming-conventions-for-blas-routines.html). The [Linear Algebra for Programmers](https://aiprobook.com/numerical-linear-algebra-for-programmers/)
+  is also a good tutorial-oriented resource that can be very helpful for understanding all that madness.
 
   * Create: [[vctr]], [[view]], [[view-vctr]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[sy]], [[view-sy]],
   [[gb]], [[tb]], [[sb]], [[tp]], [[sp]], [[gd]], [[gt]], [[dt]], [[st]], [[raw]], [[zero]].
@@ -58,7 +65,7 @@
 
   * Vector: [[vctr?]], [[dim]], [[subvector]], [[entry]], [[entry!]], [[alter!]].
 
-  * Meta:  [[vspace?]], [[matrix?]], [[symmetric?]], [[triangular?]], [[matrix-type?]], [[compatible?]]
+  * Meta:  [[vspace?]], [[vctr?]] [[matrix?]], [[symmetric?]], [[triangular?]], [[matrix-type?]], [[compatible?]]
 
   * Matrix: [[matrix?]], [[ge]], [[view-ge]], [[tr]], [[view-tr]], [[sy]], [[view-sy]],
   [[gb]], [[tb]], [[sb]], [[tp]], [[sp]], [[gd]], [[gt]], [[dt]], [[st]], [[mrows]], [[ncols]],
@@ -67,19 +74,22 @@
 
   * Change: [[trans!]], [[entry!]], [[alter!]].
 
-  * Help: [[info]]
+  * Help: `info` from the `uncomplicate.commons.core` namespace.
 
   * [Monadic functions](http://fluokitten.uncomplicate.org): `fmap!`, `fmap`, `fold`, `foldmap`,
   `pure`, `op`, `id`, from the `uncomplicate.fluokitten.core` namespace.
 
-  * [Compute level 1](https://software.intel.com/en-us/node/468390): [[dot]], [[nrm1]], [[nrm2]], [[nrmi]], [[asum]],
+  * [Compute level 1](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/blas-level-1-routines.html):
+  [[dot]], [[nrm1]], [[nrm2]], [[nrmi]], [[asum]],
   [[iamax]], [[iamin]], [[amax]], [[iamin]], [[imax]], [[imin]], [[swp!]], [[copy!]], [[copy]], [[scal!]],
   [[scal]], [[rot!]], [[rotg!]], [[rotm!]], [[rotmg!]], [[axpy!]], [[axpy]], [[ax]], [[xpy]],
   [[axpby!]], [[sum]].
 
-  * [Compute level 2](https://software.intel.com/en-us/node/468426): [[mv!]], [[mv]], [[rk!]], [[rk]].
+  * [Compute level 2](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/blas-level-2-routines.html):
+  [[mv!]], [[mv]], [[rk!]], [[rk]].
 
-  * [Compute level 3](https://software.intel.com/en-us/node/468478): [[mm!]], [[mm]], [[mmt]].
+  * [Compute level 3](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/blas-level-3-routines.html):
+  [[mm!]], [[mm]], [[mmt]].
 
   "
   (:require [uncomplicate.commons
@@ -94,12 +104,13 @@
   "Transfers the data from source to destination regardless of the structure type or memory context.
 
   Typically you would use it when you want to move data between the host memory and external device
-  memory, or between incompatible data types. If you want to simply move data from one object
-  to another in the same memory context, you should prefer [[copy!]].
-  If possible, the data will simply be copied, but with multimethod call overhead.
+  memory, or between incompatible data types. If you want to simply move homogenous data from one
+  object to another in the same memory context, you should prefer [[copy!]].
+  If possible, the data will simply be copied anyway, but this is a multimethod so mind the slight
+  call overhead.
 
-      (transfer! (fv 1 2 3) device-vctr)
-      (transfer! device-vctr (fv 3))
+      (transfer! (fv 1 2 3) (cuv 3))
+      (transfer! (dv 3) (fv 3))
   "
   (fn ([source destination] [(class source) (class destination)])))
 
@@ -122,9 +133,9 @@
   If `factory` is not provided, moves the data to the main host memory. If `x` is already in the
   main memory, makes a fresh copy.
 
-      (transfer opencl-factory (fv [1 2 3]))
-      (transfer opencl-factory (sge 2 3 (range 6)))
-
+      (transfer *opencl-factory* (fv [1 2 3]))
+      (transfer cuda-double (fge 2 3 (range 6)))
+      (transfer *cuda-factory* (dge 2 3 (range 6)))
       (transfer (fv [1 2 3]))
   "
   ([factory x]
@@ -136,17 +147,17 @@
 
 (defn native
   "Ensures that `x` is in the native main memory, and if not, transfers it there.
+  `x` continues to live until explicitly released. See [[native!]].
 
       (let [v (fv [1 2 3])]
         (identical? (native v) v)) => true
-
-  This function is kindly supported by patronage from George Nelson.
   "
   [x]
   (api/native x))
 
 (defn native!
   "Ensures that `x` is in the native main memory, and if not, transfers it there and releases `x`.
+  See [[native]].
   "
   [x]
   (let-release [native-x (api/native x)]
@@ -157,11 +168,11 @@
 (defn vctr
   "Creates a dense vector in the context of `factory`, from the provided `source`.
 
-  If `source` is an integer, creates a vector of zeroes. If `source` is a number, puts it
+  If `source` is an integer, creates a vector of zeroes. If `source` is a real number, wraps it
   in the resulting vector. Otherwise, transfers the data from `source` (a sequence, vector, etc.)
   to the resulting vector.
 
-    If the provided source do not make sense, throws ExceptionInfo.
+  If the provided source does not make sense, throws `ex-info`.
 
       (vctr double-factory 3)
       (vctr float-factory 1 2 3)
@@ -188,45 +199,45 @@
 
       (view-vctr (ge float-factory 2 3 (range 6)))
   "
-  ([a]
-   (api/view-vctr a))
-  ([a ^long stride-mult]
+  ([x]
+   (api/view-vctr x))
+  ([x ^long stride-mult]
    (if (< 0 stride-mult)
-     (api/view-vctr a stride-mult)
+     (api/view-vctr x stride-mult)
      (dragan-says-ex "Cannot use a negative stride multiplier." {:stirde-mult stride-mult}))))
 
 (defn vctr?
-  "Tests if x is a (neanderthal) vector."
+  "Tests if `x` is a (neanderthal) vector."
   [x]
   (instance? Vector x))
 
 (defn vspace?
-  "Tests if x is a vector space."
+  "Tests if `x` is a vector space."
   [x]
   (instance? VectorSpace x))
 
 (defn matrix?
-  "Tests if x is a matrix of any kind."
+  "Tests if `x` is a matrix of any kind."
   [x]
   (instance? Matrix x))
 
 (defn symmetric?
-  "Tests if x is a symmetric matrix of any kind."
+  "Tests if `x` is a symmetric matrix of any kind."
   [^MatrixImplementation a]
   (.isSymmetric a))
 
 (defn triangular?
-  "Tests if x is a triangular matrix of any kind."
+  "Tests if `x` is a triangular matrix of any kind."
   [^MatrixImplementation a]
   (.isTriangular a))
 
 (defn matrix-type
-  "Returns the type of the matrix implementation represented by keyword (:ge, :tr, :sy, etc.)."
+  "Returns the type of the matrix implementation represented by the corresponding keyword (`:ge`, `:tr`, `:sy`, etc.)."
   [^MatrixImplementation a]
   (.matrixType a))
 
 (defn compatible?
-  "Checks whether x and y are compatible in the sense that they use compatible
+  "Checks whether `x` and `y` are compatible in the sense that they use matching
   data formats (float, double, half) and computation contexts (native host memory, CUDA contexts etc.)."
   [x y]
   (api/compatible? x y))
@@ -240,12 +251,12 @@
 
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`).
 
-  If the provided indices or source do not make sense, throws ExceptionInfo.
+  If the provided indices or source do not make sense, throws `ex-info`.
 
-      (ge float-factory 2 3)
-      (ge opencl-factory 2 3 (range 6))
-      (ge opencl-factory (ge double-factory 2 3 (range 6)))
-      (ge float-factory [[1 2 3] [4 5] [] [6 7 8 9]])
+      (ge native-float 2 3)
+      (ge opencl-double 2 3 (range 6))
+      (ge opencl-float (ge native-double 2 3 (range 6)))
+      (ge native-float [[1 2 3] [4 5] [] [6 7 8 9]])
   "
   ([factory m n source options]
    (if (and (<= 0 (long m)) (<= 0 (long n)))
@@ -260,19 +271,21 @@
   ([factory ^long m ^long n]
    (ge factory m n nil nil))
   ([factory a]
-   ;;TODO check whether the result is :ge
    (let-release [res (transfer factory a)]
-     (if (matrix? res)
+     (if (and (matrix? res) (= :ge (matrix-type res)))
        res
-       (dragan-says-ex "This is not a valid source for matrices.")))))
+       (do
+         (release res)
+         (dragan-says-ex "This is not a valid source for matrices."))))))
 
 (defn view-ge
-  "Attach a GE matrix to the raw data of `a`, with optional dimensions and/or stride multiplier.
+  "View raw data of `a` through a GE matrix structure, with optional dimensions and/or stride multiplier.
 
-  Changes to the resulting object affect the source `a`, even the parts of data that might not
-  be accessible by a. Use with caution!
+  Changes to the resulting object affect the underlying memory of `a`, even the parts that might not
+  be accessible by `a`. Use with caution!
 
-  view-ge might return the master object itself, or create a new instance that reuses the master's data.
+  If `a` is already a GE matrix, [[view-ge]] returns `a`. Otherwise it creates a new instance that
+  reuses the master's data.
 
       (view-ge (tr float-factory 3 (range 6)))
   "
@@ -302,11 +315,11 @@
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   `:uplo` (`:upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
-  If the provided indices or source do not make sense, throws ExceptionInfo.
+  If the provided dimensions or source do not make sense, throws `ex-info`.
 
-      (tr float-factory 2)
-      (tr opencl-factory 3 (range 6))
-      (tr opencl-factory (ge double-factory 2 3 (range 6)))
+      (tr native-float 2)
+      (tr opencl-float 3 (range 6))
+      (tr cuda-float (ge native-double 2 3 (range 6)))
   "
   ([factory ^long n source options]
    (if (<= 0 n)
@@ -325,14 +338,14 @@
      (tr factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
 
 (defn view-tr
-  "Attach a triangular matrix to the raw data of `a`.
+  "View raw data of `a` through a TR matrix structure.
 
-  Changes to the resulting object affect the source `a`, even the parts of data that might not be
-  accessible by a. Use with caution!
+  Changes to the resulting object affect the underlying memory of `a`, even the parts that might not
+  be accessible by `a`. Use with caution!
+  If `a` is already a TR matrix, [[view-tr]] returns `a`. Otherwise it creates a new instance that
+  reuses the master's data.
 
   Options: `:uplo` (`upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
-
-  view-tr creates a new instance that reuses the master's data.
 
       (view-tr (ge float-factory 3 2 (range 6)))
   "
@@ -353,9 +366,9 @@
 
   If the provided indices or source do not make sense, throws ExceptionInfo.
 
-      (sy float-factory 2)
-      (sy opencl-factory 3 (range 6))
-      (sy opencl-factory (ge double-factory 2 3 (range 6)))
+      (sy native-float 2)
+      (sy opencl-float 3 (range 6))
+      (sy cuda-float (ge native-double 2 3 (range 6)))
   "
   ([factory ^long n source options]
    (if (<= 0 n)
@@ -373,12 +386,14 @@
      (sy factory (min (.mrows ^Matrix source) (.ncols ^Matrix source)) source nil))))
 
 (defn view-sy
-  "Attach a symmetric matrix to the raw data of `a`.
+  "View raw data of `a` through a SY matrix structure.
 
-  Changes to the resulting object affect the source `a`, even the parts of data that might not be
-  accessible by a. Use with caution!
+  Changes to the resulting object affect the underlying memory of `a`, even the parts that might not
+  be accessible by `a`. Use with caution!
+  If `a` is already a SY matrix, [[view-sy]] returns `a`. Otherwise it creates a new instance that
+  reuses the master's data.
 
-  Options: `:uplo` (`upper` or `:lower`)..
+  Options: `:uplo` (`upper` or `:lower`).
 
   view-sy creates a new instance that reuses the master's data.
 
@@ -399,9 +414,9 @@
 
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`).
 
-  If the provided indices or source do not make sense, throws ExceptionInfo.
+  If the provided indices or source do not make sense, throws `ex-info`.
 
-      (gb float-factory 4 3 1 2 (range 20) {:layout :row})
+      (gb native-float 4 3 1 2 (range 20) {:layout :row})
   "
   ([factory m n kl ku source options]
    (if (and (or (= 0 kl m) (< -1 (long kl) (long m))) (or (= 0 ku n) (< -1 (long ku) (long n))))
@@ -435,9 +450,9 @@
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   and `:uplo` (`:upper` or `:lower`).
 
-  If the provided indices or source do not make sense, throws ExceptionInfo.
+  If the provided indices or source do not make sense, throws `ex-info`.
 
-      (sb float-factory 4 2 (range 20) {:layout :row})
+      (sb native-float 4 2 (range 20) {:layout :row})
   "
   ([factory n k source options]
    (if (or (< -1 (long k) (long n)) (= 0 k n))
@@ -475,9 +490,9 @@
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   `:uplo` (`:upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
-  If the provided indices or source do not make sense, throws ExceptionInfo.
+  If the provided indices or source do not make sense, throws `ex-info`.
 
-      (tb float-factory 4 2 (range 20) {:layout :row})
+      (tb native-float 4 2 (range 20) {:layout :row})
   "
   ([factory n k source options]
    (if (or (< -1 (long k) (long n)) (= 0 k n))
@@ -513,9 +528,9 @@
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   `:uplo` (`:upper` or `:lower`), and `:diag` (`:unit` or `:non-unit`).
 
-  If the provided indices or source do not make sense, throws ExceptionInfo.
+  If the provided indices or source do not make sense, throws `ex-info`.
 
-      (tp float-factory 4 2 (range 20) {:uplo :upper :diag :unit})
+      (tp native-float 4 2 (range 20) {:uplo :upper :diag :unit})
   "
   ([factory n source options]
    (if  (< -1 (long n))
@@ -543,9 +558,9 @@
   The internal structure can be specified with a map of options: `:layout` (`:column` or `:row`),
   and `:uplo` (`:upper` or `:lower`).
 
-  If the provided indices or source do not make sense, throws ExceptionInfo.
+  If the provided indices or source do not make sense, throws `ex-info`.
 
-      (sp float-factory 4 2 (range 20) {:uplo :upper})
+      (sp native-float 4 2 (range 20) {:uplo :upper})
   "
   ([factory ^long n source options]
    (if  (< -1 n)
@@ -565,7 +580,10 @@
 (defn gd
   "Creates a diagonal matrix (GD) in the context of `factory`, with `n` rows and columns.
 
-  If the provided side is negative, throws ExceptionInfo.
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+
+  If the provided indices or source do not make sense, throws `ex-info`.
   "
   ([factory ^long n source options]
    (if (< -1 n)
@@ -584,7 +602,10 @@
 (defn gt
   "Creates a tridiagonal matrix (GT) in the context of `factory`, with `n` rows and columns.
 
-  If the provided side is negative, throws ExceptionInfo.
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+
+  If the provided indices or source do not make sense, throws `ex-info`.
   "
   ([factory ^long n source options]
    (if (< -1 n)
@@ -604,7 +625,10 @@
   "Creates a diagonally dominant tridiagonal matrix (DT) in the context of `factory`,
   with `n` rows and columns.
 
-  If the provided side is negative, throws ExceptionInfo.
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+
+  If the provided size is negative, throws `ex-info`.
   "
   ([factory ^long n source options]
    (if (< -1 n)
@@ -624,7 +648,10 @@
   "Creates a symmetric tridiagonal matrix (ST) in the context of `factory`,
   with `n` rows and columns.
 
-  If the provided side is negative, throws ExceptionInfo.
+  If `source` is provided, transfers the data to the result. `source` is typically a sequence,
+  a matrix, or another structure that can be transferred to the context of `factory`.
+
+  If the provided size is negative, throws `ex-info`.
   "
   ([factory ^long n source options]
    (if (< -1 n)
@@ -650,7 +677,7 @@
    (api/raw x (api/factory factory))))
 
 (defn zero
-  "Returns an instance of the same type and dimension(s) as the `x`, initialized with `0`."
+  "Returns an instance of the same type and dimension(s) as the `x`, initialized with zeroes."
   ([x]
    (api/zero x))
   ([factory x]
@@ -659,8 +686,8 @@
 ;; ================= Vector ====================================================
 
 (defn dim
-  "Returns the dimension of the vector `x`."
-  ^long [^Vector x]
+  "Returns the dimension of the vector space `x`."
+  ^long [^VectorSpace x]
   (.dim x))
 
 (defn subvector
@@ -670,7 +697,7 @@
   will affect the vector data. If you wish to disconnect the subvector from the parent vector,
   make a copy prior to any destructive operation.
 
-  If the requested region is not within the dimensions of `x`, throws ExceptionInfo.
+  If the requested region is not within the dimensions of `x`, throws `ex-info`.
   "
   [^Vector x ^long k ^long l]
   (if (<= (+ k l) (.dim x))
@@ -694,7 +721,7 @@
 
   The vector has access to and can change the same data as the original matrix.
 
-  If the requested column is not within the dimensions of `a`, throws ExceptionInfo.
+  If the requested column is not within the dimensions of `a`, throws `ex-info`.
   "
   [^Matrix a ^long i]
   (if (< -1 i (.mrows a))
@@ -706,7 +733,7 @@
 
   The vector has access to and can change the same data as the original matrix.
 
-  If the requested column is not within the dimensions of `a`, throws ExceptionInfo.
+  If the requested column is not within the dimensions of `a`, throws `ex-info`.
   "
   [^Matrix a ^long j]
   (if (< -1 j (.ncols a))
@@ -754,7 +781,7 @@
   will affect the original data. If you wish to disconnect the submatrix from the parent matrix,
   make a copy prior to any destructive operation.
 
-  If the requested region is not within the dimensions of `a`, throws ExceptionInfo.
+  If the requested region is not within the dimensions of `a`, throws `ex-info`.
 
       (submatrix (ge double-factroy 4 3 (range 12)) 1 1 2 1)
   "
@@ -775,13 +802,13 @@
   The resulting submatrix has a live connection to `a`'s data. Any change to the subband data
   will affect the original data.
 
-  If the requested region is not within the dimensions of `a`, throws ExceptionInfo.
+  If the requested region is not within the dimensions of `a`, throws `ex-info`.
   "
   ([a kl ku]
    (api/subband a kl ku)))
 
 (defn trans!
-  "Transposes matrix `a`'s data **in-place**. For the 'real' transpose, use the `trans` function.
+  "Transposes matrix `a`'s data **in-place**. For the 'real' transpose, use the [[trans]] function.
 
   The transpose affects the internal structure of `a`.
 
@@ -806,7 +833,7 @@
   For optimally accessing the elements of native objects use the equivalent `entry`
   function from `uncomplicate.neanderthal.real` namespace.
 
-  If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
+  If `i` or `j` is not within the dimensions of the object, throws `ex-info`.
   "
   ([^Vector x ^long i]
    (if (< -1 i (.dim x))
@@ -824,7 +851,7 @@
   For optimally accessing the elements of native objects use the equivalent `entry!`
   function from `uncomplicate.neanderthal.real` namespace.
 
-  If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
+  If `i` or `j` is not within the dimensions of the object, throws `ex-info`.
   "
   ([^Changeable x val]
    (.setBoxed x val))
@@ -843,11 +870,11 @@
   "Alters the `i`-th entry of vector `x`, or `(i, j)`-th entry of matrix `a` by
   evaluating function f on one or all of its elements.
 
-  If no index is passed, the function f will alter all elements and feeds the indices to f.
-  If the structure holds primitive elements, the function f must accept appropriate primitive
-  unboxed arguments, and it will work faster if it also returns unboxed result.
+  If no index is passed, the function `f` will alter all elements. In that case, `f` can
+  accept indices, too. If the structure holds primitive elements, the function f must accept
+  appropriate primitive unboxed arguments, and it will work faster if it also returns unboxed primitives.
 
-  If `i` or `j` is not within the dimensions of the object, throws ExceptionInfo.
+  If `i` or `j` is not within the dimensions of the object, throws `ex-info`.
 
       (alter! (dv 1 2 3) 2 (fn ^double [^double x] (inc x)))
       (alter! (dge 2 2) (fn ^double [^long i ^long j ^double x] (double (+ i j))))
@@ -870,9 +897,9 @@
 (defn dot
   "Computes the dot product of vectors or matrices `x` and `y`.
 
-  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+  If the contexts or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [cblas_?dot](https://software.intel.com/en-us/node/520734).
+  See related info about [dot](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/dot.html).
 
       (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
   "
@@ -890,7 +917,7 @@
 (defn nrm2
   "Computes the Euclidan norm of vector `x`, or Frobenius norm of matrix `x`.
 
-  See related info about [cblas_?nrm2](https://software.intel.com/en-us/node/520738).
+  See related info about [nrm2](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/nrm2.html).
 
       (nrm2 (dv 1 2 3)) => 3.7416573867739413
   "
@@ -903,9 +930,9 @@
   (api/nrmi (api/engine x) x))
 
 (defn asum
-  "Sums absolute values of entries of vector or matrix `x`''.
+  "Sums absolute values of entries of vector or matrix `x`.
 
-  See related info about [cblas_?asum](https://software.intel.com/en-us/node/520731).
+  See related info about [asum](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/asum.html).
 
       (asum (dv -1 2 -3)) => 6.0
   "
@@ -915,7 +942,7 @@
 (defn iamax
   "The index of the first entry of vector `x` that has the largest absolute value.
 
-    See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
+  See related info about [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamax.html).
 
       (iamax (dv 1 -3 2)) => 1
   "
@@ -927,7 +954,7 @@
 (defn iamin
   "The index of the first entry of vector `x` that has the smallest absolute value.
 
-    See related info about [cblas_i?amin](https://software.intel.com/en-us/node/520746).
+  See related info about [iamin](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamin.html).
 
       (iamin (dv 1 -3 2)) => 0
   "
@@ -937,9 +964,9 @@
     0))
 
 (defn amax
-  "Absolute value of the first entry of vector `x` that has the largest absolute value.
+  "Absolute value of the first entry of vector space `x` that has the largest absolute value.
 
-  See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
+  See related info about [[imax]] and [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamax.html).
 
       (amax (dv 1 -3 2)) => 3
   "
@@ -947,9 +974,9 @@
   (api/amax (api/engine x) x))
 
 (defn imax
-  "The index of the first entry of vector `x` that has the largest value.
+  "The index of the first entry of vector space `x` that has the largest value.
 
-  See related info about [cblas_i?amax](https://software.intel.com/en-us/node/520745).
+  See related info about [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamax.html).
 
       (imax (dv 1 -3 2)) => 2
   "
@@ -961,7 +988,7 @@
 (defn imin
   "The index of the first entry of vector `x` that has the smallest value.
 
-  See related info about [cblas_i?amin](https://software.intel.com/en-us/node/520746).
+  See related info about [[iamin]] [iamin](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamin.html).
 
       (imin (dv 1 -3 2)) => 2
   "
@@ -975,9 +1002,9 @@
 
   Both `x` and `y` will be changed.
 
-  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [cblas_?swap](https://software.intel.com/en-us/node/520744).
+  See related info about [swap](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/swap.html).
   "
   [^VectorSpace x y]
   (when (and (not (identical? x y)) (< 0 (.dim x)))
@@ -992,9 +1019,9 @@
 
   Only `y` will be changed.
 
-  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [cblas_?copy](https://software.intel.com/en-us/node/520733).
+  See related info about [copy](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/copy.html).
   "
   ([^VectorSpace x y]
    (if-not (identical? x y)
@@ -1018,7 +1045,7 @@
      y)))
 
 (defn copy
-  "Copies all entries of a vector or a matrix `x` to the newly created structure (see [[copy!]])."
+  "Copies all entries of a vector or a matrix `x` to the newly created structure. Also see [[copy!]]."
   ([x]
    (let-release [res (api/raw x)]
      (copy! x res)))
@@ -1031,7 +1058,7 @@
 
   After `scal!`, `x` will be changed.
 
-  See related info about [cblas_?scal](https://software.intel.com/en-us/node/520743).
+  See related info about [scal](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/scal.html).
   "
   [alpha ^VectorSpace x]
   (when (< 0 (.dim x))
@@ -1039,9 +1066,9 @@
   x)
 
 (defn scal
-  "Multiplies all entries of a copy a vector or matrix `x` by scalar `alpha`.
+  "Multiplies all entries of a copy a vector or matrix `x` by scalar `alpha`. Also see [[scal!]].
 
-  See related info about [cblas_?scal](https://software.intel.com/en-us/node/520743).
+
   "
   [alpha x]
   (let-release [res (copy x)]
@@ -1050,9 +1077,9 @@
 (defn rot!
   "Rotates points of vectors `x` and `y` in the plane by cos `c` and sin `s`.
 
-  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [cblas_?rot](https://software.intel.com/en-us/node/520739).
+  See related info about [rot](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rot.html).
   "
   ([^Vector x ^Vector y ^double c ^double s]
    (if (and (api/compatible? x y))
@@ -1072,9 +1099,9 @@
   "Computes the parameters for a givens rotation and puts them as entries of a 4-element vector `abcs`,
   that can be used as parameters in `rot!`.
 
-  If  `abcs` does not have at least 4 entries, throws ExceptionInfo.
+  If  `abcs` does not have at least 4 entries, throws `ex-info`.
 
-  See related info about [cblas_?rotg](https://software.intel.com/en-us/node/520740).
+  See related info about [rotg](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rotg.html).
   "
   [^Vector abcs]
   (if (< 3 (.dim abcs))
@@ -1086,7 +1113,7 @@
 
   `param` must be a vector of at least 4 entries.
 
-  See related info about [cblas_?rotm](https://software.intel.com/en-us/node/520741).
+  See related info about [rotm](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rotm.html).
   "
   [^Vector x ^Vector y ^Vector param]
   (if (and (< 0 (.dim x)) (< 0 (.dim y)))
@@ -1102,12 +1129,12 @@
     x))
 
 (defn rotmg!
-  "BLAS 1: Generate modified plane rotation.
+  "Generate modified plane rotation.
 
   If the context or dimensions of  `d1d2xy` and `param` are not compatible, or `d1d2xy` does not have
-  at least at least 4 entries, or `param` does not have at least 5 entries, throws ExceptionInfo.
+  at least at least 4 entries, or `param` does not have at least 5 entries, throws `ex-info`.
 
-  See related info about [cblas_?rotmg](https://software.intel.com/en-us/node/520742).
+  See related info about [rotmg](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rotmg.html).
   "
   [^Vector d1d2xy ^Vector param]
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
@@ -1124,14 +1151,13 @@
 
   The contents of `y` will be changed.
 
-
   If called with 2 arguments, `x` and `y`, adds vector or matrix `x` to a vector or matrix `y`.
   If called with more than 3 arguments, at least every other have to be a vector or matrix.
   A scalar multiplier may be included before each object.
 
-  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [cblas_?axpy](https://software.intel.com/en-us/node/520732).
+  See related info about [axpy](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/axpy.html).
 
       (axpy! 3 x y)
       (axpy! x y)
@@ -1157,47 +1183,6 @@
              y)))
      (apply axpy! 1.0 alpha x y zs))))
 
-(declare axpby!)
-
-(defn axpy
-  "A pure variant of [[axpy!]] that does not change any of the arguments. The result is a new instance."
-  ([x y]
-   (let-release [res (copy y)]
-     (axpy! 1.0 x res)))
-  ([x y z]
-   (if (number? x)
-     (let-release [res (copy z)]
-       (axpy! x y res))
-     (let-release [res (copy y)]
-       (axpy! 1.0 x res z))))
-  ([x y z w & ws]
-   (if (number? x)
-     (if (number? z)
-       (let-release [res (copy w)]
-         (apply axpby! x y z res ws))
-       (let-release [res (copy z)]
-         (apply axpy! x y res w ws)))
-     (apply axpy 1.0 x y z w ws))))
-
-(defn ax
-  "Multiplies vector or matrix `x` by a scalar `alpha`. Similar to [[scal!]], but does not change x.
-  The result is a new instance. See [[axpy!]] and [[axpy]]."
-  [alpha x]
-  (let-release [res (zero x)]
-    (axpy! alpha x res)))
-
-(defn xpy
-  "Sums vectors or matrices `x`, `y`, and `zs`. The result is a new instance. See [[axpy!]] and [[axpy]]."
-  ([x y]
-   (let-release [res (copy y)]
-     (axpy! 1.0 x res)))
-  ([x y & zs]
-   (let-release [cy (copy y)]
-     (loop [res (axpy! 1.0 x cy) s zs]
-       (if s
-         (recur (axpy! 1.0 (first s) res) (next s))
-         res)))))
-
 (defn axpby!
   "Multiplies elements of a vector or matrix `x` by scalar `alpha` and adds it to
    vector or matrix `y`, that was previously scaled by scalar `beta`.
@@ -1209,9 +1194,9 @@
   If called with more than 4 arguments, at least every other have to be a vector or matrix.
   A scalar multiplier may be included before each object.
 
-  If the context or dimensions of  `x` and `y` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [cblas_?axpby](https://software.intel.com/en-us/node/520858).
+  See related info about [axpby](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/axpby.html).
 
       (axpy! 3 x 0.9 y)
       (axpy! x y)
@@ -1239,6 +1224,45 @@
              y)))
      (apply axpby! 1.0 alpha x beta y zs))))
 
+(defn axpy
+  "A pure variant of [[axpy!]] that does not change any of the arguments. The result is a new instance."
+  ([x y]
+   (let-release [res (copy y)]
+     (axpy! 1.0 x res)))
+  ([x y z]
+   (if (number? x)
+     (let-release [res (copy z)]
+       (axpy! x y res))
+     (let-release [res (copy y)]
+       (axpy! 1.0 x res z))))
+  ([x y z w & ws]
+   (if (number? x)
+     (if (number? z)
+       (let-release [res (copy w)]
+         (apply axpby! x y z res ws))
+       (let-release [res (copy z)]
+         (apply axpy! x y res w ws)))
+     (apply axpy 1.0 x y z w ws))))
+
+(defn ax
+  "Multiplies vector or matrix `x` by a scalar `alpha`. Similar to [[scal!]], but does not change `x`.
+  The result is a new instance. See [[axpy!]] and [[axpy]]."
+  [alpha x]
+  (let-release [res (zero x)]
+    (axpy! alpha x res)))
+
+(defn xpy
+  "Sums vectors or matrices `x`, `y`, and `zs`. The result is a new instance. See [[axpy!]] and [[axpy]]."
+  ([x y]
+   (let-release [res (copy y)]
+     (axpy! 1.0 x res)))
+  ([x y & zs]
+   (let-release [cy (copy y)]
+     (loop [res (axpy! 1.0 x cy) s zs]
+       (if s
+         (recur (axpy! 1.0 (first s) res) (next s))
+         res)))))
+
 ;;============================== BLAS 2 ========================================
 
 (defn mv!
@@ -1250,10 +1274,11 @@
 
   The contents of the destination vector will be changed.
 
-  If the context or dimensions of `a`, `x` and `y` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of `a`, `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [cblas_?gemv](https://software.intel.com/en-us/node/520750), and
-  [cblas_?trmv](https://software.intel.com/en-us/node/520772).
+  See related info about [gemv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gemv.html),
+  [trmv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/trmv.html),
+  and similar XXmv functions.
 
       (mv! 3 a x y)
       (mv! a x y)
@@ -1284,7 +1309,7 @@
                                  (not (= (.ncols a) (.dim x))) "(dim x) is not equals to (ncols a)")}))))
 
 (defn mv
-  "Matrix-vector multiplication. A pure version of mv! that returns the result in a new vector
+  "Matrix-vector multiplication. A pure version of [[mv!]] that returns the result in a new vector
   instance. Computes alpha * a * x."
   ([alpha a x beta y]
    (let-release [res (copy y)]
@@ -1306,12 +1331,11 @@
 
   The contents of `a` will be changed.
 
-  If the context or dimensions of `a`, `x` and `y` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of `a`, `x` and `y` are not compatible, throws `ex-info`.
 
   If `y` is not provided, uses `x` in its place, and computes a symmetric outer product.
 
-  See related info about [cblas_?ger](https://software.intel.com/en-us/node/520751).
-
+  See related info about [ger](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/ger.html).
 
       (rk! 1.5 (dv 1 2 3) (dv 4 5) a)
   "
@@ -1340,7 +1364,8 @@
 
 (defn rk
   "Pure outer product of two vectors. A pure version of [[rk!]] that returns
-  the result in a new matrix instance."
+  the result in a new matrix instance.
+  "
   ([alpha x y a]
    (let-release [res (copy a)]
      (rk! alpha x y res)))
@@ -1359,7 +1384,8 @@
   "Multiplies matrix `a` by its transpose, scales the result by `alpha`,
   and adds it to a symmetric matrix `c` scaled by `beta`.
 
-  If `alpha` and/or `beta` are not provided, scales by `1.0`."
+  If `alpha` and/or `beta` are not provided, scales by `1.0`.
+  "
   ([alpha ^Matrix a beta ^Matrix c]
    (if (and (api/compatible? a c) (= (.mrows a) (.mrows c)))
      (api/srk (api/engine c) alpha a beta c)
@@ -1374,10 +1400,11 @@
    (mmt! 1.0 a 1.0 c)))
 
 (defn mmt
-  "Pure variant of [[mmt]], multiplies matrix `a` by its transpose and return
+  "Pure variant of [[mmt!]], multiplies matrix `a` by its transpose and return
   the scaled result in a new instance of SY matrix `c`.
 
-  If `alpha` is not provided, the scaling factor is `1.0`. "
+  If `alpha` is not provided, the scaling factor is `1.0`.
+  "
   ([alpha ^Matrix a]
    (let-release [res (sy (api/factory a) (.mrows a))]
      (mmt! alpha a 0.0 res)))
@@ -1397,10 +1424,10 @@
 
   The contents of the destination matrix will be changed.
 
-  If the context or dimensions of `a`, `b` and `c` are not compatible, throws ExceptionInfo.
+  If the context or dimensions of `a`, `b` and `c` are not compatible, throws `ex-info`.
 
   See related info about [cblas_?gemm](https://software.intel.com/en-us/node/520775), and
-  [cblas_?trmm](https://software.intel.com/en-us/node/520782).
+  [trmm](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/trmm.html).
 
       (def a (dge 2 3 (range 6)))
       (def b (dge 3 2 (range 2 8)))
@@ -1500,7 +1527,7 @@
   Computes `alpha a * b`, if alpha is scalar, or `alpha * a * b * c * ... * ds` if `alpha` is a vector.
   Does matrix composition by optimally multiplying the chain of matrices.
 
-  If any consecutive pair's dimensions do not fit for matrix multiplication, throws `ExceptionInfo`.
+  If any consecutive pair's dimensions do not fit for matrix multiplication, throws `ex-info`.
   "
   ([a b c & ds]
    (if (or ds (matrix? a))
@@ -1521,7 +1548,7 @@
 ;; ============================== BLAS Plus ====================================
 
 (defn sum
-  "Sums values of entries of a vector or matrix `x`.
+  "Sums values of entries of a vector or matrix `x`. See [[asum]].
 
       (sum (dv -1 2 -3)) => -2.0
   "

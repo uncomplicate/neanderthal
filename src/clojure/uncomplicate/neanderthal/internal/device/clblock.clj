@@ -293,7 +293,7 @@
       (try
         [mapped-buf (real-block-vector host-fact true (buf-pointer da mapped-buf) n 0 strd)]
         (catch Exception e
-          (enq-unmap! queue buf mapped-buf) ;;TODO releare buf-pointer, since clojurecl does not do that any more!
+          (enq-unmap! queue buf mapped-buf) ;;TODO release buf-pointer, since clojurecl does not do that any more!
           (throw e)))))
   (unmap [x mapped]
     (enq-unmap! (flow da) buf mapped)

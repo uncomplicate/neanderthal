@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.vect-math
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.vect-math
   "Vectorized floating point mathematical functions commonly found in Math, FastMath, and the likes.
   Primitive scalar counterparts can be found in the [[math]] namespace."
   (:refer-clojure :exclude [abs])

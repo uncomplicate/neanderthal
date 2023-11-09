@@ -9,12 +9,15 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
-  [[uncomplicate.neanderthal.core]] functions."
+  [[uncomplicate.neanderthal.core]] functions. The default engine is backed by Intel's MKL,
+  and the OS specific binaries are provided by JavaCPP's mkl preset. Alternative implementations
+  are allowed, and can be either referred explicitly (see how `mkl-float` is used as and example),
+  or by binding [[native-float]] and the likes to your preferred implementation."
   (:require [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
-            [uncomplicate.neanderthal.internal.cpp.mkl
-             #_[buffer-block :refer [map-channel]] ;;TODO
-             [factory :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]])
+            [uncomplicate.neanderthal.internal.cpp.structures :refer [map-channel]]
+            [uncomplicate.neanderthal.internal.cpp.mkl.factory
+             :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]])
   (:import java.nio.channels.FileChannel))
 
 ;; ============ Creating real constructs  ==============
@@ -95,7 +98,8 @@
 
 (defn fv
   "Creates a vector using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/vctr]])."
+  (see [[uncomplicate.neanderthal.core/vctr]]).
+  "
   ([source]
    (vctr native-float source))
   ([x & xs]
@@ -103,7 +107,8 @@
 
 (defn dv
   "Creates a vector using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/vctr]])."
+  (see [[uncomplicate.neanderthal.core/vctr]]).
+  "
   ([source]
    (vctr native-double source))
   ([x & xs]
@@ -111,7 +116,8 @@
 
 (defn fge
   "Creates a GE matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/ge]])."
+  (see [[uncomplicate.neanderthal.core/ge]]).
+  "
   ([^long m ^long n source options]
    (ge native-float m n source options))
   ([^long m ^long n arg]
@@ -123,7 +129,8 @@
 
 (defn dge
   "Creates a GE matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/ge]])."
+  (see [[uncomplicate.neanderthal.core/ge]]).
+  "
   ([^long m ^long n source options]
    (ge native-double m n source options))
   ([^long m ^long n arg]
@@ -135,7 +142,8 @@
 
 (defn ftr
   "Creates a TR matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/tr]]).
+  "
   ([^long n source options]
    (tr native-float n source options))
   ([^long n arg]
@@ -145,7 +153,8 @@
 
 (defn dtr
   "Creates a TR matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/tr]]).
+  "
   ([^long n source options]
    (tr native-double n source options))
   ([^long n arg]
@@ -155,7 +164,8 @@
 
 (defn fsy
   "Creates a SY matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/sy]])."
+  (see [[uncomplicate.neanderthal.core/sy]]).
+  "
   ([^long n source options]
    (sy native-float n source options))
   ([^long n arg]
@@ -165,7 +175,8 @@
 
 (defn dsy
   "Creates a SY matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/sy]])."
+  (see [[uncomplicate.neanderthal.core/sy]]).
+  "
   ([^long n source options]
    (sy native-double n source options))
   ([^long n arg]
@@ -175,7 +186,8 @@
 
 (defn fgb
   "Creates a GB matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tb]])."
+  (see [[uncomplicate.neanderthal.core/tb]]).
+  "
   ([m n kl ku source options]
    (gb native-float m n kl ku source options))
   ([m n kl ku arg]
@@ -191,7 +203,8 @@
 
 (defn dgb
   "Creates a GB matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tb]])."
+  (see [[uncomplicate.neanderthal.core/tb]]).
+  "
   ([m n kl ku source options]
    (gb native-double m n kl ku source options))
   ([m n kl ku arg]
@@ -207,7 +220,8 @@
 
 (defn ftb
   "Creates a TB matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tb]])."
+  (see [[uncomplicate.neanderthal.core/tb]]).
+  "
   ([n k source options]
    (tb native-float n k source options))
   ([n k arg]
@@ -219,7 +233,8 @@
 
 (defn dtb
   "Creates a TB matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tb]])."
+  (see [[uncomplicate.neanderthal.core/tb]]).
+  "
   ([n k source options]
    (tb native-double n k source options))
   ([n k arg]
@@ -231,7 +246,8 @@
 
 (defn fsb
   "Creates a SB matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/sb]])."
+  (see [[uncomplicate.neanderthal.core/sb]]).
+  "
   ([n k source options]
    (sb native-float n k source options))
   ([n k arg]
@@ -243,7 +259,8 @@
 
 (defn dsb
   "Creates a SB matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/sb]])."
+  (see [[uncomplicate.neanderthal.core/sb]]).
+  "
   ([n k source options]
    (sb native-double n k source options))
   ([n k arg]
@@ -255,7 +272,8 @@
 
 (defn ftp
   "Creates a TP matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tp]])."
+  (see [[uncomplicate.neanderthal.core/tp]]).
+  "
   ([^long n source options]
    (tp native-float n source options))
   ([^long n arg]
@@ -265,7 +283,8 @@
 
 (defn dtp
   "Creates a TP matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/tp]])."
+  (see [[uncomplicate.neanderthal.core/tp]]).
+  "
   ([^long n source options]
    (tp native-double n source options))
   ([^long n arg]
@@ -275,7 +294,8 @@
 
 (defn fsp
   "Creates a SP matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/sp]])."
+  (see [[uncomplicate.neanderthal.core/sp]]).
+  "
   ([^long n source options]
    (sp native-float n source options))
   ([^long n arg]
@@ -285,7 +305,8 @@
 
 (defn dsp
   "Creates a SP matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/sp]])."
+  (see [[uncomplicate.neanderthal.core/sp]]).
+  "
   ([^long n source options]
    (sp native-double n source options))
   ([^long n arg]
@@ -295,7 +316,8 @@
 
 (defn fgd
   "Creates a GD (diagonal) matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/gd]])."
+  (see [[uncomplicate.neanderthal.core/gd]]).
+  "
   ([^long n source options]
    (gd native-float n source options))
   ([^long n arg]
@@ -305,7 +327,8 @@
 
 (defn dgd
   "Creates a GD (diagonal) matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/gd]])."
+  (see [[uncomplicate.neanderthal.core/gd]]).
+  "
   ([^long n source options]
    (gd native-double n source options))
   ([^long n arg]
@@ -315,7 +338,8 @@
 
 (defn fgt
   "Creates a GT (tridiagonal) matrix using single precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/gt]])."
+  (see [[uncomplicate.neanderthal.core/gt]]).
+  "
   ([^long n source options]
    (gt native-float n source options))
   ([^long n arg]
@@ -325,7 +349,8 @@
 
 (defn dgt
   "Creates a GT (tridiagonal) matrix using double precision floating point native CPU engine
-  (see [[uncomplicate.neanderthal.core/gt]])."
+  (see [[uncomplicate.neanderthal.core/gt]]).
+  "
   ([^long n source options]
    (gt native-double n source options))
   ([^long n arg]
@@ -335,7 +360,8 @@
 
 (defn fdt
   "Creates a DT (diagonally dominant tridiagonal) matrix using single precision floating point
-  native CPU engine (see [[uncomplicate.neanderthal.core/dt]])."
+  native CPU engine (see [[uncomplicate.neanderthal.core/dt]]).
+  "
   ([^long n source options]
    (dt native-float n source options))
   ([^long n arg]
@@ -345,7 +371,8 @@
 
 (defn ddt
   "Creates a DT (diagonally dominant tridiagonal) matrix using double precision floating point
-  native CPU engine (see [[uncomplicate.neanderthal.core/dt]])."
+  native CPU engine (see [[uncomplicate.neanderthal.core/dt]]).
+  "
   ([^long n source options]
    (dt native-double n source options))
   ([^long n arg]
@@ -355,7 +382,8 @@
 
 (defn fst
   "Creates a ST (symmetric positive definite tridiagonal) matrix using single precision
-  floating point native CPU engine (see [[uncomplicate.neanderthal.core/st]])."
+  floating point native CPU engine (see [[uncomplicate.neanderthal.core/st]]).
+  "
   ([^long n source options]
    (st native-float n source options))
   ([^long n arg]
@@ -365,7 +393,8 @@
 
 (defn dst
   "Creates a ST (symmetric positive definite tridiagonal) matrix using double precision
-  floating point native CPU engine (see [[uncomplicate.neanderthal.core/st]])."
+  floating point native CPU engine (see [[uncomplicate.neanderthal.core/st]]).
+  "
   ([^long n source options]
    (st native-double n source options))
   ([^long n arg]
@@ -373,11 +402,11 @@
   ([source]
    (st native-double source)))
 
-;; TODO
-#_(defn map-vector
+(defn map-vector
   "Maps a file or file channel to a vector of size `n`.
   Supported `flag`s are: `:read-write`, `:read` (or `:read-only`),
-  `:private` (or `:copy-on-write`)."
+  `:private` (or `:copy-on-write`).
+  "
   ([fact file n flag offset-bytes]
    (let [channel (if (instance? FileChannel file) file (channel file))]
      (map-channel fact channel n flag offset-bytes)))

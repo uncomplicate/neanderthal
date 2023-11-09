@@ -10,7 +10,10 @@
     uncomplicate.neanderthal.integer
   "Contains type-specific primitive integer functions, equivalents of functions from the
   [[uncomplicate.neanderthal.core]] namespace. Typically, you would want to require this namespace
-  if you need to compute real matrices containing longs and/or ints.
+  if you need to compute matrices that contain longs and/or ints. Please keep in mind that most of
+  higher-level BLAS functions are supported for integers. For example, operations such as
+  matrix multiplication is not supported for integers, nor it makes much sense in general case
+  for big matrices.
 
   ### Example
 

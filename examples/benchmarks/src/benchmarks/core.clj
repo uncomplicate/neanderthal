@@ -11,7 +11,7 @@
             [criterium.core :as criterium]
             [clojure.pprint :refer [cl-format]])
   (:import [org.jblas DoubleMatrix FloatMatrix]
-          [mikera.matrixx Matrix]
+           [mikera.matrixx Matrix]
            [mikera.matrixx.algo Multiplications]))
 
 (defn rnd ^double [^double x]

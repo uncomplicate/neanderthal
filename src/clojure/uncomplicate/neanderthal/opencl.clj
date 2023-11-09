@@ -45,7 +45,8 @@
 (defn set-engine!
   "Creates an OpenCL factory using the provided `factory` constructor function. The created factory
   will work using the provided queue and its context, and will be bound to the root of
-  [[*opencl-factory*]]. Enables the use of [[clv]], [[clge]], [[cltr]], etc. globally."
+  [[*opencl-factory*]]. Enables the use of [[clv]], [[clge]], [[cltr]], etc. globally.
+  "
   ([factory queue]
    (alter-var-root (var *opencl-factory*) (constantly (factory (queue-context queue) queue))))
   ([factory]
@@ -87,7 +88,8 @@
 
 (defn clv
   "Creates a vector using GPU engine provided to the bound [[*opencl-factory*]]
-  (see [[uncomplicate.neanderthal.core/vctr]])."
+  (see [[uncomplicate.neanderthal.core/vctr]]).
+  "
   ([source]
    (vctr *opencl-factory* source))
   ([x & xs]
@@ -95,7 +97,8 @@
 
 (defn clge
   "Creates a GE matrix using GPU engine provided to the bound [[*opencl-factory*]]
-  (see [[uncomplicate.neanderthal.core/ge]])."
+  (see [[uncomplicate.neanderthal.core/ge]]).
+  "
   ([^long m ^long n source options]
    (ge *opencl-factory* m n source options))
   ([^long m ^long n arg]
@@ -107,7 +110,8 @@
 
 (defn cltr
   "Creates a TR matrix using GPU engine provided to the bound [[*opencl-factory*]]
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/tr]]).
+  "
   ([^long n source options]
    (tr *opencl-factory* n source options))
   ([^long n arg]
@@ -117,7 +121,8 @@
 
 (defn clsy
   "Creates a SY matrix using GPU engine provided to the bound [[*opencl-factory*]]
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/tr]]).
+  "
   ([^long n source options]
    (sy *opencl-factory* n source options))
   ([^long n arg]

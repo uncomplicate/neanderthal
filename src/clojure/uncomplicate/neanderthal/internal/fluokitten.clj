@@ -62,7 +62,7 @@
        ~res)
     `(dragan-says-ex "Vector fmap supports up to 4 vectors.")))
 
-(defmacro vector-reduce* [vtype etype acctype f init & xs] ;;TODO recuce should compute (f acc x y z)
+(defmacro vector-reduce* [vtype etype acctype f init & xs] ;;TODO reduce should compute (f acc x y z)
   (if (< (count xs) 5)
     `(if (check-vector-dimensions ~@xs)
        (let [dim-x# (dim ~(first xs))]

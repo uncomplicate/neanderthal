@@ -11,7 +11,7 @@
   "Contains type-agnostic auxiliary functions roughly corresponding to the functionality
   usually defined in auxiliary LAPACK (sorting etc.), or useful functions that may not commonly be
   implemented by BLAS engines, but are helpful vectorized ruoutines. This namespace works similarly
-  to the [[uncomplicate.neanderthal.core]] namespace; see there for more details about the intended use.
+  to [[uncomplicate.neanderthal.core]]; see there for more details about the intended use.
 
   ### Cheat Sheet
 
@@ -29,28 +29,40 @@
 (defn sort!
   "Sorts input vector or all matrix slices (columns or rows, according to layout).
 
-  If `x` is a vector with stride different than 1, throws ExceptionInfo."
+  If `x` is a vector with stride different than 1, throws `ex-info`.
+
+  See [lasrt](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/lasrt.html)
+  "
   [x increasing]
   (api/srt (api/engine x) x increasing))
 
 (defn sort+!
   "Sorts input vector or all matrix slices (columns or rows, according to layout) in ascending order.
 
-  If `x` is a vector with stride different than 1, throws ExceptionInfo."
+  If `x` is a vector with stride different than 1, throws `ex-info`.
+
+  See [lasrt](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/lasrt.html)
+  "
   [x]
   (sort! x true))
 
 (defn sort-!
   "Sorts input vector or all matrix slices (columns or rows, according to layout) in descending order.
 
-  If `x` is a vector with stride different than 1, throws ExceptionInfo."
+  If `x` is a vector with stride different than 1, throws `ex-info`.
+
+  See [lasrt](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/lasrt.html)
+  "
   [x]
   (sort! x false))
 
 (defn swap-rows!
   "Performs a series of destructive row interchanges on a general rectangular matrix.
 
-  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  If `(dim x)` is smaller than k2 - k1, throws `ex-info`.
+
+  See [laswp](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/laswp.html)
+  "
   ([a ^IntegerVector ipiv ^long k1 ^long k2]
    (if (and (<= 1 k1 k2 (.dim ipiv)) (<= (- k2 k1) (.dim ipiv)))
      (api/laswp (api/engine a) a ipiv k1 k2)
@@ -62,7 +74,10 @@
 (defn swap-rows
   "Performs a series of destructive row interchanges on a general rectangular matrix.
 
-  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  If `(dim x)` is smaller than k2 - k1, throws `ex-info`.
+
+  See [laswp](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/laswp.html)
+  "
   ([a ipiv ^long k1 ^long k2]
    (let-release [a-copy (copy a)]
      (swap-rows! a-copy ipiv k1 k2)))
@@ -72,7 +87,10 @@
 (defn swap-cols!
   "Performs a series of destructive column interchanges on a general rectangular matrix.
 
-  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  If `(dim x)` is smaller than k2 - k1, throws `ex-info`.
+
+  See [laswp](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/laswp.html)
+  "
   ([^Matrix a ^IntegerVector jpiv ^long k1 ^long k2]
    (.transpose ^Matrix (swap-rows! (.transpose a) jpiv k1 k2)))
   ([a ^IntegerVector jpiv]
@@ -81,7 +99,10 @@
 (defn swap-cols
   "Performs a series of column interchanges on a general rectangular matrix.
 
-  If `(dim x)` is smaller than k2 - k1, throws ExceptionInfo."
+  If `(dim x)` is smaller than k2 - k1, throws `ex-info`.
+
+  See [laswp](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/laswp.html)
+  "
   ([a ipiv ^long k1 ^long k2]
    (let-release [a-copy (copy a)]
      (swap-cols! a-copy ipiv k1 k2)))
@@ -90,7 +111,10 @@
 
 (defn permute-rows!
   "Destructively rearranges rows of a given matrix as specified by a permutation vector `ipiv`
-  forward or backward."
+  forward or backward.
+
+  See [lapmr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapmr.html)
+  "
   ([^Matrix a ^IntegerVector ipiv ^Boolean forward]
    (if (and (= (.mrows a) (.dim ipiv)))
      (api/lapmr (api/engine a) a ipiv forward)
@@ -101,7 +125,10 @@
 
 (defn permute-rows
   "Rearranges rows of a given matrix as specified by a permutation vector `ipiv`
-  forward or backward."
+  forward or backward.
+
+  See [lapmr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapmr.html)
+  "
   ([a ipiv forward]
    (let-release [a-copy (copy a)]
      (permute-rows! a-copy ipiv forward)))
@@ -110,7 +137,10 @@
 
 (defn permute-cols!
   "Destructively rearranges columns of a given matrix as specified by a permutation vector `jpiv`
-  forward or backward."
+  forward or backward.
+
+  See [lapmr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapmr.html)
+  "
   ([^Matrix a ^IntegerVector jpiv ^Boolean forward]
    (if (and (= (.ncols a) (.dim jpiv)))
      (api/lapmt (api/engine a) a jpiv forward)
@@ -121,7 +151,10 @@
 
 (defn permute-cols
   "Rearranges columns of a given matrix as specified by a permutation vector `jpiv`
-  forward or backward."
+  forward or backward.
+
+  See [lapmr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapmr.html)
+  "
   ([a jpiv forward]
    (let-release [a-copy (copy a)]
      (permute-cols! a-copy jpiv forward)))

@@ -83,7 +83,8 @@
 
 (defn ls-residual
   "Computes the residual sum of squares for the solution of a linear system returned by
-  [[uncomplicate.neanderthal.linalg/ls!]] (Linear Least Squares (LLS) problem)."
+  [[uncomplicate.neanderthal.linalg/ls!]] (Linear Least Squares (LLS) problem).
+  "
   [^RealMatrix a ^RealMatrix b]
   (if (<= (.ncols a) (.mrows a))
     (let [res (api/raw (.row b 0))

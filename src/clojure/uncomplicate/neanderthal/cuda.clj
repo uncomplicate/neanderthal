@@ -8,9 +8,9 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.cuda
-  "Specialized constructors that use CUDA engine by default, and convenient macros for
-  creating and maintaining engines in appropriate CUDA and cuBLAS context.
-  A convenience over agnostic [[uncomplicate.neanderthal.core]] functions."
+  "Contains specialized constructors that use CUDA engine by default, and convenient macros for
+  creating and maintaining engines in appropriate CUDA and cuBLAS context. A convenience over
+  agnostic [[uncomplicate.neanderthal.core]] functions."
   (:require [uncomplicate.commons
              [core :refer [release with-release]]
              [utils :refer [dragan-says-ex]]]
@@ -69,7 +69,8 @@
 (defn set-engine!
   "Creates an CUDA factory using the provided `factory` constructor function. The created factory
   will work using the provided stream and the current context, and will be bound to the root of
-  [[*cuda-factory*]]. Enables the use of [[cuv]], [[cuge]], [[cutr]], etc. globally."
+  [[*cuda-factory*]]. Enables the use of [[cuv]], [[cuge]], [[cutr]], etc. globally.
+  "
   ([factory hstream]
    (alter-var-root (var *cuda-factory*) (constantly (factory (current-context) hstream))))
   ([factory]
@@ -98,7 +99,8 @@
 
 (defn cuv
   "Creates a vector using CUDA GPU engine provided to the bound [[*cuda-factory*]]
-  (see [[uncomplicate.neanderthal.core/vctr]])."
+  (see [[uncomplicate.neanderthal.core/vctr]]).
+  "
   ([source]
    (vctr *cuda-factory* source))
   ([x & xs]
@@ -106,7 +108,8 @@
 
 (defn cuge
   "Creates a GE matrix using CUDA GPU engine provided to the bound [[*cuda-factory*]]
-  (see [[uncomplicate.neanderthal.core/ge]])."
+  (see [[uncomplicate.neanderthal.core/ge]]).
+  "
   ([^long m ^long n source options]
    (ge *cuda-factory* m n source options))
   ([^long m ^long n arg]
@@ -118,7 +121,8 @@
 
 (defn cutr
   "Creates a TR matrix using CUDA GPU engine provided to the bound [[*cuda-factory*]]
-  (see [[uncomplicate.neanderthal.core/tr]])."
+  (see [[uncomplicate.neanderthal.core/tr]]).
+  "
   ([^long n source options]
    (tr *cuda-factory* n source options))
   ([^long n arg]
@@ -128,7 +132,8 @@
 
 (defn cusy
   "Creates a SY matrix using CUDA GPU engine provided to the bound [[*cuda-factory*]]
-  (see [[uncomplicate.neanderthal.core/sy]])."
+  (see [[uncomplicate.neanderthal.core/sy]]).
+  "
   ([^long n source options]
    (sy *cuda-factory* n source options))
   ([^long n arg]

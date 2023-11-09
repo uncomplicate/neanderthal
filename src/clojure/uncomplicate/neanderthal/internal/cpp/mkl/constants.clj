@@ -132,3 +132,11 @@
    :finalize mkl_rt/SPARSE_STAGE_FINALIZE_MULT
    :full-no-val mkl_rt/SPARSE_STAGE_FULL_MULT_NO_VAL
    :full mkl_rt/SPARSE_STAGE_FULL_MULT})
+
+(def ^:const mkl-domain
+  {:all mkl_rt/MKL_DOMAIN_ALL
+   :blas mkl_rt/MKL_DOMAIN_BLAS
+   :lapack mkl_rt/MKL_DOMAIN_LAPACK
+   :pardiso mkl_rt/MKL_DOMAIN_PARDISO
+   :vml mkl_rt/MKL_DOMAIN_VML
+   :fft mkl_rt/MKL_DOMAIN_FFT})

@@ -22,8 +22,8 @@ public interface DataAccessor {
 
     Object initialize (Object data, Object value);
 
-    Object wrapPrim (double data); //TODO support integers too, double might not be necessary.
+    Object wrapPrim (Object data);
 
-    Object castPrim (double data); //TODO support integers too, double might not be necessary.
+    Object castPrim (Object data);
 
 }

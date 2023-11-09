@@ -22,7 +22,6 @@
             [uncomplicate.neanderthal.internal.cpp.common :refer :all])
   (:import org.bytedeco.mkl.global.mkl_rt))
 
-;; TODO Copied from host
 (defmacro vector-iopt [opt x entry]
   `(let [cnt# (dim ~x)]
      (if (< 0 cnt#)

@@ -24,12 +24,12 @@
 
   ### Also see:
 
-  - [LAPACK routines](https://software.intel.com/en-us/node/520866)
-  - [Linear Equation Computational Routines](https://software.intel.com/en-us/mkl-developer-reference-c-lapack-linear-equation-computational-routines)
-  - [Linear Equations](https://software.intel.com/en-us/mkl-developer-reference-c-lapack-linear-equation-routines)
-  - [Orthogonal Factorizations (Q, R, L)](https://software.intel.com/en-us/node/521003)
-  - [Singular Value Decomposition](https://software.intel.com/en-us/node/521036)
-  - [Symmetric Eigenvalue Problems](https://software.intel.com/en-us/node/521119)
+  - [LAPACK routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapack-routines.html)
+  - [Linear Equation Computational Routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapack-linear-equation-computational-routines.html)
+  - [Linear Equation Driver Routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapack-linear-equation-driver-routines.html)
+  - [Orthogonal Factorizations (Q, R, L)](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/orthogonal-lapack-computational-routines.html)
+  - [Singular Value Decomposition](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/singular-value-decomposition-lapack-computation.html)
+  - [Symmetric Eigenvalue Problems](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/symmetric-eigenvalue-problems-lapack-computation.html)
   - Other LAPACK documentation, as needed.
   "
   (:require [uncomplicate.commons
@@ -53,9 +53,9 @@
   Pivot is  placed into the `:ipiv`, a vector of **integers or longs**.
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
-  See related info about [lapacke_?getrf](https://software.intel.com/en-us/mkl-developer-reference-c-getrf).
+  See related info about [getrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/getrf.html).
   "
   [^Matrix a]
   (api/create-trf a false))
@@ -68,9 +68,9 @@
   depending on whether `a` is `:lower` or `:upper`. Cholesky does not need pivoting.
 
   If `a` is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
-  See related info about [lapacke_?potrf](https://software.intel.com/en-us/mkl-developer-reference-c-potrf).
+  See related info about [potrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/potrf.html).
   "
   [^Matrix a]
   (api/create-ptrf a))
@@ -84,7 +84,7 @@
   Pivot is placed into the `:ipiv`, a vector of **integers or longs** (if applicable).
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
   See related info about [[trf!]] and [[ptrf!]].
   "
@@ -96,10 +96,10 @@
   Overwrites `a` (or `:lu`) with a `nxn` inverse.
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
-  If the matrix is not square, throws ExceptionInfo.
+  throws `ex-info`.
+  If the matrix is not square, throws `ex-info`.
 
-  See related info about [lapacke_?getri](https://software.intel.com/en-us/mkl-developer-reference-c-getri).
+  See related info about [getri](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/getri.html).
   "
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
@@ -111,8 +111,8 @@
   "Computes the inverse of a triangularized matrix `a`. Returns the results in a new matrix instance.
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
-  If the matrix is not square, throws ExceptionInfo.
+  throws `ex-info`.
+  If the matrix is not square, throws `ex-info`.
 
   See related info about [[tri!]].
   "
@@ -127,9 +127,9 @@
   with multiple right hand sides matrix `b`. Overwrites `b` by the solution matrix.
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
-  See related info about [https://software.intel.com/en-us/mkl-developer-reference-c-getrs).
+  See related info about [getrs](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/getrs.html).
   "
   [^Matrix a ^Matrix b]
   (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
@@ -145,7 +145,7 @@
   with multiple right hand sides matrix `b`. Returns the results in a new matrix instance.
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
   See related info about [[trs!]].
   "
@@ -167,9 +167,9 @@
   If you need to reuse LU, use [[trf]], and [[trs]], or their destructive versions.
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
-  See related info about [lapacke_?gesv](https://software.intel.com/en-us/mkl-developer-reference-c-gesv).
+  See related info about [gesv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gesv.html).
   "
   [^Matrix a ^Matrix b]
   (if (and (api/compatible? a b) (and (= (.ncols a) (.mrows b))))
@@ -187,9 +187,9 @@
   Overwrites `a` with G, and `b` with the solution.
 
   If G is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
-  See related info about [lapacke_?gesv](https://software.intel.com/en-us/mkl-developer-reference-c-gesv).
+  See related info about [gesv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gesv.html).
   "
   [^Matrix a ^Matrix b]
   (if (and (api/compatible? a b) (and (= (.ncols a) (.mrows b))))
@@ -208,7 +208,7 @@
   it turns out not to be positive definite.
 
   If U is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
   See related info about [[sv!]].
   "
@@ -222,7 +222,7 @@
   matrix `a`, and multiple right sides matrix `b`. Returns the solution matrix in a new instance.
 
   If G is exactly singular (it can't be used for solving a system of linear equations),
-  throws ExceptionInfo.
+  throws `ex-info`.
 
   See related info about [[psv!]].
   "
@@ -237,9 +237,9 @@
   If `nrm1?` is true, computes the reciprocal based on 1 norm, if not, on infinity norm.
   `nrm` and matching `nrm1?` have to be supplied.
 
-  If the LU has been stale, or norm is not possible to compute, throws ExceptionInfo.
+  If the LU has been stale, or norm is not possible to compute, throws `ex-info`.
 
-  See related info about [lapacke_?gecon] (https://software.intel.com/en-us/mkl-developer-reference-c-gecon).
+  See related info about [gecon] (https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gecon.html).
   "
   (^double [^Matrix lu nrm nrm1?]
    (api/trcon lu nrm nrm1?))
@@ -253,7 +253,7 @@
 (defn det
   "Computes the determinant of a triangularized matrix `a`.
 
-  If the matrix is not square, throws ExceptionInfo."
+  If the matrix is not square, throws `ex-info`."
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
     (api/trdet a)
@@ -273,7 +273,7 @@
   elementary reflectors. **Other routines work with Q in this representation**. If you need
   to compute q, call [[org!]] or [[org]].
 
-  See related info about [lapacke_?geqrf](https://software.intel.com/en-us/node/521004).
+  See related info about [geqrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geqrf.html).
   "
   [a]
   (qr-factorization a false api/qrf))
@@ -294,7 +294,7 @@
   It is similar to [[qrf!]] and can replace it, with the caveat that the results have swapped columns
   (because of pivoting) so the solutions based on it have to be permuted back.
 
-  See related info about [lapacke_?geqrf](https://software.intel.com/en-us/node/521004).
+  See related info about [geqpf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geqpf.html).
   "
   [a]
   (qp-factorization a false))
@@ -306,7 +306,7 @@
   It is similar to [[qrf!]] and can replace it, with the caveat that the results have swapped columns
   (because of pivoting) so the solutions based on it have to be permuted back.
 
-  See [[qrf!]]"
+  See [[qpf!]] and [[qrf!]]."
   [^Matrix a]
   (let-release [a-copy (copy a)]
     (qp-factorization a-copy true)))
@@ -315,7 +315,7 @@
   "Destructively computes the QR factorization of a GE `m x n` matrix, with non-negative diagonal elements.
 
   See [[qrf!]].
-  See related info about [lapacke_?geqrfp](https://software.intel.com/en-us/node/468946).
+  See related info about [geqrfp](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geqrfp.html).
   "
   [a]
   (qr-factorization a false api/qrfp))
@@ -323,8 +323,8 @@
 (defn qrfp
   "Purely computes the QR factorization of a GE `m x n` matrix, with non-negative diagonal elements.
 
-  See [[qrf!]].
-  See related info about [lapacke_?geqrfp](https://software.intel.com/en-us/node/468946).
+  See [[qrfp!]].
+  See related info about [geqrfp](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geqrfp.html).
   "
   [^Matrix a]
   (let-release [a-copy (copy a)]
@@ -335,7 +335,7 @@
 
   See [[qrf!]].
 
-  See related info about [lapacke_?gerqf](https://software.intel.com/en-us/node/521024).
+  See related info about [gerqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gerqf.html).
   "
   [a]
   (rq-factorization a false))
@@ -345,7 +345,7 @@
 
   See [[qrf!]].
 
-  See related info about [lapacke_?gerqf](https://software.intel.com/en-us/node/521024).
+  See related info about [gerqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gerqf.html).
   "
   [^Matrix a]
   (let-release [a-copy (copy a)]
@@ -356,7 +356,7 @@
 
   See [[qrf!]].
 
-  See related info about [lapacke_?geqlf](https://software.intel.com/en-us/node/521019).
+  See related info about [geqlf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geqlf.html).
   "
   [a]
   (ql-factorization a false))
@@ -366,7 +366,7 @@
 
   See [[qrf!]].
 
-  See related info about [lapacke_?geqlf](https://software.intel.com/en-us/node/521019).
+  See related info about [geqlf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geqlf.html).
   "
   [^Matrix a]
   (let-release [a-copy (copy a)]
@@ -377,7 +377,7 @@
 
   See [[qrf!]].
 
-  See related info about [lapacke_?gelqf](https://software.intel.com/en-us/node/521014).
+  See related info about [gelqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gelqf.html).
   "
   [a]
   (lq-factorization a false))
@@ -387,7 +387,7 @@
 
   See [[qrf!]].
 
-  See related info about [lapacke_?gelqf](https://software.intel.com/en-us/node/521014).
+  See related info about [gelqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gelqf.html).
   "
   [^Matrix a]
   (let-release [a-copy (copy a)]
@@ -401,7 +401,7 @@
   previously processed by [[qrf!]] (and friends). Overwrites the input with the appropriate
   portion of the resulting matrix Q.
 
-  See related info about [lapacke_?orgqr](https://software.intel.com/en-us/node/468956).
+  See related info about [orgqr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/orgqr.html).
   "
   [or]
   (api/org! or))
@@ -413,7 +413,7 @@
   The input is a structure containing orthogonalized matrix `:lu` and vector `:tau` that were
   previously processed by [[qrf!]] (and friends).
 
-  See related info about [lapacke_?orgqr](https://software.intel.com/en-us/node/468956).
+  See related info about [orgqr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/orgqr.html).
   "
   [or]
   (api/org or))
@@ -430,11 +430,11 @@
   - the least squares solution vectors if `m >= n`
   - minimum norm solution vectors if `m < n`.
 
-  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
-  If the least squares cannot be computed the function throws ExceptionInfo.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If `a` and `b` do not have the same layout (column or row oriented), throws `ex-info`.
+  If the least squares cannot be computed the function throws `ex-info`.
+  If some value in the native call is illegal, throws `ex-info`.
 
-  See related info about [lapacke_?gels](https://software.intel.com/en-us/node/521112).
+  See related info about [gels](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gels.html).
   "
   [^Matrix a ^Matrix b]
   (if (and (<= (max 1 (.mrows a) (.ncols a)) (.mrows b))
@@ -460,12 +460,12 @@
   - the least squares solution vectors if `m >= n`
   - minimum norm solution vectors if `m < n`.
 
-  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
-  If the least squares cannot be computed the function throws ExceptionInfo.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If `a` and `b` do not have the same layout (column or row oriented), throws `ex-info`.
+  If the least squares cannot be computed the function throws `ex-info`.
+  If some value in the native call is illegal, throws `ex-info`.
 
   See [[ls!]].
-  See related info about [lapacke_?gels](https://software.intel.com/en-us/node/521112).
+  See related info about [gels](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gels.html).
   "
   [^Matrix a ^Matrix b]
   (with-release [a-copy (copy a)]
@@ -480,12 +480,12 @@
   Overwrites `a` with the T ([[rqf]]), `x` with the solution, b with R ([[rqf]]), d with garbage,
   c with the residual sum of squares.
 
-  If the dimensions of arguments do not fit, throws ExceptionInfo.
-  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
-  If the least squares cannot be computed the function throws ExceptionInfo.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If the dimensions of arguments do not fit, throws `ex-info`.
+  If `a` and `b` do not have the same layout (column or row oriented), throws `ex-info`.
+  If the least squares cannot be computed the function throws `ex-info`.
+  If some value in the native call is illegal, throws `ex-info`.
 
-  See related info at [lapacke_?gglse](https://software.intel.com/en-us/mkl-developer-reference-c-gglse).
+  See related info about [gglse](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gglse.html).
   "
   [^Matrix a ^Matrix b ^Vector c ^Vector d ^Vector x]
   (let [m (.mrows a)
@@ -511,7 +511,9 @@
 (defn lse
   "Solves the generalized linear least squares problem with equality constraints using RQ factorization.
 
-  See [[lse!]]"
+  See [[lse!]]
+  See related info about [gglse](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gglse.html).
+  "
   [^Matrix a b c d]
   (with-release [a-copy (copy a)
                  b-copy (copy b)
@@ -528,12 +530,12 @@
   Overwrites `a` with the R ([[rqf]]), `x` with the solution, b with T ([[rqf]]), d with garbage,
   x ad y with solution to the GLS problem.
 
-  If the dimensions of arguments do not fit, throws ExceptionInfo.
-  If `a` and `b` do not have the same layout (column or row oriented), throws ExceptionInfo.
-  If the least squares cannot be computed the function throws ExceptionInfo.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If the dimensions of arguments do not fit, throws `ex-info`.
+  If `a` and `b` do not have the same layout (column or row oriented), throws `ex-info`.
+  If the least squares cannot be computed the function throws `ex-info`.
+  If some value in the native call is illegal, throws `ex-info`.
 
-  See related info at [lapacke_?gglse](https://software.intel.com/en-us/mkl-developer-reference-c-ggglm).
+  See related info about [gglse](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gglse.html).
   "
   [^Matrix a ^Matrix b ^Vector d ^Vector x ^Vector y]
   (let [m (.mrows a)
@@ -588,13 +590,13 @@
   be overwritten with left and right eigenvectors. For symmetric matrices, computes the first k
   eigenvalues (k <= m). If `vl` and/or `vr` are nil, eigenvectors are not computed.
 
-  If the QR algorithm failed to compute all the eigenvalues, throws ExceptionInfo, with the information
+  If the QR algorithm failed to compute all the eigenvalues, throws `ex-info`, with the information
   on the index of the first eigenvalue that converged.
-  If `w` is not column-oriented, or does not have 2 columns, throws ExceptionInfo.
-  If `vl` or `vr` dimensions do not fit with `a`'s dimensions, throws ExceptionInfo.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If `w` is not column-oriented, or does not have 2 columns, throws `ex-info`.
+  If `vl` or `vr` dimensions do not fit with `a`'s dimensions, throws `ex-info`.
+  If some value in the native call is illegal, throws `ex-info`.
 
-  See related info about [lapacke_?geev](https://software.intel.com/en-us/node/521147).
+  See related info about [geev](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geev.html).
   "
   ([^Matrix a ^Matrix w ^Matrix vl ^Matrix vr]
    (if (and (= (.mrows a) (.ncols a)) (< 0 (.mrows w))
@@ -633,13 +635,13 @@
   `w` are overwritten with eigenvalues of `a`. If `v` GE matrix is provided, it will be overwritten
   by the orthogonal matrix Z of Schur vectors. If `vs` is nil, only eigenvalues are computed.
 
-  If the QR algorithm failed to compute all the eigenvalues, throws ExceptionInfo, with the information
+  If the QR algorithm failed to compute all the eigenvalues, throws `ex-info`, with the information
   on the index of the first eigenvalue that converged.
-  If `w` is not column-oriented, or does not have 2 columns, throws ExceptionInfo.
-  If `v`'s dimensions do not fit with `a`'s dimensions, throws ExceptionInfo.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If `w` is not column-oriented, or does not have 2 columns, throws `ex-info`.
+  If `v`'s dimensions do not fit with `a`'s dimensions, throws `ex-info`.
+  If some value in the native call is illegal, throws `ex-info`.
 
-  See related info about [lapacke_?gees](https://software.intel.com/en-us/mkl-developer-reference-c-gees).
+  See related info about [gees](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gees.html).
   "
   ([^Matrix a ^Matrix w ^Matrix vs]
    (if (and (= (.mrows a) (.ncols a))
@@ -682,11 +684,11 @@
   the unconverged superdiagonal elements (see LAPACK documentation). If called without `u` and `vt`,
   U and transposed V are not computed.
 
-  If the reduction to bidiagonal form failed to converge, throws ExceptionInfo, with the information
+  If the reduction to bidiagonal form failed to converge, throws `ex-info`, with the information
   on the number of converged superdiagonals.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If some value in the native call is illegal, throws `ex-info`.
 
-  See related info about [lapacke_?gesvd](https://software.intel.com/en-us/node/521150).
+  See related info about [gesvd](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/ge.html).
   "
   ([^Matrix a ^Matrix sigma ^Matrix u ^Matrix vt ^Matrix superb]
    (let [m (.mrows a)
@@ -772,9 +774,9 @@
   If `sdd?` is true, uses the faster divide and conquer SDD method. If `sdd?` is not provided,
   uses ordinary SVD if both `u?` and `vt?` are false.
 
-  If the reduction to bidiagonal form failed to converge, throws ExceptionInfo, with the information
+  If the reduction to bidiagonal form failed to converge, throws `ex-info`, with the information
   on the number of converged superdiagonals.
-  If some value in the native call is illegal, throws ExceptionInfo.
+  If some value in the native call is illegal, throws `ex-info`.
 
   See related info about [[svd!]]
   "

@@ -75,6 +75,20 @@
 (defn verbose! [timing]
   (dec-verbose-mode (mkl_rt/MKL_Verbose (get mkl-verbose-mode timing timing))))
 
+(defn max-threads
+  (^long []
+   (mkl_rt/MKL_Domain_Get_Max_Threads mkl_rt/MKL_DOMAIN_ALL))
+  (^long [domain]
+   (mkl_rt/MKL_Domain_Get_Max_Threads (get mkl-domain domain domain))))
+
+(defn max-threads!
+  ([]
+   (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads 0 mkl_rt/MKL_DOMAIN_ALL)))
+  ([^long n]
+   (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads n mkl_rt/MKL_DOMAIN_ALL)))
+  ([domain ^long n]
+   (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads n (get mkl-domain domain domain)))))
+
 ;; ===================== Sparse Matrix =========================================================
 
 (defn mkl-sparse [type name]

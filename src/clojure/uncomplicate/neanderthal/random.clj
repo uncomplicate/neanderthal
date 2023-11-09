@@ -8,7 +8,10 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.random
-  "TODO
+  "Polymorphic functions that populate Neanderthal's data structures with random numbers
+  drawn from common distributions.
+
+  [[rng-state]], [[rand-normal!]], [[rand-uniform!]]
   "
   (:require [uncomplicate.commons.utils :refer [generate-seed]]
             [uncomplicate.neanderthal.internal.api :as api]))

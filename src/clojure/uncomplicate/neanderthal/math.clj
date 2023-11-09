@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.math
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.math
   "Primitive floating point mathematical functions commonly found in Math, FastMath, and the likes.
   Vectorized counterparts can be found in the [[vect-math]] namespace."
   (:refer-clojure :exclude [abs])
@@ -125,34 +126,34 @@
 (def ^:const pi Math/PI)
 
 (defn erf
-  "Error function: erf(x) = 2/√π 0∫x e-t2dt"
+  "Error function: erf(x) = 2/√π 0∫x e-t2dt."
   ^double [^double x]
   (Erf/erf x))
 
 (defn erfc
-  "The complementary error function: erfc(x) = 1 - erf(x)"
+  "The complementary error function: erfc(x) = 1 - erf(x)."
   ^double [^double x]
   (Erf/erfc x))
 
 (defn erf-inv
-  "Inverse error function"
+  "Inverse error function."
   ^double [^double x]
   (Erf/erfInv x))
 
 (defn erfc-inv
-  "Inverse complementary error function"
+  "Inverse complementary error function."
   ^double [^double x]
   (Erf/erfcInv x))
 
 (let [sqrt2 (sqrt 2.0)]
 
   (defn cdf-norm
-    "The CDF of Normal(0,1)"
+    "The CDF of Normal(0,1)."
     ^double [^double x]
     (* 0.5 (inc (Erf/erf (/ x sqrt2)))))
 
   (defn cdf-norm-inv
-    "The inverse CDF of Normal(0,1)"
+    "The inverse CDF of Normal(0,1)."
     ^double [^double x]
     (* sqrt2 (Erf/erfInv (dec (* 2.0 x))))))
 

@@ -6,7 +6,28 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.sparse
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.sparse
+  "Functions for creating sparse vectors and matrices. Sparse vectors or matrices
+  are structures in which most elements are zeroes. Therefore, it makes sense to
+  store only the few non-zero entries. There is a performance penalty to pay for these
+  entries, in terms of both storage and computation, as they are stored using one of many possible
+  compression schemes, but if there is only a small fraction of non-zero elements compared to
+  zero elements, that penalty is offset by the fact that only a fraction of computations
+  need to be done.
+
+  Compressed sparse storage schemes that we use here use dense vectors to store non-zero entries
+  and appropriate indices. Therefore, most operations can be offloaded to these objects if needed.
+  Neanderthal core functions are supported where it makes sense and where it is technically
+  possible.
+
+  Please see examples in [[uncomplicate.neanderthal.sparse-test]] and [Intel documentation](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/sparse-blas-level-2-and-level-3-routines-001.html).
+
+  ### Cheatsheet
+
+  [[csv]], [[csv?]]
+  [[csr]], [[csr?]]
+  "
   (:require [uncomplicate.commons
              [core :refer [with-release let-release Info info Releaseable release view]]
              [utils :refer [dragan-says-ex]]]
@@ -21,12 +42,25 @@
   (:import [uncomplicate.neanderthal.internal.cpp.structures CSVector]))
 
 (defn csv?
-  "TODO"
+  "Checks whether `x` is a compressed sparse vector (CSV)."
   [x]
   (instance? CSVector x))
 
 (defn csv
-  "TODO"
+  "Creates a compressed sparse vector (CSV) using the supplied arguments.
+
+  Arguments:
+  - `fact`: the factory that should create the vector.
+  - `n`: vector dimension; number of both zero and non-zero entries.
+  - `nz`: a dense vector of values of non-zero entries, or varargs of those entries.
+  - `idx`: integer dense vector of indices of the matching entries from `nz`.
+  - `source`: can be another CSV, in which case its constituent indices vector is shared,
+  or a Clojure sequence that contains data. Please see examples in [[uncomplicate.neanderthal.sparse-test]].
+  The same formats are accepted by [[uncomplicate.neanderthal.core/transfer!]].
+
+  The indices are zero-based by default.
+
+  See more about sparse vectors in [Sparse BLAS Routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/sparse-blas-level-1-routines.html)."
   ([fact n idx nz & nzs]
    (let [fact (factory fact)
          idx-fact (index-factory fact)
@@ -52,12 +86,38 @@
      (csv fact (dim cs) (indices cs) (entries cs)))))
 
 (defn csr?
-  "TODO"
+  "Checks whether `x` is a compressed sparse (row) matrix (CSR). CSR is the
+  default compression scheme, supported by all routines in major libraries.
+  Compressed columns usually do not have such a good coverage, and they are
+  redundant anyway.
+  "
   [x]
   (satisfies? CSR x))
 
 (defn csr
-  "TODO"
+  "Creates a compressed sparse (row) matrix using the supplied arguments and options.
+
+  Arguments:
+  - `fact`: the factory that should create the matrix.
+  - `m`: number of rows
+  - `n`: number of columns
+  - `nz`: a dense vector of values of non-zero entries.
+  - `idx`: integer dense vector of indices that represent a column of the matching entry from `nz`.
+  - `idx-b`: integer dense vector of indices that represent the index of the first non-zero element in the `nz` vector.
+  - `idx-e`: and integer dense vector of indices that represent the index of the last non-zero element in the `nz` vector.
+  - `options`: supported option is `:layout` (`:column` or `:row`).
+
+  - `idx-be`: `idx-b` and `idx-e` can be provided in one shared vector since each ending index is the
+  beginning index of the next row.
+  - `source`: can be another CSR, in which case its constituent index vectors are shared,
+  or a Clojure sequence that contains data. This function will analyze the sequence and will try to
+  guess its format. Please see examples in [[uncomplicate.neanderthal.sparse-test]] for the examples.
+  The same formats are accepted by [[uncomplicate.neanderthal.core/transfer!]].
+
+  The indices are zero-based by default.
+
+  Please see [Sparse BLAS CSR Matrix Storage Format](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/sparse-blas-csr-matrix-storage-format.html) for a more detailed technical explanation of the CSR format, and the illustrative example.
+  "
   ([fact m n idx idx-b idx-e nz options] ;; TODO error messages
    (if (and (<= 0 (long m)) (<= 0 (long n)))
      (let [idx-fact (index-factory fact)
