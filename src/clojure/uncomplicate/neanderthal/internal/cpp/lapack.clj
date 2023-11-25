@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.cpp.lapack
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.cpp.lapack
   (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [with-release info]]

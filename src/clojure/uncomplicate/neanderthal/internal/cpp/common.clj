@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.cpp.common
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.cpp.common
   (:require [uncomplicate.clojure-cpp :as cpp]
             [uncomplicate.neanderthal.block :refer [buffer]])
   (:import [org.bytedeco.javacpp Pointer FloatPointer DoublePointer IntPointer]

@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.cpp.mkl.constants
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.cpp.mkl.constants
   (:require [uncomplicate.commons.utils :refer [dragan-says-ex]])
   (:import org.bytedeco.mkl.global.mkl_rt))
 

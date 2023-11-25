@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.mkl-test
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.mkl-test
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
              [core :refer [ge tr sy gb tr tb sb sp tp gt dt st gd]]

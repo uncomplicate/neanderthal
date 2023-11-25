@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.cpp.mkl.core
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.cpp.mkl.core
   (:require [uncomplicate.commons
              [core :refer [with-release let-release Info info Releaseable release Viewable]]
              [utils :refer [dragan-says-ex with-check]]]

@@ -6,11 +6,12 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.block-test
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.block-test
   (:require [midje.sweet :refer [facts throws => roughly]]
             [uncomplicate.commons.core :refer [release with-release double-fn view]]
             [uncomplicate.fluokitten
-             [core :refer [fmap! fold foldmap op]]
+             [core :refer [fmap! fold op]]
              [test :refer :all]]
             [uncomplicate.neanderthal
              [core :refer :all]
@@ -198,7 +199,7 @@
                      (^double [^double x ^double y ^double z] (+ x y z))
                      (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
 
-    (facts "Functor implementation for real block vector"
+    (facts "Functor implementation for real block vector."
            (instance? IFn$DD f) => true
 
            (fmap! f (fx)) => (vctr factory [2 3 4 5])
@@ -221,7 +222,7 @@
                       (* x y))
                  +' (fn ^double [^double x ^double y]
                       (+ x y))]
-    (facts "Fold implementation for vector"
+    (facts "Fold implementation for vector."
 
            (fold x) => 10.0
            (fold *' 1.0 x) => 24.0
@@ -232,7 +233,7 @@
                  x (vctr factory [1 2 3 4])
                  pf1 (fn ^double [^double res ^double x] (+ x res))
                  pf1o (fn [res ^double x] (conj res x))]
-    (facts "Reducible implementation for vector"
+    (facts "Reducible implementation for vector."
 
            (fold pf1 1.0 x) => 11.0
            (fold pf1o [] x) => [1.0 2.0 3.0 4.0]
@@ -249,14 +250,14 @@
            (fold + 1.0 x y y y) => 53.0)))
 
 (defn test-vctr-seq [factory]
-  (facts "Vector as a sequence"
+  (facts "Vector as a sequence."
          (seq (vctr factory [1 2 3])) => '(1.0 2.0 3.0)
          (seq (row (ge factory 2 3 (range 6)) 1)) => '(1.0 3.0 5.0)))
 
 ;; ================= GE matrix ========================================
 
 (defn test-ge-ifn [factory]
-  (facts "IFn implementation for double general matrix"
+  (facts "IFn implementation for double general matrix."
          (with-release [x (ge factory 2 3 [1 2 3 4 5 6])]
            (x 1 2) => 6.0
            (x 2 1) => (throws ExceptionInfo)
@@ -295,7 +296,7 @@
                      (^double [^double x ^double y] (+ x y))
                      (^double [^double x ^double y ^double z] (+ x y z))
                      (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
-    (facts "Functor implementation for real GE matrix"
+    (facts "Functor implementation for real GE matrix."
            (instance? clojure.lang.IFn$DD f) => true
 
            (fmap! f (fx)) => (fy)
@@ -316,7 +317,7 @@
   (with-release [x (ge factory 2 3 [1 2 3 4 5 6])
                  *' (fn ^double [^double x ^double y] (double (* x y)))
                  +' (fn ^double [^double x ^double y] (double (+ x y)))]
-    (facts "Fold implementation for real GE matrix"
+    (facts "Fold implementation for real GE matrix."
            (fold x) => 21.0
            (fold *' 1.0 x) => 720.0
            (fold +' 0.0 x) => (fold x))))
@@ -326,7 +327,7 @@
                  y (ge factory 2 3 [2 3 4 5 6 7])
                  pf1 (fn ^double [^double res ^double x] (+ x res))
                  pf1o (fn [res ^double x] (conj res x))]
-    (facts "Reducible implementation for real GE matrix"
+    (facts "Reducible implementation for real GE matrix."
 
            (fold pf1 1.0 x) => 22.0
            (fold pf1o [] x) => [1.0 2.0 3.0 4.0 5.0 6.0]
@@ -341,7 +342,7 @@
 
 
 (defn test-ge-seq [factory]
-  (facts "GE matrix as a sequence"
+  (facts "GE matrix as a sequence."
 
          (seq (ge factory 2 3 (range 6) {:layout :column}))
          => (list (list 0.0 1.0) (list 2.0 3.0) (list 4.0 5.0))
@@ -360,7 +361,7 @@
                      (^double [^double x ^double y] (+ x y))
                      (^double [^double x ^double y ^double z] (+ x y z))
                      (^double [^double x ^double y ^double z ^double w] (+ x y z w)))]
-    (facts "Functor implementation for real TR matrix"
+    (facts "Functor implementation for real TR matrix."
            (instance? clojure.lang.IFn$DD f) => true
 
            (fmap! f (fx)) => (fy)
@@ -381,7 +382,7 @@
   (with-release [x (tr factory 3 [1 2 3 4 5 6])
                  *' (fn ^double [^double x ^double y] (double (* x y)))
                  +' (fn ^double [^double x ^double y] (double (+ x y)))]
-    (facts "Fold implementation for real TR matrix"
+    (facts "Fold implementation for real TR matrix."
            (fold x) => 21.0
            (fold *' 1.0 x) => 720.0
            (fold +' 0.0 x) => (fold x))))
@@ -391,7 +392,7 @@
                  y (tr factory 3 [2 3 4 5 6 7])
                  pf1 (fn ^double [^double res ^double x] (+ x res))
                  pf1o (fn [res ^double x] (conj res x))]
-    (facts "Reducible implementation for real TR matrix"
+    (facts "Reducible implementation for real TR matrix."
 
            (fold pf1 1.0 x) => 22.0
            (fold pf1o [] x) => [1.0 2.0 3.0 4.0 5.0 6.0]
@@ -405,7 +406,7 @@
            (fold + 1.0 x y y y) => 103.0)))
 
 (defn test-tr-seq [factory]
-  (facts "TR matrix as a sequence"
+  (facts "TR matrix as a sequence."
 
          (seq (tr factory 3 (range 1 7) {:layout :column}))
          => (list (list 1.0 2.0 3.0) (list 4.0 5.0) (list 6.0))

@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.api
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.api
   (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons.core :refer [Releaseable]]))
 

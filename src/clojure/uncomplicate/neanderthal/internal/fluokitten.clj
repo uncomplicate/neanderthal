@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.fluokitten
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.fluokitten
   (:refer-clojure :exclude [accessor])
   (:require [uncomplicate.commons
              [core :refer [let-release double-fn]]

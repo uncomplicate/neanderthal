@@ -6,7 +6,9 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.sparse-test
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.sparse-test
+  (:refer-clojure :exclude [abs])
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.commons.core :refer [with-release release view]]
             [uncomplicate.fluokitten.core :refer [fmap fmap! fold foldmap]]

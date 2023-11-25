@@ -6,7 +6,9 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.navigation
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.navigation
+  (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [Info info]]
              [utils :refer [dragan-says-ex]]]

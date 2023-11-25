@@ -8,6 +8,7 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.device.clblock
+  (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release Mappable mmap unmap
                            Info info wrap-float wrap-double wrap-int wrap-long

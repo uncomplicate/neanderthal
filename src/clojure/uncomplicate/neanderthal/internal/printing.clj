@@ -6,7 +6,9 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.printing
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.printing
+  (:refer-clojure :exclude [abs])
   (:require [clojure.pprint :refer [cl-format]]
             [uncomplicate.neanderthal
              [math :refer [ceil]]

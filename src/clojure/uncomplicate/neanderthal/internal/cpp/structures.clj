@@ -6,7 +6,9 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.cpp.structures
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.cpp.structures
+  (:refer-clojure :exclude [abs])
   (:require
    [uncomplicate.commons
     [core :refer [Releaseable release let-release Info info double-fn wrap-float wrap-double
@@ -2887,7 +2889,7 @@
          entry-width (.entryWidth da)]
      (let-release [buf ((type-pointer (.entryType da))
                         (mapped-buffer channel offset-bytes (* (long n) entry-width) flag))]
-       (create-vector fact true buf n 0 1))));;TODO check whether MKL destructor works with this.
+       (create-vector fact true buf n 0 1))))
   ([fact channel n flag]
    (map-channel fact channel n flag 0))
   ([fact ^FileChannel channel n-or-flag]

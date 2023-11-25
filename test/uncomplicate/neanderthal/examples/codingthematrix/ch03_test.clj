@@ -6,7 +6,8 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.examples.codingthematrix.ch03-test
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.examples.codingthematrix.ch03-test
   (:require [midje.sweet :refer [facts throws =>]]
             [uncomplicate.neanderthal
              [core :refer [axpy]]

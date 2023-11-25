@@ -6,7 +6,9 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.real-test
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.real-test
+  (:refer-clojure :exclude [abs])
   (:require [midje.sweet :refer [facts throws => roughly truthy]]
             [uncomplicate.commons.core :refer [release with-release let-release view]]
             [uncomplicate.fluokitten.core :refer [fmap!]]

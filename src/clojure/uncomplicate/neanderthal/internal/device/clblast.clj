@@ -8,6 +8,7 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.device.clblast
+  (:refer-clojure :exclude [abs])
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info

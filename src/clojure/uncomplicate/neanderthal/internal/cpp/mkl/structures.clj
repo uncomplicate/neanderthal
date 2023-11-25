@@ -6,7 +6,9 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.cpp.mkl.structures
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.cpp.mkl.structures
+  (:refer-clojure :exclude [abs])
   (:require
    [uncomplicate.commons
     [core :refer [Releaseable release let-release with-release Info info Viewable view]]

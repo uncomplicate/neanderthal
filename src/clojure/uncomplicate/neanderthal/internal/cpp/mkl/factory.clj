@@ -6,7 +6,9 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns uncomplicate.neanderthal.internal.cpp.mkl.factory
+(ns ^{:author "Dragan Djuric"}
+    uncomplicate.neanderthal.internal.cpp.mkl.factory
+  (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [with-release let-release info Releaseable release view]]
              [utils :refer [dragan-says-ex with-check generate-seed]]]
