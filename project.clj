@@ -15,7 +15,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [uncomplicate/commons "0.14.0-SNAPSHOT"]
-                 [uncomplicate/fluokitten "0.9.1"]
+                 [uncomplicate/fluokitten "0.9.2-SNAPSHOT"]
                  [org.uncomplicate/clojure-cpp "0.2.0-SNAPSHOT"]
                  [org.bytedeco/mkl-platform "2023.1-1.5.10-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.15.2-SNAPSHOT"]
@@ -33,7 +33,7 @@
                    :dependencies [[midje "1.10.9"]
                                   [codox-theme-rdash "0.1.2"]
                                   [org.bytedeco/mkl "2023.1-1.5.10-SNAPSHOT" :classifier linux-x86_64-redist]
-                                  [org.bytedeco/cuda "12.1-8.9-1.5.10-SNAPSHOT" :classifier linux-x86_64-redist]]
+                                  [org.bytedeco/cuda "12.3-8.9-1.5.10-SNAPSHOT" :classifier linux-x86_64-redist]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
                            :themes [:rdash]
