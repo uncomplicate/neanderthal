@@ -17,7 +17,7 @@
                  [uncomplicate/commons "0.14.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.9.2-SNAPSHOT"]
                  [org.uncomplicate/clojure-cpp "0.2.0-SNAPSHOT"]
-                 [org.bytedeco/mkl-platform "2023.1-1.5.10-SNAPSHOT"]
+                 [org.bytedeco/mkl-platform "2024.0-1.5.10"]
                  [uncomplicate/clojurecl "0.15.2-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.5.2"]
                  [uncomplicate/clojurecuda "0.18.0-SNAPSHOT"]
@@ -30,10 +30,10 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[midje "1.10.9"]
+                   :dependencies [[midje "1.10.10"]
                                   [codox-theme-rdash "0.1.2"]
-                                  [org.bytedeco/mkl "2023.1-1.5.10-SNAPSHOT" :classifier linux-x86_64-redist]
-                                  [org.bytedeco/cuda "12.3-8.9-1.5.10-SNAPSHOT" :classifier linux-x86_64-redist]]
+                                  [org.bytedeco/mkl "2024.0-1.5.10" :classifier linux-x86_64-redist]
+                                  [org.bytedeco/cuda "12.3-8.9-1.5.10" :classifier linux-x86_64-redist]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
                            :themes [:rdash]
