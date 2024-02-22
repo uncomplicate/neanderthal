@@ -13,15 +13,15 @@ Neanderthal's default option is to use use native libraries, so it is very impor
 
 ## Installation (Leiningen)
 
-The most straightforward way to include Neanderthal in your project is with Leiningen. **Check [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj) out for the complete example.** Please note that, if you need an older version of Neanderthal, they may need a bit more specific installation steps, which are explained in [Requirements](#the-native-library-used-by-neanderthals-native-engine-optional)
+The most straightforward way to include Neanderthal in your project is with Leiningen. **Check [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj) out for the complete example.** Please note that, if you need an older version of Neanderthal, they may need a bit more specific installation steps, which are explained in [Requirements](#requirements).
 
 * Add the following dependency to your `project.clj`,: ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
 * Add a MKL distribution jar `[org.bytedeco/mkl "2024.0-1.5.10" :classifier linux-x86_64-redist]` as your project's dependency.
 * (optional) Add a CUDA distribution jar `[org.bytedeco/cuda "12.3-8.9-1.5.10" :classifier linux-x86_64-redist]` as your project's dependency.
 
-Neanderhtal will use the native CPU MKL (and/or CUDA) binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional).33 **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
+Neanderhtal will use the native CPU MKL (and/or CUDA) binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#legacy-0470-and-older-the-native-library-used-by-neanderthals-native-engine-optional).33 **Note: MKL distribution size is 200 MB, while CUDA is 2.0 GB!** Lein will download these JARs the first time you include them, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
 
-
+Also note the `:classifier`, which is OS dependent. You may omit it, but then binaries for all operating systems will be downloaded, which will take longer. For, windows, use `windows-x86_64-redist`, and `macosx-x86_64-redist` for mac. **Sadly, macOS is currently only supported on Intel CPUs, and you'll have to use LEGACY Neanderthal versions, 0.47.0 and older, so it can be a bit messy to set up.**
 
 ## Usage
 
