@@ -2,7 +2,7 @@
 title: "Get Started"
 Author: Dragan Djuric
 layout: article
----o
+---
 
 Neanderthal's default option is to use use native libraries, so it is very important that you do not skip any part of this guide.
 
@@ -10,6 +10,18 @@ Neanderthal's default option is to use use native libraries, so it is very impor
 
 * Walk through this guide, set up your development environment, and try the examples.
 * Familiarize yourself with Neanderthal's [more detailed tutorials](/articles/guides.html) and [API documentation](/codox).
+
+## Installation (Leiningen)
+
+The most straightforward way to include Neanderthal in your project is with Leiningen. **Check [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj) out for the complete example.** Please note that, if you need an older version of Neanderthal, they may need a bit more specific installation steps, which are explained in [Requirements](#the-native-library-used-by-neanderthals-native-engine-optional)
+
+* Add the following dependency to your `project.clj`,: ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
+* Add a MKL distribution jar `[org.bytedeco/mkl "2024.0-1.5.10" :classifier linux-x86_64-redist]` as your project's dependency.
+* (optional) Add a CUDA distribution jar `[org.bytedeco/cuda "12.3-8.9-1.5.10" :classifier linux-x86_64-redist]` as your project's dependency.
+
+Neanderhtal will use the native CPU MKL (and/or CUDA) binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional).33 **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
+
+
 
 ## Usage
 
@@ -38,16 +50,6 @@ This is one of the ways to multiply matrices:
 (mm a b)
 ```
 
-## Leiningen
-
-The most straightforward way to include Neanderthal in your project is with Leiningen. Add the following dependency to your `project.clj`, just like in **[the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj)**:
-
-![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
-
-Add a MKL distribution jar `[org.bytedeco/mkl-platform-redist "2020.3-1.5.4"]` as your project's dependency.
-
-Neanderhtal will use the native CPU MKL binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#the-native-library-used-by-neanderthals-native-engine-optional).33 **Note: MKL distribution size is 750 MB!** Lein will download it the first time you include it, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
-
 ## Overview and Features
 
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
@@ -62,6 +64,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 * Data structures: double and single precision vectors, dense matrices (GE), triangular matrices (TR), symmetric matrices (SY), banded, diagonal, etc.;
 * BLAS Level 1, 2, and 3 routines;
 * Lots of (but not all) LAPACK routines;
+* Sparse matrices and vectors.
 * Various Clojure vector and matrix functions (transpositions, submatrices etc.);
 * Easy and efficient data mapping and transfer to and from GPUs;
 * Fast map, reduce and fold implementations for the provided structures.
@@ -71,12 +74,13 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 ### On the TODO List
 
 * ~"Tensors"~: This is already available in Deep Diamond!
-* Sparse matrices;
 * Support for complex numbers;
 
 ## Requirements
 
-You need at least Java 8.
+You need at least Java 8, but the newer the better.
+
+### LEGACY (0.47.0 and older): Open JVM modules.
 
 If you are running on Java 9 or higher, you need to enable the `java.base` module. Add the following to your JVM options (:jvm-opts in leiningen): `"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"` and `"--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"`.
 
@@ -94,15 +98,18 @@ Follow the [ClojureCL getting started guide](https://clojurecl.uncomplicate.org/
 
 ### GPU drivers for the CUDA GPU engine
 
-Everything will magically work (no need to compile anything) on Nvidia, provided that you **installed the latest Nvidia's CUDA Toolkit**.
+Everything will magically work (no need to compile anything) on Nvidia, provided that you **have Nvidia drivers**, and included the appropriate
+Nvidia Toolkit JavaCPP jar (`[org.bytedeco/cuda "12.3-8.9-1.5.10" :classifier linux-x86_64-redist]`).
 
 Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
 *macOS* doesn't support CUDA 11 and higher (and Apple hasn't shipped Nvidia GPUs since 2014 anyway). You'll have to exclude CUDA dependency in your build script (see the [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj)).
 
-### The native library used by Neanderthal's native engine (Optional)
+If you're using a LEGACY version (0.47.0 and older) you'll need to install the CUDA Toolkit on your machine, **instead of** using JavaCPP CUDA binaries.
 
-**The following is not needed if you include [org.bytedeco/mkl-platform-redist "2020.3-1.5.4"] dependency.**
+### LEGACY (0.47.0 and older) The native library used by Neanderthal's native engine (Optional)
+
+**The following is not needed if you include [org.bytedeco/mkl-platform-redist "2020.3-1.5.4"] dependency.** (Also, ignore this section completely if you're using 0.48.0 and up.)
 
 This section deals with system-wide MKL installation.
 
@@ -136,7 +143,7 @@ Please note that, if you use Windows or OS X, the binary file extensions are not
 
 **Note for OSX users:** MKL installation on my OSX 10.11 placed `libiomp5.dylib` in a different folder than the rest of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `DYLD_LIBRARY_PATH`. In newer versions of OSX, you'd have to configure the "system integrity protection (SIP)" settings for `DYLD_LIBRARY_PATH` to be respected by the system [see more here](https://github.com/uncomplicate/neanderthal/issues/31). If you want a quick & dirty solution without much fuss, copying the `dylib` files and pasting them into `/usr/local/lib` has been reported to work by multiple users.
 
-**Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contains the `dll`s into the `PATH` environment variable, and you're ready to go. Some Windows users reported that `libiomp5.dll` too is in another folder; see the note for OSX users and take the equivalent Windows action.
+**Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contains the `dll`s into the `PATH` environment vairable, and you're ready to go. Some Windows users reported that `libiomp5.dll` too is in another folder; see the note for OSX users and take the equivalent Windows action.
 
 *Final note* If you prefer zero-install, just include `[org.bytedeco/mkl-platform-redist "2020.3-1.5.4"]` as a dependencly in your leiningen project and none of these is necessary.
 
