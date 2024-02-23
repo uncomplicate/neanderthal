@@ -1,5 +1,19 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.48.0
+
+* Completely moved CPU engine to JavaCPP (and removed Neanderthal Native)
+* Support for sparse matrices
+* Support for integers in Fluokitten functions
+* More operations supported by integer engines
+* Major internal engine re-coding
+* Upgrade to CUDA 12.3
+* Upgrade to MKL 2024.0
+
+# 0.47.0
+
+Skipped
+
 # 0.46.0
 
 * Upgrade CUDA to 11.8.
