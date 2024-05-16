@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.49.0
+
+* Built with Java 8 bytecode compatibility.
+
 # 0.48.0
 
 * Completely moved CPU engine to JavaCPP (and removed Neanderthal Native)
