@@ -204,7 +204,7 @@
   ([x ^long stride-mult]
    (if (< 0 stride-mult)
      (api/view-vctr x stride-mult)
-     (dragan-says-ex "Cannot use a negative stride multiplier." {:stirde-mult stride-mult}))))
+     (dragan-says-ex "Cannot use a negative stride multiplier." {:stride-mult stride-mult}))))
 
 (defn vctr?
   "Tests if `x` is a (neanderthal) vector."
@@ -294,7 +294,7 @@
   ([a ^long stride-mult]
    (if (< 0 stride-mult)
      (api/view-ge a stride-mult)
-     (dragan-says-ex "You cannot use a negative stride multiplier." {:stirde-mult stride-mult})))
+     (dragan-says-ex "You cannot use a negative stride multiplier." {:stride-mult stride-mult})))
   ([^VectorSpace a ^long m ^long n]
    (if (and (<= 0 m) (<= 0 n) (<= (* m n) (.dim a)))
      (api/view-ge a m n)

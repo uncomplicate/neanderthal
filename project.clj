@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.49.1"
+(defproject uncomplicate/neanderthal "0.49.2-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -52,7 +52,6 @@
                                         uncomplicate.neanderthal.sparse]
                            :output-path "docs/codox"}
 
-                   ;;also replaces lein's default JVM argument TieredStopAtLevel=1
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]

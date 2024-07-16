@@ -43,7 +43,7 @@
 
 (def ^{:private true :const true} INEFFICIENT_OPERATION_MSG
   "This operation would be inefficient because it uses memory transfer.
-  Please use transfer! of map-memory to be reminded of that.")
+  Please use transfer! of map-channel to be reminded of that.")
 
 (def ^{:private true :const true} UNAVAILABLE_OPENCL_MSG
   "This operation is not available in OpenCL (yet).")
