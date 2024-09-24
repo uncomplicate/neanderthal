@@ -24,7 +24,7 @@
     [api :refer :all]
     [navigation :refer :all]
     [common :refer [dense-rows dense-cols]]
-    [printing :refer [print-vector]]
+    [printing :refer [print-sequence print-vector]]
     [fluokitten :refer :all]]
    [uncomplicate.neanderthal.internal.cpp.structures
     :refer [vector-seq real-block-vector integer-block-vector cs-vector]]
@@ -263,7 +263,9 @@
    (csr-matrix fact sparse-matrix (layout-navigator column?) (matrix-descr :ge))))
 
 (defmethod print-method CSRMatrix [^CSRMatrix x ^java.io.Writer w] ;; TODO transform to nested vectors
-  (.write w (format "%s\n%s" (str x) (pr-str (seq (indices x)))))
+  (.write w (format "%s\n%s" (str x)))
+  (when-not (null? (buffer (indices x)))
+    (print-sequence w (indices x)))
   (when-not (null? (buffer (entries x)))
     (print-vector w (entries x))))
 

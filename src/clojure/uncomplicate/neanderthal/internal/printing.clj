@@ -112,6 +112,9 @@
          (print-vector w formatter x))
        (.write w "]\n"))))
 
+  (defn print-sequence [^java.io.Writer w x]
+    (.write w (prn-str (seq x))))
+
   (defn print-ge
     ([^java.io.Writer w formatter a]
      (when (< 0 (dim a))

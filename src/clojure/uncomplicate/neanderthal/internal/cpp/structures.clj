@@ -26,7 +26,7 @@
     [block :refer [entry-type offset stride buffer column?]]]
    [uncomplicate.neanderthal.internal
     [api :refer :all]
-    [printing :refer [print-vector print-ge print-uplo print-banded print-diagonal]]
+    [printing :refer [print-sequence print-vector print-ge print-uplo print-banded print-diagonal]]
     [common :refer :all]
     [navigation :refer :all]
     [fluokitten :refer :all]])
@@ -496,7 +496,7 @@
   [^Vector x ^java.io.Writer w]
   (.write w (str x))
   (when-not (null? (buffer x))
-    (pr-str (seq x))))
+    (print-sequence w x)))
 
 ;; ============ Real Vector ====================================================
 
@@ -828,7 +828,7 @@
 (defmethod print-method CSVector [^Vector x ^java.io.Writer w]
   (.write w (format "%s\n" (str x)))
   (when-not (null? (buffer (indices x)))
-    (pr-str (seq (indices x))))
+    (print-sequence w (indices x)))
   (when-not (null? (buffer (entries x)))
     (print-vector w (entries x))))
 
