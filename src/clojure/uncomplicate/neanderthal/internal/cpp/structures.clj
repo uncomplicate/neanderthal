@@ -2415,7 +2415,7 @@
                         (recur (inc i)))
                    true))))))
   (toString [a]
-    (format "#RealDiagonalMatrix[%s, type%s mxn:%dx%d]"
+    (format "#RealDiagonalMatrix[%s, type%s, mxn:%dx%d]"
             (.entryType da) matrix-type n n))
   DiagonalMatrix
   (matrixType [_]
