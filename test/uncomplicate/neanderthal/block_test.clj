@@ -164,6 +164,8 @@
            (x 2) => 3.0
            (x 5) => (throws ExceptionInfo)
            (x -1) => (throws ExceptionInfo)
+           (x 2 100) => x
+           (x 2) => 100.0
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LD x 0) => 1.0)))
 
@@ -262,6 +264,8 @@
            (x 1 2) => 6.0
            (x 2 1) => (throws ExceptionInfo)
            (x -1 3) => (throws ExceptionInfo)
+           (x 1 2 200) => x
+           (x 1 2) => 200.0
            (instance? clojure.lang.IFn x) => true
            (.invokePrim ^IFn$LLD x 0 0) => 1.0)))
 

@@ -31,7 +31,7 @@
     [navigation :refer :all]
     [fluokitten :refer :all]])
   (:import [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
-            IFn$LDD IFn$LLDD IFn$LLL IFn$LLLL]
+            IFn$LDD IFn$LLDD IFn$LDO IFn$LLDO IFn$LLL IFn$LLLL IFn$LLO IFn$LLLO]
            java.nio.channels.FileChannel
            org.bytedeco.mkl.global.mkl_rt
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer
@@ -425,7 +425,7 @@
   Seqable
   (seq [x]
     (vector-seq x))
-  IFn$LLL
+  IFn$LLO
   (invokePrim [x i v]
     (if (< -1 i n)
       (.set x i v)
@@ -521,7 +521,7 @@
   Seqable
   (seq [x]
     (vector-seq x))
-  IFn$LDD
+  IFn$LDO
   (invokePrim [x i v]
     (if (< -1 i n)
       (.set x i v)
@@ -585,7 +585,7 @@
 (extend-base RealBlockVector)
 (extend-vector RealBlockVector real-block-vector real-ge-matrix)
 (extend-block-vector RealBlockVector real-block-vector)
-(extend-vector-fluokitten RealBlockVector double IFn$LDD)
+(extend-vector-fluokitten RealBlockVector double IFn$LDO)
 
 (def real-block-vector (partial block-vector ->RealBlockVector))
 
@@ -1080,7 +1080,7 @@
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 (.fd stor))))
-  IFn$LLDD
+  IFn$LLDO
   (invokePrim [a i j v]
     (if (and (< -1 i m) (< -1 j n))
       (.set a i j v)
@@ -1201,7 +1201,7 @@
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 (.fd stor))))
-  IFn$LLLL
+  IFn$LLLO
   (invokePrim [a i j v]
     (if (and (< -1 i m) (< -1 j n))
       (.set a i j v)
@@ -1472,7 +1472,7 @@
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 n)))
-  IFn$LLDD
+  IFn$LLDO
   (invokePrim [a i j v]
     (if (.accessible reg i j)
       (.set a i j v)
@@ -1604,7 +1604,7 @@
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 n)))
-  IFn$LLLL
+  IFn$LLLO
   (invokePrim [a i j v]
     (if (and (< -1 i n) (< -1 j n))
       (.set a i j v)
@@ -1877,7 +1877,7 @@
   Seqable
   (seq [a]
     (map seq (.dias a)))
-  IFn$LLDD
+  IFn$LLDO
   (invokePrim [a i j v]
     (if (.accessible reg i j)
       (.set a i j v)
@@ -2133,7 +2133,7 @@
   Seqable
   (seq [a]
     (map #(seq (.stripe nav a %)) (range 0 n)))
-  IFn$LLDD
+  IFn$LLDO
   (invokePrim [a i j v]
     (if (.accessible reg i j)
       (.set a i j v)
@@ -2427,7 +2427,7 @@
   Seqable
   (seq [a]
     (map seq (.dias a)))
-  IFn$LLDD
+  IFn$LLDO
   (invokePrim [a i j v]
     (if (.accessible reg i j)
       (.set a i j v)

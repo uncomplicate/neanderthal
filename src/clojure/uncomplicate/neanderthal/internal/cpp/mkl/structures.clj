@@ -31,8 +31,7 @@
    [uncomplicate.neanderthal.internal.cpp.mkl
     [constants :refer [mkl-sparse-request]]
     [core :refer [create-csr matrix-descr export-csr sparse-error sparse-matrix]]])
-  (:import [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
-            IFn$LDD IFn$LLDD IFn$LLL IFn$LLLL]
+  (:import [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL]
            [org.bytedeco.javacpp IntPointer]
            [org.bytedeco.mkl.global mkl_rt mkl_rt$sparse_matrix mkl_rt$matrix_descr]
            [uncomplicate.neanderthal.internal.api Block Matrix DataAccessor RealNativeMatrix
