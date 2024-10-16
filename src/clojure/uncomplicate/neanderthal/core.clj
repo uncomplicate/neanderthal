@@ -42,7 +42,7 @@
   [block-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/block_test.clj),
   [mkl-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/mkl_test.clj),
   [cublas-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/cublas_test.clj),
-  and [opencl-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/opencl_test.clj).
+  and [device-test](https://github.com/uncomplicate/neanderthal/blob/master/test/uncomplicate/neanderthal/device_test.clj).
   Also, there are tutorial test examples [here](https://github.com/uncomplicate/neanderthal/tree/master/test/uncomplicate/neanderthal/examples),
   the tutorials at [the Neanderthal web site](http://neanderthal.uncomplicate.org),
   and [on my blog dragan.rocks](http://dragan.rocks).
