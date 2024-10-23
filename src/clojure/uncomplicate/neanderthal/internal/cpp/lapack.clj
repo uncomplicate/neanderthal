@@ -352,7 +352,7 @@
    `(dragan-says-ex "In-place mm! is not supported for GT matrices." {:a (info ~a)})))
 
 (defmacro gd-mm
-  ([lapack gd-method tb-method ptr alpha a b left]
+  ([lapack gd-method scal-method ptr alpha a b left]
    `(let [nav-b# (navigator ~b)
           reg-b# (region ~b)
           stor-b# (full-storage ~b)
@@ -376,13 +376,12 @@
                          n# (long-ptr (pointer n-b#))
                          ldx# (long-ptr (pointer ld-b#))]
             (if (.isColumnMajor nav-b#)
-              (. ~lapack ~gd-method m# n# buff-a# buff-b# ldx#)
-              (dotimes [j# n-b#]
-                (. ~lapack ~tb-method ~(:column blas-layout) ~(:lower blas-uplo) ~(:no-trans blas-transpose)
-                   ~(:non-unit blas-diag) m-a# 0 buff-a# 1
-                   (.position buff-b# (.index nav-b# stor-b# 0 j#)) ld-b#)))
-            (when-not (f= 1.0 ~alpha)
-              (scal (engine ~b) ~alpha ~b)))
+              (do (. ~lapack ~gd-method m# n# buff-a# buff-b# ldx#)
+                  (when-not (f= 1.0 ~alpha)
+                    (scal (engine ~b) ~alpha ~b)))
+              (dotimes [i# m-b#]
+                (. ~lapack ~scal-method n-b# (* ~alpha (get-entry buff-a# i#))
+                   (.position buff-b# (.index nav-b# stor-b# i# 0)) 1))))
           (mm (engine ~a) ~alpha (trans ~a) (trans ~b) true)))
       ~b))
   ([lapack method ptr alpha a b beta c left]

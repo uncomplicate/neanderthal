@@ -1595,6 +1595,12 @@
          (mm! 2.0 (gd factory 5 (range 1 100)) (ge factory 5 3 (range 1 16)))
          => (mm! 2.0 (tb factory 5 0 (range 1 100)) (ge factory 5 3 (range 1 16)))
 
+         (mm! 2.0 (gd factory 5 (range 1 100)) (ge factory 5 3 (range 1 16)))
+         => (mm 2.0 (gd factory 5 (range 1 100)) (ge factory 5 3 (range 1 16)))
+
+         (mm! 2.0 (ge factory 3 5 (range 1 16)) (gd factory 5 (range 1 100)))
+         => (mm 2.0 (ge factory 3 5 (range 1 16)) (gd factory 5 (range 1 100)))
+
          (mm! 2.0 (trans (ge factory 5 3 (range 1 16))) (trans (gd factory 5 (range 1 100))))
          => (trans (mm! 2.0 (tb factory 5 0 (range 1 100)) (ge factory 5 3 (range 1 16))))
 

@@ -1644,7 +1644,7 @@
         (dragan-says-ex "rk! is not supported for GD matrices." {:a (info a#)})))
      (mm
        ([_# alpha# a# b# left#]
-        (gd-mm ~mkl ~(lapacke "" t 'lascl2_64) ~(cblas t 'tbmv) ~ptr (~cast alpha#) a# b# left#))
+        (gd-mm ~mkl ~(lapacke "" t 'lascl2_64) ~(cblas t 'scal) ~ptr (~cast alpha#) a# b# left#))
        ([_# alpha# a# b# beta# c# left#]
         (gd-mm ~mkl ~(cblas t 'sbmv) ~ptr (~cast alpha#) a# b# (~cast beta#) c# left#)))))
 
