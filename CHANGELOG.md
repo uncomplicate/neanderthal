@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.50.0
+
+* Bugfixes.
+
 # 0.49.0
 
 * Built with Java 8 bytecode compatibility.
