@@ -589,7 +589,7 @@
    (if (< -1 n)
      (let-release [res (api/create-diagonal (api/factory factory) n :gd (not (:raw options)))]
        (if source (transfer! source res) res))
-     (dragan-says-ex "GT matrix cannot have a negative dimension." {:n n})))
+     (dragan-says-ex "GD matrix cannot have a negative dimension." {:n n})))
   ([factory ^long n arg]
    (if (or (not arg) (map? arg))
      (gd factory n nil arg)
