@@ -262,7 +262,7 @@
    (csr-matrix fact sparse-matrix (layout-navigator column?) (matrix-descr :ge))))
 
 (defmethod print-method CSRMatrix [^CSRMatrix x ^java.io.Writer w] ;; TODO transform to nested vectors
-  (.write w (format "%s\n%s" (str x)))
+  (.write w (format "%s\n" (str x)))
   (when-not (null? (buffer (indices x)))
     (print-sequence w (indices x)))
   (when-not (null? (buffer (entries x)))
