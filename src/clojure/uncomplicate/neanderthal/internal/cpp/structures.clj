@@ -16,7 +16,7 @@
     [utils :refer [dragan-says-ex mapped-buffer]]]
    [uncomplicate.fluokitten.protocols :refer [PseudoFunctor Functor Foldable Magma Monoid Applicative
                                               fold foldmap fmap fmap! Comonad extract]]
-   [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
+   [uncomplicate.clojure-cpp :refer [pointer fill! zero! float-pointer double-pointer long-pointer
                                      int-pointer short-pointer byte-pointer null?
                                      PointerCreator capacity! type-pointer]]
    [uncomplicate.neanderthal
@@ -45,7 +45,8 @@
 
 (declare real-block-vector integer-block-vector cs-vector integer-ge-matrix real-ge-matrix
          real-uplo-matrix integer-uplo-matrix real-banded-matrix integer-banded-matrix
-         real-packed-matrix integer-packed-matrix real-diagonal-matrix integer-diagonal)
+         real-packed-matrix integer-packed-matrix real-diagonal-matrix integer-diagonal
+         real-block-vector* integer-block-vector*)
 
 (def f* (double-fn *))
 
@@ -70,9 +71,9 @@
        (let [n# (max 1 n#)]
          (capacity! (~pointer (construct# (* (. ~entry-class BYTES) n#))) n#)))
      (initialize [_# p#]
-       (fill! p# 0))
+       (zero! p#))
      (initialize [_# p# v#]
-       (fill! p# v#))
+       (fill! p# (~cast v#)))
      (wrapPrim [_# v#]
        (pointer (~cast v#)))
      (castPrim [_# v#]
@@ -279,6 +280,12 @@
      (block-vector constructor fact true buf-ptr n 0 strd)))
   ([constructor fact n]
    (block-vector constructor fact n 1)))
+
+(defn block-vector* [constructor fact master buf-ptr n strd]
+  (let [da (data-accessor fact)]
+    (if (<= 0 n (.count da buf-ptr))
+      (constructor fact da (vector-engine fact) master buf-ptr n strd)
+      (throw (ex-info "Insufficient buffer size." {:n n :buffer-size (.count da buf-ptr)})))))
 
 ;; TODO move to general namespace
 (defmacro extend-base [name]
@@ -491,6 +498,7 @@
 (extend-vector-fluokitten IntegerBlockVector long IFn$LLL)
 
 (def integer-block-vector (partial block-vector ->IntegerBlockVector))
+(def integer-block-vector* (partial block-vector* ->IntegerBlockVector))
 
 (defmethod print-method IntegerBlockVector
   [^Vector x ^java.io.Writer w]
@@ -588,6 +596,7 @@
 (extend-vector-fluokitten RealBlockVector double IFn$LDO)
 
 (def real-block-vector (partial block-vector ->RealBlockVector))
+(def real-block-vector* (partial block-vector* ->RealBlockVector))
 
 (defmethod print-method RealBlockVector [^Vector x ^java.io.Writer w]
   (.write w (str x))

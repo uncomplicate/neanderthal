@@ -19,7 +19,7 @@
              [real :as real]
              [integer :as integer]
              [math :refer [f=] :as math]
-             [block :refer [initialize offset stride contiguous?]]]
+             [block :refer [stride contiguous?]]]
             [uncomplicate.neanderthal.internal
              [constants :refer :all]
              [api :refer :all]
@@ -311,7 +311,7 @@
 
 (defmacro with-rng-check [x expr] ;;TODO maybe avoid special method for this.
   `(if (< 0 (dim ~x))
-     (if (= 1 (stride ~x))
+     (if (and (contiguous? ~x) (= 1 (stride ~x)))
        (let [err# ~expr]
          (if (= 0 err#)
            ~x
@@ -2103,6 +2103,9 @@
   RngStreamFactory
   (create-rng-state [_ seed]
     (create-stream-ars5 seed))
+  UnsafeFactory
+  (create-vector* [this master buf-ptr n strd]
+    (real-block-vector* this master buf-ptr n strd))
   Factory
   (create-vector [this n init]
     (let-release [res (real-block-vector this n)]
@@ -2234,6 +2237,9 @@
   RngStreamFactory
   (create-rng-state [_ seed]
     (create-stream-ars5 seed))
+  UnsafeFactory
+  (create-vector* [this master buf-ptr n strd]
+    (integer-block-vector* this master buf-ptr n strd))
   Factory
   (create-vector [this n init]
     (let-release [res (integer-block-vector this n)]

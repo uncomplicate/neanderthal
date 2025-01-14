@@ -6,21 +6,21 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.50.2-SNAPSHOT"
+(defproject uncomplicate/neanderthal "0.51.0-SNAPSHOT"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.11.3"]
+  :dependencies [[org.clojure/clojure "1.12.0"]
                  [uncomplicate/commons "0.15.1"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/clojure-cpp "0.3.0"]
-                 [org.bytedeco/mkl-platform "2024.0-1.5.10"]
+                 [org.uncomplicate/clojure-cpp "0.4.0"]
+                 [org.bytedeco/mkl-platform "2025.0-1.5.11"]
                  [uncomplicate/clojurecl "0.16.0"]
                  [org.jocl/jocl-blast "1.5.2"]
-                 [uncomplicate/clojurecuda "0.19.0"]
+                 [uncomplicate/clojurecuda "0.20.0-SNAPSHOT"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -32,8 +32,8 @@
                                  *print-length* 128}
                    :dependencies [[midje "1.10.10"]
                                   [codox-theme-rdash "0.1.2"]
-                                  [org.bytedeco/mkl "2024.0-1.5.10" :classifier linux-x86_64-redist]
-                                  [org.bytedeco/cuda "12.3-8.9-1.5.10" :classifier linux-x86_64-redist]]
+                                  [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
+                                  [org.bytedeco/cuda "12.6-9.5-1.5.11" :classifier linux-x86_64-redist]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
                            :themes [:rdash]

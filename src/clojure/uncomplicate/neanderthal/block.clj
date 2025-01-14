@@ -13,7 +13,8 @@
   use linear algebra functions instead of snooping inside, but is indispensible in code that
   extends Neanderthal's functionality.
   "
-  (:require [uncomplicate.neanderthal.internal.api :as api])
+  (:require [uncomplicate.neanderthal.internal.api :as api]
+            [uncomplicate.fluokitten.protocols :refer [extract]])
   (:import [uncomplicate.neanderthal.internal.api Block DataAccessor LayoutNavigator DenseStorage
             FullStorage]))
 
@@ -82,12 +83,12 @@
   [da-provider ^long n]
   (.createDataSource (api/data-accessor da-provider) n))
 
-(defn initialize
+(defn initialize!
   "Initializes the buffer with the provied value, or zero."
   ([da-provider buf v]
-   (.initialize (api/data-accessor da-provider) buf v))
+   (.initialize (api/data-accessor da-provider) (extract buf) v))
   ([da-provider buf]
-   (.initialize (api/data-accessor da-provider) buf)))
+   (.initialize (api/data-accessor da-provider) (extract buf))))
 
 (defn data-accessor
   "Returns `provider` 's data accessor."

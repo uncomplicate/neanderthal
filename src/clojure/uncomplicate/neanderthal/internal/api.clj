@@ -227,6 +227,9 @@
   (dt-engine [this])
   (st-engine [this]))
 
+(defprotocol UnsafeFactory
+  (create-vector* [this master buf n strd]))
+
 (defprotocol RngStreamFactory
   (create-rng-state [this seed]))
 

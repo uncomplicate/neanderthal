@@ -28,6 +28,7 @@
   [[csv]], [[csv?]]
   [[csr]], [[csr?]]
   "
+  (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [with-release let-release Info info Releaseable release view]]
              [utils :refer [dragan-says-ex]]]
