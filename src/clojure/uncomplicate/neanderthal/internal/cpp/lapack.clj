@@ -380,7 +380,7 @@
                   (when-not (f= 1.0 ~alpha)
                     (scal (engine ~b) ~alpha ~b)))
               (dotimes [i# m-b#]
-                (. ~lapack ~scal-method n-b# (* ~alpha (get-entry buff-a# i#))
+                (. ~lapack ~scal-method n-b# (* ~alpha (double (get-entry buff-a# i#)))
                    (.position buff-b# (.index nav-b# stor-b# i# 0)) 1))))
           (mm (engine ~a) ~alpha (trans ~a) (trans ~b) true)))
       ~b))

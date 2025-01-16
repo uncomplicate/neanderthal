@@ -1,5 +1,11 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.51.0
+
+* Updated to JavaCPP 1.5.11
+* Updated to MKL 2025.0
+* Updated uncomplicate commons and clojure-cpp
+
 # 0.50.0
 
 * Bugfixes.
