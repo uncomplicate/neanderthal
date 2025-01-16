@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.51.0"
+(defproject uncomplicate/neanderthal "0.52.0"
   :description "Neanderthal is a Clojure library for fast matrix and linear algebra computations."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -20,7 +20,7 @@
                  [org.bytedeco/mkl-platform "2025.0-1.5.11"]
                  [uncomplicate/clojurecl "0.16.0"]
                  [org.jocl/jocl-blast "1.5.2"]
-                 [uncomplicate/clojurecuda "0.20.0"]
+                 [uncomplicate/clojurecuda "0.21.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
