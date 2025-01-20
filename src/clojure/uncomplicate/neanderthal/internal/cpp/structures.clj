@@ -33,7 +33,6 @@
   (:import [clojure.lang Seqable IFn IFn$DD IFn$DDD IFn$DDDD IFn$DDDDD IFn$LD IFn$LLD IFn$L IFn$LL
             IFn$LDD IFn$LLDD IFn$LDO IFn$LLDO IFn$LLL IFn$LLLL IFn$LLO IFn$LLLO]
            java.nio.channels.FileChannel
-           org.bytedeco.mkl.global.mkl_rt
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer
             BytePointer]
            [uncomplicate.neanderthal.internal.api Block
