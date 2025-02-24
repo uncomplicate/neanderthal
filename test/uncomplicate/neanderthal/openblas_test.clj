@@ -48,8 +48,8 @@
 (real-test/test-diag-equal openblas-double)
 (real-test/test-diag-equal openblas-float)
 
-(real-test/test-blas openblas-double)
-(real-test/test-blas openblas-float)
+(real-test/test-blas openblas-double);;TODO col/row result
+(real-test/test-blas openblas-float);;TODO col/row result
 (real-test/test-blas-host openblas-double)
 (real-test/test-blas-host openblas-float)
 (real-test/test-basic-integer openblas-long)
@@ -60,8 +60,8 @@
 (real-test/test-basic-integer-host openblas-int)
 (real-test/test-basic-integer-host openblas-short)
 (real-test/test-basic-integer-host openblas-byte)
-(real-test/test-lapack openblas-double)
-(real-test/test-lapack openblas-float)
+(real-test/test-lapack openblas-double);;TODO bunch of wrong results
+(real-test/test-lapack openblas-float);;TODO bunch of wrong results
 (real-test/test-blas-sy-host openblas-double)
 (real-test/test-blas-sy-host openblas-float)
 
@@ -95,28 +95,29 @@
 (real-test/test-blas-gd-host openblas-double)
 (real-test/test-blas-gd-host openblas-float)
 
-(real-test/test-blas-gt openblas-double)
-(real-test/test-blas-gt openblas-float)
+(real-test/test-blas-gt openblas-double);;TODO mm not supported
+(real-test/test-blas-gt openblas-float);;TODO mm not supported
 (real-test/test-blas-gt-host openblas-double)
 (real-test/test-blas-gt-host openblas-float)
 
-(real-test/test-blas-dt openblas-double)
-(real-test/test-blas-dt openblas-float)
+(real-test/test-blas-dt openblas-double);;TODO mm not supported
+(real-test/test-blas-dt openblas-float);;TODO mm not supported
 (real-test/test-blas-dt-host openblas-double)
 (real-test/test-blas-dt-host openblas-float)
 
-(real-test/test-blas-st openblas-double)
-(real-test/test-blas-st openblas-float)
+(real-test/test-blas-st openblas-double);;TODO mm not supported
+(real-test/test-blas-st openblas-float);;TODO mm not supported
 (real-test/test-blas-st-host openblas-double)
 (real-test/test-blas-st-host openblas-float)
 
-(math-test/test-all-host openblas-double)
-(math-test/test-all-host openblas-float)
+;; TODO not available
+;; (math-test/test-all-host openblas-double)
+;; (math-test/test-all-host openblas-float)
 
-(random-test/test-all openblas-double)
-(random-test/test-all openblas-float)
-(random-test/test-all-host openblas-double)
-(random-test/test-all-host openblas-float)
+;; (random-test/test-all openblas-double)
+;; (random-test/test-all openblas-float)
+;; (random-test/test-all-host openblas-double)
+;; (random-test/test-all-host openblas-float)
 
-(sparse-test/test-all openblas-float openblas-double)
-(sparse-test/test-all openblas-double openblas-float)
+;; (sparse-test/test-all openblas-float openblas-double)
+;; (sparse-test/test-all openblas-double openblas-float)

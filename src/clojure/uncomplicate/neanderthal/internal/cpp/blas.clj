@@ -452,6 +452,15 @@
                              (double (+ acc# (. ~blas ~method len# buff-a# ld-a# ones# 0)))))
       0.0)))
 
+(defmacro gb-amax [blas method ptr a]
+ `(if (< 0 (dim ~a))
+    (let [buff-a# (~ptr ~a 0)
+          ld-a# (stride ~a)]
+      (band-storage-reduce ~a len# buff-a# acc# 0.0
+                           (. ~blas ~method (.surface (region ~a)) buff-a# ld-a#)
+                           (max acc# (. ~blas ~method len# buff-a# ld-a#))))
+    0.0))
+
 (defmacro gb-axpy [blas method ptr alpha a b]
   `(if (< 0 (dim ~a))
      (let [buff-a# (~ptr ~a 0)

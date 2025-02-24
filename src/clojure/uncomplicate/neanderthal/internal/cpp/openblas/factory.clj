@@ -15,7 +15,7 @@
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer malloc! free!]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols matrix-type entry]]
+             [core :refer [dim mrows ncols cols rows matrix-type entry]]
              [real :as real]
              [integer :as integer]
              [math :refer [f=] :as math]
@@ -29,16 +29,12 @@
              [common :refer :all]
              [structures :refer :all]
              [lapack :refer :all]
-             [blas :refer :all]]
-            #_[uncomplicate.neanderthal.internal.cpp.mkl
-             [constants :refer [mkl-sparse-request]]
-             [core :refer [malloc! free! mkl-sparse sparse-matrix mkl-sparse-copy sparse-error]]
-             [structures :refer [ge-csr-matrix spmat descr sparse-transpose sparse-layout csr-ge-sp2m]]])
+             [blas :refer :all]])
   (:import java.nio.ByteBuffer
            [uncomplicate.neanderthal.internal.api DataAccessor Vector LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer BytePointer]
-           org.bytedeco.openblas.global.openblas))
+           [org.bytedeco.openblas.global openblas openblas_full]))
 
 ;; =============== Factories ==================================================
 
@@ -56,6 +52,9 @@
    (symbol (format "%s%s%s" prefix type name)))
   ([type name]
    (lapacke "LAPACKE_" type name)))
+
+(defn lapack [type name]
+  (symbol (format "LAPACK_%s%s" type name)))
 
 (defn math
   ([prefix type name]
@@ -204,7 +203,7 @@
        (. ~blas ~(cblas t 'asum) (dim x#) (~ptr x#) (stride x#)))
      (iamax [this# x#]
        (. ~blas ~(cblas 'cblas_i t 'amax) (dim x#) (~ptr x#) (stride x#)))
-     #_(iamin [this# x#]TODO
+     (iamin [this# x#]
        (. ~blas ~(cblas 'cblas_i t 'amin) (dim x#) (~ptr x#) (stride x#)))
      (rot [this# x# y# c# s#]
        (. ~blas ~(cblas t 'rot) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#)
@@ -260,8 +259,8 @@
             (~cast alpha#) (~cast alpha#) (~ptr x#) (stride x#)))
        x#)
      (axpby [this# alpha# x# beta# y#]
-       #_(. ~blas ~(cblas t 'axpby) (dim x#)
-          (~cast alpha#) (~ptr x#) (stride x#) (~cast beta#) (~ptr y#) (stride y#)) ;;TODO
+       (. ~blas ~(cblas t 'axpby) (dim x#)
+          (~cast alpha#) (~ptr x#) (stride x#) (~cast beta#) (~ptr y#) (stride y#))
        y#)))
 
 (defmacro vector-math
@@ -511,32 +510,32 @@
   `(Float/intBitsToFloat ~x))
 
 (deftype FloatVectorEngine [])
-(real-vector-blas* FloatVectorEngine "s" float-ptr float openblas openblas)
-(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float openblas openblas ones-float)
+(real-vector-blas* FloatVectorEngine "s" float-ptr float openblas_full openblas_full)
+(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float openblas_full openblas_full ones-float)
 ;; (real-vector-math* FloatVectorEngine "s" float-ptr float)
 ;; (real-vector-rng* FloatVectorEngine "s" float-ptr float)
 
 (deftype DoubleVectorEngine [])
-(real-vector-blas* DoubleVectorEngine "d" double-ptr double openblas openblas)
-(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double openblas openblas ones-double)
+(real-vector-blas* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full)
+(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full ones-double)
 ;;(real-vector-math* DoubleVectorEngine "d" double-ptr double)
 ;; (real-vector-rng* DoubleVectorEngine "d" double-ptr double)
 
 (deftype LongVectorEngine [])
-(integer-vector-blas* LongVectorEngine "d" double-ptr openblas 1)
-(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double openblas openblas 1)
+(integer-vector-blas* LongVectorEngine "d" double-ptr openblas_full 1)
+(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double openblas_full openblas_full 1)
 
 (deftype IntVectorEngine [])
-(integer-vector-blas* IntVectorEngine "s" float-ptr openblas 1)
-(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float openblas openblas 1)
+(integer-vector-blas* IntVectorEngine "s" float-ptr openblas_full 1)
+(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float openblas_full openblas_full 1)
 
 (deftype ShortVectorEngine [])
-(integer-vector-blas* ShortVectorEngine "s" float-ptr openblas 2)
-(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float openblas openblas 2)
+(integer-vector-blas* ShortVectorEngine "s" float-ptr openblas_full 2)
+(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float openblas_full openblas_full 2)
 
 (deftype ByteVectorEngine [])
-(integer-vector-blas* ByteVectorEngine "s" float-ptr openblas 4)
-(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float openblas openblas 4)
+(integer-vector-blas* ByteVectorEngine "s" float-ptr openblas_full 4)
+(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float openblas_full openblas_full 4)
 
 ;; ================= Integer GE Engine ========================================
 
@@ -545,14 +544,16 @@
     `(when (< 0 (dim ~a))
        (let [stor-b# (full-storage ~b)
              no-trans# (= (navigator ~a) (navigator ~b))]
-         (. ~blas ~method ~(byte (int \C)) (byte (int (if no-trans# \N \T)))
+         (. ~blas ~method ~(int (blas-layout :column))
+            (int (if no-trans# ~(blas-transpose :no-trans) ~(blas-transpose :trans)))
             (if no-trans# (.sd stor-b#) (.fd stor-b#)) (if no-trans# (.fd stor-b#) (.sd stor-b#))
             1.0 (~ptr ~a) (stride ~a) (~ptr ~b) (.ld stor-b#))))
     `(if (or (and (.isGapless (storage ~a)) (= 0 (rem (dim ~a)) ~chunk))
              (and (= 0 (rem (mrows ~a) ~chunk)) (= 0 (rem (ncols ~a) ~chunk))))
        (let [stor-b# (full-storage ~b)
              no-trans# (= (navigator ~a) (navigator ~b))]
-         (. ~blas ~method ~(byte (int \C)) (byte (int (if no-trans# \N \T)))
+         (. ~blas ~method ~(int (blas-layout :column))
+            (int (if no-trans# ~(blas-transpose :no-trans) ~(blas-transpose :trans)))
             (quot (if no-trans# (.sd stor-b#) (.fd stor-b#)) ~chunk)
             (quot (if no-trans# (.fd stor-b#) (.sd stor-b#)) ~chunk)
             1.0 (~ptr ~a) (quot (stride ~a) ~chunk) (~ptr ~b) (quot (.ld stor-b#) ~chunk)))
@@ -565,7 +566,7 @@
        (matrix-map ~blas ~(cblas t 'swap) ~ptr a# b#)
        a#)
      (copy [_# a# b#]
-       #_(patch-ge-copy ~chunk ~blas ~(cblas "mkl_" t 'omatcopy) ~ptr a# b#);;TODO
+       (patch-ge-copy ~chunk ~blas ~(cblas t 'omatcopy) ~ptr a# b#)
        b#)
      (dot [_# a# b#]
        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -600,13 +601,10 @@
 ;; ================= Real GE Engine ========================================
 
 (defmacro ge-axpby [blas method ptr alpha a beta b]
-  `(if (< 0 (dim ~a))
-     (let [nav-b# (navigator ~b)]
-       (. ~blas ~method (byte (int (if (.isColumnMajor nav-b#) \C \R)))
-          (byte (int (if (= (navigator ~a) nav-b#) \n \t))) ~(byte (int \n)) (mrows ~b) (ncols ~b)
-          ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b)
-          (~ptr ~b) (stride ~b))
-       ~b)
+  `(do
+     (when (< 0 (dim ~a))
+       (. ~blas ~method (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
+          ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b)))
      ~b))
 
 (defmacro real-ge-blas* [name t ptr cast blas lapack]
@@ -616,12 +614,13 @@
        (matrix-map ~blas ~(cblas t 'swap) ~ptr a# b#)
        a#)
      (copy [_# a# b#]
-       #_(when (< 0 (dim a#))
+       (when (< 0 (dim a#))
          (let [stor-b# (full-storage b#)
                no-trans# (= (navigator a#) (navigator b#))]
-           (. ~blas ~(cblas "mkl_" t 'omatcopy) ~(byte (int \C)) (byte (int (if no-trans# \N \T)))
+           (. ~blas ~(cblas t 'omatcopy) ~(int (blas-layout :column))
+              (int (if no-trans# ~(blas-transpose :no-trans) ~(blas-transpose :trans)))
               (if no-trans# (.sd stor-b#) (.fd stor-b#)) (if no-trans# (.fd stor-b#) (.sd stor-b#))
-              1.0 (~ptr a#) (stride a#) (~ptr b#) (.ld stor-b#))));;TODO
+              1.0 (~ptr a#) (stride a#) (~ptr b#) (.ld stor-b#))))
        b#)
      (dot [_# a# b#]
        (ge-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
@@ -635,12 +634,11 @@
        (ge-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
        (when (< 0 (dim a#))
-         (let [stor# (full-storage a#)]
-           #_(. ~blas ~(cblas "mkl_" t 'imatcopy) ~(byte (int \c)) ~(byte (int \n));;TODO
-              (.sd stor#) (.fd stor#) (~cast alpha#) (~ptr a#) (.ld stor#) (.ld stor#))))
+         (. ~blas ~(cblas t 'geadd) (.layout (navigator a#)) (mrows a#) (ncols a#)
+            (~cast 0.0) (~ptr a#) (stride a#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
-     #_(axpy [_# alpha# a# b#]TODO
-       (ge-axpby ~blas ~(cblas "mkl_" t 'omatadd) ~ptr (~cast alpha#) a# 1.0 b#))
+     (axpy [_# alpha# a# b#]
+       (ge-axpby ~blas ~(cblas t 'geadd) ~ptr (~cast alpha#) a# 1.0 b#))
      (mv
        ([_# alpha# a# x# beta# y#]
         (. ~blas ~(cblas t 'gemv) (.layout (navigator a#)) ~(:no-trans blas-transpose) (mrows a#) (ncols a#)
@@ -684,14 +682,14 @@
          (. ~lapack ~(lapacke t 'laset) (.layout (navigator a#)) ~(byte (int \g))
             (mrows a#) (ncols a#) (~cast alpha#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
-     #_(axpby [_# alpha# a# beta# b#]TODO
-       (ge-axpby ~blas ~(cblas "mkl_" t 'omatadd) ~ptr (~cast alpha#) a# (~cast beta#) b#)
+     (axpby [_# alpha# a# beta# b#]
+       (ge-axpby ~blas ~(cblas t 'geadd) ~ptr (~cast alpha#) a# (~cast beta#) b#)
        b#)
      (trans [_# a#]
        (when (< 0 (dim a#))
          (let [stor# (full-storage a#)]
            (if (.isGapless stor#)
-             #_(. ~blas ~(cblas "mkl_" t 'imatcopy) ~(byte (int \c)) ~(byte (int \t))
+             (. ~blas ~(cblas t 'imatcopy) ~(int (blas-layout :column)) ~(int (blas-transpose :trans))
                 (.sd stor#) (.fd stor#) (~cast 1.0) (~ptr a#) (.ld stor#) (.fd stor#));;TODO
              (dragan-says-ex "You can not hard-transpose the content of a matrix with a gap in memory. Sorry."
                              {:a (info a#)}))))
@@ -785,8 +783,8 @@
               buff-y# (~ptr ~y 0)
               surface# (.surface (region ~a))]
           (full-matching-map ~a ~y len# buff-a# buff-y#
-                             (. openblas ~method surface# buff-a# buff-y#)
-                             (. openblas ~method len# buff-a# buff-y#))))
+                             (. openblas_full ~method surface# buff-a# buff-y#)
+                             (. openblas_full ~method len# buff-a# buff-y#))))
       ~y))
   ([method ptr a b y]
    `(do
@@ -796,8 +794,8 @@
               buff-y# (~ptr ~y 0)
               surface# (.surface (region ~a))]
           (full-matching-map ~a ~b ~y len# buff-a# buff-b# buff-y#
-                             (. openblas ~method surface# buff-a# buff-b# buff-y#)
-                             (. openblas ~method len# buff-a# buff-b# buff-y#))))
+                             (. openblas_full ~method surface# buff-a# buff-b# buff-y#)
+                             (. openblas_full ~method len# buff-a# buff-b# buff-y#))))
       ~y)))
 
 (defmacro matrix-powx [method ptr a b y]
@@ -807,8 +805,8 @@
              buff-y# (~ptr ~y 0)
              surface# (.surface (region ~a))]
          (full-matching-map ~a ~y len# buff-a# buff-y#
-                            (. openblas ~method surface# buff-a# ~b buff-y#)
-                            (. openblas ~method len# buff-a# ~b buff-y#))))
+                            (. openblas_full ~method surface# buff-a# ~b buff-y#)
+                            (. openblas_full ~method len# buff-a# ~b buff-y#))))
      ~y))
 
 (defmacro matrix-linear-frac [method ptr a b scalea shifta scaleb shiftb y]
@@ -820,8 +818,8 @@
              surface# (.surface (region ~a))]
          (full-matching-map
           ~a ~b ~y len# buff-a# buff-b# buff-y#
-          (. openblas ~method surface# buff-a# buff-b# ~scalea ~shifta ~scaleb ~shiftb buff-y#)
-          (. openblas ~method len# buff-a# buff-b# ~scalea ~shifta ~scaleb ~shiftb buff-y# ))))
+          (. openblas_full ~method surface# buff-a# buff-b# ~scalea ~shifta ~scaleb ~shiftb buff-y#)
+          (. openblas_full ~method len# buff-a# buff-b# ~scalea ~shifta ~scaleb ~shiftb buff-y# ))))
      ~y))
 
 (defmacro real-matrix-math* [name t ptr cast]
@@ -832,12 +830,12 @@
      (when (< 0 (dim ~a))
        (if (.isGapless (storage ~a))
          (with-mkl-check
-           (. openblas ~method ~rng-method ~rng-stream (dim ~a) (~ptr ~a) ~par1 ~par2)
+           (. openblas_full ~method ~rng-method ~rng-stream (dim ~a) (~ptr ~a) ~par1 ~par2)
            ~a)
          (let [buff# (~ptr ~a 0)]
            (dostripe-layout ~a len# idx#
                             (with-rng-check ~a
-                              (. openblas ~method ~rng-method ~rng-stream
+                              (. openblas_full ~method ~rng-method ~rng-stream
                                  len# (.position buff# idx#) ~par1 ~par2))))))
      ~a))
 
@@ -845,32 +843,32 @@
   `(extend-type ~name
      RandomNumberGenerator
      (rand-uniform [_# rng-stream# lower# upper# a#]
-       (matrix-rng ~(cblas "v" t 'RngUniform) ~ptr openblas/VSL_RNG_METHOD_UNIFORM_STD
+       (matrix-rng ~(cblas "v" t 'RngUniform) ~ptr openblas_full/VSL_RNG_METHOD_UNIFORM_STD
                    (cast-stream rng-stream#) a# (~cast lower#) (~cast upper#)))
      (rand-normal [_# rng-stream# mu# sigma# a#]
-       (matrix-rng ~(cblas "v" t 'RngGaussian) ~ptr openblas/VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2
+       (matrix-rng ~(cblas "v" t 'RngGaussian) ~ptr openblas_full/VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2
                    (cast-stream rng-stream#) a# (~cast mu#) (~cast sigma#)))))
 
 (deftype FloatGEEngine [])
-(real-ge-blas* FloatGEEngine "s" float-ptr float openblas openblas)
-(real-ge-blas-plus* FloatGEEngine "s" float-ptr float openblas openblas ones-float)
-(real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float openblas zero-float)
+(real-ge-blas* FloatGEEngine "s" float-ptr float openblas_full openblas_full)
+(real-ge-blas-plus* FloatGEEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
 ;;(real-matrix-math* FloatGEEngine "s" float-ptr float)
 ;; (real-ge-rng* FloatGEEngine "s" float-ptr float)
 
 (deftype DoubleGEEngine [])
-(real-ge-blas* DoubleGEEngine "d" double-ptr double openblas openblas)
-(real-ge-blas-plus* DoubleGEEngine "d" double-ptr double openblas openblas ones-double)
-(real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double openblas zero-double)
+(real-ge-blas* DoubleGEEngine "d" double-ptr double openblas_full openblas_full)
+(real-ge-blas-plus* DoubleGEEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
 ;;(real-matrix-math* DoubleGEEngine "d" double-ptr double)
 ;; (real-ge-rng* DoubleGEEngine "d" double-ptr double)
 
 ;;TODO
 (deftype LongGEEngine [])
-(integer-ge-blas* LongGEEngine "d" double-ptr openblas 1)
+(integer-ge-blas* LongGEEngine "d" double-ptr openblas_full 1)
 
 (deftype IntGEEngine [])
-(integer-ge-blas* IntGEEngine "s" float-ptr openblas 1)
+(integer-ge-blas* IntGEEngine "s" float-ptr openblas_full 1)
 
 (deftype ShortGEEngine []) ;; TODO
 
@@ -889,12 +887,12 @@
        b#)
      (dot [_# a# b#]
        (tr-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
-     ;; (nrm1 [_# a#]
-     ;;   (tr-lan ~lapack ~(lapacke t 'lantr) ~ptr \O a#))
-     ;; (nrm2 [_# a#]
-     ;;   (tr-lan ~lapack ~(lapacke t 'lantr) ~ptr \F a#))
-     ;; (nrmi [_# a#]
-     ;;   (tr-lan ~lapack ~(lapacke t 'lantr) ~ptr \I a#))TODO
+     (nrm1 [_# a#]
+       (tr-lan ~lapack ~(lapacke t 'lantr) ~ptr \O a#))
+     (nrm2 [_# a#]
+       (tr-lan ~lapack ~(lapacke t 'lantr) ~ptr \F a#))
+     (nrmi [_# a#]
+       (tr-lan ~lapack ~(lapacke t 'lantr) ~ptr \I a#))
      (asum [_# a#]
        (tr-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -931,13 +929,13 @@
 (defmacro real-tr-blas-plus* [name t ptr cast blas lapack ones]
   `(extend-type ~name
      BlasPlus
-     #_(amax [_# a#]TODO
+     (amax [_# a#]
        (tr-lan ~lapack ~(lapacke t 'lantr) ~ptr \M a#))
      (sum [_# a#]
        (tr-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
        (uplo-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
+     (axpby [_# alpha# a# beta# b#]
        (matrix-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for TR matrices." {:a (info a#)}))))
@@ -968,22 +966,22 @@
        (tr-con ~lapack ~(lapacke t 'trcon) ~ptr ~cpp-ptr a# nrm1?#))))
 
 (deftype FloatTREngine [])
-(real-tr-blas* FloatTREngine "s" float-ptr float openblas openblas)
-(real-tr-blas-plus* FloatTREngine "s" float-ptr float openblas openblas ones-float)
-(real-tr-lapack* FloatTREngine "s" float-ptr cpp/float-pointer float openblas openblas)
+(real-tr-blas* FloatTREngine "s" float-ptr float openblas_full openblas_full)
+(real-tr-blas-plus* FloatTREngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-tr-lapack* FloatTREngine "s" float-ptr cpp/float-pointer float openblas_full openblas_full)
 ;;(real-matrix-math* FloatTREngine "s" float-ptr float)
 
 (deftype DoubleTREngine [])
-(real-tr-blas* DoubleTREngine "d" double-ptr double openblas openblas)
-(real-tr-blas-plus* DoubleTREngine "d" double-ptr double openblas openblas ones-double)
-(real-tr-lapack* DoubleTREngine "d" double-ptr cpp/double-pointer double openblas openblas)
+(real-tr-blas* DoubleTREngine "d" double-ptr double openblas_full openblas_full)
+(real-tr-blas-plus* DoubleTREngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-tr-lapack* DoubleTREngine "d" double-ptr cpp/double-pointer double openblas_full openblas_full)
 ;;(real-matrix-math* DoubleTREngine "d" double-ptr double)
 
 (deftype LongTREngine [])
-;;(integer-tr-blas* LongTREngine "d" double-ptr long-double openblas openblas 1)
+;;(integer-tr-blas* LongTREngine "d" double-ptr long-double openblas_full openblas_full 1)
 
 (deftype IntTREngine [])
-;;(integer-tr-blas* IntTREngine "s" float-ptr int-float openblas openblas 1)
+;;(integer-tr-blas* IntTREngine "s" float-ptr int-float openblas_full openblas_full 1)
 
 (deftype ShortTREngine []) ;; TODO
 
@@ -1064,65 +1062,65 @@
        (sy-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
        (uplo-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
+     (axpby [_# alpha# a# beta# b#]
        (matrix-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for SY matrices." {:a (info a#)}))))
 
-(defmacro real-sy-lapack* [name t ptr cpp-ptr idx-ptr cast mkl zero-matrix]
+(defmacro real-sy-lapack* [name t ptr cpp-ptr idx-ptr cast openblas zero-matrix]
   `(extend-type ~name
      Lapack
      (srt [_# a# increasing#]
-       (matrix-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
+       (matrix-lasrt ~openblas ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (trf
        ([_# a# ipiv#]
-        (sy-trx ~mkl ~(lapacke t 'sytrf) ~ptr ~idx-ptr a# ipiv#))
+        (sy-trx ~openblas ~(lapacke t 'sytrf) ~ptr ~idx-ptr a# ipiv#))
        ([_# a#]
-        (sy-trx ~mkl ~(lapacke t 'potrf) ~ptr a#)))
+        (sy-trx ~openblas ~(lapacke t 'potrf) ~ptr a#)))
      (trfx [_# a#]
-       (sy-trfx ~mkl ~(lapacke t 'potrf) ~ptr a#))
+       (sy-trfx ~openblas ~(lapacke t 'potrf) ~ptr a#))
      (tri
        ([_# ldl# ipiv#]
-        (sy-trx ~mkl ~(lapacke t 'sytri) ~ptr ~idx-ptr ldl# ipiv#))
+        (sy-trx ~openblas ~(lapacke t 'sytri) ~ptr ~idx-ptr ldl# ipiv#))
        ([_# gg#]
-        (sy-trx ~mkl ~(lapacke t 'potri) ~ptr gg#)))
+        (sy-trx ~openblas ~(lapacke t 'potri) ~ptr gg#)))
      (trs
        ([_# ldl# b# ipiv#]
-        (sy-trs ~mkl ~(lapacke t 'sytrs) ~ptr ~idx-ptr ldl# b# ipiv#))
+        (sy-trs ~openblas ~(lapacke t 'sytrs) ~ptr ~idx-ptr ldl# b# ipiv#))
        ([_# gg# b# ]
-        (sy-trs ~mkl ~(lapacke t 'potrs) ~ptr gg# b#)))
+        (sy-trs ~openblas ~(lapacke t 'potrs) ~ptr gg# b#)))
      (sv
        ([_# a# b# pure#]
-        (sy-sv ~mkl ~(lapacke t 'posv) ~(lapacke t 'sysv) ~ptr ~idx-ptr a# b# pure#))
+        (sy-sv ~openblas ~(lapacke t 'posv) ~(lapacke t 'sysv) ~ptr ~idx-ptr a# b# pure#))
        ([_# a# b#]
-        (sy-sv ~mkl ~(lapacke t 'posv) ~ptr a# b#)))
+        (sy-sv ~openblas ~(lapacke t 'posv) ~ptr a# b#)))
      (con
        ([_# ldl# ipiv# nrm# _#]
-        (sy-con ~mkl ~(lapacke t 'sycon) ~ptr ~cpp-ptr ~idx-ptr ldl# ipiv# (~cast nrm#)))
+        (sy-con ~openblas ~(lapacke t 'sycon) ~ptr ~cpp-ptr ~idx-ptr ldl# ipiv# (~cast nrm#)))
        ([_# gg# nrm# _#]
-        (sy-con ~mkl ~(lapacke t 'pocon) ~ptr ~cpp-ptr gg# (~cast nrm#))))
+        (sy-con ~openblas ~(lapacke t 'pocon) ~ptr ~cpp-ptr gg# (~cast nrm#))))
      (ev [_# a# w# vl# vr#]
        (let [v# (or vl# vr# ~zero-matrix)]
-         (sy-ev ~mkl ~(lapacke t 'syevd) ~(lapacke t 'syevr) ~ptr a# w# v#)))))
+         (sy-ev ~openblas ~(lapacke t 'syevd) ~(lapacke t 'syevr) ~ptr a# w# v#)))))
 
 (deftype FloatSYEngine [])
-(real-sy-blas* FloatSYEngine "s" float-ptr float openblas openblas)
-(real-sy-blas-plus* FloatSYEngine "s" float-ptr float openblas openblas ones-float)
-(real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float openblas zero-float)
+(real-sy-blas* FloatSYEngine "s" float-ptr float openblas_full openblas_full)
+(real-sy-blas-plus* FloatSYEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
 ;;(real-matrix-math* FloatSYEngine "s" float-ptr float)
 
 (deftype DoubleSYEngine [])
-(real-sy-blas* DoubleSYEngine "d" double-ptr double openblas openblas)
-(real-sy-blas-plus* DoubleSYEngine "d" double-ptr double openblas openblas ones-double)
-(real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double openblas zero-double)
+(real-sy-blas* DoubleSYEngine "d" double-ptr double openblas_full openblas_full)
+(real-sy-blas-plus* DoubleSYEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
 ;;(real-matrix-math* DoubleSYEngine "d" double-ptr double)
 
 ;;TODO
 (deftype LongSYEngine [])
-;;(integer-tr-blas* LongSYEngine "d" double-ptr long-double openblas openblas 1)
+;;(integer-tr-blas* LongSYEngine "d" double-ptr long-double openblas_full openblas_full 1)
 
 (deftype IntSYEngine [])
-;;(integer-tr-blas* IntSYEngine "s" float-ptr int-float openblas openblas 1)
+;;(integer-tr-blas* IntSYEngine "s" float-ptr int-float openblas_full openblas_full 1)
 
 (deftype ShortSYEngine []);; TODO
 
@@ -1130,7 +1128,7 @@
 
 ;; ============================ GB matrix engines ==================================================
 
-(defmacro real-gb-blas* [name t ptr cpp-ptr cast blas lapack]
+(defmacro real-gb-blas* [name t ptr cpp-ptr cast blas lapack ones]
   `(extend-type ~name
      Blas
      (swap [_# a# b#]
@@ -1141,12 +1139,12 @@
        b#)
      (dot [_# a# b#]
        (gb-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
-     #_(nrm1 [_# a#] tODO
-       (gb-lan ~lapack ~(lapacke t "" 'langb_64) ~(cblas 'cblas_i t 'amax) ~ptr ~cpp-ptr \O a#))
-     #_(nrm2 [_# a#]TODO
-       (gb-lan ~lapack ~(lapacke t "" 'langb_64) ~(cblas t 'nrm2) ~ptr ~cpp-ptr \F a#))
-     #_(nrmi [_# a#]TODO
-       (gb-lan ~lapack ~(lapacke t "" 'langb_64) ~(cblas 'cblas_i t 'amax) ~ptr ~cpp-ptr \I a#))
+     (nrm1 [_# a#]
+       (apply max (map asum (cols a#))))
+     (nrm2 [_# a#]
+       (~cast (math/sqrt (gb-dot ~blas ~(cblas t 'dot) ~ptr a# a#))))
+     (nrmi [_# a#]
+       (apply max (map asum (rows a#))))
      (asum [_# a#]
        (gb-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -1172,13 +1170,13 @@
 (defmacro real-gb-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
   `(extend-type ~name
      BlasPlus
-     #_(amax [_# a#]tODO
-       (gb-lan ~lapack ~(lapacke "" t 'langb_64) ~(cblas 'cblas_i t 'amax) ~ptr ~cpp-ptr \M a#))
+     (amax [_# a#]
+       (gb-amax ~blas ~(cblas t 'amax) ~ptr a#))
      (sum [_# a#]
        (gb-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
        (gb-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
+     (axpby [_# alpha# a# beta# b#]
        (gb-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for GB matrices." {:a (info a#)}))))
@@ -1203,15 +1201,15 @@
        (gb-con ~lapack ~(lapacke t 'gbcon) ~ptr ~cpp-ptr ~idx-ptr ldl# ipiv# (~cast nrm#) nrm1?#))))
 
 (deftype FloatGBEngine [])
-(real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas openblas)
-(real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas openblas ones-float)
-(real-gb-lapack* FloatGBEngine "s" float-ptr cpp/float-ptr int-ptr float openblas)
+(real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-gb-lapack* FloatGBEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 ;;(real-matrix-math* FloatGBEngine "s" float-ptr float)
 
 (deftype DoubleGBEngine [])
-(real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas openblas)
-(real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas openblas ones-double)
-(real-gb-lapack* DoubleGBEngine "d" double-ptr cpp/double-ptr int-ptr double openblas)
+(real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-gb-lapack* DoubleGBEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 ;;(real-matrix-math* DoubleGBEngine "d" double-ptr double)
 
 (deftype LongGBEngine [])
@@ -1232,12 +1230,12 @@
        b#)
      (dot [_# a# b#]
        (gb-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
-     #_(nrm1 [_# a#]TODO
-       (sb-lan ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \O a#))
-     #_(nrm2 [_# a#]TODO
-       (sb-lan ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \F a#))
-     #_(nrmi [_# a#]TODO
-       (sb-lan ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \I a#))
+     (nrm1 [_# a#]
+       (sb-lan ~lapack ~(lapacke "LAPACK_" t 'lansb_base) ~ptr ~cpp-ptr \O a# 1))
+     (nrm2 [_# a#]
+       (sb-lan ~lapack ~(lapacke "LAPACK_" t 'lansb_base) ~ptr ~cpp-ptr \F a# 1))
+     (nrmi [_# a#]
+       (sb-lan ~lapack ~(lapacke "LAPACK_" t 'lansb_base) ~ptr ~cpp-ptr \I a# 1))
      (asum [_# a#]
        (gb-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -1263,13 +1261,13 @@
 (defmacro real-sb-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
   `(extend-type ~name
      BlasPlus
-     #_(amax [_# a#]TODO
-       (sb-lan ~lapack ~(lapacke "" t 'lansb_64) ~ptr ~cpp-ptr \M a#))
+     (amax [_# a#]
+       (sb-lan ~lapack ~(lapacke "LAPACK_" t 'lansb_base) ~ptr ~cpp-ptr \M a# 1))
      (sum [_# a#]
        (gb-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
        (gb-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
+     (axpby [_# alpha# a# beta# b#]
        (gb-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for SB matrices." {:a (info a#)}))))
@@ -1300,14 +1298,14 @@
        (sb-con ~lapack ~(lapacke t 'pbcon) ~ptr ~cpp-ptr gg# (~cast nrm#)))))
 
 (deftype FloatSBEngine [])
-(real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas openblas)
-(real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas openblas ones-float)
-(real-sb-lapack* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas)
+(real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
+(real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-sb-lapack* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full)
 ;;(real-matrix-math* FloatSBEngine "s" float-ptr float)
 
 (deftype DoubleSBEngine [])
-(real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas openblas)
-(real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas openblas ones-double)
+(real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
+(real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
 (real-sb-lapack* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas)
 ;;(real-matrix-math* DoubleSBEngine "d" double-ptr double)
 
@@ -1316,7 +1314,7 @@
 (deftype ShortSBEngine [])
 (deftype ByteSBEngine [])
 
-;; ============================ TB matrix engines ====================================================
+;; ============================ TB matrix engines ==================================================
 
 (defmacro real-tb-blas* [name t ptr cpp-ptr cast blas lapack]
   `(extend-type ~name
@@ -1329,12 +1327,12 @@
        b#)
      (dot [_# a# b#]
        (gb-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
-     #_(nrm1 [_# a#]tODO
-       (tb-lan ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \O a#))
-     #_(nrm2 [_# a#]TODO
-       (tb-lan ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \F a#))
-     #_(nrmi [_# a#]tODO
-       (tb-lan ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \I a#))
+     (nrm1 [_# a#]
+       (tb-lan ~lapack ~(lapacke "LAPACK_" t 'lantb_base) ~ptr ~cpp-ptr \O a# 1))
+     (nrm2 [_# a#]
+       (tb-lan ~lapack ~(lapacke "LAPACK_" t 'lantb_base) ~ptr ~cpp-ptr \F a# 1))
+     (nrmi [_# a#]
+       (tb-lan ~lapack ~(lapacke "LAPACK_" t 'lantb_base) ~ptr ~cpp-ptr \I a# 1))
      (asum [_# a#]
        (gb-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -1360,44 +1358,44 @@
 (defmacro real-tb-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
   `(extend-type ~name
      BlasPlus
-     #_(amax [_# a#]TODO
-       (tb-lan ~lapack ~(lapacke "" t 'lantb_64) ~ptr ~cpp-ptr \M a#))
+     (amax [_# a#]
+       (tb-lan ~lapack ~(lapacke "LAPACK_" t 'lantb_base) ~ptr ~cpp-ptr \M a# 1))
      (sum [_# a#]
        (gb-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
        (gb-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
+     (axpby [_# alpha# a# beta# b#]
        (gb-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for TB matrices." {:a (info a#)}))))
 
-(defmacro real-tb-lapack* [name t ptr cpp-ptr cast mkl]
+(defmacro real-tb-lapack* [name t ptr cpp-ptr cast openblas]
   `(extend-type ~name
      Lapack
      (srt [_# a# increasing#]
-       (matrix-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
+       (matrix-lasrt ~openblas ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (tri
        ([_# _#]
         (dragan-says-ex "Inverse is not available for banded matrices."))
        ([_# _# _#]
         (dragan-says-ex "Inverse is not available for banded matrices.")))
      (trs [_# a# b#]
-       (tb-trs ~mkl ~(lapacke t 'tbtrs) ~ptr a# b#))
+       (tb-trs ~openblas ~(lapacke t 'tbtrs) ~ptr a# b#))
      (sv [_# a# b# _#]
-       (tb-sv ~mkl ~(cblas t 'tbsv) ~ptr a# b#))
+       (tb-sv ~openblas ~(cblas t 'tbsv) ~ptr a# b#))
      (con [_# a# nrm1?#]
-       (tb-con ~mkl ~(lapacke t 'tbcon) ~ptr ~cpp-ptr a# nrm1?#))))
+       (tb-con ~openblas ~(lapacke t 'tbcon) ~ptr ~cpp-ptr a# nrm1?#))))
 
 (deftype FloatTBEngine [])
-(real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas openblas)
-(real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas openblas ones-float)
-(real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas)
+(real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
+(real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full)
 ;;(real-matrix-math* FloatTBEngine "s" float-ptr float)
 
 (deftype DoubleTBEngine [])
-(real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas openblas)
-(real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas openblas ones-double)
-(real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas)
+(real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
+(real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full)
 ;;(real-matrix-math* DoubleTBEngine "d" double-ptr double)
 
 (deftype LongTBEngine [])
@@ -1418,12 +1416,12 @@
        b#)
      (dot [_# a# b#]
        (tp-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
-     #_(nrm1 [_# a#]TODO
-       (tp-lan ~lapack ~(lapacke "" t 'lantp_64) ~ptr ~cpp-ptr \O a#))
-     #_(nrm2 [_# a#]TODO
-       (tp-lan ~lapack ~(lapacke "" t 'lantp_64) ~ptr ~cpp-ptr \F a#))
-     #_(nrmi [_# a#]TODO
-       (tp-lan ~lapack ~(lapacke "" t 'lantp_64) ~ptr ~cpp-ptr \I a#))
+     (nrm1 [_# a#]
+       (tp-lan ~lapack ~(lapacke "LAPACK_" t 'lantp_base) ~ptr ~cpp-ptr \O a# 1))
+     (nrm2 [_# a#]
+       (tp-lan ~lapack ~(lapacke "LAPACK_" t 'lantp_base) ~ptr ~cpp-ptr \F a# 1))
+     (nrmi [_# a#]
+       (tp-lan ~lapack ~(lapacke "LAPACK_" t 'lantp_base) ~ptr ~cpp-ptr \I a# 1))
      (asum [_# a#]
        (tp-sum ~blas ~(cblas t 'asum) ~ptr Math/abs a#))
      (scal [_# alpha# a#]
@@ -1452,13 +1450,13 @@
 (defmacro real-tp-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
   `(extend-type ~name
      BlasPlus
-     #_(amax [_# a#]TODO
-       (tp-lan ~lapack ~(lapacke "" t 'lantp_64) ~ptr ~cpp-ptr \M a#))
+     (amax [_# a#]
+       (tp-lan ~lapack ~(lapacke "LAPACK_" t 'lantp_base) ~ptr ~cpp-ptr \M a# 1))
      (sum [_# a#]
        (tp-sum ~blas ~(cblas t 'dot) ~ptr Math/abs a# ~ones))
      (set-all [_# alpha# a#]
        (packed-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
+     (axpby [_# alpha# a# beta# b#]
        (packed-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for TP matrices." {:a (info a#)}))))
@@ -1480,15 +1478,15 @@
        (tp-con ~lapack ~(lapacke t 'tpcon) ~ptr ~cpp-ptr a# nrm1?#))))
 
 (deftype FloatTPEngine [])
-(real-tp-blas* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas openblas)
-(real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas openblas ones-float)
-(real-tp-lapack* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas)
+(real-tp-blas* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
+(real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-tp-lapack* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full)
 ;;(real-matrix-math* FloatTPEngine "s" float-ptr float)
 
 (deftype DoubleTPEngine [])
-(real-tp-blas* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas openblas)
-(real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas openblas ones-double)
-(real-tp-lapack* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas)
+(real-tp-blas* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
+(real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-tp-lapack* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full)
 ;;(real-matrix-math* DoubleTPEngine "d" double-ptr double)
 
 (deftype LongTPEngine [])
@@ -1509,12 +1507,12 @@
        b#)
      (dot [_# a# b#]
        (sp-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
-     #_(nrm1 [_# a#]TODO
-       (sp-lan ~lapack ~(lapacke "" t 'lansp_64) ~ptr ~cpp-ptr \O a#))
-     #_(nrm2 [_# a#]TODO
-       (sp-lan ~lapack ~(lapacke "" t 'lansp_64) ~ptr ~cpp-ptr \F a#))
-     #_(nrmi [_# a#]TODO
-       (sp-lan ~lapack ~(lapacke "" t 'lansp_64) ~ptr ~cpp-ptr \I a#))
+     (nrm1 [_# a#]
+       (sp-lan ~lapack ~(lapacke "LAPACK_" t 'lansp_base) ~ptr ~cpp-ptr \O a# 1))
+     (nrm2 [_# a#]
+       (sp-lan ~lapack ~(lapacke "LAPACK_" t 'lansp_base) ~ptr ~cpp-ptr \F a# 1))
+     (nrmi [_# a#]
+       (sp-lan ~lapack ~(lapacke "LAPACK_" t 'lansp_base) ~ptr ~cpp-ptr \I a# 1))
      (asum [_# a#]
        (sp-sum ~blas ~(cblas t 'asum) ~ptr Math/abs a#))
      (scal [_# alpha# a#]
@@ -1547,60 +1545,60 @@
 (defmacro real-sp-blas-plus* [name t ptr cpp-ptr cast blas lapack ones]
   `(extend-type ~name
      BlasPlus
-     #_(amax [_# a#]TODO
-       (sp-lan ~lapack ~(lapacke "" t 'lansp_64) ~ptr ~cpp-ptr \M a#))
+     (amax [_# a#]
+       (sp-lan ~lapack ~(lapacke "LAPACK_" t 'lansp_base) ~ptr ~cpp-ptr \M a# 1))
      (sum [_# a#]
        (sp-sum ~blas ~(cblas t 'dot) ~ptr ~cast a# ~ones))
      (set-all [_# alpha# a#]
        (packed-laset ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
+     (axpby [_# alpha# a# beta# b#]
        (packed-axpby ~blas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for SP matrices." {:a (info a#)}))))
 
-(defmacro real-sp-lapack* [name t ptr cpp-ptr idx-ptr cast mkl]
+(defmacro real-sp-lapack* [name t ptr cpp-ptr idx-ptr cast openblas]
   `(extend-type ~name
      Lapack
      (srt [_# a# increasing#]
-       (packed-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
+       (packed-lasrt ~openblas ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (trf
        ([_# a# ipiv#]
-        (sp-trx ~mkl ~(lapacke t 'sptrf) ~ptr ~idx-ptr a# ipiv#))
+        (sp-trx ~openblas ~(lapacke t 'sptrf) ~ptr ~idx-ptr a# ipiv#))
        ([_# a#]
-        (sp-trx ~mkl ~(lapacke t 'pptrf) ~ptr a#)))
+        (sp-trx ~openblas ~(lapacke t 'pptrf) ~ptr a#)))
      (trfx [_# a#]
-       (sp-trfx ~mkl ~(lapacke t 'pptrf) ~ptr a#))
+       (sp-trfx ~openblas ~(lapacke t 'pptrf) ~ptr a#))
      (tri
        ([_# ldl# ipiv#]
-        (sp-trx ~mkl ~(lapacke t 'sptri) ~ptr ~idx-ptr ldl# ipiv#))
+        (sp-trx ~openblas ~(lapacke t 'sptri) ~ptr ~idx-ptr ldl# ipiv#))
        ([_# gg#]
-        (sp-trx ~mkl ~(lapacke t 'pptri) ~ptr gg#)))
+        (sp-trx ~openblas ~(lapacke t 'pptri) ~ptr gg#)))
      (trs
        ([_# ldl# b# ipiv#]
-        (sp-trs ~mkl ~(lapacke t 'sptrs) ~ptr ~idx-ptr ldl# b# ipiv#))
+        (sp-trs ~openblas ~(lapacke t 'sptrs) ~ptr ~idx-ptr ldl# b# ipiv#))
        ([_# gg# b# ]
-        (sp-trs ~mkl ~(lapacke t 'pptrs) ~ptr gg# b#)))
+        (sp-trs ~openblas ~(lapacke t 'pptrs) ~ptr gg# b#)))
      (sv
        ([_# a# b# pure#]
-        (sp-sv ~mkl ~(lapacke t 'ppsv) ~(lapacke t 'spsv) ~ptr ~idx-ptr a# b# pure#))
+        (sp-sv ~openblas ~(lapacke t 'ppsv) ~(lapacke t 'spsv) ~ptr ~idx-ptr a# b# pure#))
        ([_# a# b#]
-        (sp-sv ~mkl ~(lapacke t 'ppsv) ~ptr a# b#)))
+        (sp-sv ~openblas ~(lapacke t 'ppsv) ~ptr a# b#)))
      (con
        ([_# ldl# ipiv# nrm# _#]
-        (sp-con ~mkl ~(lapacke t 'spcon) ~ptr ~cpp-ptr ~idx-ptr ldl# ipiv# (~cast nrm#)))
+        (sp-con ~openblas ~(lapacke t 'spcon) ~ptr ~cpp-ptr ~idx-ptr ldl# ipiv# (~cast nrm#)))
        ([_# gg# nrm# _#]
-        (sp-con ~mkl ~(lapacke t 'ppcon) ~ptr ~cpp-ptr gg# (~cast nrm#))))))
+        (sp-con ~openblas ~(lapacke t 'ppcon) ~ptr ~cpp-ptr gg# (~cast nrm#))))))
 
 (deftype FloatSPEngine [])
-(real-sp-blas* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas openblas)
-(real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas openblas ones-float)
-(real-sp-lapack* FloatSPEngine "s" float-ptr cpp/float-ptr int-ptr float openblas)
+(real-sp-blas* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
+(real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-sp-lapack* FloatSPEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 ;;(real-matrix-math* FloatSPEngine "s" float-ptr float)
 
 (deftype DoubleSPEngine [])
-(real-sp-blas* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas openblas)
-(real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas openblas ones-double)
-(real-sp-lapack* DoubleSPEngine "d" double-ptr cpp/double-ptr int-ptr double openblas)
+(real-sp-blas* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
+(real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-sp-lapack* DoubleSPEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 ;;(real-matrix-math* DoubleSPEngine "d" double-ptr double)
 
 (deftype LongSPEngine [])
@@ -1610,86 +1608,90 @@
 
 ;; ============================ GD matrix engines ==================================================
 
-(defmacro real-gd-blas* [name t ptr cpp-ptr cast mkl]
+(defmacro real-gd-blas* [name t ptr cpp-ptr cast openblas]
   `(extend-type ~name
      Blas
      (swap [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'swap) ~ptr a# b#)
+       (diagonal-method ~openblas ~(cblas t 'swap) ~ptr a# b#)
        a#)
      (copy [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'copy) ~ptr a# b#)
+       (diagonal-method ~openblas ~(cblas t 'copy) ~ptr a# b#)
        b#)
      (dot [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'dot) ~ptr a# b#))
+       (diagonal-method ~openblas ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (diagonal-amax ~mkl ~(cblas 'cblas_i t 'amax) ~ptr a#))
+       (diagonal-amax ~openblas ~(cblas 'cblas_i t 'amax) ~ptr a#))
      (nrm2 [_# a#]
-       (diagonal-method ~mkl ~(cblas t 'nrm2) ~ptr a#))
+       (diagonal-method ~openblas ~(cblas t 'nrm2) ~ptr a#))
      (nrmi [_# a#]
-       (diagonal-amax ~mkl ~(cblas 'cblas_i t 'amax) ~ptr a#))
+       (diagonal-amax ~openblas ~(cblas 'cblas_i t 'amax) ~ptr a#))
      (asum [_# a#]
-       (diagonal-method ~mkl ~(cblas t 'asum) ~ptr a#))
+       (diagonal-method ~openblas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
-       (diagonal-scal ~mkl ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+       (diagonal-scal ~openblas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
      (axpy [_# alpha# a# b#]
-       (diagonal-axpy ~mkl ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+       (diagonal-axpy ~openblas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
      (mv
        ([_# alpha# a# x# beta# y#]
-        (gd-mv ~mkl ~(cblas t 'sbmv) ~ptr (~cast alpha#) a# x# (~cast beta#) y#))
-       #_([_# a# x#]TODO
-        (gd-mv ~mkl ~(lapacke "" t 'lascl2_64) ~ptr a# x#)))
+        (gd-mv ~openblas ~(cblas t 'sbmv) ~ptr (~cast alpha#) a# x# (~cast beta#) y#))
+       ([_# a# x#]
+        (tb-mv ~openblas ~(cblas t 'tbmv) ~ptr a# x#)))
      (rk
        ([_# _# _# _# a#]
         (dragan-says-ex "rk! is not supported for GD matrices." {:a (info a#)}))
        ([_# _# _# a#]
         (dragan-says-ex "rk! is not supported for GD matrices." {:a (info a#)})))
      (mm
-       #_([_# alpha# a# b# left#]TODO
-        (gd-mm ~mkl ~(lapacke "" t 'lascl2_64) ~(cblas t 'scal) ~ptr (~cast alpha#) a# b# left#))
+       ([_# alpha# a# b# left#]
+        (tb-mm ~openblas ~(cblas t 'tbmv) ~ptr (~cast alpha#) a# b# left#))
        ([_# alpha# a# b# beta# c# left#]
-        (gd-mm ~mkl ~(cblas t 'sbmv) ~ptr (~cast alpha#) a# b# (~cast beta#) c# left#)))))
+        (gd-mm ~openblas ~(cblas t 'sbmv) ~ptr (~cast alpha#) a# b# (~cast beta#) c# left#)))))
 
-(defmacro real-diagonal-blas-plus* [name t ptr cast mkl ones]
+(defmacro real-diagonal-blas-plus* [name t ptr cast openblas ones]
   `(extend-type ~name
      BlasPlus
      (amax [_# a#]
-       (diagonal-amax ~mkl ~(cblas 'cblas_i t 'amax) ~ptr a#))
+       (diagonal-amax ~openblas ~(cblas 'cblas_i t 'amax) ~ptr a#))
      (sum [_# a#]
-       (diagonal-method ~mkl ~(cblas t 'dot) ~ptr a# ~ones))
+       (diagonal-method ~openblas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
-       (diagonal-laset ~mkl ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
-       (diagonal-axpby ~mkl ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
+       (diagonal-laset ~openblas ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
+     (axpby [_# alpha# a# beta# b#]
+       (diagonal-axpby ~openblas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for diagonal matrices." {:a (info a#)}))))
 
-(defmacro real-gd-lapack* [name t ptr cpp-ptr cast mkl]
+(defn inverse ^double [^double x]
+  (if (zero? x)
+    Double/POSITIVE_INFINITY
+    (/ 1.0 x)))
+
+(defmacro real-gd-lapack* [name t ptr cpp-ptr cast openblas]
   `(extend-type ~name
      Lapack
      (srt [_# a# increasing#]
-       (matrix-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
+       (matrix-lasrt ~openblas ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (laswp [_# _# _# _# _#]
        (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
-     #_(tri [_# a#]TODO
-       (let [buff-a# (~ptr a#)]
-         (. ~mkl ~(math t 'Inv) (ncols a#) buff-a# buff-a#)))
+     (tri [_# a#]
+       (fmap! inverse  a#))
      (trs [_# a# b#]
-       (gd-trs ~mkl ~(lapacke t 'tbtrs) ~ptr a# b#))
+       (gd-trs ~openblas ~(lapacke t 'tbtrs) ~ptr a# b#))
      (sv [_# a# b# _#]
-       (gd-sv ~mkl ~(math t 'Div) ~(cblas t 'tbsv) ~ptr a# b#))
+       (gd-sv ~openblas ~(math t 'Div) ~(cblas t 'tbsv) ~ptr a# b#))
      (con [_# a# nrm1?#]
-       (gd-con ~mkl ~(lapacke t 'tbcon) ~ptr ~cpp-ptr a# nrm1?#))))
+       (gd-con ~openblas ~(lapacke t 'tbcon) ~ptr ~cpp-ptr a# nrm1?#))))
 
 (deftype FloatGDEngine [])
-(real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas)
-(real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float  openblas ones-float)
-(real-gd-lapack* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas)
+(real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float  openblas_full ones-float)
+(real-gd-lapack* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
 ;;(real-matrix-math* FloatGDEngine "s" float-ptr float)
 
 (deftype DoubleGDEngine [])
-(real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas)
-(real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double openblas ones-double)
-(real-gd-lapack* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas)
+(real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double openblas_full ones-double)
+(real-gd-lapack* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
 ;;(real-matrix-math* DoubleGDEngine "d" double-ptr double)
 
 (deftype LongGDEngine [])
@@ -1697,33 +1699,32 @@
 (deftype ShortGDEngine [])
 (deftype ByteGDEngine [])
 
-(defmacro real-tridiagonal-blas* [name t ptr cpp-ptr cast mkl]
+(defmacro real-tridiagonal-blas* [name t ptr cpp-ptr cast openblas]
   `(extend-type ~name
      Blas
      (swap [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'swap) ~ptr a# b#)
+       (diagonal-method ~openblas ~(cblas t 'swap) ~ptr a# b#)
        a#)
      (copy [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'copy) ~ptr a# b#)
+       (diagonal-method ~openblas ~(cblas t 'copy) ~ptr a# b#)
        b#)
      (dot [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'dot) ~ptr a# b#))
-     #_(nrm1 [_# a#]TODO
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \O a#))
+       (diagonal-method ~openblas ~(cblas t 'dot) ~ptr a# b#))
+     (nrm1 [_# a#]
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \O a# 1))
      (nrm2 [_# a#]
-       (diagonal-method ~mkl ~(cblas t 'nrm2) ~ptr a#))
-     #_(nrmi [_# a#]TODO
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \I a#))
+       (diagonal-method ~openblas ~(cblas t 'nrm2) ~ptr a#))
+     (nrmi [_# a#]
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \I a# 1))
      (asum [_# a#]
-       (diagonal-method ~mkl ~(cblas t 'asum) ~ptr a#))
+       (diagonal-method ~openblas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
-       (diagonal-scal ~mkl ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+       (diagonal-scal ~openblas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
      (axpy [_# alpha# a# b#]
-       (diagonal-axpy ~mkl ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+       (diagonal-axpy ~openblas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
      (mv
-       #_([_# alpha# a# x# beta# y#]TODO
-        (tridiagonal-mv ~mkl ~(lapacke "" t 'lagtm_64) ~ptr ~cpp-ptr
-                        (~cast alpha#) a# x# (~cast beta#) y#))
+       ([_# alpha# a# x# beta# y#]
+        (dragan-says-ex "mv! is not supported for GT matrices." {:a (info a#)}))
        ([_# a# x#]
         (tridiagonal-mv a#)))
      (rk
@@ -1734,39 +1735,38 @@
      (mm
        ([_# _# a# _# _#]
         (tridiagonal-mm a#))
-       #_([_# alpha# a# b# beta# c# left#]TODO
-        (tridiagonal-mm ~mkl ~(lapacke "" t 'lagtm_64) ~ptr ~cpp-ptr
-                        (~cast alpha#) a# b# (~cast beta#) c# left#)))))
+       ([_# alpha# a# b# beta# c# left#]
+        (dragan-says-ex "mm! is not supported for GT matrices." {:a (info a#)})))))
 
-(defmacro real-gt-lapack* [name t ptr cpp-ptr idx-ptr cast mkl]
+(defmacro real-gt-lapack* [name t ptr cpp-ptr idx-ptr cast openblas]
   `(extend-type ~name
      Lapack
      (srt [_# a# increasing#]
-       (diagonal-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
+       (diagonal-lasrt ~openblas ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (trf
        ([_# a# ipiv#]
-        (gt-trf ~mkl ~(lapacke t 'gttrf) ~ptr ~idx-ptr a# ipiv#))
+        (gt-trf ~openblas ~(lapacke t 'gttrf) ~ptr ~idx-ptr a# ipiv#))
        ([_# _#]
-        (dragan-says-ex "Pivotless factorization is not available for DT matrices.")))
+        (dragan-says-ex "Pivotless factorization is not available for GT matrices.")))
      (tri [_# _#]
        (dragan-says-ex "Inverse is not available for GT matrices."))
      (trs [_# lu# b# ipiv#]
-       (gt-trs ~mkl ~(lapacke t 'gttrs) ~ptr ~idx-ptr lu# b# ipiv#))
+       (gt-trs ~openblas ~(lapacke t 'gttrs) ~ptr ~idx-ptr lu# b# ipiv#))
      (sv [_# a# b# pure#]
-       (gt-sv ~mkl ~(lapacke t 'gtsv) ~ptr a# b# pure#))
+       (gt-sv ~openblas ~(lapacke t 'gtsv) ~ptr a# b# pure#))
      (con [_# ldl# ipiv# nrm# nrm1?#]
-       (gt-con ~mkl ~(lapacke t 'gtcon) ~ptr ~cpp-ptr ~idx-ptr ldl# ipiv# (~cast nrm#) nrm1?#))))
+       (gt-con ~openblas ~(lapacke t 'gtcon) ~ptr ~cpp-ptr ~idx-ptr ldl# ipiv# (~cast nrm#) nrm1?#))))
 
 (deftype FloatGTEngine [])
-(real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float openblas)
-(real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float openblas ones-float)
-(real-gt-lapack* FloatGTEngine "s" float-ptr cpp/float-ptr int-ptr float openblas)
+(real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float openblas_full ones-float)
+(real-gt-lapack* FloatGTEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 ;;(real-matrix-math* FloatGTEngine "s" float-ptr float)
 
 (deftype DoubleGTEngine [])
-(real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double openblas)
-(real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double openblas ones-double)
-(real-gt-lapack* DoubleGTEngine "d" double-ptr cpp/double-ptr int-ptr double openblas)
+(real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double openblas_full ones-double)
+(real-gt-lapack* DoubleGTEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 ;;(real-matrix-math* DoubleGTEngine "d" double-ptr double)
 
 (deftype LongGTEngine [])
@@ -1774,35 +1774,35 @@
 (deftype ShortGTEngine [])
 (deftype ByteGTEngine [])
 
-(defmacro real-dt-lapack* [name t ptr cast mkl]
+(defmacro real-dt-lapack* [name t ptr cast openblas]
   `(extend-type ~name
      Lapack
      (srt [_# a# increasing#]
-       (matrix-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
+       (matrix-lasrt ~openblas ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (trf
        ([_# _# _#]
-        (dragan-says-ex "Pivoted factorization is not available for GT matrices."))
-       #_([_# a#]TODO
-        (dt-trf ~mkl ~(lapacke "" t 'dttrfb_64) ~ptr a#)))
+        (dragan-says-ex "Pivoted factorization is not available for DT matrices."))
+       ([_# a#]
+        (dragan-says-ex "Pivotless factorization is not available for DT matrices.")))
      (tri [_# _#]
-       (dragan-says-ex "Inverse is not available for GT matrices."))
-     ;; (trs [_# lu# b#]
-     ;;   (dt-trs ~mkl ~(lapacke "" t 'dttrsb_64) ~ptr lu# b#))
-     ;; (sv [_# a# b# pure#]TODO
-     ;;   (dt-sv ~mkl ~(lapacke "" t 'dtsvb_64) ~ptr a# b# pure#)) ;;TODO lapacke "" should be (mkl t 'etc)
+       (dragan-says-ex "Inverse is not available for DT matrices."))
+     (trs [_# lu# b#]
+       (dragan-says-ex "TRS is not available for DT matrices."))
+     (sv [_# a# b# pure#]
+       (dragan-says-ex "SV is not available for DT matrices."))
      (con [_# _# _# _# _#]
        (dragan-says-ex "Condition number is not available for DT matrices."))))
 
 (deftype FloatDTEngine [])
-(real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float openblas)
-(real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float openblas ones-float)
-(real-dt-lapack* FloatDTEngine "s" float-ptr float openblas)
+(real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float openblas_full ones-float)
+(real-dt-lapack* FloatDTEngine "s" float-ptr float openblas_full)
 ;;(real-matrix-math* FloatDTEngine "s" float-ptr float)
 
 (deftype DoubleDTEngine [])
-(real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double openblas)
-(real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double openblas ones-double)
-(real-dt-lapack* DoubleDTEngine "d" double-ptr double openblas)
+(real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double openblas_full ones-double)
+(real-dt-lapack* DoubleDTEngine "d" double-ptr double openblas_full)
 ;;(real-matrix-math* DoubleDTEngine "d" double-ptr double)
 
 (deftype LongDTEngine [])
@@ -1810,33 +1810,32 @@
 (deftype ShortDTEngine [])
 (deftype ByteDTEngine [])
 
-(defmacro real-st-blas* [name t ptr cpp-ptr cast mkl]
+(defmacro real-st-blas* [name t ptr cpp-ptr cast openblas]
   `(extend-type ~name
      Blas
      (swap [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'swap) ~ptr a# b#)
+       (diagonal-method ~openblas ~(cblas t 'swap) ~ptr a# b#)
        a#)
      (copy [_# a# b#]
-       (diagonal-method ~mkl ~(cblas t 'copy) ~ptr a# b#)
+       (diagonal-method ~openblas ~(cblas t 'copy) ~ptr a# b#)
        b#)
      (dot [_# a# b#]
-       (st-dot ~mkl ~(cblas t 'dot) ~ptr a# b#))
-     ;; #_(nrm1 [_# a#]TODO
-     ;;   (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \O a#))
-     ;; (nrm2 [_# a#]
-     ;;   (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \F a#))
-     ;; (nrmi [_# a#]
-     ;;   (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \I a#))
+       (st-dot ~openblas ~(cblas t 'dot) ~ptr a# b#))
+     (nrm1 [_# a#]
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \O a# 1))
+     (nrm2 [_# a#]
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \F a# 1))
+     (nrmi [_# a#]
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \I a# 1))
      (asum [_# a#]
-       (st-asum ~mkl ~(cblas t 'asum) ~ptr a#))
+       (st-asum ~openblas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
-       (diagonal-scal ~mkl ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+       (diagonal-scal ~openblas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
      (axpy [_# alpha# a# b#]
-       (diagonal-axpy ~mkl ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+       (diagonal-axpy ~openblas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
      (mv
-       #_([_# alpha# a# x# beta# y#]TODO
-        (tridiagonal-mv ~mkl ~(lapacke "" t 'lagtm_64) ~ptr ~cpp-ptr
-                        (~cast alpha#) a# x# (~cast beta#) y#))
+       ([_# alpha# a# x# beta# y#]
+        (dragan-says-ex "mv! is not supported for ST matrices." {:a (info a#)}))
        ([_# a# x#]
         (tridiagonal-mv a#)))
      (rk
@@ -1847,55 +1846,54 @@
      (mm
        ([_# _# a# _# _#]
         (tridiagonal-mm a#))
-       #_([_# alpha# a# b# beta# c# left#]TODO
-        (tridiagonal-mm ~mkl ~(lapacke "" t 'lagtm_64) ~ptr ~cpp-ptr
-                        (~cast alpha#) a# b# (~cast beta#) c# left#)))))
+       ([_# alpha# a# b# beta# c# left#]
+        (dragan-says-ex "mv! is not supported for ST matrices." {:a (info a#)})))))
 
-(defmacro real-st-blas-plus* [name t ptr cast mkl ones]
+(defmacro real-st-blas-plus* [name t ptr cast openblas ones]
   `(extend-type ~name
      BlasPlus
      (amax [_# a#]
-       (diagonal-amax ~mkl ~(cblas 'cblas_i t 'amax) ~ptr a#))
+       (diagonal-amax ~openblas ~(cblas 'cblas_i t 'amax) ~ptr a#))
      (sum [_# a#]
-       (st-sum ~mkl ~(cblas t 'dot) ~ptr a# ~ones))
+       (st-sum ~openblas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
-       (diagonal-laset ~mkl ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
-     #_(axpby [_# alpha# a# beta# b#]TODO
-       (diagonal-axpby ~mkl ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
+       (diagonal-laset ~openblas ~(lapacke t 'laset) ~ptr (~cast alpha#) a#))
+     (axpby [_# alpha# a# beta# b#]
+       (diagonal-axpby ~openblas ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#))
      (trans [_# a#]
        (dragan-says-ex "In-place transpose is not available for ST matrices." {:a (info a#)}))))
 
-(defmacro real-st-lapack* [name t ptr cast mkl]
+(defmacro real-st-lapack* [name t ptr cast openblas]
   `(extend-type ~name
      Lapack
      (srt [_# a# increasing#]
-       (diagonal-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
+       (diagonal-lasrt ~openblas ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (laswp [_# _# _# _# _#]
        (dragan-says-ex "Pivoted swap is not available for ST matrices."))
      (trf
        ([_# _# _#]
         (dragan-says-ex "Pivoted factorization is not available for ST matrices."))
        ([_# a#]
-        (st-trf ~mkl ~(lapacke t 'pttrf) ~ptr a#)))
+        (st-trf ~openblas ~(lapacke t 'pttrf) ~ptr a#)))
      (tri [_# _#]
        (dragan-says-ex "Inverse is not available for ST matrices."))
      (trs [_# lu# b#]
-       (st-trs ~mkl ~(lapacke t 'pttrs) ~ptr lu# b#))
+       (st-trs ~openblas ~(lapacke t 'pttrs) ~ptr lu# b#))
      (sv [_# a# b# pure#]
-       (st-sv ~mkl ~(lapacke t 'ptsv) ~ptr a# b# pure#))
+       (st-sv ~openblas ~(lapacke t 'ptsv) ~ptr a# b# pure#))
      (con [_# _# _# _# _#]
        (dragan-says-ex "Condition number is not available for ST matrices."))))
 
 (deftype FloatSTEngine [])
-(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float openblas)
-(real-st-blas-plus* FloatSTEngine "s" float-ptr float openblas ones-float)
-(real-st-lapack* FloatSTEngine "s" float-ptr float openblas)
+(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(real-st-blas-plus* FloatSTEngine "s" float-ptr float openblas_full ones-float)
+(real-st-lapack* FloatSTEngine "s" float-ptr float openblas_full)
 ;;(real-matrix-math* FloatSTEngine "s" float-ptr float)
 
 (deftype DoubleSTEngine [])
-(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double openblas)
-(real-st-blas-plus* DoubleSTEngine "d" double-ptr double openblas ones-double)
-(real-st-lapack* DoubleSTEngine "d" double-ptr double openblas)
+(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(real-st-blas-plus* DoubleSTEngine "d" double-ptr double openblas_full ones-double)
+(real-st-lapack* DoubleSTEngine "d" double-ptr double openblas_full)
 ;;(real-matrix-math* DoubleSTEngine "d" double-ptr double)
 
 (deftype LongSTEngine [])
@@ -1906,9 +1904,9 @@
 ;; ================================================================================
 
 (deftype OpenBLASRealFactory [index-fact ^DataAccessor da
-                         vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
-                         sp-eng tp-eng gd-eng gt-eng dt-eng st-eng
-                         cs-vector-eng csr-eng]
+                              vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
+                              sp-eng tp-eng gd-eng gt-eng dt-eng st-eng
+                              cs-vector-eng csr-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)

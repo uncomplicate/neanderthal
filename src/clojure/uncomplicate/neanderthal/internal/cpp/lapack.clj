@@ -13,7 +13,7 @@
              [core :refer [with-release info]]
              [utils :refer [dragan-says-ex cond-into]]]
             [uncomplicate.clojure-cpp
-             :refer [long-ptr byte-pointer int-pointer long-pointer pointer get-entry]]
+             :refer [long-ptr int-ptr byte-pointer int-pointer long-pointer pointer get-entry]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols col trans symmetric?]]
              [block :refer [stride row?]]
@@ -170,36 +170,68 @@
            :default (dragan-says-ex "This operation has not been implemented for non-square banded matrix."))))
      0.0))
 
-(defmacro sb-lan [lapack lansb ptr cpp-ptr norm a]
-  `(if (< 0 (dim ~a))
-     (let [stor# (full-storage ~a)
-           reg# (region ~a)]
-       (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
-                      norm# (byte-pointer (pointer ~norm))
-                      uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a))
-                                                     (if (.isLower reg#) \L \U)
-                                                     (if (.isLower reg#) \U \L))))
-                      fd# (long-ptr (pointer (.fd stor#)))
-                      ld# (long-ptr (pointer (.ld stor#)))
-                      k# (long-ptr (pointer (max (.kl reg#) (.ku reg#))))]
-         (. ~lapack ~lansb norm# uplo# fd# k# (~ptr ~a) ld# work#)))
-     0.0))
+(defmacro sb-lan
+  ([lapack lansb ptr cpp-ptr norm a]
+   `(if (< 0 (dim ~a))
+      (let [stor# (full-storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a))
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))
+                       fd# (long-ptr (pointer (.fd stor#)))
+                       ld# (long-ptr (pointer (.ld stor#)))
+                       k# (long-ptr (pointer (max (.kl reg#) (.ku reg#))))]
+          (. ~lapack ~lansb norm# uplo# fd# k# (~ptr ~a) ld# work#)))
+      0.0))
+  ([lapack lansb ptr cpp-ptr norm a fortran-strlen]
+   `(if (< 0 (dim ~a))
+      (let [stor# (full-storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a))
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))
+                       fd# (int-ptr (pointer (int (.fd stor#))))
+                       ld# (int-ptr (pointer (int (.ld stor#))))
+                       k# (int-ptr (pointer (int (max (.kl reg#) (.ku reg#)))))]
+          (. ~lapack ~lansb norm# uplo# fd# k# (~ptr ~a) ld# work# ~fortran-strlen ~fortran-strlen)))
+      0.0)))
 
-(defmacro tb-lan [lapack lantb ptr cpp-ptr norm a]
-  `(if (< 0 (dim ~a))
-     (let [stor# (full-storage ~a)
-           reg# (region ~a)]
-       (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
-                      norm# (byte-pointer (pointer ~norm))
-                      uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a))
-                                                     (if (.isLower reg#) \L \U)
-                                                     (if (.isLower reg#) \U \L))))
-                      diag# (byte-pointer (pointer (if (.isDiagUnit reg#) \U \N)))
-                      fd# (long-ptr (pointer (.fd stor#)))
-                      ld# (long-ptr (pointer (.ld stor#)))
-                      k# (long-ptr (pointer (max (.kl reg#) (.ku reg#))))]
-         (. ~lapack ~lantb norm# uplo# diag# fd# k# (~ptr ~a) ld# work#)))
-     0.0))
+(defmacro tb-lan
+  ([lapack lantb ptr cpp-ptr norm a]
+   `(if (< 0 (dim ~a))
+      (let [stor# (full-storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a))
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))
+                       diag# (byte-pointer (pointer (if (.isDiagUnit reg#) \U \N)))
+                       fd# (long-ptr (pointer (.fd stor#)))
+                       ld# (long-ptr (pointer (.ld stor#)))
+                       k# (long-ptr (pointer (max (.kl reg#) (.ku reg#))))]
+          (. ~lapack ~lantb norm# uplo# diag# fd# k# (~ptr ~a) ld# work#)))
+      0.0))
+  ([lapack lantb ptr cpp-ptr norm a fortran-strlen]
+   `(if (< 0 (dim ~a))
+      (let [stor# (full-storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a))
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))
+                       diag# (byte-pointer (pointer (if (.isDiagUnit reg#) \U \N)))
+                       fd# (int-ptr (pointer (int (.fd stor#))))
+                       ld# (int-ptr (pointer (int (.ld stor#))))
+                       k# (int-ptr (pointer (max (.kl reg#) (.ku reg#))))]
+          (. ~lapack ~lantb norm# uplo# diag# fd# k# (~ptr ~a) ld# work#
+             ~fortran-strlen ~fortran-strlen ~fortran-strlen)))
+      0.0)))
 
 (defmacro gb-laset [blas method ptr alpha a]
   `(if (< 0 (dim ~a))
@@ -241,32 +273,60 @@
                           (. ~lapack ~method increasing# len# (.position buff-a# idx#)))))
      ~a))
 
-(defmacro sp-lan [lapack lansp ptr cpp-ptr norm a]
-  `(if (< 0 (dim ~a))
-     (let [stor# (storage ~a)
-           reg# (region ~a)]
-       (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
-                      fd# (long-ptr (pointer (.fd stor#)))
-                      norm# (byte-pointer (pointer ~norm))
-                      uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a)) ;;TODO extract
-                                                     (if (.isLower reg#) \L \U)
-                                                     (if (.isLower reg#) \U \L))))]
-         (. ~lapack ~lansp norm# uplo# fd# (~ptr ~a) work#)))
-     0.0))
+(defmacro sp-lan
+  ([lapack lansp ptr cpp-ptr norm a]
+   `(if (< 0 (dim ~a))
+      (let [stor# (storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       fd# (long-ptr (pointer (.fd stor#)))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a)) ;;TODO extract
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))]
+          (. ~lapack ~lansp norm# uplo# fd# (~ptr ~a) work#)))
+      0.0))
+  ([lapack lansp ptr cpp-ptr norm a fortran-strlen]
+   `(if (< 0 (dim ~a))
+      (let [stor# (storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       fd# (int-ptr (pointer (int (.fd stor#))))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a)) ;;TODO extract
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))]
+          (. ~lapack ~lansp norm# uplo# fd# (~ptr ~a) work# ~fortran-strlen ~fortran-strlen)))
+      0.0)))
 
-(defmacro tp-lan [lapack lantp ptr cpp-ptr norm a]
-  `(if (< 0 (dim ~a))
-     (let [stor# (storage ~a)
-           reg# (region ~a)]
-       (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
-                      fd# (long-ptr (pointer (.fd stor#)))
-                      norm# (byte-pointer (pointer ~norm))
-                      uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a)) ;;TODO extract
-                                                     (if (.isLower reg#) \L \U)
-                                                     (if (.isLower reg#) \U \L))))
-                      diag-unit# (byte-pointer (pointer (if (.isDiagUnit reg#) \U \N)))]
-         (. ~lapack ~lantp norm# uplo# diag-unit# fd# (~ptr ~a) work#)))
-     0.0))
+(defmacro tp-lan
+  ([lapack lantp ptr cpp-ptr norm a]
+   `(if (< 0 (dim ~a))
+      (let [stor# (storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       fd# (long-ptr (pointer (.fd stor#)))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a)) ;;TODO extract
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))
+                       diag-unit# (byte-pointer (pointer (if (.isDiagUnit reg#) \U \N)))]
+          (. ~lapack ~lantp norm# uplo# diag-unit# fd# (~ptr ~a) work#)))
+      0.0))
+  ([lapack lantp ptr cpp-ptr norm a fortran-strlen]
+   `(if (< 0 (dim ~a))
+      (let [stor# (storage ~a)
+            reg# (region ~a)]
+        (with-release [work# (~cpp-ptr (.createDataSource (real-accessor ~a) (.fd stor#)))
+                       fd# (int-ptr (pointer (int (.fd stor#))))
+                       norm# (byte-pointer (pointer ~norm))
+                       uplo# (byte-pointer (pointer (if (.isColumnMajor (navigator ~a)) ;;TODO extract
+                                                      (if (.isLower reg#) \L \U)
+                                                      (if (.isLower reg#) \U \L))))
+                       diag-unit# (byte-pointer (pointer (if (.isDiagUnit reg#) \U \N)))]
+          (. ~lapack ~lantp norm# uplo# diag-unit# fd# (~ptr ~a) work#
+             ~fortran-strlen ~fortran-strlen ~fortran-strlen)))
+      0.0)))
 
 ;; ----------------- Diagonal matrix -----------------------------------------------
 
@@ -283,16 +343,27 @@
        (. ~lapack ~method (byte (int (if ~increasing \I \D))) (.surface (region ~a)) (~ptr ~a)))
      ~a))
 
-(defmacro tridiagonal-lan [lapack method ptr norm a]
-  `(if (< 0 (dim ~a))
-     (let [n# (mrows ~a)
-           n1# (if (< 0 n#) (dec n#) 0)
-           du# (~ptr ~a n#)
-           dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
-       (with-release [norm# (byte-pointer (pointer ~norm))
-                      n# (long-ptr (pointer (mrows ~a)))]
-         (. ~lapack ~method norm# n# dl# (~ptr ~a) du#)))
-     0.0))
+(defmacro tridiagonal-lan
+  ([lapack method ptr norm a]
+   `(if (< 0 (dim ~a))
+      (let [n# (mrows ~a)
+            n1# (if (< 0 n#) (dec n#) 0)
+            du# (~ptr ~a n#)
+            dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
+        (with-release [norm# (byte-pointer (pointer ~norm))
+                       n# (long-ptr (pointer (mrows ~a)))]
+          (. ~lapack ~method norm# n# dl# (~ptr ~a) du#)))
+      0.0))
+  ([lapack method ptr norm a fortran-strlen]
+   `(if (< 0 (dim ~a))
+      (let [n# (mrows ~a)
+            n1# (if (< 0 n#) (dec n#) 0)
+            du# (~ptr ~a n#)
+            dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
+        (with-release [norm# (byte-pointer (pointer ~norm))
+                       n# (int-ptr (pointer (int (mrows ~a))))]
+          (. ~lapack ~method norm# n# dl# (~ptr ~a) du# ~fortran-strlen)))
+      0.0)))
 
 (defmacro tridiagonal-mv
   ([lapack method ptr cpp-ptr alpha a x beta y]
