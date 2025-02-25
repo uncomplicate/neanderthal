@@ -600,11 +600,22 @@
 
 ;; ================= Real GE Engine ========================================
 
-(defmacro ge-axpby [blas method ptr alpha a beta b]
+(defmacro ge-axpy [blas geadd axpy ptr alpha a b]
   `(do
      (when (< 0 (dim ~a))
-       (. ~blas ~method (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
-          ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b)))
+       (if (= (navigator ~a) (navigator ~b))
+         (. ~blas ~geadd (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
+            ~alpha (~ptr ~a) (stride ~a) 1.0 (~ptr ~b) (stride ~b))
+         (matrix-axpy ~blas ~axpy ~ptr ~alpha ~a ~b)))
+     ~b))
+
+(defmacro ge-axpby [blas geadd axpby ptr alpha a beta b]
+  `(do
+     (when (< 0 (dim ~a))
+       (if (= (navigator ~a) (navigator ~b))
+         (. ~blas ~geadd (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
+            ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b))
+         (matrix-axpby ~blas ~axpby ~ptr ~alpha ~a ~beta ~b)))
      ~b))
 
 (defmacro real-ge-blas* [name t ptr cast blas lapack]
@@ -638,7 +649,7 @@
             (~cast 0.0) (~ptr a#) (stride a#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
      (axpy [_# alpha# a# b#]
-       (ge-axpby ~blas ~(cblas t 'geadd) ~ptr (~cast alpha#) a# 1.0 b#))
+       (ge-axpy ~blas ~(cblas t 'geadd) ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
      (mv
        ([_# alpha# a# x# beta# y#]
         (. ~blas ~(cblas t 'gemv) (.layout (navigator a#)) ~(:no-trans blas-transpose) (mrows a#) (ncols a#)
@@ -683,7 +694,7 @@
             (mrows a#) (ncols a#) (~cast alpha#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
      (axpby [_# alpha# a# beta# b#]
-       (ge-axpby ~blas ~(cblas t 'geadd) ~ptr (~cast alpha#) a# (~cast beta#) b#)
+       (ge-axpby ~blas ~(cblas t 'geadd) ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#)
        b#)
      (trans [_# a#]
        (when (< 0 (dim a#))

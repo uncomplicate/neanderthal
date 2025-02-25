@@ -48,8 +48,8 @@
 (real-test/test-diag-equal openblas-double)
 (real-test/test-diag-equal openblas-float)
 
-(real-test/test-blas openblas-double);;TODO col/row result
-(real-test/test-blas openblas-float);;TODO col/row result
+(real-test/test-blas openblas-double)
+(real-test/test-blas openblas-float)
 (real-test/test-blas-host openblas-double)
 (real-test/test-blas-host openblas-float)
 (real-test/test-basic-integer openblas-long)
