@@ -15,7 +15,7 @@
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer malloc! free!]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols cols rows matrix-type entry]]
+             [core :refer [dim mrows ncols cols rows matrix-type entry] :as core]
              [real :as real]
              [integer :as integer]
              [math :refer [f=] :as math]
@@ -61,26 +61,6 @@
    (symbol (format "%s%s%s" prefix type name)))
   ([type name]
    (math "v" type name)))
-
-;; ================= MKL specific blas and lapack functions =====================
-
-(defmacro gd-sv [mkl vdiv-method sv-method ptr a b]
-  `(let [n-a# (ncols ~a)
-         n-b# (ncols ~b)
-         nav-b# (navigator ~b)
-         stor-b# (storage ~b)
-         buff-a# (~ptr ~a)
-         buff-b# (~ptr ~b 0)
-         strd-b# (stride ~b)]
-     (if (.isColumnMajor nav-b#)
-       (dotimes [j# n-b#]
-         #_(. ~mkl ~vdiv-method n-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) buff-a#
-            (.position buff-b# (.index nav-b# stor-b# 0 j#))))
-       (dotimes [j# (ncols ~b)]
-         #_(. ~mkl ~sv-method ~(:row blas-layout) ~(:lower blas-uplo) ~(:no-trans blas-transpose)
-            ~(:non-unit blas-diag) n-a# 0 buff-a# 1
-            (.position buff-b# (.index nav-b# stor-b# 0 j#)) strd-b#)))
-     ~b))
 
 ;; ================= Integer Vector Engines =====================================
 
@@ -1151,11 +1131,11 @@
      (dot [_# a# b#]
        (gb-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (apply max (map asum (cols a#))))
+       (apply max (map core/asum (cols a#))))
      (nrm2 [_# a#]
        (~cast (math/sqrt (gb-dot ~blas ~(cblas t 'dot) ~ptr a# a#))))
      (nrmi [_# a#]
-       (apply max (map asum (rows a#))))
+       (apply max (map core/asum (rows a#))))
      (asum [_# a#]
        (gb-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -1689,7 +1669,7 @@
      (trs [_# a# b#]
        (gd-trs ~openblas ~(lapacke t 'tbtrs) ~ptr a# b#))
      (sv [_# a# b# _#]
-       (gd-sv ~openblas ~(math t 'Div) ~(cblas t 'tbsv) ~ptr a# b#))
+       (gd-sv ~openblas ~(cblas t 'tbsv) ~ptr a# b#))
      (con [_# a# nrm1?#]
        (gd-con ~openblas ~(lapacke t 'tbcon) ~ptr ~cpp-ptr a# nrm1?#))))
 
