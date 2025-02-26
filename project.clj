@@ -18,7 +18,7 @@
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.uncomplicate/clojure-cpp "0.4.0"]
                  [org.bytedeco/mkl-platform "2025.0-1.5.11"]
-                 [org.bytedeco/openblas-platform "0.3.28-1.5.12-SNAPSHOT"]
+                 [org.bytedeco/openblas-platform "0.3.28-1.5.12-20250223.142350-91"]
                  [uncomplicate/clojurecl "0.16.0"]
                  [org.jocl/jocl-blast "1.5.2"]
                  [uncomplicate/clojurecuda "0.21.0"]
@@ -34,7 +34,7 @@
                    :dependencies [[midje "1.10.10"]
                                   [codox-theme-rdash "0.1.2"]
                                   [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
-                                  [org.bytedeco/openblas "0.3.28-1.5.12-SNAPSHOT" :classifier linux-x86_64]
+                                  [org.bytedeco/openblas "0.3.28-1.5.12-20250223.142442-74" :classifier linux-x86_64]
                                   [org.bytedeco/cuda "12.6-9.5-1.5.11" :classifier linux-x86_64-redist]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
