@@ -20,8 +20,7 @@
              [api :refer [iamax engine navigator storage region mm scal]]
              [common :refer [check-eq-navigators skip real-accessor]]
              [navigation :refer [full-storage accu-layout diag-unit?]]]
-            [uncomplicate.neanderthal.internal.cpp.common :refer :all])
-  (:import org.bytedeco.mkl.global.mkl_rt))
+            [uncomplicate.neanderthal.internal.cpp.common :refer :all]))
 
 (defmacro vector-iopt [opt x entry]
   `(let [cnt# (dim ~x)]

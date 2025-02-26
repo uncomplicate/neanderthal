@@ -56,12 +56,6 @@
 (defn lapack [type name]
   (symbol (format "LAPACK_%s%s" type name)))
 
-(defn math
-  ([prefix type name]
-   (symbol (format "%s%s%s" prefix type name)))
-  ([type name]
-   (math "v" type name)))
-
 ;; ================= Integer Vector Engines =====================================
 
 (def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
@@ -243,206 +237,9 @@
           (~cast alpha#) (~ptr x#) (stride x#) (~cast beta#) (~ptr y#) (stride y#))
        y#)))
 
-(defmacro vector-math
-  ([method ptr a y]
-   `(do
-      (check-stride ~a ~y)
-      #_(. mkl_rt ~method (dim ~a) (~ptr ~a) (~ptr ~y)) ;;TODO
-      ~y))
-  ([method ptr a b y]
-   `(do
-      (check-stride ~a ~b ~y)
-      #_(. mkl_rt ~method (dim ~a) (~ptr ~a) (~ptr ~b) (~ptr ~y)) ;;TODO
-      ~y)))
-
-(defmacro vector-linear-frac [method ptr a b scalea shifta scaleb shiftb y]
-  `(do
-     (check-stride ~a ~b ~y)
-     #_(. mkl_rt ~method (dim ~a) (~ptr ~a) (~ptr ~b) ~scalea ~shifta ~scaleb ~shiftb (~ptr ~y)) ;;TODO
-     ~y))
-
-(defmacro vector-powx [method ptr a b y]
-  `(do
-     (check-stride ~a ~y)
-     #_(. mkl_rt ~method (dim ~a) (~ptr ~a) ~b (~ptr ~y)) ;;TODO
-     ~y))
-
 ;; ============ Delegate math functions  ============================================
 
-(defn sigmoid-over-tanh [eng a y]
-  (when-not (identical? a y) (copy eng a y))
-  (linear-frac eng (tanh eng (scal eng 0.5 y) y) a 0.5 0.5 0.0 1.0 y))
-
-(defn vector-ramp [eng a y]
-  (cond (identical? a y) (fmap! math/ramp y)
-        (and (contiguous? a) (contiguous? y)) (fmax eng a (set-all eng 0.0 y) y)
-        :else (fmap! math/ramp (copy eng a y))))
-
-(defn vector-relu [eng alpha a y]
-  (cond (identical? a y) (fmap! (math/relu alpha) y)
-        (and (contiguous? a) (contiguous? y)) (fmax eng a (axpby eng alpha a 0.0 y) y)
-        :else (fmap! (math/relu alpha) (copy eng a y))))
-
-(defn vector-elu [eng alpha a y]
-  (cond (identical? a y) (fmap! (math/elu alpha) y)
-        (and (contiguous? a) (contiguous? y))
-        (fmax eng a (scal eng alpha (expm1 eng (copy eng a y) y)) y)
-        :else (fmap! (math/elu alpha) (copy eng a y))))
-
-;; (defmacro with-rng-check [x expr] ;;TODO maybe avoid special method for this.
-;;   `(if (< 0 (dim ~x))
-;;      (if (and (contiguous? ~x) (= 1 (stride ~x)))
-;;        (let [err# ~expr]
-;;          (if (= 0 err#)
-;;            ~x
-;;            (throw (ex-info "MKL error." {:error-code err#}))))
-;;        (dragan-says-ex "This engine cannot generate random entries in host vectors with stride. Sorry."
-;;                        {:v (info ~x)}))
-;;      ~x))
-
-;; (defmacro with-mkl-check [expr res]
-;;   `(let [err# ~expr]
-;;      (if (zero? err#)
-;;        ~res
-;;        (throw (ex-info "MKL error." {:error-code err#})))))
-
-;; (defn create-stream-ars5 ^mkl_rt$VSLStreamStatePtr [seed]
-;;   (let-release [stream (mkl_rt$VSLStreamStatePtr. (long-pointer 1))]
-;;     (with-mkl-check (mkl_rt/vslNewStream stream mkl_rt/VSL_BRNG_ARS5 seed)
-;;       stream)))
-
-;; (def ^:private default-rng-stream (create-stream-ars5 (generate-seed)))
-
-(defmacro real-math* [name t ptr cast vector-math vector-linear-frac vector-powx]
-  `(extend-type ~name
-     VectorMath
-     (sqr [_# a# y#]
-       (~vector-math ~(math t 'Sqr) ~ptr a# y#))
-     (mul [_# a# b# y#]
-       (~vector-math ~(math t 'Mul) ~ptr a# b# y#))
-     (div [_# a# b# y#]
-       (~vector-math ~(math t 'Div) ~ptr a# b# y#))
-     (inv [_# a# y#]
-       (~vector-math ~(math t 'Inv) ~ptr a# y#))
-     (abs [_# a# y#]
-       (~vector-math ~(math t 'Abs) ~ptr a# y#))
-     (linear-frac [_# a# b# scalea# shifta# scaleb# shiftb# y#]
-       (~vector-linear-frac ~(math t 'LinearFrac) ~ptr a# b#
-        (~cast scalea#) (~cast shifta#) (~cast scaleb#) (~cast shiftb#) y#))
-     (fmod [_# a# b# y#]
-       (~vector-math ~(math t 'Fmod) ~ptr a# b# y#))
-     (frem [_# a# b# y#]
-       (~vector-math  ~(math t 'Remainder) ~ptr a# b# y#))
-     (sqrt [_# a# y#]
-       (~vector-math ~(math t 'Sqrt) ~ptr a# y#))
-     (inv-sqrt [_# a# y#]
-       (~vector-math ~(math t 'InvSqrt) ~ptr a# y#))
-     (cbrt [_# a# y#]
-       (~vector-math ~(math t 'Cbrt) ~ptr a# y#))
-     (inv-cbrt [_# a# y#]
-       (~vector-math ~(math t 'InvCbrt) ~ptr a# y#))
-     (pow2o3 [_# a# y#]
-       (~vector-math ~(math t 'Pow2o3) ~ptr a# y#))
-     (pow3o2 [_# a# y#]
-       (~vector-math ~(math t 'Pow3o2) ~ptr a# y#))
-     (pow [_# a# b# y#]
-       (~vector-math ~(math t 'Pow) ~ptr a# b# y#))
-     (powx [_# a# b# y#]
-       (~vector-powx ~(math t 'Powx) ~ptr a# (~cast b#) y#))
-     (hypot [_# a# b# y#]
-       (~vector-math ~(math t 'Hypot) ~ptr a# b# y#))
-     (exp [_# a# y#]
-       (~vector-math ~(math t 'Exp) ~ptr a# y#))
-     (exp2 [_# a# y#]
-       (~vector-math ~(math t 'Exp2) ~ptr a# y#))
-     (exp10 [_# a# y#]
-       (~vector-math ~(math t 'Exp10) ~ptr a# y#))
-     (expm1 [_# a# y#]
-       (~vector-math ~(math t 'Expm1) ~ptr a# y#))
-     (log [_# a# y#]
-       (~vector-math ~(math t 'Ln) ~ptr a# y#))
-     (log2 [_# a# y#]
-       (~vector-math ~(math t 'Log2) ~ptr a# y#))
-     (log10 [_# a# y#]
-       (~vector-math ~(math t 'Log10) ~ptr a# y#))
-     (log1p [_# a# y#]
-       (~vector-math ~(math t 'Log1p) ~ptr a# y#))
-     (sin [_# a# y#]
-       (~vector-math ~(math t 'Sin) ~ptr a# y#))
-     (cos [_# a# y#]
-       (~vector-math ~(math t 'Cos) ~ptr a# y#))
-     (tan [_# a# y#]
-       (~vector-math ~(math t 'Tan) ~ptr a# y#))
-     (sincos [_# a# y# z#]
-       (~vector-math ~(math t 'SinCos) ~ptr a# y# z#))
-     (asin [_# a# y#]
-       (~vector-math ~(math t 'Asin) ~ptr a# y#))
-     (acos [_# a# y#]
-       (~vector-math ~(math t 'Acos) ~ptr a# y#))
-     (atan [_# a# y#]
-       (~vector-math ~(math t 'Atan) ~ptr a# y#))
-     (atan2 [_# a# b# y#]
-       (~vector-math ~(math t 'Atan2) ~ptr a# b# y#))
-     (sinh [_# a# y#]
-       (~vector-math ~(math t 'Sinh) ~ptr a# y#))
-     (cosh [_# a# y#]
-       (~vector-math ~(math t 'Cosh) ~ptr a# y#))
-     (tanh [_# a# y#]
-       (~vector-math ~(math t 'Tanh) ~ptr a# y#))
-     (asinh [_# a# y#]
-       (~vector-math ~(math t 'Asinh) ~ptr a# y#))
-     (acosh [_# a# y#]
-       (~vector-math ~(math t 'Acosh) ~ptr a# y#))
-     (atanh [_# a# y#]
-       (~vector-math ~(math t 'Atanh) ~ptr a# y#))
-     (erf [_# a# y#]
-       (~vector-math ~(math t 'Erf) ~ptr a# y#))
-     (erfc [_# a# y#]
-       (~vector-math ~(math t 'Erfc) ~ptr a# y#))
-     (erf-inv [_# a# y#]
-       (~vector-math ~(math t 'ErfInv) ~ptr a# y#))
-     (erfc-inv [_# a# y#]
-       (~vector-math ~(math t 'ErfcInv) ~ptr a# y#))
-     (cdf-norm [_# a# y#]
-       (~vector-math ~(math t 'CdfNorm) ~ptr a# y#))
-     (cdf-norm-inv [_# a# y#]
-       (~vector-math ~(math t 'CdfNormInv) ~ptr a# y#))
-     (gamma [_# a# y#]
-       (~vector-math ~(math t 'TGamma) ~ptr a# y#))
-     (lgamma [_# a# y#]
-       (~vector-math ~(math t 'LGamma) ~ptr a# y#))
-     (expint1 [_# a# y#]
-       (~vector-math ~(math t 'ExpInt1) ~ptr a# y#))
-     (floor [_# a# y#]
-       (~vector-math ~(math t 'Floor) ~ptr a# y#))
-     (fceil [_# a# y#]
-       (~vector-math ~(math t 'Ceil) ~ptr a# y#))
-     (trunc [_# a# y#]
-       (~vector-math ~(math t 'Trunc) ~ptr a# y#))
-     (round [_# a# y#]
-       (~vector-math ~(math t 'Round) ~ptr a# y#))
-     (modf [_# a# y# z#]
-       (~vector-math ~(math t 'Modf) ~ptr a# y# z#))
-     (frac [_# a# y#]
-       (~vector-math ~(math t 'Frac) ~ptr a# y#))
-     (fmin [_# a# b# y#]
-       (~vector-math ~(math t 'Fmin) ~ptr a# b# y#))
-     (fmax [_# a# b# y#]
-       (~vector-math ~(math t 'Fmax) ~ptr a# b# y#))
-     (copy-sign [_# a# b# y#]
-       (~vector-math ~(math t 'CopySign) ~ptr a# b# y#))
-     (sigmoid [this# a# y#]
-       (sigmoid-over-tanh this# a# y#))
-     (ramp [this# a# y#]
-       (~vector-ramp this# a# y#))
-     (relu [this# alpha# a# y#]
-       (~vector-relu this# alpha# a# y#))
-     (elu [this# alpha# a# y#]
-       (~vector-elu this# alpha# a# y#))))
-
-(defmacro real-vector-math* [name t ptr cast]
-  `(real-math* ~name ~t ~ptr ~cast vector-math vector-linear-frac vector-powx))
-
+;;TODO this is the same as MKL. Extract.
 (def ^:private ones-float (->RealBlockVector nil nil nil true (float-pointer [1.0]) 1 0))
 (def ^:private ones-double (->RealBlockVector nil nil nil true (double-pointer [1.0]) 1 0))
 (def ^:private zero-float (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
@@ -450,23 +247,7 @@
 (def ^:private zero-double (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
                                            nil nil nil nil true (double-pointer [0.0]) 0 0))
 
-;; (defn cast-stream ^mkl_rt$VSLStreamStatePtr [stream]
-;;   (or stream default-rng-stream))
-
-;; (defmacro real-vector-rng* [name t ptr cast]
-;;   `(extend-type ~name
-;;      RandomNumberGenerator
-;;      (rand-uniform [_# rng-stream# lower# upper# x#]
-;;        (with-rng-check x#
-;;          (. mkl_rt ~(cblas "v" t 'RngUniform) mkl_rt/VSL_RNG_METHOD_UNIFORM_STD
-;;             (cast-stream rng-stream#) (dim x#) (~ptr x#) (~cast lower#) (~cast upper#)))
-;;        x#)
-;;      (rand-normal [_# rng-stream# mu# sigma# x#]
-;;        (with-rng-check x#
-;;          (. mkl_rt ~(cblas "v" t 'RngGaussian) mkl_rt/VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2
-;;             (cast-stream rng-stream#) (dim x#) (~ptr x#) (~cast mu#) (~cast sigma#)))
-;;        x#)))
-
+;;TODO this is the same as MKL. Extract.
 (defmacro byte-float [x]
   `(let [b# (ByteBuffer/allocate Float/BYTES)
          x# (byte ~x)]
@@ -492,14 +273,10 @@
 (deftype FloatVectorEngine [])
 (real-vector-blas* FloatVectorEngine "s" float-ptr float openblas_full openblas_full)
 (real-vector-blas-plus* FloatVectorEngine "s" float-ptr float openblas_full openblas_full ones-float)
-;; (real-vector-math* FloatVectorEngine "s" float-ptr float)
-;; (real-vector-rng* FloatVectorEngine "s" float-ptr float)
 
 (deftype DoubleVectorEngine [])
 (real-vector-blas* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full)
 (real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full ones-double)
-;;(real-vector-math* DoubleVectorEngine "d" double-ptr double)
-;; (real-vector-rng* DoubleVectorEngine "d" double-ptr double)
 
 (deftype LongVectorEngine [])
 (integer-vector-blas* LongVectorEngine "d" double-ptr openblas_full 1)
@@ -766,93 +543,15 @@
        ([_# a# sigma#]
         (ge-sdd ~lapack ~(lapacke t 'gesdd) ~ptr a# sigma# ~zero-matrix ~zero-matrix)))))
 
-(defmacro matrix-math
-  ([method ptr a y]
-   `(do
-      (when (< 0 (dim ~a))
-        (let [buff-a# (~ptr ~a 0)
-              buff-y# (~ptr ~y 0)
-              surface# (.surface (region ~a))]
-          (full-matching-map ~a ~y len# buff-a# buff-y#
-                             (. openblas_full ~method surface# buff-a# buff-y#)
-                             (. openblas_full ~method len# buff-a# buff-y#))))
-      ~y))
-  ([method ptr a b y]
-   `(do
-      (when (< 0 (dim ~a))
-        (let [buff-a# (~ptr ~a 0)
-              buff-b# (~ptr ~b 0)
-              buff-y# (~ptr ~y 0)
-              surface# (.surface (region ~a))]
-          (full-matching-map ~a ~b ~y len# buff-a# buff-b# buff-y#
-                             (. openblas_full ~method surface# buff-a# buff-b# buff-y#)
-                             (. openblas_full ~method len# buff-a# buff-b# buff-y#))))
-      ~y)))
-
-(defmacro matrix-powx [method ptr a b y]
-  `(do
-     (when (< 0 (dim ~a))
-       (let [buff-a# (~ptr ~a 0)
-             buff-y# (~ptr ~y 0)
-             surface# (.surface (region ~a))]
-         (full-matching-map ~a ~y len# buff-a# buff-y#
-                            (. openblas_full ~method surface# buff-a# ~b buff-y#)
-                            (. openblas_full ~method len# buff-a# ~b buff-y#))))
-     ~y))
-
-(defmacro matrix-linear-frac [method ptr a b scalea shifta scaleb shiftb y]
-  `(do
-     (when (< 0 (dim ~a))
-       (let [buff-a# (~ptr ~a 0)
-             buff-b# (~ptr ~b 0)
-             buff-y# (~ptr ~y 0)
-             surface# (.surface (region ~a))]
-         (full-matching-map
-          ~a ~b ~y len# buff-a# buff-b# buff-y#
-          (. openblas_full ~method surface# buff-a# buff-b# ~scalea ~shifta ~scaleb ~shiftb buff-y#)
-          (. openblas_full ~method len# buff-a# buff-b# ~scalea ~shifta ~scaleb ~shiftb buff-y# ))))
-     ~y))
-
-(defmacro real-matrix-math* [name t ptr cast]
-  `(real-math* ~name ~t ~ptr ~cast matrix-math matrix-linear-frac matrix-powx))
-
-(defmacro matrix-rng [method ptr rng-method rng-stream a par1 par2]
-  `(do
-     (when (< 0 (dim ~a))
-       (if (.isGapless (storage ~a))
-         (with-mkl-check
-           (. openblas_full ~method ~rng-method ~rng-stream (dim ~a) (~ptr ~a) ~par1 ~par2)
-           ~a)
-         (let [buff# (~ptr ~a 0)]
-           (dostripe-layout ~a len# idx#
-                            (with-rng-check ~a
-                              (. openblas_full ~method ~rng-method ~rng-stream
-                                 len# (.position buff# idx#) ~par1 ~par2))))))
-     ~a))
-
-(defmacro real-ge-rng* [name t ptr cast]
-  `(extend-type ~name
-     RandomNumberGenerator
-     (rand-uniform [_# rng-stream# lower# upper# a#]
-       (matrix-rng ~(cblas "v" t 'RngUniform) ~ptr openblas_full/VSL_RNG_METHOD_UNIFORM_STD
-                   (cast-stream rng-stream#) a# (~cast lower#) (~cast upper#)))
-     (rand-normal [_# rng-stream# mu# sigma# a#]
-       (matrix-rng ~(cblas "v" t 'RngGaussian) ~ptr openblas_full/VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2
-                   (cast-stream rng-stream#) a# (~cast mu#) (~cast sigma#)))))
-
 (deftype FloatGEEngine [])
 (real-ge-blas* FloatGEEngine "s" float-ptr float openblas_full openblas_full)
 (real-ge-blas-plus* FloatGEEngine "s" float-ptr float openblas_full openblas_full ones-float)
 (real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
-;;(real-matrix-math* FloatGEEngine "s" float-ptr float)
-;; (real-ge-rng* FloatGEEngine "s" float-ptr float)
 
 (deftype DoubleGEEngine [])
 (real-ge-blas* DoubleGEEngine "d" double-ptr double openblas_full openblas_full)
 (real-ge-blas-plus* DoubleGEEngine "d" double-ptr double openblas_full openblas_full ones-double)
 (real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
-;;(real-matrix-math* DoubleGEEngine "d" double-ptr double)
-;; (real-ge-rng* DoubleGEEngine "d" double-ptr double)
 
 ;;TODO
 (deftype LongGEEngine [])
@@ -960,13 +659,11 @@
 (real-tr-blas* FloatTREngine "s" float-ptr float openblas_full openblas_full)
 (real-tr-blas-plus* FloatTREngine "s" float-ptr float openblas_full openblas_full ones-float)
 (real-tr-lapack* FloatTREngine "s" float-ptr cpp/float-pointer float openblas_full openblas_full)
-;;(real-matrix-math* FloatTREngine "s" float-ptr float)
 
 (deftype DoubleTREngine [])
 (real-tr-blas* DoubleTREngine "d" double-ptr double openblas_full openblas_full)
 (real-tr-blas-plus* DoubleTREngine "d" double-ptr double openblas_full openblas_full ones-double)
 (real-tr-lapack* DoubleTREngine "d" double-ptr cpp/double-pointer double openblas_full openblas_full)
-;;(real-matrix-math* DoubleTREngine "d" double-ptr double)
 
 (deftype LongTREngine [])
 ;;(integer-tr-blas* LongTREngine "d" double-ptr long-double openblas_full openblas_full 1)
@@ -1098,13 +795,11 @@
 (real-sy-blas* FloatSYEngine "s" float-ptr float openblas_full openblas_full)
 (real-sy-blas-plus* FloatSYEngine "s" float-ptr float openblas_full openblas_full ones-float)
 (real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
-;;(real-matrix-math* FloatSYEngine "s" float-ptr float)
 
 (deftype DoubleSYEngine [])
 (real-sy-blas* DoubleSYEngine "d" double-ptr double openblas_full openblas_full)
 (real-sy-blas-plus* DoubleSYEngine "d" double-ptr double openblas_full openblas_full ones-double)
 (real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
-;;(real-matrix-math* DoubleSYEngine "d" double-ptr double)
 
 ;;TODO
 (deftype LongSYEngine [])
@@ -1195,13 +890,11 @@
 (real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
 (real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
 (real-gb-lapack* FloatGBEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
-;;(real-matrix-math* FloatGBEngine "s" float-ptr float)
 
 (deftype DoubleGBEngine [])
 (real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
 (real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
 (real-gb-lapack* DoubleGBEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
-;;(real-matrix-math* DoubleGBEngine "d" double-ptr double)
 
 (deftype LongGBEngine [])
 (deftype IntGBEngine [])
@@ -1292,13 +985,11 @@
 (real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
 (real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
 (real-sb-lapack* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full)
-;;(real-matrix-math* FloatSBEngine "s" float-ptr float)
 
 (deftype DoubleSBEngine [])
 (real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
 (real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
 (real-sb-lapack* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas)
-;;(real-matrix-math* DoubleSBEngine "d" double-ptr double)
 
 (deftype LongSBEngine [])
 (deftype IntSBEngine [])
@@ -1381,13 +1072,11 @@
 (real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
 (real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
 (real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full)
-;;(real-matrix-math* FloatTBEngine "s" float-ptr float)
 
 (deftype DoubleTBEngine [])
 (real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
 (real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
 (real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full)
-;;(real-matrix-math* DoubleTBEngine "d" double-ptr double)
 
 (deftype LongTBEngine [])
 (deftype IntTBEngine [])
@@ -1472,13 +1161,11 @@
 (real-tp-blas* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
 (real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
 (real-tp-lapack* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full)
-;;(real-matrix-math* FloatTPEngine "s" float-ptr float)
 
 (deftype DoubleTPEngine [])
 (real-tp-blas* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
 (real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
 (real-tp-lapack* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full)
-;;(real-matrix-math* DoubleTPEngine "d" double-ptr double)
 
 (deftype LongTPEngine [])
 (deftype IntTPEngine [])
@@ -1584,13 +1271,11 @@
 (real-sp-blas* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
 (real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
 (real-sp-lapack* FloatSPEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
-;;(real-matrix-math* FloatSPEngine "s" float-ptr float)
 
 (deftype DoubleSPEngine [])
 (real-sp-blas* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
 (real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
 (real-sp-lapack* DoubleSPEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
-;;(real-matrix-math* DoubleSPEngine "d" double-ptr double)
 
 (deftype LongSPEngine [])
 (deftype IntSPEngine [])
@@ -1677,13 +1362,11 @@
 (real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
 (real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float  openblas_full ones-float)
 (real-gd-lapack* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
-;;(real-matrix-math* FloatGDEngine "s" float-ptr float)
 
 (deftype DoubleGDEngine [])
 (real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
 (real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double openblas_full ones-double)
 (real-gd-lapack* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
-;;(real-matrix-math* DoubleGDEngine "d" double-ptr double)
 
 (deftype LongGDEngine [])
 (deftype IntGDEngine [])
@@ -1752,13 +1435,11 @@
 (real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float openblas_full)
 (real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float openblas_full ones-float)
 (real-gt-lapack* FloatGTEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
-;;(real-matrix-math* FloatGTEngine "s" float-ptr float)
 
 (deftype DoubleGTEngine [])
 (real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double openblas_full)
 (real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double openblas_full ones-double)
 (real-gt-lapack* DoubleGTEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
-;;(real-matrix-math* DoubleGTEngine "d" double-ptr double)
 
 (deftype LongGTEngine [])
 (deftype IntGTEngine [])
@@ -1788,13 +1469,11 @@
 (real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float openblas_full)
 (real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float openblas_full ones-float)
 (real-dt-lapack* FloatDTEngine "s" float-ptr float openblas_full)
-;;(real-matrix-math* FloatDTEngine "s" float-ptr float)
 
 (deftype DoubleDTEngine [])
 (real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double openblas_full)
 (real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double openblas_full ones-double)
 (real-dt-lapack* DoubleDTEngine "d" double-ptr double openblas_full)
-;;(real-matrix-math* DoubleDTEngine "d" double-ptr double)
 
 (deftype LongDTEngine [])
 (deftype IntDTEngine [])
@@ -1879,13 +1558,11 @@
 (real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float openblas_full)
 (real-st-blas-plus* FloatSTEngine "s" float-ptr float openblas_full ones-float)
 (real-st-lapack* FloatSTEngine "s" float-ptr float openblas_full)
-;;(real-matrix-math* FloatSTEngine "s" float-ptr float)
 
 (deftype DoubleSTEngine [])
 (real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double openblas_full)
 (real-st-blas-plus* DoubleSTEngine "d" double-ptr double openblas_full ones-double)
 (real-st-lapack* DoubleSTEngine "d" double-ptr double openblas_full)
-;;(real-matrix-math* DoubleSTEngine "d" double-ptr double)
 
 (deftype LongSTEngine [])
 (deftype IntSTEngine [])
@@ -1913,9 +1590,6 @@
     (compatible? da o))
   (device [_]
     :cpu)
-  ;; RngStreamFactory
-  ;; (create-rng-state [_ seed]
-  ;;   (create-stream-ars5 seed))
   UnsafeFactory
   (create-vector* [this master buf-ptr n strd]
     (real-block-vector* this master buf-ptr n strd))
@@ -2018,17 +1692,7 @@
   (dt-engine [_]
     dt-eng)
   (st-engine [_]
-    st-eng)
-  ;; SparseFactory
-  ;; (create-ge-csr [this m n idx idx-b idx-e column? init]
-  ;;   (ge-csr-matrix this m n idx idx-b (view idx-e) column? init))
-  ;; (create-ge-csr [this a b indices?]
-  ;;   (csr-ge-sp2m a b (if indices? :full-no-val :count)))
-  ;; (cs-vector-engine [_]
-  ;;   cs-vector-eng)
-  ;; (csr-engine [_]
-  ;;   csr-eng)
-  )
+    st-eng))
 
 (deftype OpenBLASIntegerFactory [index-fact ^DataAccessor da
                             vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
@@ -2048,9 +1712,6 @@
     (compatible? da o))
   (device [_]
     :cpu)
-  ;; RngStreamFactory
-  ;; (create-rng-state [_ seed]
-  ;;   (create-stream-ars5 seed))
   UnsafeFactory
   (create-vector* [this master buf-ptr n strd]
     (integer-block-vector* this master buf-ptr n strd))
@@ -2145,7 +1806,6 @@
                                  (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
                                  (->FloatSPEngine) (->FloatTPEngine) (->FloatGDEngine)
                                  (->FloatGTEngine) (->FloatDTEngine) (->FloatSTEngine)
-                                 ;;(->FloatCSVectorEngine) (->FloatCSREngine)
                                  nil nil
                                  ))
 
@@ -2154,7 +1814,6 @@
                                   (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
                                   (->DoubleSPEngine) (->DoubleTPEngine) (->DoubleGDEngine)
                                   (->DoubleGTEngine) (->DoubleDTEngine) (->DoubleSTEngine)
-                                  ;;(->DoubleCSVectorEngine) (->DoubleCSREngine)
                                   nil nil))
 
 (extend-pointer FloatPointer openblas-float)

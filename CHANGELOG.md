@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.53.0
+
+* OpenBLAS engine (all operating systems supported by JavaCPP).
+
 # 0.51.0
 
 * Updated to JavaCPP 1.5.11
