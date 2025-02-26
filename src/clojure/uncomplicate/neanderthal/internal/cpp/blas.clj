@@ -231,16 +231,30 @@
          stor-b# (storage ~b)
          uplo# (.uplo reg#)
          diag# (.diag reg#)
-         m-b# (mrows ~b)
          n-a# (ncols ~a)
          ku-a# (.ku reg#)
          buff-a# (~ptr ~a)
          ld-a# (stride ~a)
          buff-b# (~ptr ~b 0)
-         stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (stride ~b))]
-     (dotimes [j# (ncols ~b)]
+         stride-col-b# (if (.isColumnMajor nav-b#) 1 (stride ~b))]
+     (throw (dragan-says-ex "TODO cblas_?tbsv seems to be broken, or I cna't figure out how to properly use tb matrices."))
+     #_(dotimes [j# (ncols ~b)]
        (. ~blas ~method layout# uplo# ~(:no-trans blas-transpose) diag# n-a# ku-a#
           buff-a# ld-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
+     ~b))
+
+(defmacro gd-sv [blas method ptr a b]
+  `(let [layout# (.layout (navigator ~a))
+         nav-b# (navigator ~b)
+         stor-b# (storage ~b)
+         n-a# (ncols ~a)
+         buff-a# (~ptr ~a)
+         buff-b# (~ptr ~b 0)
+         stride-col-b# (if (.isColumnMajor nav-b#) 1 (stride ~b))]
+     (dotimes [j# (ncols ~b)]
+       (. ~blas ~method ~(:row blas-layout) ~(:lower blas-uplo) ~(:no-trans blas-transpose)
+          ~(:non-unit blas-diag) n-a# 0 buff-a# 1
+          (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
      ~b))
 
 (defmacro tp-sv [blas method ptr a b]
@@ -257,21 +271,6 @@
      (dotimes [j# (ncols ~b)]
        (. ~blas ~method layout# uplo# ~(:no-trans blas-transpose) diag# n-a#
           buff-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
-     ~b))
-
-(defmacro gd-sv [blas method ptr a b]
-  `(let [layout# (.layout (navigator ~a))
-         nav-b# (navigator ~b)
-         stor-b# (storage ~b)
-         n-a# (ncols ~a)
-         buff-a# (~ptr ~a)
-         ld-a# (stride ~a)
-         buff-b# (~ptr ~b 0)
-         stride-col-b# (if (.isColumnMajor (navigator ~b)) 1 (stride ~b))]
-     (dotimes [j# (ncols ~b)]
-       (. ~blas ~method layout# ~(:lower blas-uplo) ~(:no-trans blas-transpose)
-          ~(:non-unit blas-diag) n-a# 0 buff-a# ld-a#
-          (.position buff-b# (.index nav-b# stor-b# 0 j#)) stride-col-b#))
      ~b))
 
 ;; ========================= SY matrix macros ===============================================

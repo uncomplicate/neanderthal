@@ -22,6 +22,7 @@
 
 (def ^:const blas-transpose
   {:no-trans 111
+   :no 111
    :trans 112})
 
 (def ^:const blas-side
@@ -29,5 +30,5 @@
    :right 142})
 
 (def ^:const blas-diag
-  {:unit 131
-   :non-unit 132})
+  {:non-unit 131
+   :unit 132})

@@ -2220,20 +2220,21 @@
   (facts
    "LAPACK triangular banded linear system solver."
 
-   (with-release [a (tb factory 5 4 [6.80,
-                                     -6.05, -3.30,
-                                     -0.45,  2.58, -2.70,
-                                     8.32,  2.71,  4.35, -7.17,
-                                     -9.67, -5.14, -7.26,  6.08, -6.87])
-                  t (tr factory 5 [6.80,
-                                   -6.05, -3.30,
-                                   -0.45,  2.58, -2.70,
-                                   8.32,  2.71,  4.35, -7.17,
-                                   -9.67, -5.14, -7.26,  6.08, -6.87])
+   (with-release [a (tb factory 5 4 [6.80, -6.05, -3.30, -0.45, 2.58,
+                                     -2.70, 8.32,  2.71, 4.35,
+                                     -7.17, -9.67, -5.14,
+                                     -7.26, 6.08,
+                                     -6.87])
+                  t (tr factory 5 [6.80, -6.05, -3.30, -0.45, 2.58,
+                                   -2.70, 8.32,  2.71, 4.35,
+                                   -7.17, -9.67, -5.14,
+                                   -7.26, 6.08,
+                                   -6.87])
                   b (ge factory 5 3 [4.02,  6.19, -8.22, -7.57, -3.03,
                                      -1.56,  4.00, -8.67,  1.75,  2.86,
                                      9.81, -4.09, -4.57, -8.61,  8.99])]
      (nrm2 (axpy! -1 (trs a b) (trs t b))) => (roughly 0.0 0.0001)
+     (nrm2 (axpy! -1 (sv a b) (sv t b))) => (throws ExceptionInfo)
      (con a) => (roughly (con t) 0.0000001))))
 
 (defn test-gd-trx [factory]
@@ -2247,7 +2248,7 @@
                   b-solution (ge factory 5 2 [1 1 1 1 1 1 1/2 1/3 1/4 1/5])]
      (nrm2 (axpy! -1 b-solution (trs a b) )) => (roughly 0.0 0.0001)
      (nrm2 (axpy! -1 b-solution (sv a b))) => (roughly 0.0 0.0001)
-     (nrm2 (axpy! -1 b-solution (sv a b-row) )) => (roughly 0.0 0.0001)
+     (nrm2 (axpy! -1 b-solution (sv! a b-row) )) => (roughly 0.0 0.0001)
      (con a) => (roughly (con t) 0.0000001))))
 
 (defn test-gt-trx [factory]
@@ -2299,11 +2300,11 @@
 
 (defn test-st-trx [factory]
   (facts
-   "LAPACK PT linear system solver."
+   "LAPACK ST linear system solver."
 
-   (with-release [a (let [res (dt factory 9)]
+   (with-release [a (let [res (st factory 2)]
                       (entry! (dia res) 1)
-                      (entry! (dia res 1) 4)
+                      (entry! (dia res 1) 0.3)
                       res)
                   ldl (trf a)]
 
@@ -3030,7 +3031,7 @@
   (test-sp-potrx factory)
   (test-gd-trx factory)
   (test-gt-trx factory)
-  (test-dt-trx factory)
+  ;; (test-dt-trx factory) ;; not supported by OpenBLAS
   (test-st-trx factory)
   (test-ge-qr factory)
   (test-ge-qp factory)

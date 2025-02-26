@@ -215,7 +215,8 @@
   [a ^Matrix b]
   (let-release [b-copy (api/create-ge (api/factory b) (.mrows b) (.ncols b) true false)]
     (api/copy (api/engine b) b b-copy)
-    (api/sv (api/engine a) a b-copy true)))
+    (api/sv (api/engine a) a b-copy true)
+    b-copy))
 
 (defn psv
   "Solves a system of linear equations with a positive definite symmetric coefficient

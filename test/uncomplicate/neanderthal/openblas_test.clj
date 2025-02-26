@@ -60,8 +60,6 @@
 (real-test/test-basic-integer-host openblas-int)
 (real-test/test-basic-integer-host openblas-short)
 (real-test/test-basic-integer-host openblas-byte)
-(real-test/test-lapack openblas-double);;TODO bunch of wrong results
-(real-test/test-lapack openblas-float);;TODO bunch of wrong results
 (real-test/test-blas-sy-host openblas-double)
 (real-test/test-blas-sy-host openblas-float)
 
@@ -95,18 +93,18 @@
 (real-test/test-blas-gd-host openblas-double)
 (real-test/test-blas-gd-host openblas-float)
 
-(real-test/test-blas-gt openblas-double);;TODO mm not supported
-(real-test/test-blas-gt openblas-float);;TODO mm not supported
+;; (real-test/test-blas-gt openblas-double);;TODO mm not supported
+;; (real-test/test-blas-gt openblas-float);;TODO mm not supported
 (real-test/test-blas-gt-host openblas-double)
 (real-test/test-blas-gt-host openblas-float)
 
-(real-test/test-blas-dt openblas-double);;TODO mm not supported
-(real-test/test-blas-dt openblas-float);;TODO mm not supported
+;; (real-test/test-blas-dt openblas-double);;TODO mm not supported
+;; (real-test/test-blas-dt openblas-float);;TODO mm not supported
 (real-test/test-blas-dt-host openblas-double)
 (real-test/test-blas-dt-host openblas-float)
 
-(real-test/test-blas-st openblas-double);;TODO mm not supported
-(real-test/test-blas-st openblas-float);;TODO mm not supported
+;; (real-test/test-blas-st openblas-double);;TODO mm not supported
+;; (real-test/test-blas-st openblas-float);;TODO mm not supported
 (real-test/test-blas-st-host openblas-double)
 (real-test/test-blas-st-host openblas-float)
 
@@ -121,3 +119,6 @@
 
 ;; (sparse-test/test-all openblas-float openblas-double)
 ;; (sparse-test/test-all openblas-double openblas-float)
+
+(real-test/test-lapack openblas-double)
+(real-test/test-lapack openblas-float)

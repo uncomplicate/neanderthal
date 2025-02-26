@@ -59,8 +59,7 @@
 (real-test/test-basic-integer-host mkl-int)
 (real-test/test-basic-integer-host mkl-short)
 (real-test/test-basic-integer-host mkl-byte)
-(real-test/test-lapack mkl-double)
-(real-test/test-lapack mkl-float)
+
 (real-test/test-blas-sy-host mkl-double)
 (real-test/test-blas-sy-host mkl-float)
 
@@ -119,3 +118,9 @@
 
 (sparse-test/test-all mkl-float mkl-double)
 (sparse-test/test-all mkl-double mkl-float)
+
+(real-test/test-lapack mkl-double)
+(real-test/test-lapack mkl-float)
+
+(real-test/test-dt-trx mkl-double)
+(real-test/test-dt-trx mkl-float)

@@ -64,7 +64,7 @@
 
 ;; ================= MKL specific blas and lapack functions =====================
 
-(defmacro gd-sv [mkl vdiv-method sv-method ptr a b]
+(defmacro mkl-gd-sv [mkl vdiv-method sv-method ptr a b]
   `(let [n-a# (ncols ~a)
          n-b# (ncols ~b)
          nav-b# (navigator ~b)
@@ -76,7 +76,7 @@
        (dotimes [j# n-b#]
          (. ~mkl ~vdiv-method n-a# (.position buff-b# (.index nav-b# stor-b# 0 j#)) buff-a#
             (.position buff-b# (.index nav-b# stor-b# 0 j#))))
-       (dotimes [j# (ncols ~b)]
+       (dotimes [j# n-b#]
          (. ~mkl ~sv-method ~(:row blas-layout) ~(:lower blas-uplo) ~(:no-trans blas-transpose)
             ~(:non-unit blas-diag) n-a# 0 buff-a# 1
             (.position buff-b# (.index nav-b# stor-b# 0 j#)) strd-b#)))
@@ -1675,7 +1675,7 @@
      (trs [_# a# b#]
        (gd-trs ~mkl ~(lapacke t 'tbtrs) ~ptr a# b#))
      (sv [_# a# b# _#]
-       (gd-sv ~mkl ~(math t 'Div) ~(cblas t 'tbsv) ~ptr a# b#))
+       (mkl-gd-sv ~mkl ~(math t 'Div) ~(cblas t 'tbsv) ~ptr a# b#))
      (con [_# a# nrm1?#]
        (gd-con ~mkl ~(lapacke t 'tbcon) ~ptr ~cpp-ptr a# nrm1?#))))
 
@@ -1746,7 +1746,7 @@
        ([_# a# ipiv#]
         (gt-trf ~mkl ~(lapacke t 'gttrf) ~ptr ~idx-ptr a# ipiv#))
        ([_# _#]
-        (dragan-says-ex "Pivotless factorization is not available for DT matrices.")))
+        (dragan-says-ex "Pivotless factorization is not available for GT matrices.")))
      (tri [_# _#]
        (dragan-says-ex "Inverse is not available for GT matrices."))
      (trs [_# lu# b# ipiv#]
@@ -1780,11 +1780,11 @@
        (matrix-lasrt ~mkl ~(lapacke t 'lasrt) ~ptr a# increasing#))
      (trf
        ([_# _# _#]
-        (dragan-says-ex "Pivoted factorization is not available for GT matrices."))
+        (dragan-says-ex "Pivoted factorization is not available for DT matrices."))
        ([_# a#]
         (dt-trf ~mkl ~(lapacke "" t 'dttrfb_64) ~ptr a#)))
      (tri [_# _#]
-       (dragan-says-ex "Inverse is not available for GT matrices."))
+       (dragan-says-ex "Inverse is not available for DT matrices."))
      (trs [_# lu# b#]
        (dt-trs ~mkl ~(lapacke "" t 'dttrsb_64) ~ptr lu# b#))
      (sv [_# a# b# pure#]
