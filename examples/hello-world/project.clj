@@ -12,7 +12,7 @@
                  ;; We use OpenBLAS snapshot until JavaCPP 1.5.12 is released.
                  ;; If you're just using MKL (recommended on Linux and Windows), you don't need this, but it's supported.
                  ;; On macOS, you need it.
-                 [org.bytedeco/openblas "0.3.28-1.5.12-20250223.142442-74" :classifier linux-x86_64]]
+                 [org.bytedeco/openblas "0.3.28-1.5.12-20250223.142442-74"]]
 
   ;; Wee need this for pinned openblas snapshot! If you're just using MKL (recommended on Linux and Windows) you don't need this.
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
