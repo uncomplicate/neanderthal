@@ -15,30 +15,52 @@
   or by binding [[native-float]] and the likes to your preferred implementation."
   (:require [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
-            [uncomplicate.neanderthal.internal.cpp.structures :refer [map-channel]]
-            [uncomplicate.neanderthal.internal.cpp.mkl.factory
-             :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]])
+            [uncomplicate.neanderthal.internal.cpp.structures :refer [map-channel]])
   (:import java.nio.channels.FileChannel))
 
 ;; ============ Creating real constructs  ==============
 
-(def ^{:doc "Default single-precision floating point native factory"}
-  native-float mkl-float)
+(defmacro load-mkl []
+  `(do (require '[uncomplicate.neanderthal.internal.cpp.mkl.factory :as mkl])
+       (def ^{:doc "Default single-precision floating point native factory"}
+         native-float uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-float)
+       (def ^{:doc "Default double-precision floating point native factory"}
+         native-double uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-double)
+       (def ^{:doc "Default integer native factory"}
+         native-int uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-int)
+       (def ^{:doc "Default long native factory"}
+         native-long uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-long)
+       (def ^{:doc "Default short native factory"}
+         native-short uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-short)
+       (def ^{:doc "Default byte native factory"}
+         native-byte uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-byte)))
 
-(def ^{:doc "Default double-precision floating point native factory"}
-  native-double mkl-double)
+(defmacro load-openblas []
+  `(do (require '[uncomplicate.neanderthal.internal.cpp.openblas.factory :as openblas])
+       (def ^{:doc "Default single-precision floating point native factory"}
+         native-float uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-float)
+       (def ^{:doc "Default double-precision floating point native factory"}
+         native-double uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-double)
+       (def ^{:doc "Default integer native factory"}
+         native-int uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-int)
+       (def ^{:doc "Default long native factory"}
+         native-long uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-long)
+       (def ^{:doc "Default short native factory"}
+         native-short uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-short)
+       (def ^{:doc "Default byte native factory"}
+         native-byte uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-byte)))
 
-(def ^{:doc "Default integer native factory"}
-  native-int mkl-int)
+(defmacro load-backend []
+  (let [backend# (if (clojure.string/includes? (clojure.string/lower-case (System/getProperty "os.name")) "mac")
+                   :openblas ;;TODO replace by accelerate once it's available
+                   (if (#{"amd64" "x86_64" "x86-64" "x64"} (System/getProperty "os.arch"))
+                     :mkl
+                     :openblas))]
+    (case backend#
+      :mkl `(load-mkl)
+      :openblas `(load-openblas))))
 
-(def ^{:doc "Default long native factory"}
-  native-long mkl-long)
-
-(def ^{:doc "Default short native factory"}
-  native-short mkl-short)
-
-(def ^{:doc "Default byte native factory"}
-  native-byte mkl-byte)
+(load-backend)
 
 (defn factory-by-type [data-type]
   (case data-type
