@@ -1727,7 +1727,7 @@
        ([_# _# a# _# _#]
         (tridiagonal-mm a#))
        ([_# alpha# a# b# beta# c# left#]
-        (dragan-says-ex "mm! is not supported for GT matrices." {:a (info a#)})))))
+        (dragan-says-ex "Out of place mm! is not supported for GT matrices." {:a (info a#)})))))
 
 (defmacro real-gt-lapack* [name t ptr cpp-ptr idx-ptr cast openblas]
   `(extend-type ~name

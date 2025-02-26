@@ -93,22 +93,54 @@
 (real-test/test-blas-gd-host openblas-double)
 (real-test/test-blas-gd-host openblas-float)
 
-;; (real-test/test-blas-gt openblas-double);;TODO mm not supported
-;; (real-test/test-blas-gt openblas-float);;TODO mm not supported
+(defn test-blas-gt [factory]
+  (real-test/test-gt-constructor factory gt)
+  (real-test/test-gt factory gt)
+  (real-test/test-gt-copy factory gt)
+  (real-test/test-gt-swap factory gt)
+  (real-test/test-gt-scal factory gt)
+  (real-test/test-gt-axpy factory gt)
+  ;;(real-test/test-gt-mv factory gt) TODO not supported by openblas
+  ;;(real-test/test-gt-mv factory gt) TODO not supported by openblas
+  )
+
+(test-blas-gt openblas-double)
+(test-blas-gt openblas-float)
 (real-test/test-blas-gt-host openblas-double)
 (real-test/test-blas-gt-host openblas-float)
 
-;; (real-test/test-blas-dt openblas-double);;TODO mm not supported
-;; (real-test/test-blas-dt openblas-float);;TODO mm not supported
+(defn test-blas-dt [factory]
+  (real-test/test-gt-constructor factory dt)
+  (real-test/test-gt factory dt)
+  (real-test/test-gt-copy factory dt)
+  (real-test/test-gt-swap factory dt)
+  (real-test/test-gt-scal factory dt)
+  (real-test/test-gt-axpy factory dt)
+  ;; (real-test/test-gt-mv factory dt) ;;TODO not supported by openblas
+  ;; (real-test/test-gt-mm factory dt) ;;TODO not supported by openblas
+  )
+(test-blas-dt openblas-double)
+(test-blas-dt openblas-float)
 (real-test/test-blas-dt-host openblas-double)
 (real-test/test-blas-dt-host openblas-float)
 
-;; (real-test/test-blas-st openblas-double);;TODO mm not supported
-;; (real-test/test-blas-st openblas-float);;TODO mm not supported
+(defn test-blas-st [factory]
+  (real-test/test-st-constructor factory)
+  (real-test/test-st factory)
+  (real-test/test-gt-copy factory st)
+  (real-test/test-gt-swap factory st)
+  (real-test/test-gt-scal factory st)
+  (real-test/test-gt-axpy factory st)
+  ;;(real-test/test-st-mv factory) TODO not supported by openblas
+  ;;(real-test/test-st-mm factory) TODO not supported by openblas
+  )
+
+(test-blas-st openblas-double)
+(test-blas-st openblas-float)
 (real-test/test-blas-st-host openblas-double)
 (real-test/test-blas-st-host openblas-float)
 
-;; TODO not available
+;; TODO not available in openblas
 ;; (math-test/test-all-host openblas-double)
 ;; (math-test/test-all-host openblas-float)
 
