@@ -2859,16 +2859,16 @@
 (defmethod transfer! [RealDiagonalMatrix Matrix]
   [source destination]
   (let [reg (region source)]
-    (doseq [k (range (.kl reg) (.ku reg))]
-      (transfer! (dia source k) (dia destination k))
-      destination)))
+    (doseq [k (range (- (.kl reg)) (inc (.ku reg)))]
+      (transfer! (dia source k) (dia destination k)))
+    destination))
 
 (defmethod transfer! [Matrix RealDiagonalMatrix]
   [source destination]
   (let [reg (region destination)]
-    (doseq [k (range (.kl reg) (.ku reg))]
-      (transfer! (dia source k) (dia destination k))
-      destination)))
+    (doseq [k (range (- (.kl reg)) (inc (.ku reg)))]
+      (transfer! (dia source k) (dia destination k)))
+    destination))
 
 (prefer-method transfer! [RealDiagonalMatrix Matrix] [RealNativeMatrix RealNativeMatrix])
 (prefer-method transfer! [Matrix RealDiagonalMatrix] [RealNativeMatrix RealNativeMatrix])

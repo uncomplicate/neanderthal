@@ -1,8 +1,8 @@
-(defproject hello-world "0.53.1"
+(defproject hello-world "0.53.2"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.11.3"]
-                 [uncomplicate/neanderthal "0.53.1"]
+                 [uncomplicate/neanderthal "0.53.2"]
                  [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
                  [org.bytedeco/cuda "12.6-9.5-1.5.11" :classifier linux-x86_64-redist]
                  ;; On macOS, remove the dependencies to MKL and CUDA!
