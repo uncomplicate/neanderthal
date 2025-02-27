@@ -2870,6 +2870,9 @@
       (transfer! (dia source k) (dia destination k))
       destination)))
 
+(prefer-method transfer! [RealDiagonalMatrix Matrix] [RealNativeMatrix RealNativeMatrix])
+(prefer-method transfer! [Matrix RealDiagonalMatrix] [RealNativeMatrix RealNativeMatrix])
+
 (defmacro extend-pointer [name fact]
   `(extend-type ~name
      DenseContainer
