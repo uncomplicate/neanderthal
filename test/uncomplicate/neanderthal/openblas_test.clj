@@ -16,7 +16,7 @@
              [real-test :as real-test]
              [math-test :as math-test]
              [random-test :as random-test]
-             [sparse-test :as sparse-test]]
+             #_[sparse-test :as sparse-test]]
             [uncomplicate.neanderthal.internal.cpp.openblas.factory
              :refer [openblas-float openblas-double openblas-int openblas-long openblas-short openblas-byte]]))
 

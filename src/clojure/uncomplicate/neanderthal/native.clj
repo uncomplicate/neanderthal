@@ -21,7 +21,7 @@
 ;; ============ Creating real constructs  ==============
 
 (defmacro load-mkl []
-  `(do (require '[uncomplicate.neanderthal.internal.cpp.mkl.factory :as mkl])
+  `(do (require 'uncomplicate.neanderthal.internal.cpp.mkl.factory)
        (def ^{:doc "Default single-precision floating point native factory"}
          native-float uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-float)
        (def ^{:doc "Default double-precision floating point native factory"}
@@ -36,7 +36,7 @@
          native-byte uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-byte)))
 
 (defmacro load-openblas []
-  `(do (require '[uncomplicate.neanderthal.internal.cpp.openblas.factory :as openblas])
+  `(do (require 'uncomplicate.neanderthal.internal.cpp.openblas.factory)
        (def ^{:doc "Default single-precision floating point native factory"}
          native-float uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-float)
        (def ^{:doc "Default double-precision floating point native factory"}
@@ -50,15 +50,32 @@
        (def ^{:doc "Default byte native factory"}
          native-byte uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-byte)))
 
+(defmacro load-accelerate []
+  `(do (require 'uncomplicate.neanderthal.internal.cpp.accelerate.factory)
+       (def ^{:doc "Default single-precision floating point native factory"}
+         native-float uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-float)
+       (def ^{:doc "Default double-precision floating point native factory"}
+         native-double uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-double)
+       (def ^{:doc "Default integer native factory"}
+         native-int uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-int)
+       (def ^{:doc "Default long native factory"}
+         native-long uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-long)
+       (def ^{:doc "Default short native factory"}
+         native-short uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-short)
+       (def ^{:doc "Default byte native factory"}
+         native-byte uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-byte)))
+
 (defmacro load-backend []
-  (let [backend# (if (clojure.string/includes? (clojure.string/lower-case (System/getProperty "os.name")) "mac")
-                   :openblas ;;TODO replace by accelerate once it's available
-                   (if (#{"amd64" "x86_64" "x86-64" "x64"} (System/getProperty "os.arch"))
-                     :mkl
-                     :openblas))]
+  (let [backend# (cond
+                   (clojure.string/includes? (clojure.string/lower-case (System/getProperty "os.name")) "mac")
+                   :accelerate
+                   (#{"amd64" "x86_64" "x86-64" "x64"} (System/getProperty "os.arch"))
+                   :mkl
+                   :default :openblas)]
     (case backend#
       :mkl `(load-mkl)
-      :openblas `(load-openblas))))
+      :openblas `(load-openblas)
+      :accelerate ` (load-accelerate))))
 
 (load-backend)
 

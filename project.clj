@@ -19,6 +19,7 @@
                  [org.uncomplicate/clojure-cpp "0.4.1-SNAPSHOT"]
                  [org.bytedeco/mkl-platform "2025.0-1.5.11"]
                  [org.bytedeco/openblas-platform "0.3.29-1.5.12-SNAPSHOT"]
+                 [org.uncomplicate/accelerate-platform "0.1.0-1.5.12-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.16.0"]
                  [org.jocl/jocl-blast "1.5.2"]
                  [uncomplicate/clojurecuda "0.21.0"]

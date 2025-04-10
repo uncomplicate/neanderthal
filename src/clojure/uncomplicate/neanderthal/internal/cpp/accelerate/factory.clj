@@ -7,14 +7,14 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.internal.cpp.openblas.factory
+    uncomplicate.neanderthal.internal.cpp.accelerate.factory
   (:refer-clojure :exclude [abs])
-  (:require [clojure.string :refer [trim split]]
-            [uncomplicate.commons
+  (:require [uncomplicate.commons
              [core :refer [with-release let-release info Releaseable release view]]
              [utils :refer [dragan-says-ex with-check generate-seed]]]
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
-            [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer malloc! free!]]
+            [uncomplicate.clojure-cpp :as cpp
+             :refer [pointer long-pointer float-pointer double-pointer clong-pointer get-entry malloc! free!]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols cols rows matrix-type entry] :as core]
              [real :as real]
@@ -35,37 +35,40 @@
            [uncomplicate.neanderthal.internal.api DataAccessor Vector LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer BytePointer]
-           [org.bytedeco.openblas.global openblas_full]))
+           [uncomplicate.javacpp.accelerate.global thread blas_new lapack_new]))
 
-;; ===================== System ================================================================
+(let [openblas-load (System/getProperty "org.bytedeco.openblas.load")
+      library-path (System/getProperty "java.library.path") ]
+  (try
+    (System/setProperty "java.library.path" (str library-path ":/usr/lib"))
+    (System/setProperty "org.bytedeco.openblas.load" "blas")
+    (import 'org.bytedeco.openblas.global.openblas_full)
+    (catch Exception e
+      (System/setProperty "java.library.path" (str library-path))
+      (System/setProperty "org.bytedeco.openblas.load" (str openblas-load)))))
 
-(defn version []
-  (let [ver-seq (split (second (split (trim openblas_full/OPENBLAS_VERSION) #" ")) #"\.")]
-    {:major (Long/parseLong (ver-seq 0))
-     :minor (Long/parseLong (ver-seq 1))
-     :update (Long/parseLong (ver-seq 2))}))
+(defn threading? []
+  (let [threading (thread/BLASGetThreading)]
+    (cond
+      (= thread/BLAS_THREADING_MULTI_THREADED threading) true
+      (= thread/BLAS_THREADING_SINGLE_THREADED threading) false
+      :default (throw (dragan-says-ex "Accelerate returned a threading option unknown to this library."
+                                      {:threading threading
+                                       :max-threading-options thread/BLAS_THREADING_MAX_OPTIONS})))))
 
-(defn vendor []
-  (case (openblas_full/blas_get_vendor)
-    0 :unknown
-    1 :cublas
-    2 :openblas
-    3 :mkl))
-
-;; ===================== Miscellaneous =========================================================
-
-(defn num-threads ^long []
-  (openblas_full/blas_get_num_threads))
-
-(defn num-threads!
-  ([]
-   (openblas_full/blas_set_num_threads -1))
-  ([^long n]
-   (openblas_full/blas_set_num_threads n)))
+(defn threading! [multi-threading?]
+  (let [threading (if multi-threading?
+                    thread/BLAS_THREADING_MULTI_THREADED
+                    thread/BLAS_THREADING_SINGLE_THREADED)]
+    (if (= 0 (thread/BLASSetThreading threading))
+      multi-threading?
+      (throw (dragan-says-ex "The current platform does not support the requested threading model."
+                             {:threading threading
+                              :max-threading-options thread/BLAS_THREADING_MAX_OPTIONS})))))
 
 ;; =============== Factories ==================================================
 
-(declare openblas-int)
+(declare accelerate-int)
 
 ;; TODO this is the same as MKL, so extract to a common place
 (defn cblas
@@ -79,9 +82,6 @@
    (symbol (format "%s%s%s" prefix type name)))
   ([type name]
    (lapacke "LAPACKE_" type name)))
-
-(defn lapack [type name]
-  (symbol (format "LAPACK_%s%s" type name)))
 
 ;; ================= Integer Vector Engines =====================================
 
@@ -183,7 +183,7 @@
 
 ;; ================= Real Vector Engines ========================================
 
-(defmacro real-vector-blas* [name t ptr cast blas lapack]
+(defmacro real-vector-blas* [name t ptr cast blas lapack openblas]
   `(extend-type ~name
      Blas
      (swap [this# x# y#]
@@ -205,7 +205,7 @@
      (iamax [this# x#]
        (. ~blas ~(cblas 'cblas_i t 'amax) (dim x#) (~ptr x#) (stride x#)))
      (iamin [this# x#]
-       (. ~blas ~(cblas 'cblas_i t 'amin) (dim x#) (~ptr x#) (stride x#)))
+       (. ~openblas ~(cblas 'cblas_i t 'amin) (dim x#) (~ptr x#) (stride x#)))
      (rot [this# x# y# c# s#]
        (. ~blas ~(cblas t 'rot) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#)
           (~cast c#) (~cast s#))
@@ -221,7 +221,7 @@
        x#)
      (rotmg [this# d1d2xy# param#]
        (check-stride d1d2xy# param#)
-       (. ~blas ~(cblas t 'rotmg) (~ptr d1d2xy#) (~ptr d1d2xy# 1) (~ptr d1d2xy# 2)
+       (. ~openblas ~(cblas t 'rotmg) (~ptr d1d2xy#) (~ptr d1d2xy# 1) (~ptr d1d2xy# 2)
           (~cast (entry d1d2xy# 3)) (~ptr param#))
        param#)
      (scal [this# alpha# x#]
@@ -233,12 +233,15 @@
      Lapack
      (srt [this# x# increasing#]
        (if (= 1 (stride x#))
-         (with-lapack-check "lasrt"
-           (. ~lapack ~(lapacke t 'lasrt) (byte (int (if increasing# \I \D))) (dim x#) (~ptr x#)))
+         (with-lapack-check "lasrt_"
+           (let [info# (clong-pointer 1)]
+             (. ~lapack ~(lapacke "" t 'lasrt_) (pointer (byte (if increasing# \I \D)))
+                (clong-pointer [(dim x#)]) (~ptr x#) info#)
+             (get-entry info# 0)))
          (dragan-says-ex "You cannot sort a vector with stride." {"stride" (stride x#)}))
        x#)))
 
-(defmacro real-vector-blas-plus* [name t ptr cast blas lapack ones]
+(defmacro real-vector-blas-plus* [name t ptr cast blas openblas ones]
   `(extend-type ~name
      BlasPlus
      (amax [this# x#]
@@ -256,11 +259,11 @@
        (vector-iopt > x# real/entry))
      (set-all [this# alpha# x#]
        (with-lapack-check "laset"
-         (. ~lapack ~(lapacke t 'laset) ~(int (:row blas-layout)) ~(byte (int \g)) (dim x#) 1
+         (. ~openblas ~(lapacke t 'laset) ~(int (:row blas-layout)) ~(byte (int \g)) (dim x#) 1
             (~cast alpha#) (~cast alpha#) (~ptr x#) (stride x#)))
        x#)
      (axpby [this# alpha# x# beta# y#]
-       (. ~blas ~(cblas t 'axpby) (dim x#)
+       (. ~blas ~(cblas "catlas_" t 'axpby) (dim x#)
           (~cast alpha#) (~ptr x#) (stride x#) (~cast beta#) (~ptr y#) (stride y#))
        y#)))
 
@@ -298,28 +301,28 @@
   `(Float/intBitsToFloat ~x))
 
 (deftype FloatVectorEngine [])
-(real-vector-blas* FloatVectorEngine "s" float-ptr float openblas_full openblas_full)
-(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-vector-blas* FloatVectorEngine "s" float-ptr float blas_new lapack_new openblas_full)
+(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float blas_new openblas_full ones-float)
 
 (deftype DoubleVectorEngine [])
-(real-vector-blas* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full)
-(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-vector-blas* DoubleVectorEngine "d" double-ptr double blas_new lapack_new openblas_full)
+(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double blas_new openblas_full ones-double)
 
 (deftype LongVectorEngine [])
-(integer-vector-blas* LongVectorEngine "d" double-ptr openblas_full 1)
-(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double openblas_full openblas_full 1)
+(integer-vector-blas* LongVectorEngine "d" double-ptr blas_new 1)
+(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double blas_new openblas_full 1)
 
 (deftype IntVectorEngine [])
-(integer-vector-blas* IntVectorEngine "s" float-ptr openblas_full 1)
-(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float openblas_full openblas_full 1)
+(integer-vector-blas* IntVectorEngine "s" float-ptr blas_new 1)
+(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float blas_new openblas_full 1)
 
 (deftype ShortVectorEngine [])
-(integer-vector-blas* ShortVectorEngine "s" float-ptr openblas_full 2)
-(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float openblas_full openblas_full 2)
+(integer-vector-blas* ShortVectorEngine "s" float-ptr blas_new 2)
+(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float blas_new openblas_full 2)
 
 (deftype ByteVectorEngine [])
-(integer-vector-blas* ByteVectorEngine "s" float-ptr openblas_full 4)
-(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float openblas_full openblas_full 4)
+(integer-vector-blas* ByteVectorEngine "s" float-ptr blas_new 4)
+(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float blas_new openblas_full 4)
 
 ;; ================= Integer GE Engine ========================================
 
@@ -343,14 +346,14 @@
             1.0 (~ptr ~a) (quot (stride ~a) ~chunk) (~ptr ~b) (quot (.ld stor-b#) ~chunk)))
        (dragan-says-ex SHORT_UNSUPPORTED_MSG {:mrows (mrows ~a) :ncols (ncols ~a)}))))
 
-(defmacro integer-ge-blas* [name t ptr blas chunk]
+(defmacro integer-ge-blas* [name t ptr blas openblas chunk]
   `(extend-type ~name
      Blas
      (swap [_# a# b#]
        (matrix-map ~blas ~(cblas t 'swap) ~ptr a# b#)
        a#)
      (copy [_# a# b#]
-       (patch-ge-copy ~chunk ~blas ~(cblas t 'omatcopy) ~ptr a# b#)
+       (patch-ge-copy ~chunk ~openblas ~(cblas t 'omatcopy) ~ptr a# b#)
        b#)
      (dot [_# a# b#]
        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
@@ -384,25 +387,20 @@
 
 ;; ================= Real GE Engine ========================================
 
-(defmacro ge-axpy [blas geadd axpy ptr alpha a b]
+(defmacro ge-axpby [blas geadd axpy ptr alpha a beta b]
   `(do
      (when (< 0 (dim ~a))
-       (if (= (navigator ~a) (navigator ~b))
-         (. ~blas ~geadd (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
-            ~alpha (~ptr ~a) (stride ~a) 1.0 (~ptr ~b) (stride ~b))
-         (matrix-axpy ~blas ~axpy ~ptr ~alpha ~a ~b)))
+       (let [nav-b# (navigator ~b)
+             trans-a# (if (= (navigator ~a) nav-b#)
+                        ~(:no-trans blas-transpose)
+                        ~(:trans blas-transpose))]
+         (. ~blas ~geadd (.layout (navigator ~b))
+            trans-a# ~(:no-trans blas-transpose) (mrows ~b) (ncols ~b)
+            ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b)
+            (~ptr ~b) (stride ~b))))
      ~b))
 
-(defmacro ge-axpby [blas geadd axpby ptr alpha a beta b]
-  `(do
-     (when (< 0 (dim ~a))
-       (if (= (navigator ~a) (navigator ~b))
-         (. ~blas ~geadd (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
-            ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b))
-         (matrix-axpby ~blas ~axpby ~ptr ~alpha ~a ~beta ~b)))
-     ~b))
-
-(defmacro real-ge-blas* [name t ptr cast blas lapack]
+(defmacro real-ge-blas* [name t ptr cast blas openblas]
   `(extend-type ~name
      Blas
      (swap [_# a# b#]
@@ -412,7 +410,7 @@
        (when (< 0 (dim a#))
          (let [stor-b# (full-storage b#)
                no-trans# (= (navigator a#) (navigator b#))]
-           (. ~blas ~(cblas t 'omatcopy) ~(int (blas-layout :column))
+           (. ~openblas ~(cblas t 'omatcopy) ~(int (blas-layout :column))
               (int (if no-trans# ~(blas-transpose :no-trans) ~(blas-transpose :trans)))
               (if no-trans# (.sd stor-b#) (.fd stor-b#)) (if no-trans# (.fd stor-b#) (.sd stor-b#))
               1.0 (~ptr a#) (stride a#) (~ptr b#) (.ld stor-b#))))
@@ -420,20 +418,22 @@
      (dot [_# a# b#]
        (ge-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (ge-lan ~lapack ~(lapacke t 'lange) ~ptr \O a#))
+       (ge-lan ~openblas ~(lapacke t 'lange) ~ptr \O a#))
      (nrm2 [_# a#]
-       (ge-lan ~lapack ~(lapacke t 'lange) ~ptr \F a#))
+       (ge-lan ~openblas ~(lapacke t 'lange) ~ptr \F a#))
      (nrmi [_# a#]
-       (ge-lan ~lapack ~(lapacke t 'lange) ~ptr \I a#))
+       (ge-lan ~openblas ~(lapacke t 'lange) ~ptr \I a#))
      (asum [_# a#]
        (ge-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
        (when (< 0 (dim a#))
-         (. ~blas ~(cblas t 'geadd) (.layout (navigator a#)) (mrows a#) (ncols a#)
-            (~cast 0.0) (~ptr a#) (stride a#) (~cast alpha#) (~ptr a#) (stride a#)))
+         (. ~blas ~(cblas "appleblas_" t 'geadd) (.layout (navigator a#))
+            ~(:no-trans blas-transpose) ~(:no-trans blas-transpose) (mrows a#) (ncols a#)
+            (~cast 0.0) (~ptr a#) (stride a#) (~cast alpha#) (~ptr a#) (stride a#)
+            (~ptr a#) (stride a#)))
        a#)
      (axpy [_# alpha# a# b#]
-       (ge-axpy ~blas ~(cblas t 'geadd) ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+       (ge-axpby ~blas ~(cblas "appleblas_" t 'geadd) ~(cblas t 'axpy) ~ptr (~cast alpha#) a# (~cast 1.0) b#))
      (mv
        ([_# alpha# a# x# beta# y#]
         (. ~blas ~(cblas t 'gemv) (.layout (navigator a#)) ~(:no-trans blas-transpose) (mrows a#) (ncols a#)
@@ -465,26 +465,26 @@
             c#)
           (mm (engine b#) (~cast alpha#) b# a# (~cast beta#) c# false))))))
 
-(defmacro real-ge-blas-plus* [name t ptr cast blas lapack ones]
+(defmacro real-ge-blas-plus* [name t ptr cast blas openblas ones]
   `(extend-type ~name
      BlasPlus
      (amax [_# a#]
-       (ge-lan ~lapack ~(lapacke t 'lange) ~ptr \M a#))
+       (ge-lan ~openblas ~(lapacke t 'lange) ~ptr \M a#))
      (sum [_# a#]
        (ge-sum ~blas ~(cblas t 'dot) ~ptr a# ~ones))
      (set-all [_# alpha# a#]
        (with-lapack-check "laset"
-         (. ~lapack ~(lapacke t 'laset) (.layout (navigator a#)) ~(byte (int \g))
+         (. ~openblas ~(lapacke t 'laset) (.layout (navigator a#)) ~(byte (int \g))
             (mrows a#) (ncols a#) (~cast alpha#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
      (axpby [_# alpha# a# beta# b#]
-       (ge-axpby ~blas ~(cblas t 'geadd) ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#)
+       (ge-axpby ~blas ~(cblas "appleblas_" t 'geadd) ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#)
        b#)
      (trans [_# a#]
        (when (< 0 (dim a#))
          (let [stor# (full-storage a#)]
            (if (.isGapless stor#)
-             (. ~blas ~(cblas t 'imatcopy) ~(int (blas-layout :column)) ~(int (blas-transpose :trans))
+             (. ~openblas ~(cblas t 'imatcopy) ~(int (blas-layout :column)) ~(int (blas-transpose :trans))
                 (.sd stor#) (.fd stor#) (~cast 1.0) (~ptr a#) (.ld stor#) (.fd stor#));;TODO
              (dragan-says-ex "You can not hard-transpose the content of a matrix with a gap in memory. Sorry."
                              {:a (info a#)}))))
@@ -571,21 +571,21 @@
         (ge-sdd ~lapack ~(lapacke t 'gesdd) ~ptr a# sigma# ~zero-matrix ~zero-matrix)))))
 
 (deftype FloatGEEngine [])
-(real-ge-blas* FloatGEEngine "s" float-ptr float openblas_full openblas_full)
-(real-ge-blas-plus* FloatGEEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-ge-blas* FloatGEEngine "s" float-ptr float blas_new openblas_full)
+(real-ge-blas-plus* FloatGEEngine "s" float-ptr float blas_new openblas_full ones-float)
 (real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
 
 (deftype DoubleGEEngine [])
-(real-ge-blas* DoubleGEEngine "d" double-ptr double openblas_full openblas_full)
-(real-ge-blas-plus* DoubleGEEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-ge-blas* DoubleGEEngine "d" double-ptr double blas_new openblas_full)
+(real-ge-blas-plus* DoubleGEEngine "d" double-ptr double blas_new openblas_full ones-double)
 (real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
 
 ;;TODO
 (deftype LongGEEngine [])
-(integer-ge-blas* LongGEEngine "d" double-ptr openblas_full 1)
+(integer-ge-blas* LongGEEngine "d" double-ptr blas_new openblas_full 1)
 
 (deftype IntGEEngine [])
-(integer-ge-blas* IntGEEngine "s" float-ptr openblas_full 1)
+(integer-ge-blas* IntGEEngine "s" float-ptr blas_new openblas_full 1)
 
 (deftype ShortGEEngine []) ;; TODO
 
@@ -1598,10 +1598,10 @@
 
 ;; ================================================================================
 
-(deftype OpenBLASRealFactory [index-fact ^DataAccessor da
-                              vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
-                              sp-eng tp-eng gd-eng gt-eng dt-eng st-eng
-                              cs-vector-eng csr-eng]
+(deftype AccelerateRealFactory [index-fact ^DataAccessor da
+                                vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
+                                sp-eng tp-eng gd-eng gt-eng dt-eng st-eng
+                                cs-vector-eng csr-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1721,9 +1721,9 @@
   (st-engine [_]
     st-eng))
 
-(deftype OpenBLASIntegerFactory [index-fact ^DataAccessor da
-                            vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
-                            sp-eng tp-eng gd-eng gt-eng dt-eng st-eng]
+(deftype AccelerateIntegerFactory [index-fact ^DataAccessor da
+                                   vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
+                                   sp-eng tp-eng gd-eng gt-eng dt-eng st-eng]
   DataAccessorProvider
   (data-accessor [_]
     da)
@@ -1804,48 +1804,59 @@
 (def short-accessor (->ShortPointerAccessor malloc! free!))
 (def byte-accessor (->BytePointerAccessor malloc! free!))
 
-(def openblas-int (->OpenBLASIntegerFactory openblas-int int-accessor (->IntVectorEngine) (->IntGEEngine)
-                                  (->IntTREngine) (->IntSYEngine)
-                                  (->IntGBEngine) (->IntSBEngine) (->IntTBEngine)
-                                  (->IntSPEngine) (->IntTPEngine) (->IntGDEngine)
-                                  (->IntGTEngine) (->IntDTEngine) (->IntSTEngine)))
+(def accelerate-int (->AccelerateIntegerFactory
+                     accelerate-int int-accessor
+                     (->IntVectorEngine) (->IntGEEngine)
+                     (->IntTREngine) (->IntSYEngine) (->IntGBEngine)
+                     (->IntSBEngine) (->IntTBEngine) (->IntSPEngine)
+                     (->IntTPEngine) (->IntGDEngine) (->IntGTEngine)
+                     (->IntDTEngine) (->IntSTEngine)))
 
-(def openblas-long (->OpenBLASIntegerFactory openblas-int long-accessor (->LongVectorEngine) (->LongGEEngine)
-                                   (->LongTREngine) (->LongSYEngine)
-                                   (->LongGBEngine) (->LongSBEngine) (->LongTBEngine)
-                                   (->LongSPEngine) (->LongTPEngine) (->LongGDEngine)
-                                   (->LongGTEngine) (->LongDTEngine) (->LongSTEngine)))
+(def accelerate-long (->AccelerateIntegerFactory
+                      accelerate-int long-accessor
+                      (->LongVectorEngine) (->LongGEEngine)
+                      (->LongTREngine) (->LongSYEngine) (->LongGBEngine)
+                      (->LongSBEngine) (->LongTBEngine) (->LongSPEngine)
+                      (->LongTPEngine) (->LongGDEngine) (->LongGTEngine)
+                      (->LongDTEngine) (->LongSTEngine)))
 
-(def openblas-short (->OpenBLASIntegerFactory openblas-int short-accessor (->ShortVectorEngine) (->ShortGEEngine)
-                                    (->ShortTREngine) (->ShortSYEngine)
-                                    (->ShortGBEngine) (->ShortSBEngine) (->ShortTBEngine)
-                                    (->ShortSPEngine) (->ShortTPEngine) (->ShortGDEngine)
-                                    (->ShortGTEngine) (->ShortDTEngine) (->ShortSTEngine)))
+(def accelerate-short (->AccelerateIntegerFactory
+                       accelerate-int short-accessor
+                       (->ShortVectorEngine) (->ShortGEEngine)
+                       (->ShortTREngine) (->ShortSYEngine) (->ShortGBEngine)
+                       (->ShortSBEngine) (->ShortTBEngine) (->ShortSPEngine)
+                       (->ShortTPEngine) (->ShortGDEngine) (->ShortGTEngine)
+                       (->ShortDTEngine) (->ShortSTEngine)))
 
-(def openblas-byte (->OpenBLASIntegerFactory openblas-int byte-accessor (->ByteVectorEngine) (->ByteGEEngine)
-                                   (->ByteTREngine) (->ByteSYEngine)
-                                   (->ByteGBEngine) (->ByteSBEngine) (->ByteTBEngine)
-                                   (->ByteSPEngine) (->ByteTPEngine) (->ByteGDEngine)
-                                   (->ByteGTEngine) (->ByteDTEngine) (->ByteSTEngine)))
+(def accelerate-byte (->AccelerateIntegerFactory
+                      accelerate-int byte-accessor
+                      (->ByteVectorEngine) (->ByteGEEngine)
+                      (->ByteTREngine) (->ByteSYEngine) (->ByteGBEngine)
+                      (->ByteSBEngine) (->ByteTBEngine) (->ByteSPEngine)
+                      (->ByteTPEngine) (->ByteGDEngine) (->ByteGTEngine)
+                      (->ByteDTEngine) (->ByteSTEngine)))
 
-(def openblas-float (->OpenBLASRealFactory openblas-int float-accessor (->FloatVectorEngine) (->FloatGEEngine)
-                                 (->FloatTREngine) (->FloatSYEngine)
-                                 (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
-                                 (->FloatSPEngine) (->FloatTPEngine) (->FloatGDEngine)
-                                 (->FloatGTEngine) (->FloatDTEngine) (->FloatSTEngine)
-                                 nil nil
-                                 ))
+(def accelerate-float (->AccelerateRealFactory
+                       accelerate-int float-accessor
+                       (->FloatVectorEngine) (->FloatGEEngine)
+                       (->FloatTREngine) (->FloatSYEngine) (->FloatGBEngine)
+                       (->FloatSBEngine) (->FloatTBEngine) (->FloatSPEngine)
+                       (->FloatTPEngine) (->FloatGDEngine) (->FloatGTEngine)
+                       (->FloatDTEngine) (->FloatSTEngine)
+                       nil nil))
 
-(def openblas-double (->OpenBLASRealFactory openblas-int double-accessor (->DoubleVectorEngine) (->DoubleGEEngine)
-                                  (->DoubleTREngine) (->DoubleSYEngine)
-                                  (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
-                                  (->DoubleSPEngine) (->DoubleTPEngine) (->DoubleGDEngine)
-                                  (->DoubleGTEngine) (->DoubleDTEngine) (->DoubleSTEngine)
-                                  nil nil))
+(def accelerate-double (->AccelerateRealFactory
+                        accelerate-int double-accessor
+                        (->DoubleVectorEngine) (->DoubleGEEngine)
+                        (->DoubleTREngine) (->DoubleSYEngine) (->DoubleGBEngine)
+                        (->DoubleSBEngine) (->DoubleTBEngine) (->DoubleSPEngine)
+                        (->DoubleTPEngine) (->DoubleGDEngine) (->DoubleGTEngine)
+                        (->DoubleDTEngine) (->DoubleSTEngine)
+                                                nil nil))
 
-(extend-pointer FloatPointer openblas-float)
-(extend-pointer DoublePointer openblas-double)
-(extend-pointer LongPointer openblas-long)
-(extend-pointer IntPointer openblas-int)
-(extend-pointer ShortPointer openblas-short)
-(extend-pointer BytePointer openblas-byte)
+(extend-pointer FloatPointer accelerate-float)
+(extend-pointer DoublePointer accelerate-double)
+(extend-pointer LongPointer accelerate-long)
+(extend-pointer IntPointer accelerate-int)
+(extend-pointer ShortPointer accelerate-short)
+(extend-pointer BytePointer accelerate-byte)

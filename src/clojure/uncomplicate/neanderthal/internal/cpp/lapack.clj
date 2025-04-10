@@ -36,10 +36,10 @@
 ;; =========================== Auxiliary LAPACK Routines =========================
 
 (defmacro with-lapack-check [rout expr]
-  `(let [err# ~expr]
-     (if (zero? err#)
-       err#
-       (throw (ex-info "LAPACK error." {:routine (str ~rout) :error-code err# :bad-argument (- err#)})))))
+  `(let [res# ~expr]
+     (if (zero? res#)
+       res#
+       (throw (ex-info "LAPACK error." {:routine (str ~rout) :error-code res# :bad-argument (- res#)})))))
 
 (defmacro matrix-lasrt [lapack method ptr a increasing]
   `(let [incr# (byte (int (if ~increasing \I \D)))

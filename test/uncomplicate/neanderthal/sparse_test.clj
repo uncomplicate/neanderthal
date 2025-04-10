@@ -16,8 +16,8 @@
             [uncomplicate.neanderthal.sparse :refer [csv csr csv? csr?]]
             [uncomplicate.neanderthal.internal.api
              :refer [entries indices columns indexb indexe]]
-            [uncomplicate.neanderthal.internal.cpp.mkl
-             [factory :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]])
+            #_[uncomplicate.neanderthal.internal.cpp.mkl
+             [factory :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]]);;TODO mkl constants!
   (:import  clojure.lang.ExceptionInfo))
 
 ;; ================= Sparse tests ===============================

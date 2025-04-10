@@ -273,7 +273,7 @@
   (transfer! (entries source) (entries destination))
   destination)
 
-(defn seq-to-csr [source]
+(defn seq-to-csr [source];;TODO this is probably universal, but right now depends on mkl.
   (if (number? (get-in source [0 0]))
     (seq-to-csr (partition 2 source))
     (reduce (fn [[^long row ptrs idx vals] [ridx rvals]]
