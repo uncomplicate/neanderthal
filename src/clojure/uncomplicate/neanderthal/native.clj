@@ -15,8 +15,10 @@
   or by binding [[native-float]] and the likes to your preferred implementation."
   (:require [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
-            [uncomplicate.neanderthal.internal.cpp.structures :refer [map-channel]])
-  (:import java.nio.channels.FileChannel))
+            [uncomplicate.neanderthal.internal.cpp.structures
+             :refer [extend-pointer map-channel]])
+  (:import java.nio.channels.FileChannel
+           [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer BytePointer]))
 
 ;; ============ Creating real constructs  ==============
 
@@ -78,6 +80,13 @@
       :accelerate ` (load-accelerate))))
 
 (load-backend)
+
+(extend-pointer FloatPointer native-float)
+(extend-pointer DoublePointer native-double)
+(extend-pointer LongPointer native-long)
+(extend-pointer IntPointer native-int)
+(extend-pointer ShortPointer native-short)
+(extend-pointer BytePointer native-byte)
 
 (defn factory-by-type [data-type]
   (case data-type

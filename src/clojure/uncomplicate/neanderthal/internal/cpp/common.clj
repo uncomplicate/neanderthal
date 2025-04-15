@@ -8,8 +8,12 @@
 
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.cpp.common
-  (:require [uncomplicate.clojure-cpp :as cpp]
-            [uncomplicate.neanderthal.block :refer [buffer]])
+  (:require [uncomplicate.clojure-cpp :as cpp :refer [float-pointer double-pointer]]
+            [uncomplicate.neanderthal.internal
+             [constants :refer :all]
+             [navigation :refer [full-storage]]]
+            [uncomplicate.neanderthal.internal.cpp.structures
+             :refer [->RealBlockVector ->RealGEMatrix]])
   (:import [org.bytedeco.javacpp Pointer FloatPointer DoublePointer IntPointer]
            [uncomplicate.neanderthal.internal.api Block]))
 
@@ -27,3 +31,32 @@
 
 (defn int-ptr ^IntPointer [^Block x]
   (cpp/int-ptr (.buffer x)))
+
+(defmacro byte-float [x]
+  `(let [b# (ByteBuffer/allocate Float/BYTES)
+         x# (byte ~x)]
+     (.put b# 0 x#)
+     (.put b# 1 x#)
+     (.put b# 2 x#)
+     (.put b# 3 x#)
+     (.getFloat b# 0)))
+
+(defmacro short-float [x]
+  `(let [b# (ByteBuffer/allocate Float/BYTES)
+         x# (short ~x)]
+     (.putShort b# 0 x#)
+     (.putShort b# 1 x#)
+     (.getFloat b# 0)))
+
+(defmacro long-double [x]
+  `(Double/longBitsToDouble ~x))
+
+(defmacro int-float [x]
+  `(Float/intBitsToFloat ~x))
+
+(def ones-float (->RealBlockVector nil nil nil true (float-pointer [1.0]) 1 0))
+(def ones-double (->RealBlockVector nil nil nil true (double-pointer [1.0]) 1 0))
+(def zero-float (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
+                                nil nil nil nil true (float-pointer [0.0]) 0 0))
+(def zero-double (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
+                                 nil nil nil nil true (double-pointer [0.0]) 0 0))

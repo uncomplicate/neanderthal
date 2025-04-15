@@ -144,10 +144,10 @@
 ;; (math-test/test-all-host accelerate-double)
 ;; (math-test/test-all-host accelerate-float)
 
-;; (random-test/test-all accelerate-double)
-;; (random-test/test-all accelerate-float)
-;; (random-test/test-all-host accelerate-double)
-;; (random-test/test-all-host accelerate-float)
+(random-test/test-all accelerate-double)
+(random-test/test-all accelerate-float)
+(random-test/test-all-host accelerate-double)
+(random-test/test-all-host accelerate-float)
 
 ;; (sparse-test/test-all accelerate-float accelerate-double)
 ;; (sparse-test/test-all accelerate-double accelerate-float)

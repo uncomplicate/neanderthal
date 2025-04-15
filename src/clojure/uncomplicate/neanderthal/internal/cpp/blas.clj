@@ -22,6 +22,12 @@
              [navigation :refer [full-storage accu-layout diag-unit?]]]
             [uncomplicate.neanderthal.internal.cpp.common :refer :all]))
 
+(defn cblas
+  ([prefix type name]
+   (symbol (format "%s%s%s" prefix type name)))
+  ([type name]
+   (cblas "cblas_" type name)))
+
 (defmacro vector-iopt [opt x entry]
   `(let [cnt# (dim ~x)]
      (if (< 0 cnt#)

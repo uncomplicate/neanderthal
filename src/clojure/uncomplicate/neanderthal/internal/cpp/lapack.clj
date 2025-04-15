@@ -10,13 +10,13 @@
     uncomplicate.neanderthal.internal.cpp.lapack
   (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
-             [core :refer [with-release info]]
+             [core :refer [with-release let-release info]]
              [utils :refer [dragan-says-ex cond-into]]]
             [uncomplicate.clojure-cpp
              :refer [long-ptr int-ptr byte-pointer int-pointer long-pointer pointer get-entry]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols col trans symmetric?]]
-             [block :refer [stride row?]]
+             [block :refer [stride row? contiguous?]]
              [math :refer [f=]]]
             [uncomplicate.neanderthal.math :refer [sqrt pow abs]]
             [uncomplicate.neanderthal.internal
@@ -32,6 +32,12 @@
              :refer [full-storage-map band-storage-map band-storage-reduce]])
   (:import [uncomplicate.neanderthal.internal.api DiagonalMatrix LayoutNavigator Region]
            uncomplicate.neanderthal.internal.navigation.BandStorage))
+
+(defn lapacke
+  ([prefix type name]
+   (symbol (format "%s%s%s" prefix type name)))
+  ([type name]
+   (lapacke "LAPACKE_" type name)))
 
 ;; =========================== Auxiliary LAPACK Routines =========================
 
@@ -1264,3 +1270,79 @@
       (. ~lapack ~method (.layout (navigator  ~a)) ~(byte (int \N)) (mrows ~a) (ncols ~a)
          (~ptr ~a) (stride ~a) (~ptr ~sigma) (~ptr ~zero-uvt) (stride ~zero-uvt)
          (~ptr ~zero-uvt) (stride ~zero-uvt)))))
+
+;; ------------------------------ Random Number Generation  --------------------
+;;TODO same as MKL
+(defmacro with-rng-check [x expr] ;;TODO maybe avoid special method for this.
+  `(if (< 0 (dim ~x))
+     (if (and (contiguous? ~x) (= 1 (stride ~x)))
+       (let [err# ~expr]
+         (if (= 0 err#)
+           ~x
+           (throw (ex-info "LAPACK error." {:error-code err#}))))
+       (dragan-says-ex "This engine cannot generate random entries in host vectors with stride. Sorry."
+                       {:v (info ~x)}))
+     ~x))
+
+(defn create-seed [integer-fact seed]
+  (let [seed (int (Math/abs (rem seed 4096)))]
+    (let-release [res (create-vector integer-fact 4 false)]
+      (.set res seed)
+      (when (even? seed) (.set res 3 (max (int 1) (dec seed))))
+      res)))
+
+(defmacro matrix-rng* [blas lapack rng-method axpby-method ptr cast idist seed a scale shift ones]
+  `(let [scale# (~cast ~scale)
+         shift# (~cast ~shift)
+         ones# (~ptr ~ones)
+         dim# (dim ~a)
+         seed# ~seed]
+     (when (< 0 dim#)
+       (if (.isGapless (storage ~a))
+         (let [buff# (~ptr ~a)]
+           (. ~lapack ~rng-method (int ~idist) seed# dim# buff#)
+           (. ~blas ~axpby-method dim# shift# ones# 0 scale# buff# 1))
+         (let [buff# (~ptr ~a 0)]
+           (dostripe-layout
+            ~a len# idx#
+            (with-rng-check ~a
+              (do (. ~lapack ~rng-method (int ~idist) seed# len# (.position buff# idx#))
+                  (. ~blas ~axpby-method len# shift# ones# 0 scale# (.position buff# idx#) 1)))))))
+     ~a))
+
+;; ================= Integer Vector Engines =====================================
+
+(def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
+  "Integer BLAS operations are not supported. Please transform data to float or double.")
+
+(def ^{:no-doc true :const true} SHORT_UNSUPPORTED_MSG
+  "BLAS operation on short integers are supported only on dimensions divisible by 2 (short) or 4 (byte).")
+
+(defmacro patch-vector-method [chunk blas method ptr x y]
+  (if (= 1 chunk)
+    `(. ~blas ~method (dim ~x) (~ptr ~x 0) (stride ~x) (~ptr ~y 0) (stride ~y))
+    `(if (= 0 (rem (dim ~x) ~chunk))
+       (. ~blas ~method (quot (dim ~x) ~chunk) (~ptr ~x 0) (stride ~x) (~ptr ~y 0) (stride ~y))
+       (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)}))))
+
+(defmacro patch-subcopy [chunk blas method ptr x y kx lx ky]
+  (if (= 1 chunk)
+    `(. ~blas ~method (int lx#) (~ptr ~x ~kx) (stride ~x) (~ptr ~y ~ky) (stride ~y))
+    `(do
+       (check-stride ~x ~y)
+       (if (= 0 (rem ~kx ~chunk) (rem ~lx ~chunk) (rem ~ky ~chunk))
+         (. ~blas ~method (quot ~lx ~chunk) (~ptr ~x ~kx) (stride ~x) (~ptr ~y ~ky) (stride ~y))
+         (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)})))))
+
+(defmacro patch-vector-laset [chunk lapack method ptr alpha x]
+  (if (= 1 chunk)
+    `(with-lapack-check "laset"
+       (. ~lapack ~method ~(int (:row blas-layout)) ~(byte (int \g))
+          (dim ~x) 1 ~alpha ~alpha (~ptr ~x 0) (stride ~x)))
+    `(do
+       (check-stride ~x)
+       (if (= 0 (rem (dim ~x) ~chunk))
+         (with-lapack-check "laset"
+           (. ~lapack ~method ~(int (:row blas-layout)) ~(byte (int \g))
+              (quot (dim ~x) ~chunk) 1 ~alpha ~alpha (~ptr ~x 0) (stride ~x)))
+         (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)})))))

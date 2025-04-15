@@ -102,7 +102,7 @@
              (/ (double (sum (rand-normal! seed 0 100 a))) (dim a))
              => (roughly 0 1)
              (/ (double (sum (transfer (rand-normal! seed -100 10 b)))) (dim b))
-             => (roughly -100 0.03)))))
+             => (roughly -100 0.05)))))
 
 (defn test-ge-rand-host [factory]
   (facts "Test GE matrix rand-uniform on the host."

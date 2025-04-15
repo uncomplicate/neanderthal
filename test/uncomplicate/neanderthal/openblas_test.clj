@@ -144,10 +144,10 @@
 ;; (math-test/test-all-host openblas-double)
 ;; (math-test/test-all-host openblas-float)
 
-;; (random-test/test-all openblas-double)
-;; (random-test/test-all openblas-float)
-;; (random-test/test-all-host openblas-double)
-;; (random-test/test-all-host openblas-float)
+(random-test/test-all openblas-double)
+(random-test/test-all openblas-float)
+(random-test/test-all-host openblas-double)
+(random-test/test-all-host openblas-float)
 
 ;; (sparse-test/test-all openblas-float openblas-double)
 ;; (sparse-test/test-all openblas-double openblas-float)
