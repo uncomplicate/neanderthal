@@ -19,7 +19,7 @@
                  [org.uncomplicate/clojure-cpp "0.4.1-SNAPSHOT"]
                  [org.bytedeco/mkl-platform "2025.0-1.5.11"]
                  [org.bytedeco/openblas-platform "0.3.29-1.5.12-SNAPSHOT"]
-                 [org.uncomplicate/accelerate-platform "0.1.0-1.5.12-SNAPSHOT"]
+                 #_[org.uncomplicate/accelerate-platform "0.1.0-1.5.12-SNAPSHOT"]
                  [uncomplicate/clojurecl "0.16.0"]
                  [org.jocl/jocl-blast "1.5.2"]
                  [uncomplicate/clojurecuda "0.21.0"]
@@ -59,7 +59,7 @@
              :linux {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
                                     [org.bytedeco/cuda "12.6-9.5-1.5.11" :classifier linux-x86_64-redist]]}
              :windows {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier windows-x86_64-redist]
-                                      [org.bytedeco/cuda "12.6-9.5-1.5.1"1 :classifier windows-x86_64-redist]]}
+                                      [org.bytedeco/cuda "12.6-9.5-1.5.11" :classifier windows-x86_64-redist]]}
              :macosx {:dependencies []}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
