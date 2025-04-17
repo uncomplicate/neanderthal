@@ -13,7 +13,9 @@
   and the OS specific binaries are provided by JavaCPP's mkl preset. Alternative implementations
   are allowed, and can be either referred explicitly (see how `mkl-float` is used as and example),
   or by binding [[native-float]] and the likes to your preferred implementation."
-  (:require [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
+  (:require [clojure.tools.logging :refer [warn error info]]
+            [clojure.string :refer []]
+            [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
             [uncomplicate.neanderthal.internal.cpp.structures
              :refer [extend-pointer map-channel]])
@@ -21,6 +23,12 @@
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer BytePointer]))
 
 ;; ============ Creating real constructs  ==============
+
+(defn load-class [^String classname]
+  (try (.loadClass (clojure.lang.DynamicClassLoader.) classname)
+       (catch Exception e
+         (info (format "Class %s is not available." classname))
+         nil)))
 
 (defmacro load-mkl []
   `(do (require 'uncomplicate.neanderthal.internal.cpp.mkl.factory)
@@ -35,7 +43,8 @@
        (def ^{:doc "Default short native factory"}
          native-short uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-short)
        (def ^{:doc "Default byte native factory"}
-         native-byte uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-byte)))
+         native-byte uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-byte)
+       (info "MKL backend loaded.")))
 
 (defmacro load-openblas []
   `(do (require 'uncomplicate.neanderthal.internal.cpp.openblas.factory)
@@ -50,7 +59,8 @@
        (def ^{:doc "Default short native factory"}
          native-short uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-short)
        (def ^{:doc "Default byte native factory"}
-         native-byte uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-byte)))
+         native-byte uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-byte)
+       (info "OpenBLAS backend loaded.")))
 
 (defmacro load-accelerate []
   `(do (require 'uncomplicate.neanderthal.internal.cpp.accelerate.factory)
@@ -65,19 +75,53 @@
        (def ^{:doc "Default short native factory"}
          native-short uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-short)
        (def ^{:doc "Default byte native factory"}
-         native-byte uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-byte)))
+         native-byte uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-byte)
+       (info "Accelerate backend loaded.")))
 
-(defmacro load-backend []
-  (let [backend# (cond
-                   (clojure.string/includes? (clojure.string/lower-case (System/getProperty "os.name")) "mac")
-                   :accelerate
-                   (#{"amd64" "x86_64" "x86-64" "x64"} (System/getProperty "os.arch"))
-                   :mkl
-                   :default :openblas)]
-    (case backend#
-      :mkl `(load-mkl)
-      :openblas `(load-openblas)
-      :accelerate ` (load-accelerate))))
+(defn find-default-backend []
+  (cond
+    (clojure.string/includes? (clojure.string/lower-case (System/getProperty "os.name")) "mac")
+    (if (load-class "neanderthal.javacpp.accelerate.global.blas_new")
+      :accelerate
+      (do (warn "We will try OpenBLAS, as Accelerate is not available in your classpath!")
+          (info "If you want to use Accelerate, please ensure neanderhtal-accelerate is in your project dependencies.")
+          :openblas))
+    (#{"amd64" "x86_64" "x86-64" "x64"} (System/getProperty "os.arch"))
+    (if (load-class "org.bytedeco.mkl.global.mkl_rt")
+      :mkl
+      (do (warn "We will try OpenBLAS, as MKL is not available in your classpath!")
+          (info "If you want to use MKL, please ensure neanderhtal-mkl and org.bytedeco/mkl are in your project dependencies.")
+          :openblas))
+    :default
+    (if (load-class "org.bytedeco.openblas.global.openblas_full")
+      :openblas
+      (do (error "Even OpenBLAS could not be loaded! This project has no native engine available!")
+          (info "If you want to use OpenBLAS, please ensure org.bytedeco/openblas is in your project dependencies.")
+          (dragan-says-ex "Even OpenBLAS could not be loaded! This project has no native engine available!")))))
+
+(defmacro load-backend
+  ([]
+   `(load-backend ~(find-default-backend)))
+  ([backend]
+   (let [backend# backend]
+     (case backend#
+       :accelerate (if (load-class "neanderthal.javacpp.accelerate.global.blas_new")
+                     `(load-accelerate)
+                     (do (error "Accelerate is not available in your classpath!")
+                         (info "If you want to use Accelerate, please ensure neanderhtal-accelerate is in your project dependencies.")
+                         (dragan-says-ex "Accelerate cannot be loaded! Please check your dependencies.")))
+       :mkl (if (load-class "org.bytedeco.mkl.global.mkl_rt")
+              `(load-mkl)
+              (do (error "MKL is not available in your classpath!")
+                  (info "If you want to use MKL, please ensure neanderhtal-mkl and org.bytedeco/mkl are in your project dependencies.")
+                  (dragan-says-ex "Accelerate cannot be loaded! Please check your dependencies.")))
+       :openblas (if (load-class "org.bytedeco.openblas.global.openblas_full")
+                   `(load-openblas)
+                   (do (error "OpenBLAS is not available in your classpath!")
+                       (info "If you want to use OpenBLAS, please ensure org.bytedeco/openblas is in your project dependencies.")
+                       (dragan-says-ex "Even OpenBLAS could not be loaded! This project has no native engine available!")))
+       (dragan-says-ex "Unknown native backend. Please use one of: :mkl :accelerate :openblas"
+                       {:requested backend# :expected [:openblas :mkl :accelerate]})))))
 
 (load-backend)
 
