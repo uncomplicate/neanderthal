@@ -34,10 +34,12 @@
            uncomplicate.neanderthal.internal.navigation.BandStorage))
 
 (defn lapacke
-  ([prefix type name]
+  ([prefix type postfix name]
    (symbol (format "%s%s%s" prefix type name)))
+  ([prefix type name]
+   (lapacke prefix type "" name))
   ([type name]
-   (lapacke "LAPACKE_" type name)))
+   (lapacke "LAPACKE_" type "" name)))
 
 ;; =========================== Auxiliary LAPACK Routines =========================
 
@@ -1279,7 +1281,7 @@
        (let [err# ~expr]
          (if (= 0 err#)
            ~x
-           (throw (ex-info "LAPACK error." {:error-code err#}))))
+           (throw (ex-info "RNG error." {:error-code err#}))))
        (dragan-says-ex "This engine cannot generate random entries in host vectors with stride. Sorry."
                        {:v (info ~x)}))
      ~x))
@@ -1318,6 +1320,7 @@
 (def ^{:no-doc true :const true} SHORT_UNSUPPORTED_MSG
   "BLAS operation on short integers are supported only on dimensions divisible by 2 (short) or 4 (byte).")
 
+;; move to math/common
 (defmacro patch-vector-method [chunk blas method ptr x y]
   (if (= 1 chunk)
     `(. ~blas ~method (dim ~x) (~ptr ~x 0) (stride ~x) (~ptr ~y 0) (stride ~y))
@@ -1325,6 +1328,7 @@
        (. ~blas ~method (quot (dim ~x) ~chunk) (~ptr ~x 0) (stride ~x) (~ptr ~y 0) (stride ~y))
        (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)}))))
 
+;; move to blas/common
 (defmacro patch-subcopy [chunk blas method ptr x y kx lx ky]
   (if (= 1 chunk)
     `(. ~blas ~method (int lx#) (~ptr ~x ~kx) (stride ~x) (~ptr ~y ~ky) (stride ~y))
@@ -1334,6 +1338,7 @@
          (. ~blas ~method (quot ~lx ~chunk) (~ptr ~x ~kx) (stride ~x) (~ptr ~y ~ky) (stride ~y))
          (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)})))))
 
+;; move to common?
 (defmacro patch-vector-laset [chunk lapack method ptr alpha x]
   (if (= 1 chunk)
     `(with-lapack-check "laset"

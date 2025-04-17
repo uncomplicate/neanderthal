@@ -34,6 +34,8 @@
 
 ;;TODO implement scalar addition to a vector in blas-plus. (axpb)
 
+;; ================= Integer Vector Engines ====================================
+
 (defmacro integer-vector-blas* [name t ptr blas chunk]
   `(extend-type ~name
      Blas
@@ -1098,7 +1100,7 @@
      (laswp [_# _# _# _# _#]
        (dragan-says-ex "Pivoted swap is not available for diagonal matrices."))
      (tri [_# a#]
-       (fmap! inverse  a#))
+       (fmap! inverse a#))
      (trs [_# a# b#]
        (gd-trs ~openblas ~(lapacke t 'tbtrs) ~ptr a# b#))
      (sv [_# a# b# _#]
@@ -1285,7 +1287,7 @@
      (rand-normal [_# rng-stream# mu# sigma# a#]
        (matrix-rng* ~blas ~lapack  ~(lapacke t 'larnv) ~(cblas t 'axpby) ~ptr ~cast 3
                     (int-ptr rng-stream#) a# (~cast sigma#) (~cast mu#) ~ones))))
-
+;;TOOD rename to Host/Native real factory
 (deftype BlasRealFactory [index-fact ^DataAccessor da
                           vector-eng ge-eng tr-eng sy-eng gb-eng sb-eng tb-eng
                           sp-eng tp-eng gd-eng gt-eng dt-eng st-eng

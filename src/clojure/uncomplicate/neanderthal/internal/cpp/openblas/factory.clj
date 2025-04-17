@@ -342,8 +342,7 @@
                                        (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
                                        (->FloatSPEngine) (->FloatTPEngine) (->FloatGDEngine)
                                        (->FloatGTEngine) (->FloatDTEngine) (->FloatSTEngine)
-                                       nil nil
-                                       ))
+                                       nil nil))
 
 (def openblas-double (->BlasRealFactory openblas-int double-accessor (->DoubleVectorEngine) (->DoubleGEEngine)
                                         (->DoubleTREngine) (->DoubleSYEngine)
