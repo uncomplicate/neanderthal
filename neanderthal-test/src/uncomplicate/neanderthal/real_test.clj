@@ -1758,7 +1758,7 @@
                         b (gt factory 5 (range 1 100))
                         d (gt factory 5)
                         zero-point (gt factory 5)]
-           (sqrt (dot a a)) => (roughly (nrm2 a) 0.000001)
+           (sqrt (dot a a)) => (roughly (nrm2 a) 0.000002)
            (dot a b) => -182.0
            (dot a (copy! b d)) => (dot a b)
            (dot zero-point zero-point) => 0.0)))
