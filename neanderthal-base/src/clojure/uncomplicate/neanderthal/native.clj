@@ -88,7 +88,7 @@
 (defn find-default-backend []
   (cond
     (and (clojure.string/includes? (clojure.string/lower-case (System/getProperty "os.name")) "mac")
-         (load-class "neanderthal.javacpp.accelerate.global.blas_new"))
+         (load-class "uncomplicate.javacpp.accelerate.global.blas_new"))
     :accelerate
     (and (#{"amd64" "x86_64" "x86-64" "x64"} (System/getProperty "os.arch"))
          (load-class "org.bytedeco.mkl.global.mkl_rt"))
@@ -103,7 +103,7 @@
   ([backend]
    (let [backend# backend]
      (case backend#
-       :accelerate (if (load-class "neanderthal.javacpp.accelerate.global.blas_new")
+       :accelerate (if (load-class "uncomplicate.javacpp.accelerate.global.blas_new")
                      `(load-accelerate)
                      (do (error "Accelerate is not available in your classpath!")
                          (info "If you want to use Accelerate, please ensure neanderhtal-accelerate is in your project dependencies.")

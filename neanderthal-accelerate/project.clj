@@ -17,7 +17,7 @@
                  [uncomplicate/commons "0.16.1"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.uncomplicate/neanderthal-base "0.54.0-SNAPSHOT"]
-                 [org.bytedeco/openblas-platform "0.3.29-1.5.12-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-openblas "0.54.0-SNAPSHOT"]
                  [org.uncomplicate/accelerate-platform "0.1.0-1.5.12-SNAPSHOT"]]
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
