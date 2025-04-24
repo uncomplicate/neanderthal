@@ -19,9 +19,7 @@
              #_[sparse-test :as sparse-test]];;TODO dependent on MKL constants!
             [uncomplicate.neanderthal.internal.cpp.accelerate.factory
              :refer [accelerate-float accelerate-double accelerate-int accelerate-long accelerate-short accelerate-byte]]))
-
-;; TODO
-#_(facts "factory-by-type test"
+(facts "factory-by-type test"
        (factory-by-type :float) => accelerate-float
        (factory-by-type :double) => accelerate-double
        (factory-by-type :int) => accelerate-int
