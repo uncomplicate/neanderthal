@@ -67,99 +67,23 @@
                              {:threading threading
                               :max-threading-options thread/BLAS_THREADING_MAX_OPTIONS})))))
 
-;; =============== Factories ==================================================
-
-(declare accelerate-int)
-
-;; ================= Real Vector Engines ========================================
-
-(defmacro accelerate-real-vector-blas* [name t ptr cast blas openblas]
-  `(extend-type ~name
-     Blas
-     (swap [this# x# y#]
-       (. ~blas ~(cblas t 'swap) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#))
-       x#)
-     (copy [this# x# y#]
-       (. ~blas ~(cblas t 'copy) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#))
-       y#)
-     (dot [this# x# y#]
-       (. ~blas ~(cblas t 'dot) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#)))
-     (nrm1 [this# x#]
-       (asum this# x#))
-     (nrm2 [this# x#]
-       (. ~blas ~(cblas t 'nrm2) (dim x#) (~ptr x#) (stride x#)))
-     (nrmi [this# x#]
-       (amax this# x#))
-     (asum [this# x#]
-       (. ~blas ~(cblas t 'asum) (dim x#) (~ptr x#) (stride x#)))
-     (iamax [this# x#]
-       (. ~blas ~(cblas 'cblas_i t 'amax) (dim x#) (~ptr x#) (stride x#)))
-     (iamin [this# x#]
-       (. ~openblas ~(cblas 'cblas_i t 'amin) (dim x#) (~ptr x#) (stride x#)))
-     (rot [this# x# y# c# s#]
-       (. ~blas ~(cblas t 'rot) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#)
-          (~cast c#) (~cast s#))
-       x#)
-     (rotg [this# abcs#]
-       (let [stride# (stride abcs#)]
-         (. ~blas ~(cblas t 'rotg) (~ptr abcs#) (~ptr abcs# stride#) (~ptr abcs# (* 2 stride#))
-            (~ptr abcs# (* 3 stride#)))
-         abcs#))
-     (rotm [this# x# y# param#]
-       (check-stride param#)
-       (. ~blas ~(cblas t 'rotm) (dim x#) (~ptr x#) (stride x#) (~ptr y#) (stride y#) (~ptr param#))
-       x#)
-     (rotmg [this# d1d2xy# param#]
-       (check-stride d1d2xy# param#)
-       (. ~openblas ~(cblas t 'rotmg) (~ptr d1d2xy#) (~ptr d1d2xy# 1) (~ptr d1d2xy# 2)
-          (~cast (entry d1d2xy# 3)) (~ptr param#))
-       param#)
-     (scal [this# alpha# x#]
-       (. ~blas ~(cblas t 'scal) (dim x#) (~cast alpha#) (~ptr x#) (stride x#))
-       x#)
-     (axpy [this# alpha# x# y#]
-       (. ~blas ~(cblas t 'axpy) (dim x#) (~cast alpha#) (~ptr x#) (stride x#) (~ptr y#) (stride y#))
-       y#)))
-
-(defmacro accelerate-real-vector-blas-plus* [name t ptr cast blas openblas ones]
-  `(extend-type ~name
-     BlasPlus
-     (amax [this# x#]
-       (if (< 0 (dim x#))
-         (Math/abs (~cast (entry x# (iamax this# x#))))
-         0.0))
-     (subcopy [this# x# y# kx# lx# ky#]
-       (. ~blas ~(cblas t 'copy) (int lx#) (~ptr x# kx#) (stride x#) (~ptr y# ky#) (stride y#))
-       y#)
-     (sum [this# x#]
-       (. ~blas ~(cblas t 'dot) (dim x#) (~ptr x#) (stride x#) (~ptr ~ones) 0))
-     (imax [this# x#]
-       (vector-iopt < x# real/entry))
-     (imin [this# x#]
-       (vector-iopt > x# real/entry))
-     (set-all [this# alpha# x#]
-       (with-lapack-check "laset"
-         (. ~openblas ~(lapacke t 'laset) ~(int (:row blas-layout)) ~(byte (int \g)) (dim x#) 1
-            (~cast alpha#) (~cast alpha#) (~ptr x#) (stride x#)))
-       x#)
-     (axpby [this# alpha# x# beta# y#]
-       (. ~blas ~(cblas "catlas_" t 'axpby) (dim x#)
-          (~cast alpha#) (~ptr x#) (stride x#) (~cast beta#) (~ptr y#) (stride y#))
-       y#)))
-
-;; ============ Delegate math functions  ============================================
+;; ============ Vector Engines ============================================
 
 (deftype FloatVectorEngine [])
-(accelerate-real-vector-blas* FloatVectorEngine "s" float-ptr float blas_new openblas_full)
-(accelerate-real-vector-blas-plus* FloatVectorEngine "s" float-ptr float blas_new openblas_full ones-float)
+(real-vector-blas* FloatVectorEngine "s" float-ptr float blas_new openblas_full)
+(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float blas_new openblas_full
+                             "catlas_saxpby" ones-float)
 (real-vector-lapack* FloatVectorEngine "s" float-ptr float openblas_full)
-(real-vector-rng* FloatVectorEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-vector-rng* FloatVectorEngine "s" float-ptr float blas_new openblas_full
+                  "catlas_saxpby" ones-float)
 
 (deftype DoubleVectorEngine [])
-(accelerate-real-vector-blas* DoubleVectorEngine "d" double-ptr double blas_new openblas_full)
-(accelerate-real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double blas_new openblas_full ones-double)
+(real-vector-blas* DoubleVectorEngine "d" double-ptr double blas_new openblas_full)
+(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double blas_new openblas_full
+                        "catlas_daxpby" ones-double)
 (real-vector-lapack* DoubleVectorEngine "d" double-ptr double openblas_full)
-(real-vector-rng* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-vector-rng* DoubleVectorEngine "d" double-ptr double blas_new openblas_full
+                  "catlas_daxpby" ones-double)
 
 (deftype LongVectorEngine [])
 (integer-vector-blas* LongVectorEngine "d" double-ptr blas_new 1)
@@ -177,49 +101,9 @@
 (integer-vector-blas* ByteVectorEngine "s" float-ptr blas_new 4)
 (integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float blas_new openblas_full 4)
 
-
 ;; ================= GE Engine ========================================
 
-(defmacro accelerate-integer-ge-blas* [name t ptr blas openblas chunk]
-  `(extend-type ~name
-     Blas
-     (swap [_# a# b#]
-       (matrix-map ~blas ~(cblas t 'swap) ~ptr a# b#)
-       a#)
-     (copy [_# a# b#]
-       (patch-ge-copy ~chunk ~openblas ~(cblas t 'omatcopy) ~ptr a# b#)
-       b#)
-     (dot [_# a# b#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-     (nrm1 [_# a#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-     (nrm2 [_# a#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-     (nrmi [_# a#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-     (asum [_# a#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-     (scal [_# alpha# a#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-     (axpy [_# alpha# a# b#]
-       (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-     (mv
-       ([_# alpha# a# x# beta# y#]
-        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-       ([_# a# _#]
-        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
-     (rk
-       ([_# alpha# x# y# a#]
-        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-       ([_# _# _# a#]
-        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))
-     (mm
-       ([_# alpha# a# b# _#]
-        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
-       ([_# alpha# a# b# beta# c# _#]
-        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG))))))
-
-(defmacro accelerate-ge-axpby [blas geadd axpy ptr alpha a beta b]
+(defmacro accelerate-ge-axpby [blas geadd ptr alpha a beta b]
   `(do
      (when (< 0 (dim ~a))
        (let [nav-b# (navigator ~b)
@@ -265,7 +149,7 @@
             (~ptr a#) (stride a#)))
        a#)
      (axpy [_# alpha# a# b#]
-       (accelerate-ge-axpby ~blas ~(cblas "appleblas_" t 'geadd) ~(cblas t 'axpy) ~ptr (~cast alpha#) a# (~cast 1.0) b#))
+       (accelerate-ge-axpby ~blas ~(cblas "appleblas_" t 'geadd) ~ptr (~cast alpha#) a# (~cast 1.0) b#))
      (mv
        ([_# alpha# a# x# beta# y#]
         (. ~blas ~(cblas t 'gemv) (.layout (navigator a#)) ~(:no-trans blas-transpose) (mrows a#) (ncols a#)
@@ -310,7 +194,7 @@
             (mrows a#) (ncols a#) (~cast alpha#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
      (axpby [_# alpha# a# beta# b#]
-       (accelerate-ge-axpby ~blas ~(cblas "appleblas_" t 'geadd) ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#)
+       (accelerate-ge-axpby ~blas ~(cblas "appleblas_" t 'geadd) ~ptr (~cast alpha#) a# (~cast beta#) b#)
        b#)
      (trans [_# a#]
        (when (< 0 (dim a#))
@@ -326,20 +210,20 @@
 (accelerate-real-ge-blas* FloatGEEngine "s" float-ptr float blas_new openblas_full)
 (accelerate-real-ge-blas-plus* FloatGEEngine "s" float-ptr float blas_new openblas_full ones-float)
 (real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
-(real-ge-rng* FloatGEEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-ge-rng* FloatGEEngine "s" float-ptr float blas_new openblas_full "catlas_saxpby" ones-float)
 
 (deftype DoubleGEEngine [])
 (accelerate-real-ge-blas* DoubleGEEngine "d" double-ptr double blas_new openblas_full)
 (accelerate-real-ge-blas-plus* DoubleGEEngine "d" double-ptr double blas_new openblas_full ones-double)
 (real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
-(real-ge-rng* DoubleGEEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-ge-rng* DoubleGEEngine "d" double-ptr double blas_new openblas_full "catlas_daxpby" ones-double)
 
 ;;TODO
 (deftype LongGEEngine [])
-(accelerate-integer-ge-blas* LongGEEngine "d" double-ptr blas_new openblas_full 1)
+(integer-ge-blas* LongGEEngine "d" double-ptr blas_new openblas_full 1)
 
 (deftype IntGEEngine [])
-(accelerate-integer-ge-blas* IntGEEngine "s" float-ptr blas_new openblas_full 1)
+(integer-ge-blas* IntGEEngine "s" float-ptr blas_new openblas_full 1)
 
 (deftype ShortGEEngine []) ;; TODO
 
@@ -348,14 +232,14 @@
 ;; ========================= TR matrix engines ===============================================
 
 (deftype FloatTREngine [])
-(real-tr-blas* FloatTREngine "s" float-ptr float openblas_full openblas_full)
-(real-tr-blas-plus* FloatTREngine "s" float-ptr float openblas_full openblas_full ones-float)
-(real-tr-lapack* FloatTREngine "s" float-ptr cpp/float-pointer float openblas_full openblas_full)
+(real-tr-blas* FloatTREngine "s" float-ptr float blas_new openblas_full)
+(real-tr-blas-plus* FloatTREngine "s" float-ptr float blas_new openblas_full "catlas_saxpby" ones-float)
+(real-tr-lapack* FloatTREngine "s" float-ptr cpp/float-pointer float blas_new openblas_full)
 
 (deftype DoubleTREngine [])
-(real-tr-blas* DoubleTREngine "d" double-ptr double openblas_full openblas_full)
-(real-tr-blas-plus* DoubleTREngine "d" double-ptr double openblas_full openblas_full ones-double)
-(real-tr-lapack* DoubleTREngine "d" double-ptr cpp/double-pointer double openblas_full openblas_full)
+(real-tr-blas* DoubleTREngine "d" double-ptr double blas_new openblas_full)
+(real-tr-blas-plus* DoubleTREngine "d" double-ptr double blas_new openblas_full "catlas_daxpby" ones-double)
+(real-tr-lapack* DoubleTREngine "d" double-ptr cpp/double-pointer double blas_new openblas_full)
 
 (deftype LongTREngine [])
 ;;(integer-tr-blas* LongTREngine "d" double-ptr long-double openblas_full openblas_full 1)
@@ -370,13 +254,13 @@
 ;; ========================= SY matrix engines ===============================================
 
 (deftype FloatSYEngine [])
-(real-sy-blas* FloatSYEngine "s" float-ptr float openblas_full openblas_full)
-(real-sy-blas-plus* FloatSYEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-sy-blas* FloatSYEngine "s" float-ptr float blas_new openblas_full)
+(real-sy-blas-plus* FloatSYEngine "s" float-ptr float blas_new openblas_full "catlas_saxpby" ones-float)
 (real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
 
 (deftype DoubleSYEngine [])
-(real-sy-blas* DoubleSYEngine "d" double-ptr double openblas_full openblas_full)
-(real-sy-blas-plus* DoubleSYEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-sy-blas* DoubleSYEngine "d" double-ptr double blas_new openblas_full)
+(real-sy-blas-plus* DoubleSYEngine "d" double-ptr double blas_new openblas_full "catlas_daxpby" ones-double)
 (real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
 
 ;;TODO
@@ -393,13 +277,15 @@
 ;; ============================ GB matrix engines ==================================================
 
 (deftype FloatGBEngine [])
-(real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
-(real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full ones-float)
+(real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full
+                    "catlas_saxpby" ones-float)
 (real-gb-lapack* FloatGBEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 
 (deftype DoubleGBEngine [])
-(real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
-(real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full blas_new ones-double)
+(real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full
+                    "catlas_daxpby" ones-double)
 (real-gb-lapack* DoubleGBEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 
 (deftype LongGBEngine [])
@@ -410,13 +296,15 @@
 ;; ============================ SB matrix engines ==================================================
 
 (deftype FloatSBEngine [])
-(real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
+(real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full
+                    "catlas_saxpby" ones-float)
 (real-sb-lapack* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full)
 
 (deftype DoubleSBEngine [])
-(real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
+(real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full
+                    "catlas_daxpby" ones-double)
 (real-sb-lapack* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full)
 
 (deftype LongSBEngine [])
@@ -427,14 +315,16 @@
 ;; ============================ TB matrix engines ==================================================
 
 (deftype FloatTBEngine [])
-(real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
-(real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
+(real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full
+                    "catlas_saxpby" ones-float)
+(real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
 
 (deftype DoubleTBEngine [])
-(real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
-(real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
+(real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full
+                    "catlas_daxpby" ones-double)
+(real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
 
 (deftype LongTBEngine [])
 (deftype IntTBEngine [])
@@ -444,13 +334,15 @@
 ;; ============================ TP matrix engines ====================================================
 
 (deftype FloatTPEngine [])
-(real-tp-blas* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-tp-blas* FloatTPEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
+(real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full
+                    "catlas_saxpby" ones-float)
 (real-tp-lapack* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full)
 
 (deftype DoubleTPEngine [])
-(real-tp-blas* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-tp-blas* DoubleTPEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
+(real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full
+                    "catlas_daxpby" ones-double)
 (real-tp-lapack* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full)
 
 (deftype LongTPEngine [])
@@ -461,13 +353,15 @@
 ;; ============================ SP matrix engines ====================================================
 
 (deftype FloatSPEngine [])
-(real-sp-blas* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-sp-blas* FloatSPEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
+(real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full
+                    "catlas_saxpby" ones-float)
 (real-sp-lapack* FloatSPEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 
 (deftype DoubleSPEngine [])
-(real-sp-blas* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-sp-blas* DoubleSPEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
+(real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full
+                    "catlas_daxpby" ones-double)
 (real-sp-lapack* DoubleSPEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 
 (deftype LongSPEngine [])
@@ -478,13 +372,15 @@
 ;; ============================ GD matrix engines ==================================================
 
 (deftype FloatGDEngine [])
-(real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float  openblas_full ones-float)
+(real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
+(real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float blas_new openblas_full
+                          "catlas_saxpby" ones-float)
 (real-gd-lapack* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
 
 (deftype DoubleGDEngine [])
-(real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double openblas_full ones-double)
+(real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
+(real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double blas_new openblas_full
+                          "catlas_daxpby" ones-double)
 (real-gd-lapack* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
 
 (deftype LongGDEngine [])
@@ -494,12 +390,14 @@
 
 (deftype FloatGTEngine [])
 (real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float openblas_full ones-float)
+(real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float blas_new openblas_full
+                          "catlas_saxpby" ones-float)
 (real-gt-lapack* FloatGTEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 
 (deftype DoubleGTEngine [])
 (real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double openblas_full ones-double)
+(real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double blas_new openblas_full
+                          "catlas_daxpby" ones-double)
 (real-gt-lapack* DoubleGTEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 
 (deftype LongGTEngine [])
@@ -509,12 +407,14 @@
 
 (deftype FloatDTEngine [])
 (real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float openblas_full ones-float)
+(real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float blas_new openblas_full
+                          "catlas_saxpby" ones-float)
 (real-dt-lapack* FloatDTEngine "s" float-ptr float openblas_full)
 
 (deftype DoubleDTEngine [])
 (real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double openblas_full ones-double)
+(real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double blas_new openblas_full
+                          "catlas_daxpby" ones-double)
 (real-dt-lapack* DoubleDTEngine "d" double-ptr double openblas_full)
 
 (deftype LongDTEngine [])
@@ -523,13 +423,15 @@
 (deftype ByteDTEngine [])
 
 (deftype FloatSTEngine [])
-(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-st-blas-plus* FloatSTEngine "s" float-ptr float openblas_full ones-float)
+(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
+(real-st-blas-plus* FloatSTEngine "s" float-ptr float blas_new openblas_full
+                    "catlas_saxpby" ones-float)
 (real-st-lapack* FloatSTEngine "s" float-ptr float openblas_full)
 
 (deftype DoubleSTEngine [])
-(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-st-blas-plus* DoubleSTEngine "d" double-ptr double openblas_full ones-double)
+(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
+(real-st-blas-plus* DoubleSTEngine "d" double-ptr double blas_new openblas_full
+                    "catlas_daxpby" ones-double)
 (real-st-lapack* DoubleSTEngine "d" double-ptr double openblas_full)
 
 (deftype LongSTEngine [])

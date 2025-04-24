@@ -64,15 +64,19 @@
   ([^long n]
    (openblas_full/blas_set_num_threads n)))
 
+;; ============ Vector Engines ============================================
+
 (deftype FloatVectorEngine [])
-(real-vector-blas* FloatVectorEngine "s" float-ptr float openblas_full)
-(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-vector-blas* FloatVectorEngine "s" float-ptr float openblas_full openblas_full)
+(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float openblas_full openblas_full
+                        "cblas_saxpby" ones-float)
 (real-vector-lapack* FloatVectorEngine "s" float-ptr float openblas_full)
 (real-vector-rng* FloatVectorEngine "s" float-ptr float openblas_full openblas_full ones-float)
 
 (deftype DoubleVectorEngine [])
-(real-vector-blas* DoubleVectorEngine "d" double-ptr double openblas_full)
-(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-vector-blas* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full)
+(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full
+                        "cblas_daxpby" ones-double)
 (real-vector-lapack* DoubleVectorEngine "d" double-ptr double openblas_full)
 (real-vector-rng* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full ones-double)
 
@@ -108,10 +112,12 @@
 
 ;;TODO
 (deftype LongGEEngine [])
-(integer-ge-blas* LongGEEngine "d" double-ptr openblas_full 1)
+(integer-ge-blas* LongGEEngine "d" double-ptr openblas_full openblas_full 1)
 
 (deftype IntGEEngine [])
-(integer-ge-blas* IntGEEngine "s" float-ptr openblas_full 1)
+
+
+(integer-ge-blas* IntGEEngine "s" float-ptr openblas_full openblas_full 1)
 
 (deftype ShortGEEngine []) ;; TODO
 
@@ -121,12 +127,14 @@
 
 (deftype FloatTREngine [])
 (real-tr-blas* FloatTREngine "s" float-ptr float openblas_full openblas_full)
-(real-tr-blas-plus* FloatTREngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-tr-blas-plus* FloatTREngine "s" float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
 (real-tr-lapack* FloatTREngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
 
 (deftype DoubleTREngine [])
 (real-tr-blas* DoubleTREngine "d" double-ptr double openblas_full openblas_full)
-(real-tr-blas-plus* DoubleTREngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-tr-blas-plus* DoubleTREngine "d" double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
 (real-tr-lapack* DoubleTREngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
 
 (deftype LongTREngine [])
@@ -143,12 +151,14 @@
 
 (deftype FloatSYEngine [])
 (real-sy-blas* FloatSYEngine "s" float-ptr float openblas_full openblas_full)
-(real-sy-blas-plus* FloatSYEngine "s" float-ptr float openblas_full openblas_full ones-float)
+(real-sy-blas-plus* FloatSYEngine "s" float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
 (real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
 
 (deftype DoubleSYEngine [])
 (real-sy-blas* DoubleSYEngine "d" double-ptr double openblas_full openblas_full)
-(real-sy-blas-plus* DoubleSYEngine "d" double-ptr double openblas_full openblas_full ones-double)
+(real-sy-blas-plus* DoubleSYEngine "d" double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
 (real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
 
 ;;TODO
@@ -166,12 +176,14 @@
 
 (deftype FloatGBEngine [])
 (real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
-(real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
 (real-gb-lapack* FloatGBEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 
 (deftype DoubleGBEngine [])
 (real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
-(real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
 (real-gb-lapack* DoubleGBEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 
 (deftype LongGBEngine [])
@@ -183,12 +195,14 @@
 
 (deftype FloatSBEngine [])
 (real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
 (real-sb-lapack* FloatSBEngine "s" float-ptr cpp/float-ptr float openblas_full)
 
 (deftype DoubleSBEngine [])
 (real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
 (real-sb-lapack* DoubleSBEngine "d" double-ptr cpp/double-ptr double openblas_full)
 
 (deftype LongSBEngine [])
@@ -200,13 +214,15 @@
 
 (deftype FloatTBEngine [])
 (real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
-(real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
+(real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
 
 (deftype DoubleTBEngine [])
 (real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
-(real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
+(real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
 
 (deftype LongTBEngine [])
 (deftype IntTBEngine [])
@@ -217,12 +233,14 @@
 
 (deftype FloatTPEngine [])
 (real-tp-blas* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
 (real-tp-lapack* FloatTPEngine "s" float-ptr cpp/float-ptr float openblas_full)
 
 (deftype DoubleTPEngine [])
 (real-tp-blas* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
 (real-tp-lapack* DoubleTPEngine "d" double-ptr cpp/double-ptr double openblas_full)
 
 (deftype LongTPEngine [])
@@ -234,12 +252,14 @@
 
 (deftype FloatSPEngine [])
 (real-sp-blas* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
-(real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full ones-float)
+(real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
 (real-sp-lapack* FloatSPEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 
 (deftype DoubleSPEngine [])
 (real-sp-blas* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
-(real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full ones-double)
+(real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
 (real-sp-lapack* DoubleSPEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 
 (deftype LongSPEngine [])
@@ -250,13 +270,15 @@
 ;; ============================ GD matrix engines ==================================================
 
 (deftype FloatGDEngine [])
-(real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float  openblas_full ones-float)
+(real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
+(real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float openblas_full openblas_full
+                          "cblas_saxpby" ones-float)
 (real-gd-lapack* FloatGDEngine "s" float-ptr cpp/float-ptr float openblas_full)
 
 (deftype DoubleGDEngine [])
-(real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double openblas_full ones-double)
+(real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
+(real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double openblas_full openblas_full
+                          "cblas_daxpby" ones-double)
 (real-gd-lapack* DoubleGDEngine "d" double-ptr cpp/double-ptr double openblas_full)
 
 (deftype LongGDEngine [])
@@ -268,12 +290,14 @@
 
 (deftype FloatGTEngine [])
 (real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float openblas_full ones-float)
+(real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float openblas_full openblas_full
+                          "cblas_saxpby" ones-float)
 (real-gt-lapack* FloatGTEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 
 (deftype DoubleGTEngine [])
 (real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double openblas_full ones-double)
+(real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double openblas_full openblas_full
+                          "cblas_daxpby" ones-double)
 (real-gt-lapack* DoubleGTEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
 
 (deftype LongGTEngine [])
@@ -283,12 +307,14 @@
 
 (deftype FloatDTEngine [])
 (real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float openblas_full ones-float)
+(real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float openblas_full openblas_full
+                          "cblas_saxpby" ones-float)
 (real-dt-lapack* FloatDTEngine "s" float-ptr float openblas_full)
 
 (deftype DoubleDTEngine [])
 (real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double openblas_full ones-double)
+(real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double openblas_full openblas_full
+                          "cblas_daxpby" ones-double)
 (real-dt-lapack* DoubleDTEngine "d" double-ptr double openblas_full)
 
 (deftype LongDTEngine [])
@@ -297,13 +323,15 @@
 (deftype ByteDTEngine [])
 
 (deftype FloatSTEngine [])
-(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float openblas_full)
-(real-st-blas-plus* FloatSTEngine "s" float-ptr float openblas_full ones-float)
+(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float openblas_full openblas_full)
+(real-st-blas-plus* FloatSTEngine "s" float-ptr float openblas_full openblas_full
+                    "cblas_saxpby" ones-float)
 (real-st-lapack* FloatSTEngine "s" float-ptr float openblas_full)
 
 (deftype DoubleSTEngine [])
-(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double openblas_full)
-(real-st-blas-plus* DoubleSTEngine "d" double-ptr double openblas_full ones-double)
+(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double openblas_full openblas_full)
+(real-st-blas-plus* DoubleSTEngine "d" double-ptr double openblas_full openblas_full
+                    "cblas_daxpby" ones-double)
 (real-st-lapack* DoubleSTEngine "d" double-ptr double openblas_full)
 
 (deftype LongSTEngine [])

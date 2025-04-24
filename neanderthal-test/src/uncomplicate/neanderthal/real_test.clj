@@ -2432,7 +2432,7 @@
                   t3 (copy t2)
                   b3 (copy b)]
 
-     (sv! t b) => (trs! t1 b1)
+     (nrm2 (axpy -1 (sv! t b) (trs! t1 b1))) => (roughly 0 0.0001)
      (nrm2 (axpy! -1 (sv! t2 b2) b)) => (roughly 0 0.0001)
      (nrm2 (axpy! -1 (sv! t3 b3) b2)) => (roughly 0 0.0001))))
 

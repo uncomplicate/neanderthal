@@ -149,7 +149,7 @@
 (defn band-storage-ku ^long [^BandStorage s]
   (.ku s))
 
-(defmacro gb-lan [lapack langb nrm ptr cpp-ptr norm a]
+(defmacro gb-lan [lapack langb iamax ptr cpp-ptr norm a]
   `(if (< 0 (dim ~a))
      (let [stor# (full-storage ~a)
            fd# (.fd stor#)
@@ -169,11 +169,11 @@
            (= \F ~norm) (sqrt (band-storage-reduce ~a len# buff-a# acc# 0.0
                                                    (double (. ~lapack ~langb norm# fd-ptr# kl-ptr#
                                                               ku-ptr# buff-a# ld-ptr# work#))
-                                                   (+ acc# (pow (. ~lapack ~nrm len# buff-a# ld#) 2))))
+                                                   (+ acc# (pow (. ~lapack ~iamax len# buff-a# ld#) 2))))
            (= \M ~norm) (band-storage-reduce ~a len# buff-a# amax# 0.0
-                                             (let [iamax# (. ~lapack ~nrm (.surface (region ~a)) buff-a# 1)]
+                                             (let [iamax# (. ~lapack ~iamax (.surface (region ~a)) buff-a# 1)]
                                                (abs (.get da# buff-a# iamax#)))
-                                             (let [iamax# (. ~lapack ~nrm len# buff-a# ld#)]
+                                             (let [iamax# (. ~lapack ~iamax len# buff-a# ld#)]
                                                (max amax# (abs (.get da# buff-a# (* ld# iamax#))))))
            :default (dragan-says-ex "This operation has not been implemented for non-square banded matrix."))))
      0.0))
@@ -1311,43 +1311,3 @@
               (do (. ~lapack ~rng-method (int ~idist) seed# len# (.position buff# idx#))
                   (. ~blas ~axpby-method len# shift# ones# 0 scale# (.position buff# idx#) 1)))))))
      ~a))
-
-;; ================= Integer Vector Engines =====================================
-
-(def ^{:no-doc true :const true} INTEGER_UNSUPPORTED_MSG
-  "Integer BLAS operations are not supported. Please transform data to float or double.")
-
-(def ^{:no-doc true :const true} SHORT_UNSUPPORTED_MSG
-  "BLAS operation on short integers are supported only on dimensions divisible by 2 (short) or 4 (byte).")
-
-;; move to math/common
-(defmacro patch-vector-method [chunk blas method ptr x y]
-  (if (= 1 chunk)
-    `(. ~blas ~method (dim ~x) (~ptr ~x 0) (stride ~x) (~ptr ~y 0) (stride ~y))
-    `(if (= 0 (rem (dim ~x) ~chunk))
-       (. ~blas ~method (quot (dim ~x) ~chunk) (~ptr ~x 0) (stride ~x) (~ptr ~y 0) (stride ~y))
-       (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)}))))
-
-;; move to blas/common
-(defmacro patch-subcopy [chunk blas method ptr x y kx lx ky]
-  (if (= 1 chunk)
-    `(. ~blas ~method (int lx#) (~ptr ~x ~kx) (stride ~x) (~ptr ~y ~ky) (stride ~y))
-    `(do
-       (check-stride ~x ~y)
-       (if (= 0 (rem ~kx ~chunk) (rem ~lx ~chunk) (rem ~ky ~chunk))
-         (. ~blas ~method (quot ~lx ~chunk) (~ptr ~x ~kx) (stride ~x) (~ptr ~y ~ky) (stride ~y))
-         (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)})))))
-
-;; move to common?
-(defmacro patch-vector-laset [chunk lapack method ptr alpha x]
-  (if (= 1 chunk)
-    `(with-lapack-check "laset"
-       (. ~lapack ~method ~(int (:row blas-layout)) ~(byte (int \g))
-          (dim ~x) 1 ~alpha ~alpha (~ptr ~x 0) (stride ~x)))
-    `(do
-       (check-stride ~x)
-       (if (= 0 (rem (dim ~x) ~chunk))
-         (with-lapack-check "laset"
-           (. ~lapack ~method ~(int (:row blas-layout)) ~(byte (int \g))
-              (quot (dim ~x) ~chunk) 1 ~alpha ~alpha (~ptr ~x 0) (stride ~x)))
-         (dragan-says-ex SHORT_UNSUPPORTED_MSG {:dim-x (dim ~x)})))))

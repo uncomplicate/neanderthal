@@ -43,8 +43,6 @@
 
 ;; =============== Factories ==================================================
 
-(declare mkl-int)
-
 (defn math
   ([prefix type name]
    (symbol (format "%s%s%s" prefix type name)))
@@ -280,16 +278,16 @@
        x#)))
 
 (deftype FloatVectorEngine [])
-(real-vector-blas* FloatVectorEngine "s" float-ptr float mkl_rt)
-(real-vector-lapack* FloatVectorEngine "s" float-ptr float mkl_rt)
+(real-vector-blas* FloatVectorEngine "s" float-ptr float mkl_rt mkl_rt)
 (real-vector-blas-plus* FloatVectorEngine "s" float-ptr float mkl_rt mkl_rt ones-float)
+(real-vector-lapack* FloatVectorEngine "s" float-ptr float mkl_rt)
 (real-vector-math* FloatVectorEngine "s" float-ptr float)
-(mkl-real-vector-rng* FloatVectorEngine "s" float-ptr float)
+(mkl-real-vector-rng* FloatVectorEngine "s" float-ptr float)v
 
 (deftype DoubleVectorEngine [])
-(real-vector-blas* DoubleVectorEngine "d" double-ptr double mkl_rt)
-(real-vector-lapack* DoubleVectorEngine "d" double-ptr double mkl_rt)
+(real-vector-blas* DoubleVectorEngine "d" double-ptr double mkl_rt mkl_rt)
 (real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double mkl_rt mkl_rt ones-double)
+(real-vector-lapack* DoubleVectorEngine "d" double-ptr double mkl_rt)
 (real-vector-math* DoubleVectorEngine "d" double-ptr double)
 (mkl-real-vector-rng* DoubleVectorEngine "d" double-ptr double)
 
