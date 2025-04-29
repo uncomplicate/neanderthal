@@ -58,6 +58,7 @@
 (real-test/test-basic-integer-host accelerate-int)
 (real-test/test-basic-integer-host accelerate-short)
 (real-test/test-basic-integer-host accelerate-byte)
+
 (real-test/test-blas-sy-host accelerate-double)
 (real-test/test-blas-sy-host accelerate-float)
 
@@ -91,55 +92,59 @@
 (real-test/test-blas-gd-host accelerate-double)
 (real-test/test-blas-gd-host accelerate-float)
 
-(defn test-blas-gt [factory]
-  (real-test/test-gt-constructor factory gt)
-  (real-test/test-gt factory gt)
-  (real-test/test-gt-copy factory gt)
-  (real-test/test-gt-swap factory gt)
-  (real-test/test-gt-scal factory gt)
-  (real-test/test-gt-axpy factory gt)
-  ;;(real-test/test-gt-mv factory gt) TODO not supported by accelerate
-  ;;(real-test/test-gt-mv factory gt) TODO not supported by accelerate
-  )
-
-(test-blas-gt accelerate-double)
-(test-blas-gt accelerate-float)
+(real-test/test-blas-gt accelerate-double)
+(real-test/test-blas-gt accelerate-float)
 (real-test/test-blas-gt-host accelerate-double)
 (real-test/test-blas-gt-host accelerate-float)
 
-(defn test-blas-dt [factory]
-  (real-test/test-gt-constructor factory dt)
-  (real-test/test-gt factory dt)
-  (real-test/test-gt-copy factory dt)
-  (real-test/test-gt-swap factory dt)
-  (real-test/test-gt-scal factory dt)
-  (real-test/test-gt-axpy factory dt)
-  ;; (real-test/test-gt-mv factory dt) ;;TODO not supported by accelerate
-  ;; (real-test/test-gt-mm factory dt) ;;TODO not supported by accelerate
-  )
-(test-blas-dt accelerate-double)
-(test-blas-dt accelerate-float)
+(real-test/test-blas-dt accelerate-double)
+(real-test/test-blas-dt accelerate-float)
 (real-test/test-blas-dt-host accelerate-double)
 (real-test/test-blas-dt-host accelerate-float)
 
-(defn test-blas-st [factory]
-  (real-test/test-st-constructor factory)
-  (real-test/test-st factory)
-  (real-test/test-gt-copy factory st)
-  (real-test/test-gt-swap factory st)
-  (real-test/test-gt-scal factory st)
-  (real-test/test-gt-axpy factory st)
-  ;;(real-test/test-st-mv factory) TODO not supported by accelerate
-  ;;(real-test/test-st-mm factory) TODO not supported by accelerate
-  )
-
-(test-blas-st accelerate-double)
-(test-blas-st accelerate-float)
+(real-test/test-blas-st accelerate-double)
+(real-test/test-blas-st accelerate-float)
 (real-test/test-blas-st-host accelerate-double)
 (real-test/test-blas-st-host accelerate-float)
 
+(defn test-all-host [factory]
+  (math-test/test-math factory math-test/diff-vctr-1 math-test/diff-vctr-2)
+  ;; (test-math factory diff-ge-1 diff-ge-2)
+  ;; (test-math factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  ;; (test-math factory (partial diff-square-1 sy) (partial diff-square-2 sy))
+  ;; (test-math factory (partial diff-square-1 tp) (partial diff-square-2 tp))
+  ;; (test-math factory (partial diff-square-1 sp) (partial diff-square-2 sp))
+  ;; (test-math factory (partial diff-square-1 gd) (partial diff-square-2 gd))
+  ;; (test-math factory (partial diff-square-1 gt) (partial diff-square-2 gt))
+  ;; (test-math factory (partial diff-square-1 dt) (partial diff-square-2 dt))
+  ;; (test-math factory (partial diff-square-1 st) (partial diff-square-2 st))
+  ;; (test-math-host factory diff-vctr-1 diff-vctr-2)
+  ;; (test-math-host factory diff-ge-1 diff-ge-2)
+  ;; (test-math-host factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  ;; (test-math-host factory (partial diff-square-1 sy) (partial diff-square-2 sy))
+  ;; (test-math-host factory (partial diff-square-1 tp) (partial diff-square-2 tp))
+  ;; (test-math-host factory (partial diff-square-1 sp) (partial diff-square-2 sp))
+  ;; (test-math-host factory (partial diff-square-1 gd) (partial diff-square-2 gd))
+  ;; (test-math-host factory (partial diff-square-1 gt) (partial diff-square-2 gt))
+  ;; (test-math-host factory (partial diff-square-1 dt) (partial diff-square-2 dt))
+  ;; (test-math-host factory (partial diff-square-1 st) (partial diff-square-2 st))
+  ;; (test-math-inv factory diff-vctr-1 diff-vctr-2)
+  ;; (test-math-inv factory diff-ge-1 diff-ge-2)
+  ;; (test-math-inv factory (partial diff-square-1 tr) (partial diff-square-2 tr))
+  ;; (test-math-inv factory (partial diff-square-1 sy) (partial diff-square-2 sy))
+  ;; (test-math-inv factory (partial diff-square-1 tp) (partial diff-square-2 tp))
+  ;; (test-math-inv factory (partial diff-square-1 sp) (partial diff-square-2 sp))
+  ;; (test-math-inv factory (partial diff-square-1 gd) (partial diff-square-2 gd))
+  ;; (test-math-inv factory (partial diff-square-1 gt) (partial diff-square-2 gt))
+  ;; (test-math-inv factory (partial diff-square-1 dt) (partial diff-square-2 dt))
+  ;; (test-math-inv factory (partial diff-square-1 st) (partial diff-square-2 st))
+  ;; (test-vctr-linear-frac factory)
+  ;; (test-ge-linear-frac factory)
+  ;; (test-tr-linear-frac factory)
+  ;; (test-sy-linear-frac factory)
+  )
 ;; TODO not available in accelerate
-;; (math-test/test-all-host accelerate-double)
+(test-all-host accelerate-double)
 ;; (math-test/test-all-host accelerate-float)
 
 (random-test/test-all accelerate-double)

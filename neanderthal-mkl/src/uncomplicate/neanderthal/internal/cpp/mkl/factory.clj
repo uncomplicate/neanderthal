@@ -13,7 +13,7 @@
              [core :refer [with-release let-release info Releaseable release view]]
              [utils :refer [dragan-says-ex with-check generate-seed]]]
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
-            [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer]]
+            [uncomplicate.clojure-cpp :as cpp :refer [long-ptr long-pointer float-pointer double-pointer]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols matrix-type entry]]
              [real :as real]
@@ -106,15 +106,15 @@
         (and (contiguous? a) (contiguous? y)) (fmax eng a (set-all eng 0.0 y) y)
         :else (fmap! math/ramp (copy eng a y))))
 
-(defn vector-relu [eng alpha a y]
+(defn vector-relu [eng alpha a y ones]
   (cond (identical? a y) (fmap! (math/relu alpha) y)
-        (and (contiguous? a) (contiguous? y)) (fmax eng a (axpby eng alpha a 0.0 y) y)
+        (and (contiguous? a) (contiguous? y)) (fmax eng a (axpby eng alpha ones 0.0 y) y)
         :else (fmap! (math/relu alpha) (copy eng a y))))
 
 (defn vector-elu [eng alpha a y]
   (cond (identical? a y) (fmap! (math/elu alpha) y)
         (and (contiguous? a) (contiguous? y))
-        (fmax eng a (scal eng alpha (expm1 eng (copy eng a y) y)) y)
+        (fmax eng a (scal eng alpha (expm1 eng a y)) y)
         :else (fmap! (math/elu alpha) (copy eng a y))))
 
 (defmacro with-mkl-check [expr res]
@@ -130,7 +130,7 @@
 
 (def ^:private default-rng-stream (create-stream-ars5 (generate-seed)))
 
-(defmacro real-math* [name t ptr cast vector-math vector-linear-frac vector-powx]
+(defmacro real-math* [name t ptr cast vector-math vector-linear-frac vector-powx ones]
   `(extend-type ~name
      VectorMath
      (sqr [_# a# y#]
@@ -253,12 +253,12 @@
      (ramp [this# a# y#]
        (~vector-ramp this# a# y#))
      (relu [this# alpha# a# y#]
-       (~vector-relu this# alpha# a# y#))
+       (~vector-relu this# alpha# a# y# ~ones))
      (elu [this# alpha# a# y#]
        (~vector-elu this# alpha# a# y#))))
 
-(defmacro real-vector-math* [name t ptr cast]
-  `(real-math* ~name ~t ~ptr ~cast vector-math vector-linear-frac vector-powx))
+(defmacro real-vector-math* [name t ptr cast ones]
+  `(real-math* ~name ~t ~ptr ~cast vector-math vector-linear-frac vector-powx ~ones))
 
 (defn cast-stream ^mkl_rt$VSLStreamStatePtr [stream]
   (or stream default-rng-stream))
@@ -281,14 +281,14 @@
 (real-vector-blas* FloatVectorEngine "s" float-ptr float mkl_rt mkl_rt)
 (real-vector-blas-plus* FloatVectorEngine "s" float-ptr float mkl_rt mkl_rt ones-float)
 (real-vector-lapack* FloatVectorEngine "s" float-ptr float mkl_rt)
-(real-vector-math* FloatVectorEngine "s" float-ptr float)
+(real-vector-math* FloatVectorEngine "s" float-ptr float ones-float)
 (mkl-real-vector-rng* FloatVectorEngine "s" float-ptr float)v
 
 (deftype DoubleVectorEngine [])
 (real-vector-blas* DoubleVectorEngine "d" double-ptr double mkl_rt mkl_rt)
 (real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double mkl_rt mkl_rt ones-double)
 (real-vector-lapack* DoubleVectorEngine "d" double-ptr double mkl_rt)
-(real-vector-math* DoubleVectorEngine "d" double-ptr double)
+(real-vector-math* DoubleVectorEngine "d" double-ptr double ones-double)
 (mkl-real-vector-rng* DoubleVectorEngine "d" double-ptr double)
 
 (deftype LongVectorEngine [])
@@ -513,8 +513,8 @@
           (. mkl_rt ~method len# buff-a# buff-b# ~scalea ~shifta ~scaleb ~shiftb buff-y# ))))
      ~y))
 
-(defmacro real-matrix-math* [name t ptr cast]
-  `(real-math* ~name ~t ~ptr ~cast matrix-math matrix-linear-frac matrix-powx))
+(defmacro real-matrix-math* [name t ptr cast ones]
+  `(real-math* ~name ~t ~ptr ~cast matrix-math matrix-linear-frac matrix-powx ~ones))
 
 (defmacro matrix-rng [method ptr rng-method rng-stream a par1 par2]
   `(do
@@ -544,14 +544,14 @@
 (mkl-real-ge-blas* FloatGEEngine "s" float-ptr float mkl_rt mkl_rt)
 (mkl-real-ge-blas-plus* FloatGEEngine "s" float-ptr float mkl_rt mkl_rt ones-float)
 (real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float mkl_rt zero-float)
-(real-matrix-math* FloatGEEngine "s" float-ptr float)
+(real-matrix-math* FloatGEEngine "s" float-ptr float ones-float)
 (mkl-real-ge-rng* FloatGEEngine "s" float-ptr float)
 
 (deftype DoubleGEEngine [])
 (mkl-real-ge-blas* DoubleGEEngine "d" double-ptr double mkl_rt mkl_rt)
 (mkl-real-ge-blas-plus* DoubleGEEngine "d" double-ptr double mkl_rt mkl_rt ones-double)
 (real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double mkl_rt zero-double)
-(real-matrix-math* DoubleGEEngine "d" double-ptr double)
+(real-matrix-math* DoubleGEEngine "d" double-ptr double ones-double)
 (mkl-real-ge-rng* DoubleGEEngine "d" double-ptr double)
 
 ;;TODO
@@ -571,13 +571,13 @@
 (real-tr-blas* FloatTREngine "s" float-ptr float mkl_rt mkl_rt)
 (real-tr-blas-plus* FloatTREngine "s" float-ptr float mkl_rt mkl_rt ones-float)
 (real-tr-lapack* FloatTREngine "s" float-ptr cpp/float-pointer float mkl_rt mkl_rt)
-(real-matrix-math* FloatTREngine "s" float-ptr float)
+(real-matrix-math* FloatTREngine "s" float-ptr float ones-float)
 
 (deftype DoubleTREngine [])
 (real-tr-blas* DoubleTREngine "d" double-ptr double mkl_rt mkl_rt)
 (real-tr-blas-plus* DoubleTREngine "d" double-ptr double mkl_rt mkl_rt ones-double)
 (real-tr-lapack* DoubleTREngine "d" double-ptr cpp/double-pointer double mkl_rt mkl_rt)
-(real-matrix-math* DoubleTREngine "d" double-ptr double)
+(real-matrix-math* DoubleTREngine "d" double-ptr double ones-double)
 
 (deftype LongTREngine [])
 ;;(integer-tr-blas* LongTREngine "d" double-ptr long-double mkl_rt mkl_rt 1)
@@ -595,13 +595,13 @@
 (real-sy-blas* FloatSYEngine "s" float-ptr float mkl_rt mkl_rt)
 (real-sy-blas-plus* FloatSYEngine "s" float-ptr float mkl_rt mkl_rt ones-float)
 (real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float mkl_rt zero-float)
-(real-matrix-math* FloatSYEngine "s" float-ptr float)
+(real-matrix-math* FloatSYEngine "s" float-ptr float ones-float)
 
 (deftype DoubleSYEngine [])
 (real-sy-blas* DoubleSYEngine "d" double-ptr double mkl_rt mkl_rt)
 (real-sy-blas-plus* DoubleSYEngine "d" double-ptr double mkl_rt mkl_rt ones-double)
 (real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double mkl_rt zero-double)
-(real-matrix-math* DoubleSYEngine "d" double-ptr double)
+(real-matrix-math* DoubleSYEngine "d" double-ptr double ones-double)
 
 ;;TODO
 (deftype LongSYEngine [])
@@ -673,13 +673,13 @@
 (mkl-real-gb-blas* FloatGBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt)
 (mkl-real-gb-blas-plus* FloatGBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
 (real-gb-lapack* FloatGBEngine "s" float-ptr cpp/float-ptr int-ptr float mkl_rt)
-(real-matrix-math* FloatGBEngine "s" float-ptr float)
+(real-matrix-math* FloatGBEngine "s" float-ptr float ones-float)
 
 (deftype DoubleGBEngine [])
 (mkl-real-gb-blas* DoubleGBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt)
 (mkl-real-gb-blas-plus* DoubleGBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
 (real-gb-lapack* DoubleGBEngine "d" double-ptr cpp/double-ptr int-ptr double mkl_rt)
-(real-matrix-math* DoubleGBEngine "d" double-ptr double)
+(real-matrix-math* DoubleGBEngine "d" double-ptr double ones-double)
 
 (deftype LongGBEngine [])
 (deftype IntGBEngine [])
@@ -745,13 +745,13 @@
 (mkl-real-sb-blas* FloatSBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt)
 (mkl-real-sb-blas-plus* FloatSBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
 (real-sb-lapack* FloatSBEngine "s" float-ptr cpp/float-ptr float mkl_rt)
-(real-matrix-math* FloatSBEngine "s" float-ptr float)
+(real-matrix-math* FloatSBEngine "s" float-ptr float ones-float)
 
 (deftype DoubleSBEngine [])
 (mkl-real-sb-blas* DoubleSBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt)
 (mkl-real-sb-blas-plus* DoubleSBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
 (real-sb-lapack* DoubleSBEngine "d" double-ptr cpp/double-ptr double mkl_rt)
-(real-matrix-math* DoubleSBEngine "d" double-ptr double)
+(real-matrix-math* DoubleSBEngine "d" double-ptr double ones-double)
 
 (deftype LongSBEngine [])
 (deftype IntSBEngine [])
@@ -817,13 +817,13 @@
 (mkl-real-tb-blas* FloatTBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt)
 (mkl-real-tb-blas-plus* FloatTBEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
 (real-tb-lapack* FloatTBEngine "s" float-ptr cpp/float-ptr float mkl_rt)
-(real-matrix-math* FloatTBEngine "s" float-ptr float)
+(real-matrix-math* FloatTBEngine "s" float-ptr float ones-float)
 
 (deftype DoubleTBEngine [])
 (mkl-real-tb-blas* DoubleTBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt)
 (mkl-real-tb-blas-plus* DoubleTBEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
 (real-tb-lapack* DoubleTBEngine "d" double-ptr cpp/double-ptr double mkl_rt)
-(real-matrix-math* DoubleTBEngine "d" double-ptr double)
+(real-matrix-math* DoubleTBEngine "d" double-ptr double ones-double)
 
 (deftype LongTBEngine [])
 (deftype IntTBEngine [])
@@ -892,13 +892,13 @@
 (mkl-real-tp-blas* FloatTPEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt)
 (mkl-real-tp-blas-plus* FloatTPEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
 (real-tp-lapack* FloatTPEngine "s" float-ptr cpp/float-ptr float mkl_rt)
-(real-matrix-math* FloatTPEngine "s" float-ptr float)
+(real-matrix-math* FloatTPEngine "s" float-ptr float ones-float)
 
 (deftype DoubleTPEngine [])
 (mkl-real-tp-blas* DoubleTPEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt)
 (mkl-real-tp-blas-plus* DoubleTPEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
 (real-tp-lapack* DoubleTPEngine "d" double-ptr cpp/double-ptr double mkl_rt)
-(real-matrix-math* DoubleTPEngine "d" double-ptr double)
+(real-matrix-math* DoubleTPEngine "d" double-ptr double ones-double)
 
 (deftype LongTPEngine [])
 (deftype IntTPEngine [])
@@ -971,13 +971,13 @@
 (mkl-real-sp-blas* FloatSPEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt)
 (mkl-real-sp-blas-plus* FloatSPEngine "s" float-ptr cpp/float-ptr float mkl_rt mkl_rt ones-float)
 (real-sp-lapack* FloatSPEngine "s" float-ptr cpp/float-ptr int-ptr float mkl_rt)
-(real-matrix-math* FloatSPEngine "s" float-ptr float)
+(real-matrix-math* FloatSPEngine "s" float-ptr float ones-float)
 
 (deftype DoubleSPEngine [])
 (mkl-real-sp-blas* DoubleSPEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt)
 (mkl-real-sp-blas-plus* DoubleSPEngine "d" double-ptr cpp/double-ptr double mkl_rt mkl_rt ones-double)
 (real-sp-lapack* DoubleSPEngine "d" double-ptr cpp/double-ptr int-ptr double mkl_rt)
-(real-matrix-math* DoubleSPEngine "d" double-ptr double)
+(real-matrix-math* DoubleSPEngine "d" double-ptr double ones-double)
 
 (deftype LongSPEngine [])
 (deftype IntSPEngine [])
@@ -1007,18 +1007,29 @@
 (real-gd-blas* FloatGDEngine "s" float-ptr cpp/float-ptr float mkl_rt)
 (real-diagonal-blas-plus* FloatGDEngine "s" float-ptr float  mkl_rt ones-float)
 (mkl-real-gd-lapack* FloatGDEngine "s" float-ptr cpp/float-ptr float mkl_rt)
-(real-matrix-math* FloatGDEngine "s" float-ptr float)
+(real-matrix-math* FloatGDEngine "s" float-ptr float ones-float)
 
 (deftype DoubleGDEngine [])
 (real-gd-blas* DoubleGDEngine "d" double-ptr cpp/double-ptr double mkl_rt)
 (real-diagonal-blas-plus* DoubleGDEngine "d" double-ptr double mkl_rt ones-double)
 (mkl-real-gd-lapack* DoubleGDEngine "d" double-ptr cpp/double-ptr double mkl_rt)
-(real-matrix-math* DoubleGDEngine "d" double-ptr double)
+(real-matrix-math* DoubleGDEngine "d" double-ptr double ones-double)
 
 (deftype LongGDEngine [])
 (deftype IntGDEngine [])
 (deftype ShortGDEngine [])
 (deftype ByteGDEngine [])
+
+(defmacro mkl-tridiagonal-lan [lapack method ptr norm a]
+ `(if (< 0 (dim ~a))
+    (let [n# (mrows ~a)
+          n1# (if (< 0 n#) (dec n#) 0)
+          du# (~ptr ~a n#)
+          dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
+      (with-release [norm# (byte-pointer (pointer ~norm))
+                     n# (long-ptr (pointer (mrows ~a)))]
+        (. ~lapack ~method norm# n# dl# (~ptr ~a) du#)))
+    0.0))
 
 (defmacro mkl-real-tridiagonal-blas* [name t ptr cpp-ptr cast mkl]
   `(extend-type ~name
@@ -1032,11 +1043,11 @@
      (dot [_# a# b#]
        (diagonal-method ~mkl ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \O a#))
+       (mkl-tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \O a#))
      (nrm2 [_# a#]
        (diagonal-method ~mkl ~(cblas t 'nrm2) ~ptr a#))
      (nrmi [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \I a#))
+       (mkl-tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \I a#))
      (asum [_# a#]
        (diagonal-method ~mkl ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -1065,13 +1076,13 @@
 (mkl-real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float mkl_rt)
 (real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float mkl_rt ones-float)
 (real-gt-lapack* FloatGTEngine "s" float-ptr cpp/float-ptr int-ptr float mkl_rt)
-(real-matrix-math* FloatGTEngine "s" float-ptr float)
+(real-matrix-math* FloatGTEngine "s" float-ptr float ones-float)
 
 (deftype DoubleGTEngine [])
 (mkl-real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double mkl_rt)
 (real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double mkl_rt ones-double)
 (real-gt-lapack* DoubleGTEngine "d" double-ptr cpp/double-ptr int-ptr double mkl_rt)
-(real-matrix-math* DoubleGTEngine "d" double-ptr double)
+(real-matrix-math* DoubleGTEngine "d" double-ptr double ones-double)
 
 (deftype LongGTEngine [])
 (deftype IntGTEngine [])
@@ -1101,13 +1112,13 @@
 (mkl-real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float mkl_rt)
 (real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float mkl_rt ones-float)
 (mkl-real-dt-lapack* FloatDTEngine "s" float-ptr float mkl_rt)
-(real-matrix-math* FloatDTEngine "s" float-ptr float)
+(real-matrix-math* FloatDTEngine "s" float-ptr float ones-float)
 
 (deftype DoubleDTEngine [])
 (mkl-real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double mkl_rt)
 (real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double mkl_rt ones-double)
 (mkl-real-dt-lapack* DoubleDTEngine "d" double-ptr double mkl_rt)
-(real-matrix-math* DoubleDTEngine "d" double-ptr double)
+(real-matrix-math* DoubleDTEngine "d" double-ptr double ones-double)
 
 (deftype LongDTEngine [])
 (deftype IntDTEngine [])
@@ -1126,11 +1137,11 @@
      (dot [_# a# b#]
        (st-dot ~mkl ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \O a#))
+       (mkl-tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \O a#))
      (nrm2 [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \F a#))
+       (mkl-tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \F a#))
      (nrmi [_# a#]
-       (tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \I a#))
+       (mkl-tridiagonal-lan ~mkl ~(lapacke "" t 'langt_64) ~ptr \I a#))
      (asum [_# a#]
        (st-asum ~mkl ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -1159,13 +1170,13 @@
 (mkl-real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float mkl_rt)
 (real-st-blas-plus* FloatSTEngine "s" float-ptr float mkl_rt ones-float)
 (real-st-lapack* FloatSTEngine "s" float-ptr float mkl_rt)
-(real-matrix-math* FloatSTEngine "s" float-ptr float)
+(real-matrix-math* FloatSTEngine "s" float-ptr float ones-float)
 
 (deftype DoubleSTEngine [])
 (mkl-real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double mkl_rt)
 (real-st-blas-plus* DoubleSTEngine "d" double-ptr double mkl_rt ones-double)
 (real-st-lapack* DoubleSTEngine "d" double-ptr double mkl_rt)
-(real-matrix-math* DoubleSTEngine "d" double-ptr double)
+(real-matrix-math* DoubleSTEngine "d" double-ptr double ones-double)
 
 (deftype LongSTEngine [])
 (deftype IntSTEngine [])
@@ -1265,13 +1276,13 @@
 (deftype FloatCSVectorEngine [])
 (real-cs-vector-blas* FloatCSVectorEngine "s" float-ptr int-ptr float mkl_rt ones-float)
 (real-cs-blas-plus* FloatCSVectorEngine "s" float-ptr float)
-(real-vector-math* FloatCSVectorEngine "s" float-ptr float)
+(real-vector-math* FloatCSVectorEngine "s" float-ptr float ones-float)
 (real-cs-vector-sparse-blas* FloatCSVectorEngine "s" float-ptr int-ptr mkl_rt)
 
 (deftype DoubleCSVectorEngine [])
 (real-cs-vector-blas* DoubleCSVectorEngine "d" double-ptr int-ptr double mkl_rt ones-double)
 (real-cs-blas-plus* DoubleCSVectorEngine "d" double-ptr double)
-(real-vector-math* DoubleCSVectorEngine "d" double-ptr double)
+(real-vector-math* DoubleCSVectorEngine "d" double-ptr double ones-double)
 (real-cs-vector-sparse-blas* DoubleCSVectorEngine "d" double-ptr int-ptr mkl_rt)
 
 ;; =================== Sparse Matrix engines ======================================

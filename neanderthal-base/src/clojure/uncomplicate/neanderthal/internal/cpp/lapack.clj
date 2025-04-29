@@ -352,6 +352,16 @@
      ~a))
 
 (defmacro tridiagonal-lan
+  ([lapack method ptr norm a idx-pointer]
+   `(if (< 0 (dim ~a))
+      (let [n# (mrows ~a)
+            n1# (if (< 0 n#) (dec n#) 0)
+            du# (~ptr ~a n#)
+            dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
+        (with-release [norm# (byte-pointer (pointer ~norm))
+                       n# (~idx-pointer (pointer (mrows ~a)))]
+          (. ~lapack ~method norm# n# dl# (~ptr ~a) du#)))
+      0.0))
   ([lapack method ptr norm a]
    `(if (< 0 (dim ~a))
       (let [n# (mrows ~a)
@@ -359,22 +369,14 @@
             du# (~ptr ~a n#)
             dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
         (with-release [norm# (byte-pointer (pointer ~norm))
-                       n# (long-ptr (pointer (mrows ~a)))]
-          (. ~lapack ~method norm# n# dl# (~ptr ~a) du#)))
-      0.0))
-  ([lapack method ptr norm a fortran-strlen]
-   `(if (< 0 (dim ~a))
-      (let [n# (mrows ~a)
-            n1# (if (< 0 n#) (dec n#) 0)
-            du# (~ptr ~a n#)
-            dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
-        (with-release [norm# (byte-pointer (pointer ~norm))
                        n# (int-ptr (pointer (int (mrows ~a))))]
-          (. ~lapack ~method norm# n# dl# (~ptr ~a) du# ~fortran-strlen)))
+          (. ~lapack ~method norm# n# dl# (~ptr ~a) du# 1)))
       0.0)))
 
 (defmacro tridiagonal-mv
   ([lapack method ptr cpp-ptr alpha a x beta y]
+   (tridiagonal-mv lapack method ptr cpp-ptr long-ptr alpha a x beta y))
+  ([lapack method ptr cpp-ptr idx-pointer alpha a x beta y]
    `(if (or (= 0.0 ~alpha) (= 1.0 ~alpha) (= -1.0 ~alpha))
       (let [n# (ncols ~a)
             n1# (if (< 0 n#) (dec n#) 0)
@@ -382,11 +384,11 @@
             dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
         (with-release [beta# (~cpp-ptr (.wrapPrim (real-accessor ~a) (if (f= 0.0 ~beta) 0.0 1.0)))
                        trans# (byte-pointer (pointer \N))
-                       n# (long-ptr (pointer n#))
-                       nrhs# (long-ptr (pointer 1))
+                       n# (~idx-pointer (pointer n#))
+                       nrhs# (~idx-pointer (pointer 1))
                        alpha# (~cpp-ptr (pointer ~alpha))
-                       ldx# (long-ptr (pointer (stride ~x)))
-                       ldy# (long-ptr (pointer (stride ~y)))]
+                       ldx# (~idx-pointer (pointer (stride ~x)))
+                       ldy# (~idx-pointer (pointer (stride ~y)))]
           (when-not (f= 1.0 ~beta)
             (scal (engine ~y) ~beta ~y))
           (. ~lapack ~method trans# n# nrhs# alpha# dl# (~ptr ~a) du#
@@ -398,6 +400,8 @@
 
 (defmacro tridiagonal-mm
   ([lapack method ptr cpp-ptr alpha a b beta c left]
+   (tridiagonal-mm lapack method ptr cpp-ptr long-ptr alpha a b beta c left))
+  ([lapack method ptr cpp-ptr idx-pointer alpha a b beta c left]
    `(let [nav-b# (navigator ~b)]
       (if (or (= 0.0 ~alpha) (= 1.0 ~alpha) (= -1.0 ~alpha))
         (if (= nav-b# (navigator ~c))
@@ -407,21 +411,21 @@
                 dl# (if (symmetric? ~a) du# (~ptr ~a (+ n# n1#)))]
             (with-release [beta# (~cpp-ptr (.wrapPrim (real-accessor ~a)
                                                                 (if (f= 0.0 ~beta) 0.0 1.0)))
-                           n# (long-ptr (pointer n#))
+                           n# (~idx-pointer (pointer n#))
                            alpha# (~cpp-ptr (pointer ~alpha))
-                           ldb# (long-ptr (pointer (stride ~b)))
-                           ldc# (long-ptr (pointer (stride ~c)))]
+                           ldb# (~idx-pointer (pointer (stride ~b)))
+                           ldc# (~idx-pointer (pointer (stride ~c)))]
               (when-not (f= 1.0 ~beta)
                 (scal (engine ~c) ~beta ~c))
               (if ~left
                 (with-release [trans# (byte-pointer (pointer \N))
-                               nrhs# (long-ptr (pointer (ncols ~b)))]
+                               nrhs# (~idx-pointer (pointer (ncols ~b)))]
                   (. ~lapack ~method trans# n# nrhs# alpha# dl# (~ptr ~a) du#
                      (~ptr ~b) ldb# beta# (~ptr ~c) ldc#))
                 (let [b-t# (trans ~b)
                       c-t# (trans ~c)]
                   (with-release [trans# (byte-pointer (pointer \T))
-                                 nrhs# (long-ptr (pointer (ncols b-t#)))]
+                                 nrhs# (~idx-pointer (pointer (ncols b-t#)))]
                     (. ~lapack ~method trans# n# nrhs# alpha# dl# (~ptr ~a) du#
                        (~ptr ~b) ldb# beta# (~ptr ~c) ldc#))))))
           (dragan-says-ex "Tridiagonal mm! supports only b and c with the same layout." {:b (info ~b) :c (info ~c)}))

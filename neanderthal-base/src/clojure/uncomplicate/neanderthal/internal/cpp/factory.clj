@@ -15,7 +15,7 @@
             [uncomplicate.clojure-cpp :as cpp :refer [malloc! free!]]
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.neanderthal
-             [core :refer [dim entry mrows ncols matrix-type cols rows]]
+             [core :refer [dim entry mrows ncols matrix-type cols rows] :as core]
              [real :as real]
              [integer :as integer]
              [block :refer [stride contiguous?]]]

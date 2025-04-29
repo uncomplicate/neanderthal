@@ -9,14 +9,15 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.internal.cpp.accelerate.factory
   (:refer-clojure :exclude [abs])
-  (:require [uncomplicate.commons
+  (:require [clojure.string :refer [lower-case]]
+            [uncomplicate.commons
              [core :refer [with-release let-release info Releaseable release view]]
              [utils :refer [dragan-says-ex with-check generate-seed]]]
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.clojure-cpp :as cpp
              :refer [pointer long-pointer float-pointer double-pointer clong-pointer get-entry malloc! free!]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols cols rows matrix-type entry] :as core]
+             [core :refer [dim mrows ncols cols rows matrix-type entry entry!]]
              [real :as real]
              [integer :as integer]
              [math :refer [f=] :as math]
@@ -35,8 +36,7 @@
   (:import java.nio.ByteBuffer
            [uncomplicate.neanderthal.internal.api DataAccessor Vector LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
-
-           [uncomplicate.javacpp.accelerate.global thread blas_new lapack_new bnns]))
+           [uncomplicate.javacpp.accelerate.global thread blas_new lapack_new vforce vdsp]))
 
 (let [openblas-load (System/getProperty "org.bytedeco.openblas.load")
       library-path (System/getProperty "java.library.path") ]
@@ -69,11 +69,205 @@
 
 ;; ============ Vector Engines ============================================
 
+(defn vvforce [suffix name]
+  (symbol (format "vv%s%s" name suffix)))
+
+(defn vvdsp [suffix name]
+  (symbol (format "vDSP_%s%s" name suffix)))
+
+(defmacro vector-vforce
+  ([method ptr a y]
+   `(do
+      (check-stride ~a ~y)
+      (. vforce ~method (~ptr ~y) (~ptr ~a) (cpp/int-ptr (pointer (int (dim ~a)))))
+      ~y))
+  ([method ptr a b y]
+   `(do
+      (check-stride ~a ~b ~y)
+      (. vforce ~method (~ptr ~y) (~ptr ~b) (~ptr ~a) (cpp/int-ptr (pointer (int (dim ~a)))))
+      ~y)))
+
+(defmacro vector-vdsp
+  ([method ptr a y]
+   `(do
+      (. vdsp ~method (~ptr ~a) (stride ~a) (~ptr ~y) (~stride ~y) (dim ~a))
+      ~y))
+  ([method ptr a b y]
+   `(do
+      (. vdsp ~method (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b) (~ptr ~y) (~stride ~y) (dim ~a))
+      ~y))
+  ([method ptr a b y zero-vector]
+   `(let [zero# (~ptr ~zero-vector)]
+      (. vdsp ~method (~ptr ~a) (stride ~a) zero# 0 (~ptr ~b) (stride ~b) zero# 0 (~ptr ~y) (stride ~y) (dim ~a))
+      ~y)))
+
+(defmacro vector-vsdsp [method ptr cpp-ptr a s y]
+  `(do
+     (. vdsp ~method (~ptr ~a) (stride ~a) (~cpp-ptr (pointer ~s)) (~ptr ~y) (stride ~y) (dim ~a))
+     ~y))
+
+(defmacro real-math* [name vsuffix dsuffix ptr cpp-ptr cast vector-vforce vector-vdsp vector-vsdsp zero]
+  `(extend-type ~name
+     VectorMath
+     (sqr [_# a# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vsq) ~ptr a# y#))
+     (mul [_# a# b# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vmul) ~ptr a# b# y#))
+     (div [_# a# b# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vdiv) ~ptr a# b# y#))
+     (inv [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'rec) ~ptr a# y#))
+     (abs [_# a# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vabs) ~ptr a# y#))
+     (linear-frac [_# a# b# scalea# shifta# scaleb# shiftb# y#]
+       (cond (and (f= 0.0 scalea# scaleb#)) (entry! y# (/ shifta# shiftb#))
+             (and (f= 0.0 scaleb# shiftb#)) (dragan-says-ex "Division by zero is not allowed.")
+             (f= 0.0 scaleb#) (do
+                                (~vector-vsdsp ~(vvdsp dsuffix 'vsmul) ~ptr ~cpp-ptr a# (~cast scalea#) y#)
+                                (~vector-vsdsp ~(vvdsp dsuffix 'vsadd) ~ptr ~cpp-ptr y# (~cast shifta#) y#)
+                                (~vector-vsdsp ~(vvdsp dsuffix 'vsdiv) ~ptr ~cpp-ptr y# (~cast shiftb#) y#))
+             :default
+             (let [temp# (raw a#)]
+               (~vector-vsdsp ~(vvdsp dsuffix 'vsmul) ~ptr ~cpp-ptr a# (~cast scalea#) temp#)
+               (~vector-vsdsp ~(vvdsp dsuffix 'vsadd) ~ptr ~cpp-ptr temp# (~cast shifta#) temp#)
+               (~vector-vsdsp ~(vvdsp dsuffix 'vsmul) ~ptr ~cpp-ptr b# (~cast scaleb#) y#)
+               (~vector-vsdsp ~(vvdsp dsuffix 'vsadd) ~ptr ~cpp-ptr y# (~cast shiftb#) y#)
+               (~vector-vdsp ~(vvdsp dsuffix 'vdiv) ~ptr temp# y# y#))))
+     (fmod [_# a# b# y#]
+       (~vector-vforce ~(vvforce vsuffix 'fmod) ~ptr a# b# y#))
+     (frem [_# a# b# y#]
+       (~vector-vforce  ~(vvforce vsuffix 'remainder) ~ptr a# b# y#))
+     (sqrt [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'sqrt) ~ptr a# y#))
+     (inv-sqrt [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'sqrt) ~ptr a# y#)
+       (~vector-vforce ~(vvforce vsuffix 'rec) ~ptr y# y#))
+     (cbrt [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'cbrt) ~ptr a# y#))
+     (inv-cbrt [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'cbrt) ~ptr a# y#)
+       (~vector-vforce ~(vvforce vsuffix 'rec) ~ptr y# y#))
+     (pow2o3 [this# a# y#]
+       (set-all this# (/ 2 3) y#)
+       (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr a# y# y#))
+     (pow3o2 [this# a# y#]
+       (set-all this# (/ 3 2) y#)
+       (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr a# y# y#))
+     (pow [_# a# b# y#]
+       (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr a# b# y#))
+     (powx [this# a# b# y#]
+       (set-all this# b# y#)
+       (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr a# y# y#))
+     (hypot [_# a# b# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vpythg) ~ptr a# b# y# ~zero))
+     (exp [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'exp) ~ptr a# y#))
+     (exp2 [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'exp2) ~ptr a# y#))
+     (exp10 [this# a# y#]
+       (set-all this# 10.0 y#)
+       (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr y# a# y#))
+     (expm1 [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'expm1) ~ptr a# y#))
+     (log [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'log) ~ptr a# y#))
+     (log2 [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'log2) ~ptr a# y#))
+     (log10 [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'log10) ~ptr a# y#))
+     (log1p [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'log1p) ~ptr a# y#))
+     (sin [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'sin) ~ptr a# y#))
+     (cos [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'cos) ~ptr a# y#))
+     (tan [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'tan) ~ptr a# y#))
+     (sincos [_# a# y# z#]
+       (~vector-vforce ~(vvforce vsuffix 'sincos) ~ptr a# y# z#))
+     (asin [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'asin) ~ptr a# y#))
+     (acos [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'acos) ~ptr a# y#))
+     (atan [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'atan) ~ptr a# y#))
+     (atan2 [_# a# b# y#]
+       (~vector-vforce ~(vvforce vsuffix 'atan2) ~ptr a# b# y#))
+     (sinh [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'sinh) ~ptr a# y#))
+     (cosh [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'cosh) ~ptr a# y#))
+     (tanh [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'tanh) ~ptr a# y#))
+     (asinh [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'asinh) ~ptr a# y#))
+     (acosh [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'acosh) ~ptr a# y#))
+     (atanh [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'atanh) ~ptr a# y#))
+     (erf [this# a# y#]
+       (fmap! math/erf (if (identical? a# y#) y# (copy this# a# y#))))
+     (erfc [this# a# y#]
+       (fmap! math/erfc (if (identical? a# y#) y# (copy this# a# y#))))
+     (erf-inv [this# a# y#]
+       (fmap! math/erf-inv (if (identical? a# y#) y# (copy this# a# y#))))
+     (erfc-inv [this# a# y#]
+       (fmap! math/erfc-inv (if (identical? a# y#) y# (copy this# a# y#))))
+     (cdf-norm [this# a# y#]
+       (fmap! math/cdf-norm (if (identical? a# y#) y# (copy this# a# y#))))
+     (cdf-norm-inv [this# a# y#]
+       (fmap! math/cdf-norm-inv (if (identical? a# y#) y# (copy this# a# y#))))
+     (gamma [this# a# y#]
+       (fmap! math/gamma (if (identical? a# y#) y# (copy this# a# y#))))
+     (lgamma [this# a# y#]
+       (fmap! math/lgamma (if (identical? a# y#) y# (copy this# a# y#))))
+     (expint1 [this# a# y#]
+       "TODO")
+     (floor [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'floor) ~ptr a# y#))
+     (fceil [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'ceil) ~ptr a# y#))
+     (trunc [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'int) ~ptr a# y#))
+     (round [_# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'nint) ~ptr a# y#))
+     (modf [_# a# y# z#]
+       (~vector-vforce ~(vvforce vsuffix 'int) ~ptr a# y#)
+       (~vector-vdsp ~(vvdsp dsuffix 'vsub) ~ptr a# y# z#))
+     (frac [_# a# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vfrac) ~ptr a# y#))
+     (fmin [_# a# b# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vmin) ~ptr a# b# y#))
+     (fmax [_# a# b# y#]
+       (~vector-vdsp ~(vvdsp dsuffix 'vmax) ~ptr a# b# y#))
+     (copy-sign [_# a# b# y#]
+       (~vector-vforce ~(vvforce vsuffix 'copysign) ~ptr a# b# y#))
+     (sigmoid [_# a# y#]
+       (~vector-vsdsp ~(vvdsp dsuffix 'vsmul) ~ptr ~cpp-ptr a# (~cast 0.5) y#)
+       (~vector-vforce ~(vvforce vsuffix 'tanh) ~ptr y# y#)
+       (~vector-vsdsp ~(vvdsp dsuffix 'vsadd) ~ptr ~cpp-ptr y# (~cast 1.0) y#)
+       (~vector-vsdsp ~(vvdsp dsuffix 'vsmul) ~ptr ~cpp-ptr y# (~cast 0.5) y#))
+     (ramp [this# a# y#]
+       (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr a#) (stride a#) (~ptr ~zero) 0 (~ptr y#) (~stride y#) (dim a#))
+       y#)
+     (relu [this# alpha# a# y#]
+       (. vdsp ~(vvdsp dsuffix 'vmax)
+          (~ptr a#) (stride a#) (~cpp-ptr (pointer (~cast alpha#))) 0 (~ptr y#) (~stride y#) (dim a#))
+       y#)
+     (elu [this# alpha# a# y#]
+       (~vector-vforce ~(vvforce vsuffix 'expm1) ~ptr a# y#)
+       (~vector-vsdsp ~(vvdsp dsuffix 'vsmul) ~ptr ~cpp-ptr y# (~cast alpha#) y#)
+       (~vector-vdsp ~(vvdsp dsuffix 'vmax) ~ptr a# y# y#))))
+
+(defmacro real-vector-math* [name vsuffix dsuffix ptr cpp-ptr cast zero]
+  `(real-math* ~name ~vsuffix ~dsuffix ~ptr ~cpp-ptr ~cast vector-vforce vector-vdsp vector-vsdsp ~zero))
+
 (deftype FloatVectorEngine [])
 (real-vector-blas* FloatVectorEngine "s" float-ptr float blas_new openblas_full)
 (real-vector-blas-plus* FloatVectorEngine "s" float-ptr float blas_new openblas_full
                              "catlas_saxpby" ones-float)
 (real-vector-lapack* FloatVectorEngine "s" float-ptr float openblas_full)
+(real-vector-math* FloatVectorEngine "f" "" float-ptr cpp/float-ptr float zero-float)
 (real-vector-rng* FloatVectorEngine "s" float-ptr float blas_new openblas_full
                   "catlas_saxpby" ones-float)
 
@@ -82,6 +276,7 @@
 (real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double blas_new openblas_full
                         "catlas_daxpby" ones-double)
 (real-vector-lapack* DoubleVectorEngine "d" double-ptr double openblas_full)
+(real-vector-math* DoubleVectorEngine "" "D" double-ptr cpp/double-ptr double zero-double)
 (real-vector-rng* DoubleVectorEngine "d" double-ptr double blas_new openblas_full
                   "catlas_daxpby" ones-double)
 
@@ -388,14 +583,55 @@
 (deftype ShortGDEngine [])
 (deftype ByteGDEngine [])
 
+(defmacro accelerate-real-tridiagonal-blas* [name t ptr cpp-ptr cast blas lapack]
+  `(extend-type ~name
+     Blas
+     (swap [_# a# b#]
+       (diagonal-method ~blas ~(cblas t 'swap) ~ptr a# b#)
+       a#)
+     (copy [_# a# b#]
+       (diagonal-method ~blas ~(cblas t 'copy) ~ptr a# b#)
+       b#)
+     (dot [_# a# b#]
+       (diagonal-method ~blas ~(cblas t 'dot) ~ptr a# b#))
+     (nrm1 [_# a#]
+       (tridiagonal-lan ~lapack ~(lapacke "" t 'langt_) ~ptr \O a# clong-pointer))
+     (nrm2 [_# a#]
+       (diagonal-method ~blas ~(cblas t 'nrm2) ~ptr a#))
+     (nrmi [_# a#]
+       (tridiagonal-lan ~lapack ~(lapacke "" t 'langt_) ~ptr \I a# clong-pointer))
+     (asum [_# a#]
+       (diagonal-method ~blas ~(cblas t 'asum) ~ptr a#))
+     (scal [_# alpha# a#]
+       (diagonal-scal ~blas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+     (axpy [_# alpha# a# b#]
+       (diagonal-axpy ~blas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+     (mv
+       ([_# alpha# a# x# beta# y#]
+        (tridiagonal-mv ~lapack ~(lapacke "" t 'lagtm_) ~ptr ~cpp-ptr clong-pointer
+                        (~cast alpha#) a# x# (~cast beta#) y#))
+       ([_# a# x#]
+        (tridiagonal-mv a#)))
+     (rk
+       ([_# _# _# _# a#]
+        (dragan-says-ex "rk! is not supported for GT matrices." {:a (info a#)}))
+       ([_# _# _# a#]
+        (dragan-says-ex "rk! is not supported for GT matrices." {:a (info a#)})))
+     (mm
+       ([_# _# a# _# _#]
+        (tridiagonal-mm a#))
+       ([_# alpha# a# b# beta# c# left#]
+        (tridiagonal-mm ~lapack ~(lapacke "" t 'lagtm_) ~ptr ~cpp-ptr clong-pointer
+                        (~cast alpha#) a# b# (~cast beta#) c# left#)))))
+
 (deftype FloatGTEngine [])
-(real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(accelerate-real-tridiagonal-blas* FloatGTEngine "s" float-ptr cpp/float-ptr float blas_new lapack_new)
 (real-diagonal-blas-plus* FloatGTEngine "s" float-ptr float blas_new openblas_full
                           "catlas_saxpby" ones-float)
 (real-gt-lapack* FloatGTEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full)
 
 (deftype DoubleGTEngine [])
-(real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(accelerate-real-tridiagonal-blas* DoubleGTEngine "d" double-ptr cpp/double-ptr double blas_new lapack_new)
 (real-diagonal-blas-plus* DoubleGTEngine "d" double-ptr double blas_new openblas_full
                           "catlas_daxpby" ones-double)
 (real-gt-lapack* DoubleGTEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full)
@@ -406,13 +642,13 @@
 (deftype ByteGTEngine [])
 
 (deftype FloatDTEngine [])
-(real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float openblas_full)
+(accelerate-real-tridiagonal-blas* FloatDTEngine "s" float-ptr cpp/float-ptr float blas_new lapack_new)
 (real-diagonal-blas-plus* FloatDTEngine "s" float-ptr float blas_new openblas_full
                           "catlas_saxpby" ones-float)
 (real-dt-lapack* FloatDTEngine "s" float-ptr float openblas_full)
 
 (deftype DoubleDTEngine [])
-(real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double openblas_full)
+(accelerate-real-tridiagonal-blas* DoubleDTEngine "d" double-ptr cpp/double-ptr double blas_new lapack_new)
 (real-diagonal-blas-plus* DoubleDTEngine "d" double-ptr double blas_new openblas_full
                           "catlas_daxpby" ones-double)
 (real-dt-lapack* DoubleDTEngine "d" double-ptr double openblas_full)
@@ -422,17 +658,60 @@
 (deftype ShortDTEngine [])
 (deftype ByteDTEngine [])
 
+(defmacro accelerate-real-st-blas* [name t ptr cpp-ptr cast blas lapack]
+  `(extend-type ~name
+     Blas
+     (swap [_# a# b#]
+       (diagonal-method ~blas ~(cblas t 'swap) ~ptr a# b#)
+       a#)
+     (copy [_# a# b#]
+       (diagonal-method ~blas ~(cblas t 'copy) ~ptr a# b#)
+       b#)
+     (dot [_# a# b#]
+       (st-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
+     (nrm1 [_# a#]
+       (tridiagonal-lan ~lapack ~(lapacke "" t 'langt_) ~ptr \O a# clong-pointer))
+     (nrm2 [_# a#]
+       (tridiagonal-lan ~lapack ~(lapacke "" t 'langt_) ~ptr \F a# clong-pointer))
+     (nrmi [_# a#]
+       (tridiagonal-lan ~lapack ~(lapacke "" t 'langt_) ~ptr \I a# clong-pointer))
+     (asum [_# a#]
+       (st-asum ~blas ~(cblas t 'asum) ~ptr a#))
+     (scal [_# alpha# a#]
+       (diagonal-scal ~blas ~(cblas t 'scal) ~ptr (~cast alpha#) a#))
+     (axpy [_# alpha# a# b#]
+       (diagonal-axpy ~blas ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+     (mv
+       ([_# alpha# a# x# beta# y#]
+        (tridiagonal-mv ~lapack ~(lapacke "" t 'lagtm_) ~ptr ~cpp-ptr clong-pointer
+                        (~cast alpha#) a# x# (~cast beta#) y#))
+       ([_# a# x#]
+        (tridiagonal-mv a#)))
+     (rk
+       ([_# _# _# _# a#]
+        (dragan-says-ex "rk! is not supported for ST matrices." {:a (info a#)}))
+       ([_# _# _# a#]
+        (dragan-says-ex "rk! is not supported for ST matrices." {:a (info a#)})))
+     (mm
+       ([_# _# a# _# _#]
+        (tridiagonal-mm a#))
+       ([_# alpha# a# b# beta# c# left#]
+        (tridiagonal-mm ~lapack ~(lapacke "" t 'lagtm_) ~ptr ~cpp-ptr clong-pointer
+                        (~cast alpha#) a# b# (~cast beta#) c# left#)))))
+
 (deftype FloatSTEngine [])
-(real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float blas_new openblas_full)
+(accelerate-real-st-blas* FloatSTEngine "s" float-ptr cpp/float-ptr float blas_new lapack_new)
 (real-st-blas-plus* FloatSTEngine "s" float-ptr float blas_new openblas_full
                     "catlas_saxpby" ones-float)
 (real-st-lapack* FloatSTEngine "s" float-ptr float openblas_full)
 
 (deftype DoubleSTEngine [])
-(real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double blas_new openblas_full)
+(accelerate-real-st-blas* DoubleSTEngine "d" double-ptr cpp/double-ptr double blas_new lapack_new)
 (real-st-blas-plus* DoubleSTEngine "d" double-ptr double blas_new openblas_full
                     "catlas_daxpby" ones-double)
 (real-st-lapack* DoubleSTEngine "d" double-ptr double openblas_full)
+
+
 
 (deftype LongSTEngine [])
 (deftype IntSTEngine [])
