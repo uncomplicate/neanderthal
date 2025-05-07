@@ -389,7 +389,7 @@ __attribute__((work_group_size_hint(WGS, 1, 1)))
 __kernel void vector_ramp (__global const REAL* x, const uint offset_x, const uint stride_x,
                            __global REAL* y, const uint offset_y, const uint stride_y) {
     y[offset_y + get_global_id(0) * stride_y] =
-        fmax(x[offset_x + get_global_id(0) * stride_x], (REAL)0.0);
+        fmax((REAL)0.0, x[offset_x + get_global_id(0) * stride_x]);
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))
@@ -397,7 +397,7 @@ __kernel void vector_relu (const REAL alpha,
                            __global const REAL* x, const uint offset_x, const uint stride_x,
                            __global REAL* y, const uint offset_y, const uint stride_y) {
     const REAL val = x[offset_x + get_global_id(0) * stride_x];
-    y[offset_y + get_global_id(0) * stride_y] = fmax(val, alpha * val);
+    y[offset_y + get_global_id(0) * stride_y] = ((REAL)0.0 < x) ? val : alpha * val;
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))
@@ -405,7 +405,7 @@ __kernel void vector_elu (const REAL alpha,
                           __global const REAL* x, const uint offset_x, const uint stride_x,
                           __global REAL* y, const uint offset_y, const uint stride_y) {
     const REAL val = x[offset_x + get_global_id(0) * stride_x];
-    y[offset_y + get_global_id(0) * stride_y] = fmax(val, alpha * expm1(val));
+    y[offset_y + get_global_id(0) * stride_y] = ((REAL)0.0 < val) ? val : alpha * expm1(val);
 }
 
 __attribute__((work_group_size_hint(WGS, 1, 1)))

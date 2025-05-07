@@ -278,6 +278,8 @@
     0)
   (end [_ region j]
     (if (= 0 j) (.surface region) 0))
+  (stripe [_ a j]
+    (.dia ^Matrix a j))
   (index [_ stor i j]
     (.index ^DenseStorage stor i (- j i)))
   (isColumnMajor [_]

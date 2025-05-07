@@ -1162,11 +1162,11 @@
      (dot [_# a# b#]
        (diagonal-method ~openblas ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \O a# 1))
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \O a#))
      (nrm2 [_# a#]
        (diagonal-method ~openblas ~(cblas t 'nrm2) ~ptr a#))
      (nrmi [_# a#]
-       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \I a# 1))
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \I a#))
      (asum [_# a#]
        (diagonal-method ~openblas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
@@ -1239,11 +1239,11 @@
      (dot [_# a# b#]
        (st-dot ~blas ~(cblas t 'dot) ~ptr a# b#))
      (nrm1 [_# a#]
-       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \O a# 1))
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \O a#))
      (nrm2 [_# a#]
-       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \F a# 1))
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \F a#))
      (nrmi [_# a#]
-       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \I a# 1))
+       (tridiagonal-lan ~openblas ~(lapacke "LAPACK_" t 'langt_base) ~ptr \I a#))
      (asum [_# a#]
        (st-asum ~openblas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]

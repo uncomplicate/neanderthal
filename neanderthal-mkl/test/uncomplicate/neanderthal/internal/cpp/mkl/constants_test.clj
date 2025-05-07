@@ -29,5 +29,4 @@
        (:right blas-side) => mkl_rt/CblasRight
 
        (:unit blas-diag) => mkl_rt/CblasUnit
-       (:non-unit blas-diag) => mkl_rt/CblasNonUnit
-       )
+       (:non-unit blas-diag) => mkl_rt/CblasNonUnit)

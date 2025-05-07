@@ -167,7 +167,7 @@
      (exp10 [this# a# y#]
        (set-all this# 10.0 y#)
        (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr y# a# y#))
-     (expm1 [_# a# y#]
+     (oexpm1 [_# a# y#]
        (~vector-vforce ~(vvforce vsuffix 'expm1) ~ptr a# y#))
      (log [_# a# y#]
        (~vector-vforce ~(vvforce vsuffix 'log) ~ptr a# y#))
@@ -251,11 +251,12 @@
        (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr a#) (stride a#) (~ptr ~zero) 0 (~ptr y#) (~stride y#) (dim a#))
        y#)
      (relu [this# alpha# a# y#]
-       (. vdsp ~(vvdsp dsuffix 'vmax)
-          (~ptr a#) (stride a#) (~cpp-ptr (pointer (~cast alpha#))) 0 (~ptr y#) (~stride y#) (dim a#))
+       (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr a#) (stride a#) (~ptr ~zero) 0 (~ptr y#) (~stride y#) (dim a#))
+       (scal this# alpha# y#)
        y#)
      (elu [this# alpha# a# y#]
-       (~vector-vforce ~(vvforce vsuffix 'expm1) ~ptr a# y#)
+       (. vdsp ~(vvdsp dsuffix 'vmin) (~ptr a#) (stride a#) (~ptr ~zero) 0 (~ptr y#) (~stride y#) (dim a#))
+       (~vector-vforce ~(vvforce vsuffix 'expm1) ~ptr y# y#)
        (~vector-vsdsp ~(vvdsp dsuffix 'vsmul) ~ptr ~cpp-ptr y# (~cast alpha#) y#)
        (~vector-vdsp ~(vvdsp dsuffix 'vmax) ~ptr a# y# y#))))
 

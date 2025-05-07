@@ -14,7 +14,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.0"]
-                 [uncomplicate/commons "0.16.1"]
+                 [uncomplicate/commons "0.17.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.uncomplicate/clojure-cpp "0.4.1-SNAPSHOT"]
                  [org.apache.commons/commons-math3 "3.6.1"]

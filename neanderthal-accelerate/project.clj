@@ -22,16 +22,17 @@
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
              :dev/all {:plugins [[lein-midje "3.2.1"]
-                                 [midje "1.10.10"]
                                  [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
                        :global-vars {*warn-on-reflection* true
                                      *assert* false
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[codox-theme-rdash "0.1.2"]
+                                      [midje "1.10.10"]
                                       [org.uncomplicate/neanderthal-test "0.54.0-SNAPSHOT"]]
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}
              :macosx {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier macosx-arm64]]}}
+
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"])

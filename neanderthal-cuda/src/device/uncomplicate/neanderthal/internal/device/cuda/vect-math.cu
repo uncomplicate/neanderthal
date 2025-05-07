@@ -633,7 +633,7 @@ extern "C" {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
-            y[offset_y + gid * stride_y] = CAST(fmax)(x[offset_x + gid * stride_x], (REAL)0.0);
+            y[offset_y + gid * stride_y] = CAST(fmax)((REAL)0.0, x[offset_x + gid * stride_x]);
         }
     }
 
@@ -644,7 +644,7 @@ extern "C" {
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
             const REAL val = x[offset_x + gid * stride_x];
-            y[offset_y + gid * stride_y] = CAST(fmax)(val, alpha * val);
+            y[offset_y + gid * stride_y] = ((REAL)0.0 < val) ? val : alpha * val;
         }
     }
 
@@ -655,7 +655,7 @@ extern "C" {
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
             const REAL val = x[offset_x + gid * stride_x];
-            y[offset_y + gid * stride_y] = CAST(fmax)(val, alpha * expm1(val));
+            y[offset_y + gid * stride_y] = ((REAL)0.0 < val) ? val : alpha * expm1(val);
         }
     }
 

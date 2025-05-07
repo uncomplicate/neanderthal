@@ -263,31 +263,35 @@
 (defmath ramp api/ramp a)
 
 (defn relu!
-  ([^double alpha a y]
-   (if (and (api/fits? a y) (api/compatible? a y))
+  ([alpha a y]
+   (if (and (api/fits? a y) (api/fits? alpha y) (api/compatible? a y) (api/compatible? alpha y))
      (api/relu (api/engine a) alpha a y)
      (throw (ex-info "Arguments are not compatible" {:a a :y y}))))
   ([a y]
-   (relu! 0.0 a y))
+   (if (and (api/fits? a y) (api/compatible? a y))
+     (api/ramp (api/engine a) a y)
+     (throw (ex-info "Arguments are not compatible" {:a a :y y}))))
   ([a]
-   (relu! 0.0 a a)))
+   (api/ramp (api/engine a) a a)))
 
 (defn relu
   ([alpha a]
    (let-release [y (api/raw a)]
      (relu! alpha a y)))
   ([a]
-   (relu 0.0 a)))
+   (ramp a)))
 
 (defn elu!
-  ([^double alpha a y]
-   (if (and (api/fits? a y) (api/compatible? a y))
+  ([alpha a y]
+   (if (and (api/fits? a y) (api/fits? alpha y) (api/compatible? a y) (api/compatible? alpha y))
      (api/elu (api/engine a) alpha a y)
      (throw (ex-info "Arguments are not compatible" {:a a :y y}))))
   ([a y]
-   (elu! 0.0 a y))
+   (if (and (api/fits? a y) (api/compatible? a y))
+     (api/elu (api/engine a) a y)
+     (throw (ex-info "Arguments are not compatible" {:a a :y y}))))
   ([a]
-   (elu! 0.0 a a)))
+   (api/elu (api/engine a) a a)))
 
 (defn elu
   ([alpha a]

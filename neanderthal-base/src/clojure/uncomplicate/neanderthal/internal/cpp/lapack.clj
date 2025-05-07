@@ -15,7 +15,7 @@
             [uncomplicate.clojure-cpp
              :refer [long-ptr int-ptr byte-pointer int-pointer long-pointer pointer get-entry]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols col trans symmetric?]]
+             [core :refer [dim mrows ncols col trans symmetric? entry!]]
              [block :refer [stride row? contiguous?]]
              [math :refer [f=]]]
             [uncomplicate.neanderthal.math :refer [sqrt pow abs]]
@@ -1278,10 +1278,10 @@
          (~ptr ~zero-uvt) (stride ~zero-uvt)))))
 
 ;; ------------------------------ Random Number Generation  --------------------
-;;TODO same as MKL
+
 (defmacro with-rng-check [x expr] ;;TODO maybe avoid special method for this.
   `(if (< 0 (dim ~x))
-     (if (and (contiguous? ~x) (= 1 (stride ~x)))
+     (if (contiguous? ~x)
        (let [err# ~expr]
          (if (= 0 err#)
            ~x
@@ -1290,11 +1290,11 @@
                        {:v (info ~x)}))
      ~x))
 
-(defn create-seed [integer-fact seed]
+(defn create-seed [integer-fact ^long seed]
   (let [seed (int (Math/abs (rem seed 4096)))]
     (let-release [res (create-vector integer-fact 4 false)]
-      (.set res seed)
-      (when (even? seed) (.set res 3 (max (int 1) (dec seed))))
+      (entry! res seed)
+      (when (even? seed) (entry! res 3 (max (int 1) (dec seed))))
       res)))
 
 (defmacro matrix-rng* [blas lapack rng-method axpby-method ptr cast idist seed a scale shift ones]
@@ -1311,7 +1311,7 @@
          (let [buff# (~ptr ~a 0)]
            (dostripe-layout
             ~a len# idx#
-            (with-rng-check ~a
-              (do (. ~lapack ~rng-method (int ~idist) seed# len# (.position buff# idx#))
-                  (. ~blas ~axpby-method len# shift# ones# 0 scale# (.position buff# idx#) 1)))))))
+            (do (with-rng-check ~a
+                  (. ~lapack ~rng-method (int ~idist) seed# len# (.position buff# idx#)))
+                (. ~blas ~axpby-method len# shift# ones# 0 scale# (.position buff# idx#) 1))))))
      ~a))

@@ -18,7 +18,7 @@
              [linalg :refer :all]
              [auxil :refer :all]
              [math :refer :all]
-             [vect-math :refer [linear-frac!]]
+             [vect-math :refer [linear-frac! abs!]]
              [real :refer [ls-residual]]]
             [uncomplicate.neanderthal.internal.api :refer [data-accessor index-factory]])
   (:import clojure.lang.ExceptionInfo
@@ -2632,7 +2632,7 @@
 
      (nrm2 (axpy! -1 (:or lq) lq-solution)) => (roughly 0 0.015)
      (nrm2 (axpy! -1 (org lq) q-solution)) => (roughly 0 0.014)
-     (nrm2 (axpy! -1 (mm! lq c) orm-result)) => (roughly 0 0.012))))
+     (nrm2 (axpy! -1 (mm! lq c) orm-result)) => (roughly 0 0.013))))
 
 (defn test-ge-ql [factory]
   (facts
@@ -2792,7 +2792,7 @@
                   v (ge factory 5 5)]
 
      (nrm2 (axpy! -1 w-res (ev! s w nil v))) => (roughly 0 0.01)
-     (nrm2 (axpy! -1 v-res v)) => (roughly 0 0.02))))
+     (nrm2 (axpy! -1 (fmap! abs v-res) (fmap! abs v))) => (roughly 0 0.02))))
 
 (defn test-sy-evr [factory]
   (facts

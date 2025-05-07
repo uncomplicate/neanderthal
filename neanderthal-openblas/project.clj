@@ -14,25 +14,23 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.0"]
-                 [uncomplicate/commons "0.16.1"]
+                 [uncomplicate/commons "0.17.0-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.uncomplicate/neanderthal-base "0.54.0-SNAPSHOT"]
                  [org.bytedeco/openblas-platform "0.3.29-1.5.12-SNAPSHOT"]]
 
-  :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
-             :dev/all {:plugins [[lein-midje "3.2.1"]
-                                 [midje "1.10.10"]
-                                 [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
-                       :global-vars {*warn-on-reflection* true
-                                     *assert* false
-                                     *unchecked-math* :warn-on-boxed
-                                     *print-length* 128}
-                       :dependencies [[codox-theme-rdash "0.1.2"]
-                                      [org.uncomplicate/neanderthal-test "0.54.0-SNAPSHOT"]]
-                       :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}
-             :linux {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier linux-x86_64]]}
-             :windows {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier windows-x86_64]]}
-             :macosx {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier macosx-arm64]]}}
+  :profiles {:dev {:plugins [[lein-midje "3.2.1"]
+                             [midje "1.10.10"]
+                             [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
+                   :global-vars {*warn-on-reflection* true
+                                 *assert* false
+                                 *unchecked-math* :warn-on-boxed
+                                 *print-length* 128}
+                   :dependencies [[codox-theme-rdash "0.1.2"]
+                                  [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT"]
+                                  [org.uncomplicate/neanderthal-test "0.54.0-SNAPSHOT"]]
+                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
+
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"])

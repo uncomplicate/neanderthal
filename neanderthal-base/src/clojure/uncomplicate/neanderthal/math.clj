@@ -193,21 +193,31 @@
   (* 0.5 (inc (Math/tanh (* 0.5 x)))))
 
 (defn ramp ^double [^double x]
-  (max 0 x))
+  (if (< 0.0 x)
+    x
+    0.0))
 
 (defn relu
   (^double [^double alpha ^double x]
-   (max x (* alpha x)))
+   (if (< 0.0 x)
+     x
+     (* alpha x)))
   ([^double alpha]
    (fn ^double [^double x]
-     (max x (* alpha x)))))
+     (if (< 0.0 x)
+       x
+       (* alpha x)))))
 
 (defn elu
   (^double [^double alpha ^double x]
-   (max x (* alpha (expm1 x))))
+   (if (< 0.0 x)
+     x
+     (* alpha (expm1 x))))
   ([^double alpha]
    (fn ^double [^double x]
-     (max x (* alpha (expm1 x))))))
+     (if (< 0.0 x)
+       x
+       (* alpha (expm1 x))))))
 
 (defn round?
   ([^double x]

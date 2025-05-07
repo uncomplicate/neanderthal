@@ -178,8 +178,8 @@
   (facts "copy-sign" (diff-2 factory m/copy-sign vm/copy-sign) => (zero))
   (facts "sigmoid" (diff-1 factory m/sigmoid vm/sigmoid) => (zero))
   (facts "ramp" (diff-1 factory m/ramp vm/ramp) => (zero))
-  (facts "relu" (diff-1 factory (m/relu 0.01) #(vm/relu 0.01 %)) => (zero))
-  (facts "elu" (diff-1 factory (m/elu 0.01) #(vm/elu 0.01 %)) => (zero)))
+  (facts "relu" (diff-2 factory m/relu vm/relu) => (zero))
+  (facts "elu" (diff-2 factory m/elu vm/elu) => (zero)))
 
 (defn test-math-inv [factory diff-1 diff-2]
   (facts "erf-inv"

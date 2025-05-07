@@ -56,7 +56,15 @@
 
 (def ones-float (->RealBlockVector nil nil nil true (float-pointer [1.0]) 1 0))
 (def ones-double (->RealBlockVector nil nil nil true (double-pointer [1.0]) 1 0))
-(def zero-float (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
+
+(def zero-float (->RealBlockVector nil nil nil true (float-pointer [0.0]) 1 0))
+(def zero-double (->RealBlockVector nil nil nil true (double-pointer [0.0]) 1 0))
+
+(def ge-ones-float (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
+                                nil nil nil nil true (float-pointer [1.0]) 0 0))
+(def ge-ones-double (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
+                                 nil nil nil nil true (double-pointer [1.0]) 0 0))
+(def ge-zero-float (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
                                 nil nil nil nil true (float-pointer [0.0]) 0 0))
-(def zero-double (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
+(def ge-zero-double (->RealGEMatrix nil (full-storage true 0 0 Integer/MAX_VALUE)
                                  nil nil nil nil true (double-pointer [0.0]) 0 0))

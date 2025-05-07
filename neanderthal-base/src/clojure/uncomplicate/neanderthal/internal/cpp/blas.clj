@@ -19,7 +19,7 @@
              [constants :refer :all]
              [api :refer [iamax engine navigator storage region mm scal]]
              [common :refer [check-eq-navigators skip real-accessor]]
-             [navigation :refer [full-storage accu-layout diag-unit?]]]
+             [navigation :refer [full-storage accu-layout diag-unit? uplo=]]]
             [uncomplicate.neanderthal.internal.cpp.common :refer :all]))
 
 (defn cblas
@@ -89,7 +89,7 @@
           stor-a# (full-storage ~a)
           stor-b# (full-storage ~b)
           fd-b# (.fd stor-b#)]
-      (if (or (= (navigator ~a) nav-b#) (and (symmetric? ~a) (not= (.uplo (region ~a)) (.uplo reg-b#))))
+      (if (or (= (navigator ~a) nav-b#) (and (symmetric? ~a) (not (uplo= (region ~a) reg-b#))))
         (if (and (contiguous? ~a) (contiguous? ~b))
           ~expr-direct
           (let [~ld-a 1]
@@ -105,7 +105,58 @@
                   ~len (- (.end nav-b# reg-b# j#) start#)]
               (.position ~buff-a (.index stor-a# j# start#))
               (.position ~buff-b (.index stor-b# start# j#))
-              ~expr)))))))
+              ~expr))))))
+  ([a b c len buff-a buff-b buff-c ld-a ld-b expr-direct expr]
+   `(let [nav-c# (navigator ~c)
+          reg-c# (region ~c)
+          stor-a# (full-storage ~a)
+          stor-b# (full-storage ~b)
+          stor-c# (full-storage ~c)
+          fd-c# (.fd stor-c#)]
+      (cond (or (= nav-c# (navigator ~a) (navigator ~b))
+                (and (symmetric? ~a) (not (uplo= (region ~a) reg-c#))
+                     (symmetric? ~b) (not (uplo= (region ~b) reg-c#))))
+            (if (and (contiguous? ~a) (contiguous? ~b) (contiguous? ~c))
+              ~expr-direct
+              (let [~ld-a 1
+                    ~ld-b 1]
+                (dotimes [j# fd-c#]
+                  (let [start# (.start nav-c# reg-c# j#)
+                        ~len (- (.end nav-c# reg-c# j#) start#)]
+                    (.position ~buff-a (.index stor-a# start# j#))
+                    (.position ~buff-b (.index stor-a# start# j#))
+                    (.position ~buff-c (.index stor-c# start# j#))
+                    ~expr))))
+            (and (= (navigator ~a) (navigator ~b)))
+            (let [~ld-a (.ld stor-a#)
+                  ~ld-b (.ld stor-b#)]
+              (dotimes [j# fd-c#]
+                (let [start# (.start nav-c# reg-c# j#)
+                      ~len (- (.end nav-c# reg-c# j#) start#)]
+                  (.position ~buff-a (.index stor-a# j# start#))
+                  (.position ~buff-b (.index stor-b# j# start#))
+                  (.position ~buff-c (.index stor-c# start# j#))
+                  ~expr)))
+            (and (= nav-c# (navigator ~a)))
+            (let [~ld-a 1
+                  ~ld-b (.ld stor-b#)]
+              (dotimes [j# fd-c#]
+                (let [start# (.start nav-c# reg-c# j#)
+                      ~len (- (.end nav-c# reg-c# j#) start#)]
+                  (.position ~buff-a (.index stor-a# start# j#))
+                  (.position ~buff-b (.index stor-b# j# start#))
+                  (.position ~buff-c (.index stor-c# start# j#))
+                  ~expr)))
+            (and (= nav-c# (navigator ~b)))
+            (let [~ld-a (.ld stor-a#)
+                  ~ld-b 1]
+              (dotimes [j# fd-c#]
+                (let [start# (.start nav-c# reg-c# j#)
+                      ~len (- (.end nav-c# reg-c# j#) start#)]
+                  (.position ~buff-a (.index stor-a# j# start#))
+                  (.position ~buff-b (.index stor-b# start# j#))
+                  (.position ~buff-c (.index stor-c# start# j#))
+                  ~expr)))))))
 
 (defmacro full-matching-map
   ([a b len buff-a buff-b expr-direct expr]
