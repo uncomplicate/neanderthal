@@ -167,7 +167,7 @@
   (copy-sign [this a b y])
   (sigmoid [this a y])
   (ramp [this a y])
-  (relu [this alpha a y] [this a y])
+  (relu [this alpha a y])
   (elu [this alpha a y] [this a y]))
 
 (defprotocol Triangularizable

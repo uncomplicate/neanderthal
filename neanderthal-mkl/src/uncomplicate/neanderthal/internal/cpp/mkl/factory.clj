@@ -111,22 +111,38 @@
          (. mkl_rt ~(cblas t 'axpy) n# 1.0 (~ptr temp#) 1 y# strd-y#)
          ~y))))
 
-(defmacro vector-elu [t ptr alpha a zero y]
-  `(if (identical? ~a ~y)
-     (dragan-says-ex "MKL ReLU requires different arguments a and y.")
-     (with-release [temp# (raw ~a)]
-       (let [a# (~ptr ~a)
-             n# (dim ~a)
-             strd-a# (stride ~a)
-             y# (~ptr ~y)
-             strd-y# (stride ~y)
-             zero# (~ptr ~zero)]
-         (. mkl_rt ~(math t 'FminI) n# a# strd-a# zero# 0 y# strd-y#)
-         (. mkl_rt ~(math t 'Expm1I) n# y# strd-y# y# strd-y#)
-         (. mkl_rt ~(math t 'MulI) n# (~ptr ~alpha) (stride ~alpha) y# strd-y# y# strd-y#)
-         (. mkl_rt ~(math t 'FmaxI) n# a# strd-a# zero# 0 (~ptr temp#) 1)
-         (. mkl_rt ~(cblas t 'axpy) n# 1.0 (~ptr temp#) 1 y# strd-y#)
-         ~y))))
+(defmacro vector-elu
+  ([t ptr alpha a zero y]
+   `(if (identical? ~a ~y)
+      (dragan-says-ex "MKL ReLU requires different arguments a and y.")
+      (with-release [temp# (raw ~a)]
+        (let [a# (~ptr ~a)
+              n# (dim ~a)
+              strd-a# (stride ~a)
+              y# (~ptr ~y)
+              strd-y# (stride ~y)
+              zero# (~ptr ~zero)]
+          (. mkl_rt ~(math t 'FminI) n# a# strd-a# zero# 0 y# strd-y#)
+          (. mkl_rt ~(math t 'Expm1I) n# y# strd-y# y# strd-y#)
+          (. mkl_rt ~(math t 'MulI) n# (~ptr ~alpha) (stride ~alpha) y# strd-y# y# strd-y#)
+          (. mkl_rt ~(math t 'FmaxI) n# a# strd-a# zero# 0 (~ptr temp#) 1)
+          (. mkl_rt ~(cblas t 'axpy) n# 1.0 (~ptr temp#) 1 y# strd-y#)
+          ~y))))
+  ([t ptr a zero y]
+   `(if (identical? ~a ~y)
+      (dragan-says-ex "MKL ReLU requires different arguments a and y.")
+      (with-release [temp# (raw ~a)]
+        (let [a# (~ptr ~a)
+              n# (dim ~a)
+              strd-a# (stride ~a)
+              y# (~ptr ~y)
+              strd-y# (stride ~y)
+              zero# (~ptr ~zero)]
+          (. mkl_rt ~(math t 'FminI) n# a# strd-a# zero# 0 y# strd-y#)
+          (. mkl_rt ~(math t 'Expm1I) n# y# strd-y# y# strd-y#)
+          (. mkl_rt ~(math t 'FmaxI) n# a# strd-a# zero# 0 (~ptr temp#) 1)
+          (. mkl_rt ~(cblas t 'axpy) n# 1.0 (~ptr temp#) 1 y# strd-y#)
+          ~y)))))
 
 ;; ============ Delegate math functions  ============================================
 
@@ -271,8 +287,11 @@
        (~vector-ramp ~t ~ptr a# ~zero y#))
      (relu [this# alpha# a# y#]
        (~vector-relu ~t ~ptr alpha# a# ~zero y#))
-     (elu [this# alpha# a# y#]
-       (~vector-elu ~t ~ptr alpha# a# ~zero y#))))
+     (elu
+       ([this# alpha# a# y#]
+        (~vector-elu ~t ~ptr alpha# a# ~zero y#))
+       ([this# a# y#]
+        (~vector-elu ~t ~ptr a# ~zero y#)))))
 
 (defmacro real-vector-math* [name t ptr cast zero]
   `(real-math* ~name ~t ~ptr ~cast vector-math vector-linear-frac vector-powx vector-ramp vector-relu vector-elu ~zero))
@@ -568,31 +587,54 @@
                                  (. mkl_rt ~(cblas t 'axpy) len# 1.0 (~ptr temp#) 1 buff-y# 1))))))
        ~y)))
 
-(defmacro matrix-elu [t ptr alpha a zero y]
-  `(if (identical? ~a ~y)
-     (dragan-says-ex "MKL ReLU requires different arguments a and y.")
-     (do
-       (when (< 0 (dim ~a))
-         (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
-           (let [buff-a# (~ptr ~a 0)
-                 buff-y# (~ptr ~y 0)
-                 buff-alpha# (~ptr ~alpha ~0)
-                 zero# (~ptr ~zero)
-                 surface# (.surface (region ~y))]
-             (full-storage-map ~alpha ~a ~y len# buff-alpha# buff-a# buff-y# ld-alpha# ld-a#
-                               (with-release [temp# (raw ~y)]
-                                 (. mkl_rt ~(math t 'FminI) surface# buff-a# 1 zero# 0 buff-y# 1)
-                                 (. mkl_rt ~(math t 'Expm1I) surface# buff-y# 1 buff-y# 1)
-                                 (. mkl_rt ~(math t 'MulI) surface# buff-alpha# 1 buff-y# 1 buff-y# 1)
-                                 (. mkl_rt ~(math t 'FmaxI) surface# buff-a# 1 zero# 0 (~ptr temp#) 1)
-                                 (. mkl_rt ~(cblas t 'axpy) surface# 1.0 (~ptr temp#) 1 buff-y# 1))
-                               (let [temp# (deref temp-stripe#)]
-                                 (. mkl_rt ~(math t 'FminI) len# buff-a# ld-a# zero# 0 buff-y# 1)
-                                 (. mkl_rt ~(math t 'Expm1I) len# buff-y# 1 buff-y# 1)
-                                 (. mkl_rt ~(math t 'MulI) len# buff-alpha# ld-alpha# buff-y# 1 buff-y# 1)
-                                 (. mkl_rt ~(math t 'FmaxI) len# buff-a# ld-a# zero# 0 (~ptr temp#) 1)
-                                 (. mkl_rt ~(cblas t 'axpy) len# 1.0 (~ptr temp#) 1 buff-y# 1))))))
-       ~y)))
+(defmacro matrix-elu
+  ([t ptr alpha a zero y]
+   `(if (identical? ~a ~y)
+      (dragan-says-ex "MKL ReLU requires distinct arguments a and y.")
+      (do
+        (when (< 0 (dim ~a))
+          (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+            (let [buff-a# (~ptr ~a 0)
+                  buff-y# (~ptr ~y 0)
+                  buff-alpha# (~ptr ~alpha ~0)
+                  zero# (~ptr ~zero)
+                  surface# (.surface (region ~y))]
+              (full-storage-map ~alpha ~a ~y len# buff-alpha# buff-a# buff-y# ld-alpha# ld-a#
+                                (with-release [temp# (raw ~y)]
+                                  (. mkl_rt ~(math t 'FminI) surface# buff-a# 1 zero# 0 buff-y# 1)
+                                  (. mkl_rt ~(math t 'Expm1I) surface# buff-y# 1 buff-y# 1)
+                                  (. mkl_rt ~(math t 'MulI) surface# buff-alpha# 1 buff-y# 1 buff-y# 1)
+                                  (. mkl_rt ~(math t 'FmaxI) surface# buff-a# 1 zero# 0 (~ptr temp#) 1)
+                                  (. mkl_rt ~(cblas t 'axpy) surface# 1.0 (~ptr temp#) 1 buff-y# 1))
+                                (let [temp# (deref temp-stripe#)]
+                                  (. mkl_rt ~(math t 'FminI) len# buff-a# ld-a# zero# 0 buff-y# 1)
+                                  (. mkl_rt ~(math t 'Expm1I) len# buff-y# 1 buff-y# 1)
+                                  (. mkl_rt ~(math t 'MulI) len# buff-alpha# ld-alpha# buff-y# 1 buff-y# 1)
+                                  (. mkl_rt ~(math t 'FmaxI) len# buff-a# ld-a# zero# 0 (~ptr temp#) 1)
+                                  (. mkl_rt ~(cblas t 'axpy) len# 1.0 (~ptr temp#) 1 buff-y# 1))))))
+        ~y)))
+  ([t ptr a zero y]
+   `(if (identical? ~a ~y)
+      (dragan-says-ex "MKL ReLU requires distinct arguments a and y.")
+      (do
+        (when (< 0 (dim ~a))
+          (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+            (let [buff-a# (~ptr ~a 0)
+                  buff-y# (~ptr ~y 0)
+                  zero# (~ptr ~zero)
+                  surface# (.surface (region ~y))]
+              (full-storage-map ~a ~y len# buff-a# buff-y# ld-a#
+                                (with-release [temp# (raw ~y)]
+                                  (. mkl_rt ~(math t 'FminI) surface# buff-a# 1 zero# 0 buff-y# 1)
+                                  (. mkl_rt ~(math t 'Expm1I) surface# buff-y# 1 buff-y# 1)
+                                  (. mkl_rt ~(math t 'FmaxI) surface# buff-a# 1 zero# 0 (~ptr temp#) 1)
+                                  (. mkl_rt ~(cblas t 'axpy) surface# 1.0 (~ptr temp#) 1 buff-y# 1))
+                                (let [temp# (deref temp-stripe#)]
+                                  (. mkl_rt ~(math t 'FminI) len# buff-a# ld-a# zero# 0 buff-y# 1)
+                                  (. mkl_rt ~(math t 'Expm1I) len# buff-y# 1 buff-y# 1)
+                                  (. mkl_rt ~(math t 'FmaxI) len# buff-a# ld-a# zero# 0 (~ptr temp#) 1)
+                                  (. mkl_rt ~(cblas t 'axpy) len# 1.0 (~ptr temp#) 1 buff-y# 1))))))
+        ~y))))
 
 (defmacro real-matrix-math* [name t ptr cast zero]
   `(real-math* ~name ~t ~ptr ~cast matrix-math matrix-linear-frac matrix-powx matrix-ramp matrix-relu matrix-elu ~zero))

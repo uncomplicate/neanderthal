@@ -637,28 +637,42 @@ extern "C" {
         }
     }
 
-    __global__ void vector_relu (const int n, const REAL alpha,
+    __global__ void vector_relu (const int n,
+                                 const REAL* alpha, const int offset_alpha, const int stride_alpha,
                                  const REAL* x, const int offset_x, const int stride_x,
                                  REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
             const REAL val = x[offset_x + gid * stride_x];
-            y[offset_y + gid * stride_y] = ((REAL)0.0 < val) ? val : alpha * val;
+            y[offset_y + gid * stride_y]
+                = ((REAL)0.0 < val) ? val : alpha[offset_alpha + gid * stride_alpha] * val;
         }
     }
 
-    __global__ void vector_elu (const int n, const REAL alpha,
+    __global__ void vector_elu (const int n,
+                                const REAL* alpha, const int offset_alpha, const int stride_alpha,
                                 const REAL* x, const int offset_x, const int stride_x,
                                 REAL* y, const int offset_y, const int stride_y) {
 
         const int gid = blockIdx.x * blockDim.x + threadIdx.x;
         if (gid < n) {
             const REAL val = x[offset_x + gid * stride_x];
-            y[offset_y + gid * stride_y] = ((REAL)0.0 < val) ? val : alpha * expm1(val);
+            y[offset_y + gid * stride_y]
+                = ((REAL)0.0 < val) ? val : alpha[offset_alpha + gid * stride_alpha] * expm1(val);
         }
     }
 
+    __global__ void vector_elu_1 (const int n,
+                                  const REAL* x, const int offset_x, const int stride_x,
+                                  REAL* y, const int offset_y, const int stride_y) {
+
+        const int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid < n) {
+            const REAL val = x[offset_x + gid * stride_x];
+            y[offset_y + gid * stride_y] = ((REAL)0.0 < val) ? val : expm1(val);
+        }
+    }
 
     __global__ void ge_sqr (const int sd, const int fd,
                             const REAL* a, const int offset_a, const int ld_a,
@@ -1344,7 +1358,7 @@ extern "C" {
     }
 
     __global__ void ge_relu (const int sd, const int fd,
-                             const REAL alpha,
+                             const REAL* alpha, const int offset_alpha, const int ld_alpha,
                              const REAL* a, const int offset_a, const int ld_a,
                              REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1352,20 +1366,34 @@ extern "C" {
         const bool valid = (gid_0 < sd) && (gid_1 < fd);
         if (valid) {
             const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
-            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * val);
+            const REAL alpha_val = alpha[offset_alpha + gid_0 + gid_1 * ld_alpha];
+            b[offset_b + gid_0 + gid_1 * ld_b] = ((REAL)0.0 < val) ? val : (alpha_val * val);
         }
     }
 
-    __global__ void ge_elu (const int sd, const int fd,
-                            const REAL alpha,
-                            const REAL* a, const int offset_a, const int ld_a,
-                            REAL* b, const int offset_b, const int ld_b) {
+    __global__ void ge_elu(const int sd, const int fd,
+                           const REAL* alpha, const int offset_alpha, const int ld_alpha,
+                           const REAL* a, const int offset_a, const int ld_a,
+                           REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
         const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
         const bool valid = (gid_0 < sd) && (gid_1 < fd);
         if (valid) {
             const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
-            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * expm1(val));
+            const REAL alpha_val = alpha[offset_alpha + gid_0 + gid_1 * ld_alpha];
+            b[offset_b + gid_0 + gid_1 * ld_b] = ((REAL)0.0 < val) ? val : (alpha_val * expm1(val));
+        }
+    }
+
+    __global__ void ge_elu_1 (const int sd, const int fd,
+                              const REAL* a, const int offset_a, const int ld_a,
+                              REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < fd);
+        if (valid) {
+            const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+            b[offset_b + gid_0 + gid_1 * ld_b] =  ((REAL)0.0 < val) ? val : expm1(val);
         }
     }
 
@@ -2172,7 +2200,7 @@ extern "C" {
     }
 
     __global__ void uplo_relu (const int sd, const int unit, const int bottom,
-                               const REAL alpha,
+                               const REAL* alpha, const int offset_alpha, const int ld_alpha,
                                const REAL* a, const int offset_a, const int ld_a,
                                REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2182,12 +2210,13 @@ extern "C" {
             ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
         if (check) {
             const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
-            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * val);
+            const REAL alpha_val = alpha[offset_alpha + gid_0 + gid_1 * ld_alpha];
+            b[offset_b + gid_0 + gid_1 * ld_b] = ((REAL)0.0 < val) ? val : (alpha_val * val);
         }
     }
 
     __global__ void uplo_elu (const int sd, const int unit, const int bottom,
-                              const REAL alpha,
+                              const REAL* alpha, const int offset_alpha, const int ld_alpha,
                               const REAL* a, const int offset_a, const int ld_a,
                               REAL* b, const int offset_b, const int ld_b) {
         const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2197,7 +2226,22 @@ extern "C" {
             ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
         if (check) {
             const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
-            b[offset_b + gid_0 + gid_1 * ld_b] = CAST(fmax)(val, alpha * expm1(val));
+            const REAL alpha_val = alpha[offset_alpha + gid_0 + gid_1 * ld_alpha];
+            b[offset_b + gid_0 + gid_1 * ld_b] = ((REAL)0.0 < val) ? val : (alpha_val * expm1(val));
+        }
+    }
+
+    __global__ void uplo_elu_1 (const int sd, const int unit, const int bottom,
+                                const REAL* a, const int offset_a, const int ld_a,
+                                REAL* b, const int offset_b, const int ld_b) {
+        const int gid_0 = blockIdx.x * blockDim.x + threadIdx.x;
+        const int gid_1 = blockIdx.y * blockDim.y + threadIdx.y;
+        const bool valid = (gid_0 < sd) && (gid_1 < sd);
+        const bool check = valid &&
+            ((unit == 132) ? bottom * gid_0 > bottom * gid_1 : bottom * gid_0 >= bottom * gid_1);
+        if (check) {
+            const REAL val = a[offset_a + gid_0 + gid_1 * ld_a];
+            b[offset_b + gid_0 + gid_1 * ld_b] = ((REAL)0.0 < val) ? val : expm1(val);
         }
     }
 

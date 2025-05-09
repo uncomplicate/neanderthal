@@ -614,15 +614,6 @@
                              (extract y) (offset y) (stride y))))))
   y)
 
-(defn ^:private vector-relu [modl hstream kernel-name alpha x y]
-  (when (< 0 (dim x))
-    (let [da (data-accessor x)]
-      (with-release [math-kernel (function modl (str "vector_" kernel-name))]
-        (launch! math-kernel (grid-1d (dim x)) hstream
-                 (parameters (dim x) (.castPrim da alpha) (extract x) (offset x) (stride x)
-                             (extract y) (offset y) (stride y))))))
-  y)
-
 (defn ^:private ge-math
   ([modl hstream kernel-name a b]
    (when (< 0 (dim a))
@@ -674,17 +665,6 @@
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.fd stor) (extract a) (offset a) (stride a)
                              (.castPrim da b) (extract c) (offset c) (stride c))))))
-  c)
-
-(defn ^:private ge-relu [modl hstream kernel-name alpha a c]
-  (when (< 0 (dim a))
-    (check-eq-navigators a c)
-    (let [stor (full-storage a)
-          da (data-accessor a)]
-      (with-release [math-kernel (function modl (str "ge_" kernel-name))]
-        (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.fd stor) (.castPrim da alpha)
-                             (extract a) (offset a) (stride a) (extract c) (offset c) (stride c))))))
   c)
 
 (defn ^:private uplo-math
@@ -739,18 +719,6 @@
         (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
                  (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
                              (extract a) (offset a) (stride a) (.castPrim da b)
-                             (extract c) (offset c) (stride c))))))
-  c)
-
-(defn ^:private uplo-relu [modl hstream kernel-name alpha a c]
-  (when (< 0 (dim a))
-    (check-eq-navigators a c)
-    (let [stor (full-storage a)
-          da (data-accessor a)]
-      (with-release [math-kernel (function modl (str "uplo_" kernel-name))]
-        (launch! math-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.diag (region a)) (if (uplo-bottom? a) 1 -1)
-                             (.castPrim da alpha) (extract a) (offset a) (stride a)
                              (extract c) (offset c) (stride c))))))
   c)
 
@@ -992,9 +960,12 @@
      (ramp [this# a# y#]
        (~math-method (.-modl this#) (.-hstream this#) "ramp" a# y#))
      (relu [this# alpha# a# y#]
-       (~relu (.-modl this#) (.-hstream this#) "relu" alpha# a# y#))
-     (elu [this# alpha# a# y#]
-       (~relu (.-modl this#) (.-hstream this#) "elu" alpha# a# y#))))
+       (~math-method (.-modl this#) (.-hstream this#) "relu" alpha# a# y#))
+     (elu
+       ([this# alpha# a# y#]
+        (~math-method (.-modl this#) (.-hstream this#) "elu" alpha# a# y#))
+       ([this# a# y#]
+        (~math-method (.-modl this#) (.-hstream this#) "elu_1" a# y#)))))
 
 (defmacro real-rng* [name random type]
   `(extend-type ~name

@@ -298,4 +298,5 @@
    (let-release [y (api/raw a)]
      (elu! alpha a y)))
   ([a]
-   (elu 1.0 a)))
+   (let-release [y (api/raw a)]
+     (elu! a y))))
