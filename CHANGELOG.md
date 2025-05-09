@@ -1,5 +1,16 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.54.0
+
+* Apple Accelerate engine implemented (support for both Apple M CPU (arm64) and legacy x84_64).
+* Broken-down into engine-specific projects (neanderthal-mkl, neanderthal-accelerate, etc.).
+* Support math functions in non-contiguous structures in mkl and accelerate engines.
+* Support learnable, vector/matrix alpha in relu and elu functions (slight breaking change).
+* Update JavaCPP to 1.5.12.
+* Update CUDA to 12.9.
+* Update uncomplicate commons and clojure-cpp.
+* Various assorted improvements and fixes (see changes).
+
 # 0.53.0
 
 * OpenBLAS engine (all operating systems supported by JavaCPP).

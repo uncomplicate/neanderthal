@@ -68,17 +68,19 @@
 
 (deftype FloatVectorEngine [])
 (real-vector-blas* FloatVectorEngine "s" float-ptr float openblas_full openblas_full)
-(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float openblas_full openblas_full
-                        "cblas_saxpby" ones-float)
+(real-vector-blas-plus* FloatVectorEngine "s" float-ptr float
+                        openblas_full openblas_full "cblas_saxpby" ones-float)
 (real-vector-lapack* FloatVectorEngine "s" float-ptr float openblas_full)
-(real-vector-rng* FloatVectorEngine "s" float-ptr float openblas_full openblas_full "cblas_saxpby" ones-float)
+(real-vector-rng* FloatVectorEngine "s" float-ptr float
+                  openblas_full openblas_full "cblas_saxpby" ones-float)
 
 (deftype DoubleVectorEngine [])
 (real-vector-blas* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full)
-(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full
-                        "cblas_daxpby" ones-double)
+(real-vector-blas-plus* DoubleVectorEngine "d" double-ptr double
+                        openblas_full openblas_full "cblas_daxpby" ones-double)
 (real-vector-lapack* DoubleVectorEngine "d" double-ptr double openblas_full)
-(real-vector-rng* DoubleVectorEngine "d" double-ptr double openblas_full openblas_full "cblas_daxpby" ones-double)
+(real-vector-rng* DoubleVectorEngine "d" double-ptr double
+                  openblas_full openblas_full "cblas_daxpby" ones-double)
 
 (deftype LongVectorEngine [])
 (integer-vector-blas* LongVectorEngine "d" double-ptr openblas_full 1)
@@ -101,13 +103,15 @@
 (deftype FloatGEEngine [])
 (real-ge-blas* FloatGEEngine "s" float-ptr float openblas_full openblas_full)
 (real-ge-blas-plus* FloatGEEngine "s" float-ptr float openblas_full openblas_full ones-float)
-(real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
+(real-ge-lapack* FloatGEEngine "s" float-ptr cpp/float-ptr int-ptr float
+                 openblas_full ge-zero-float)
 (real-ge-rng* FloatGEEngine "s" float-ptr float openblas_full openblas_full "cblas_saxpby" ones-float)
 
 (deftype DoubleGEEngine [])
 (real-ge-blas* DoubleGEEngine "d" double-ptr double openblas_full openblas_full)
 (real-ge-blas-plus* DoubleGEEngine "d" double-ptr double openblas_full openblas_full ones-double)
-(real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
+(real-ge-lapack* DoubleGEEngine "d" double-ptr cpp/double-ptr int-ptr double
+                 openblas_full ge-zero-double)
 (real-ge-rng* DoubleGEEngine "d" double-ptr double openblas_full openblas_full "cblas_daxpby" ones-double)
 
 ;;TODO
@@ -115,7 +119,6 @@
 (integer-ge-blas* LongGEEngine "d" double-ptr openblas_full openblas_full 1)
 
 (deftype IntGEEngine [])
-
 
 (integer-ge-blas* IntGEEngine "s" float-ptr openblas_full openblas_full 1)
 
@@ -153,13 +156,15 @@
 (real-sy-blas* FloatSYEngine "s" float-ptr float openblas_full openblas_full)
 (real-sy-blas-plus* FloatSYEngine "s" float-ptr float openblas_full openblas_full
                     "cblas_saxpby" ones-float)
-(real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float openblas_full zero-float)
+(real-sy-lapack* FloatSYEngine "s" float-ptr cpp/float-ptr int-ptr float
+                 openblas_full ge-zero-float)
 
 (deftype DoubleSYEngine [])
 (real-sy-blas* DoubleSYEngine "d" double-ptr double openblas_full openblas_full)
 (real-sy-blas-plus* DoubleSYEngine "d" double-ptr double openblas_full openblas_full
                     "cblas_daxpby" ones-double)
-(real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double openblas_full zero-double)
+(real-sy-lapack* DoubleSYEngine "d" double-ptr cpp/double-ptr int-ptr double
+                 openblas_full ge-zero-double)
 
 ;;TODO
 (deftype LongSYEngine [])
