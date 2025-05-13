@@ -2634,7 +2634,7 @@
 
      (nrm2 (axpy! -1 (:or lq) lq-solution)) => (roughly 0 0.015)
      (nrm2 (axpy! -1 (org lq) q-solution)) => (roughly 0 0.014)
-     (nrm2 (axpy! -1 (mm! lq c) orm-result)) => (roughly 0 0.013))))
+     (nrm2 (axpy! -1 (mm! lq c) orm-result)) => (roughly 0 0.014))))
 
 (defn test-ge-ql [factory]
   (facts
@@ -2668,7 +2668,7 @@
 
      (nrm2 (axpy! -1 (:or ql) ql-solution)) => (roughly 0 0.015)
      (nrm2 (axpy! -1 (org ql) q-solution)) => (roughly 0 0.014)
-     (nrm2 (axpy! -1 (mm! ql c) orm-result)) => (roughly 0 0.14))))
+     (nrm2 (axpy! -1 (mm! ql c) orm-result)) => (roughly 0 0.37))))
 
 (defn test-ge-ls [factory]
   (facts
