@@ -146,7 +146,7 @@
 
 (defmacro vector-ramp [dsuffix ptr a zero y]
   `(do
-     (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr ~y) (~stride ~y) (~ptr ~zero) 0 (~ptr ~a) (stride ~a) (dim ~a))
+     (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr ~a) (stride ~a) (~ptr ~zero) 0 (~ptr ~y) (~stride ~y) (dim ~a))
      ~y))
 
 (defmacro vector-relu [t dsuffix ptr alpha a zero y]
@@ -159,9 +159,9 @@
              y# (~ptr ~y)
              strd-y# (stride ~y)
              zero# (~ptr ~zero)]
-         (. vdsp ~(vvdsp dsuffix 'vmin) y# strd-y# zero# 0 a# strd-a# n#)
-         (. vdsp ~(vvdsp dsuffix 'vmul) y# strd-y# (~ptr ~alpha) (stride ~alpha) y# strd-y# n#)
-         (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr temp#) 1 a# strd-a# zero# 0 n#)
+         (. vdsp ~(vvdsp dsuffix 'vmin) zero# 0 a# strd-a# y# strd-y# n#)
+         (. vdsp ~(vvdsp dsuffix 'vmul) (~ptr ~alpha) (stride ~alpha) y# strd-y# y# strd-y# n#)
+         (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 a# strd-a# (~ptr temp#) 1 n#)
          (. blas_new ~(cblas t 'axpy) n# 1.0 (~ptr temp#) 1 y# strd-y#)
          ~y))))
 
@@ -176,10 +176,10 @@
               y# (~ptr ~y)
               strd-y# (stride ~y)
               zero# (~ptr ~zero)]
-          (. vdsp ~(vvdsp dsuffix 'vmin) y# strd-y# zero# 0 a# strd-a# n#)
+          (. vdsp ~(vvdsp dsuffix 'vmin) zero# 0 a# strd-a# y# strd-y# n#)
           (. vforce ~(vvforce vsuffix 'expm1) y# y# (cpp/int-ptr (pointer (int n#))))
           (. vdsp ~(vvdsp dsuffix 'vmul) y# strd-y# (~ptr ~alpha) (stride ~alpha) y# strd-y# n#)
-          (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr temp#) 1 a# strd-a# zero# 0 n#)
+          (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 a# strd-a# (~ptr temp#) 1 n#)
           (. blas_new ~(cblas t 'axpy) n# 1.0 (~ptr temp#) 1 y# strd-y#)
           ~y))))
   ([t vsuffix dsuffix ptr a zero y]
@@ -192,9 +192,9 @@
               y# (~ptr ~y)
               strd-y# (stride ~y)
               zero# (~ptr ~zero)]
-          (. vdsp ~(vvdsp dsuffix 'vmin) y# strd-y# zero# 0 a# strd-a# n#)
+          (. vdsp ~(vvdsp dsuffix 'vmin) zero# 0 a# strd-a# y# strd-y#  n#)
           (. vforce ~(vvforce vsuffix 'expm1) y# y# (cpp/int-ptr (pointer (int n#))))
-          (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr temp#) 1 a# strd-a# zero# 0 n#)
+          (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 a# strd-a# (~ptr temp#) 1 n#)
           (. blas_new ~(cblas t 'axpy) n# 1.0 (~ptr temp#) 1 y# strd-y#)
           ~y)))))
 
@@ -641,7 +641,8 @@
                   (. vdsp ~(vvdsp dsuffix 'vsadd) buff-y# 1 shifta# buff-y# 1 len#)
                   (. vdsp ~(vvdsp dsuffix 'vsdiv) buff-y# 1 shiftb# buff-y# 1 len#)))
                :default
-               (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+               (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
+                                                    (create-vector (factory ~y) (.ld (storage ~y)) false)))]
                  (full-storage-map
                   ~a ~b ~y len# buff-a# buff-b# buff-y# ld-a# ld-b#
                   (with-release [temp# (raw ~y)]
@@ -689,8 +690,8 @@
              zero# (~ptr ~zero)
              surface# (.surface (region ~y))]
          (full-storage-map ~a ~y len# buff-a# buff-y# ld-a#
-                           (. vdsp ~(vvdsp dsuffix 'vmax) buff-y# 1 zero# 0 buff-a# 1 surface#)
-                           (. vdsp ~(vvdsp dsuffix 'vmax) buff-y# 1 zero# 0 buff-a# ld-a# len#))))
+                           (. vdsp ~(vvdsp dsuffix 'vmax) buff-a# 1 zero# 0 buff-y# 1 surface#)
+                           (. vdsp ~(vvdsp dsuffix 'vmax) buff-a# ld-a# zero# 0 buff-y# 1 len#))))
      ~y))
 
 (defmacro matrix-relu [t dsuffix ptr alpha a zero y]
@@ -698,7 +699,8 @@
      (dragan-says-ex "Accelerate ReLU requires distinct arguments a and y.")
      (do
        (when (< 0 (dim ~a))
-         (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+         (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
+                                              (create-vector (factory ~y) (.ld (storage ~y)) false)))]
            (let [buff-a# (~ptr ~a 0)
                  buff-y# (~ptr ~y 0)
                  buff-alpha# (~ptr ~alpha ~0)
@@ -706,15 +708,15 @@
                  surface# (.surface (region ~y))]
              (full-storage-map ~alpha ~a ~y len# buff-alpha# buff-a# buff-y# ld-alpha# ld-a#
                                (with-release [temp# (raw ~y)]
-                                 (. vdsp ~(vvdsp dsuffix 'vmin) buff-y# 1 zero# 0 buff-a# 1 surface#)
-                                 (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 (~ptr ~alpha) 1 buff-y# 1 surface#)
-                                 (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr temp#) 1 buff-a# 1 zero# 0 surface#)
+                                 (. vdsp ~(vvdsp dsuffix 'vmin) buff-a# 1 zero# 0 buff-y# 1 surface#)
+                                 (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 buff-alpha# 1 buff-y# 1 surface#)
+                                 (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 buff-a# 1 (~ptr temp#) 1 surface#)
                                  (. blas_new ~(cblas t 'axpy) surface# 1.0 (~ptr temp#) 1 buff-y# 1))
                                (let [temp# (~ptr (deref temp-stripe#))]
-                                 (. vdsp ~(vvdsp dsuffix 'vmin) buff-y# 1 zero# 0 buff-a# ld-a# len#)
-                                 (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 (~ptr ~alpha) ld-alpha# buff-y# 1 len#)
-                                 (. vdsp ~(vvdsp dsuffix 'vmax) temp# 1 buff-a# ld-a# zero# 0 len#)
-                                 (. blas_new ~(cblas t 'axpy) surface# 1.0 temp# 1 buff-y# 1)))
+                                 (. vdsp ~(vvdsp dsuffix 'vmin) buff-a# ld-a# zero# 0 buff-y# 1 len#)
+                                 (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 buff-alpha# ld-alpha# buff-y# 1 len#)
+                                 (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 buff-a# ld-a# temp# 1 len#)
+                                 (. blas_new ~(cblas t 'axpy) len# 1.0 temp# 1 buff-y# 1)))
              ~y))))))
 
 (defmacro matrix-elu
@@ -723,7 +725,8 @@
       (dragan-says-ex "Accelerate ELU requires distinct arguments a and y.")
       (do
         (when (< 0 (dim ~a))
-          (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+          (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
+                                              (create-vector (factory ~y) (.ld (storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   buff-alpha# (~ptr ~alpha ~0)
@@ -731,39 +734,40 @@
                   surface# (.surface (region ~y))]
               (full-storage-map ~alpha ~a ~y len# buff-alpha# buff-a# buff-y# ld-alpha# ld-a#
                                 (with-release [temp# (raw ~y)]
-                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-y# 1 zero# 0 buff-a# 1 surface#)
+                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-a# 1 zero# 0 buff-y# 1 surface#)
                                   (. vforce ~(vvforce vsuffix 'expm1) buff-y# buff-y# (cpp/int-ptr (pointer (int surface#))))
-                                  (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 (~ptr ~alpha) 1 buff-y# 1 surface#)
-                                  (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr temp#) 1 buff-a# 1 zero# 0 surface#)
+                                  (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 buff-alpha# 1 buff-y# 1 surface#)
+                                  (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 buff-a# 1 (~ptr temp#) 1 surface#)
                                   (. blas_new ~(cblas t 'axpy) surface# 1.0 (~ptr temp#) 1 buff-y# 1))
-                                (let [temp# (deref temp-stripe#)]
-                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-y# 1 zero# 0 buff-a# ld-a# len#)
+                                (let [temp# (~ptr (deref temp-stripe#))]
+                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-a# ld-a# zero# 0 buff-y# 1 len#)
                                   (. vforce ~(vvforce vsuffix 'expm1) buff-y# buff-y# (cpp/int-ptr (pointer (int len#))))
-                                  (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 (~ptr ~alpha) ld-alpha# buff-y# 1 len#)
-                                  (. vdsp ~(vvdsp dsuffix 'vmax) temp# 1 buff-a# ld-a# zero# 0 len#)
-                                  (. blas_new ~(cblas t 'axpy) surface# 1.0 temp# 1 buff-y# 1)))
-              ~y))))))
+                                  (. vdsp ~(vvdsp dsuffix 'vmul) buff-y# 1 buff-alpha# ld-alpha# buff-y# 1 len#)
+                                  (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 buff-a# ld-a# temp# 1 len#)
+                                  (. blas_new ~(cblas t 'axpy) len# 1.0 temp# 1 buff-y# 1))))
+            ~y)))))
   ([t vsuffix dsuffix ptr a zero y]
    `(if (identical? ~a ~y)
       (dragan-says-ex "Accelerate ELU requires distinct arguments a and y.")
       (do
         (when (< 0 (dim ~a))
-          (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+          (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
+                                               (create-vector (factory ~y) (.ld (storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   zero# (~ptr ~zero)
                   surface# (.surface (region ~y))]
               (full-storage-map ~a ~y len#  buff-a# buff-y# ld-a#
                                 (with-release [temp# (raw ~y)]
-                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-y# 1 zero# 0 buff-a# 1 surface#)
+                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-a# 1 zero# 0 buff-y# 1 surface#)
                                   (. vforce ~(vvforce vsuffix 'expm1) buff-y# buff-y# (cpp/int-ptr (pointer (int surface#))))
-                                  (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr temp#) 1 buff-a# 1 zero# 0 surface#)
+                                  (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 buff-a# 1 (~ptr temp#) 1 surface#)
                                   (. blas_new ~(cblas t 'axpy) surface# 1.0 (~ptr temp#) 1 buff-y# 1))
                                 (let [temp# (~ptr (deref temp-stripe#))]
-                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-y# 1 zero# 0 buff-a# ld-a# len#)
+                                  (. vdsp ~(vvdsp dsuffix 'vmin) buff-a# ld-a# zero# 0 buff-y# 1 len#)
                                   (. vforce ~(vvforce vsuffix 'expm1) buff-y# buff-y# (cpp/int-ptr (pointer (int len#))))
-                                  (. vdsp ~(vvdsp dsuffix 'vmax) temp# 1 buff-a# ld-a# zero# 0 len#)
-                                  (. blas_new ~(cblas t 'axpy) surface# 1.0 temp# 1 buff-y# 1)))
+                                  (. vdsp ~(vvdsp dsuffix 'vmax) zero# 0 buff-a# ld-a# temp# 1 len#)
+                                  (. blas_new ~(cblas t 'axpy) len# 1.0 temp# 1 buff-y# 1)))
               ~y)))))))
 
 (defmacro real-matrix-math* [name t vsuffix dsuffix ptr cpp-ptr cast zero]

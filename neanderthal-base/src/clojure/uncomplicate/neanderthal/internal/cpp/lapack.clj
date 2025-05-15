@@ -236,7 +236,7 @@
                        diag# (byte-pointer (pointer (if (.isDiagUnit reg#) \U \N)))
                        fd# (int-ptr (pointer (int (.fd stor#))))
                        ld# (int-ptr (pointer (int (.ld stor#))))
-                       k# (int-ptr (pointer (max (.kl reg#) (.ku reg#))))]
+                       k# (int-ptr (pointer (int (max (.kl reg#) (.ku reg#)))))]
           (. ~lapack ~lantb norm# uplo# diag# fd# k# (~ptr ~a) ld# work#
              ~fortran-strlen ~fortran-strlen ~fortran-strlen)))
       0.0)))
