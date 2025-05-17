@@ -22,6 +22,15 @@
                  [org.uncomplicate/neanderthal-opencl "0.54.0-SNAPSHOT"]
                  [org.uncomplicate/neanderthal-cuda "0.54.0-SNAPSHOT"]]
 
+  :aot [uncomplicate.neanderthal.internal.cpp.structures
+        uncomplicate.neanderthal.internal.cpp.factory
+        uncomplicate.neanderthal.internal.cpp.mkl.factory
+        uncomplicate.neanderthal.internal.cpp.openblas.factory
+        uncomplicate.neanderthal.internal.cpp.cuda.structures
+        uncomplicate.neanderthal.internal.cpp.cuda.factory
+        uncomplicate.neanderthal.internal.device.clblock
+        uncomplicate.neanderthal.internal.device.clblast]
+
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
              :dev/all {:plugins [[lein-midje "3.2.1"]
                                  [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]

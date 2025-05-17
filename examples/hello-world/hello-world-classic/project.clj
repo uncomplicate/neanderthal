@@ -1,7 +1,7 @@
 (defproject hello-world "0.54.0-SNAPSHOT"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.11.3"]
+  :dependencies [[org.clojure/clojure "1.12.0"]
                  [uncomplicate/neanderthal "0.54.0-SNAPSHOT"]]
 
   :profiles {:default [:default/all ~(leiningen.core.utils/get-os)]
@@ -9,10 +9,10 @@
                                           [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT"]]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier linux-x86_64]
                                     [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
-                                    [org.bytedeco/cuda "12.6-9.5-1.5.11" :classifier linux-x86_64-redist]]}
+                                    [org.bytedeco/cuda "12.8-9.8-1.5.12-SNAPSHOT" :classifier linux-x86_64-redist]]}
              :windows {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier windows-x86_64]
                                       [org.bytedeco/mkl "2025.0-1.5.11" :classifier windows-x86_64-redist]
-                                      [org.bytedeco/cuda "12.6-9.5-1.5.11" :classifier windows-x86_64-redist]]}
+                                      [org.bytedeco/cuda "12.8-9.8-1.5.12-SNAPSHOT" :classifier windows-x86_64-redist]]}
              ;; :macosx {} See hello-world-apple
              }
   ;; Wee need this for pinned openblas snapshot! If you're just using MKL (recommended on Linux and Windows) you don't need this.

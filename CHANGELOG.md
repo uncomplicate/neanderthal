@@ -2,6 +2,7 @@
 
 # 0.54.0
 
+* Backends are now AOT-compiled
 * Apple Accelerate engine implemented (support for both Apple M CPU (arm64) and legacy x84_64).
 * Broken-down into engine-specific projects (neanderthal-mkl, neanderthal-accelerate, etc.).
 * Support math functions in non-contiguous structures in mkl and accelerate engines.
