@@ -568,7 +568,8 @@
      (dragan-says-ex "MKL ReLU requires distinct arguments a and y.")
      (do
        (when (< 0 (dim ~a))
-         (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+         (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
+                                              (create-vector (factory ~y) (.ld (storage ~y)) false)))]
            (let [buff-a# (~ptr ~a 0)
                  buff-y# (~ptr ~y 0)
                  buff-alpha# (~ptr ~alpha ~0)
@@ -593,7 +594,8 @@
       (dragan-says-ex "MKL ELU requires distinct arguments a and y.")
       (do
         (when (< 0 (dim ~a))
-          (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+          (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
+                                               (create-vector (factory ~y) (.ld (storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   buff-alpha# (~ptr ~alpha ~0)
@@ -618,7 +620,8 @@
       (dragan-says-ex "MKL ELU requires distinct arguments a and y.")
       (do
         (when (< 0 (dim ~a))
-          (with-release [temp-stripe# (delay (raw (.stripe (navigator ~y) ~y 0)))]
+          (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
+                                               (create-vector (factory ~y) (.ld (storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   zero# (~ptr ~zero)
