@@ -642,7 +642,7 @@
                   (. vdsp ~(vvdsp dsuffix 'vsdiv) buff-y# 1 shiftb# buff-y# 1 len#)))
                :default
                (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
-                                                    (create-vector (factory ~y) (.ld (storage ~y)) false)))]
+                                                    (create-vector (factory ~y) (.ld (full-storage ~y)) false)))]
                  (full-storage-map
                   ~a ~b ~y len# buff-a# buff-b# buff-y# ld-a# ld-b#
                   (with-release [temp# (raw ~y)]
@@ -700,7 +700,7 @@
      (do
        (when (< 0 (dim ~a))
          (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
-                                              (create-vector (factory ~y) (.ld (storage ~y)) false)))]
+                                              (create-vector (factory ~y) (.ld (full-storage ~y)) false)))]
            (let [buff-a# (~ptr ~a 0)
                  buff-y# (~ptr ~y 0)
                  buff-alpha# (~ptr ~alpha ~0)
@@ -726,7 +726,7 @@
       (do
         (when (< 0 (dim ~a))
           (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
-                                              (create-vector (factory ~y) (.ld (storage ~y)) false)))]
+                                               (create-vector (factory ~y) (.ld (full-storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   buff-alpha# (~ptr ~alpha ~0)
@@ -752,7 +752,7 @@
       (do
         (when (< 0 (dim ~a))
           (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
-                                               (create-vector (factory ~y) (.ld (storage ~y)) false)))]
+                                               (create-vector (factory ~y) (.ld (full-storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   zero# (~ptr ~zero)

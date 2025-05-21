@@ -341,11 +341,11 @@
     (+ (* ld (max 0 (dec fd))) sd)))
 
 (defn full-storage
-  ([^Boolean column? ^long m ^long n ^long ld]
+  (^FullStorage [^Boolean column? ^long m ^long n ^long ld]
    (if column?
      (StripeFullStorage. m n (max m ld))
      (StripeFullStorage. n m (max n ld))))
-  ([^Boolean column? ^long m ^long n]
+  (^FullStorage [^Boolean column? ^long m ^long n]
    (if column?
      (StripeFullStorage. m n m)
      (StripeFullStorage. n m n)))

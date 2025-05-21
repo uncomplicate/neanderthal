@@ -569,7 +569,7 @@
      (do
        (when (< 0 (dim ~a))
          (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
-                                              (create-vector (factory ~y) (.ld (storage ~y)) false)))]
+                                              (create-vector (factory ~y) (.ld (full-storage ~y)) false)))]
            (let [buff-a# (~ptr ~a 0)
                  buff-y# (~ptr ~y 0)
                  buff-alpha# (~ptr ~alpha ~0)
@@ -595,7 +595,7 @@
       (do
         (when (< 0 (dim ~a))
           (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
-                                               (create-vector (factory ~y) (.ld (storage ~y)) false)))]
+                                               (create-vector (factory ~y) (.ld (full-storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   buff-alpha# (~ptr ~alpha ~0)
@@ -621,7 +621,7 @@
       (do
         (when (< 0 (dim ~a))
           (with-release [temp-stripe# (delay (when-not (contiguous? ~y)
-                                               (create-vector (factory ~y) (.ld (storage ~y)) false)))]
+                                               (create-vector (factory ~y) (.ld (full-storage ~y)) false)))]
             (let [buff-a# (~ptr ~a 0)
                   buff-y# (~ptr ~y 0)
                   zero# (~ptr ~zero)
