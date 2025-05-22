@@ -9,10 +9,11 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.native
   "Specialized constructors that use native CPU engine by default. A convenience over agnostic
-  [[uncomplicate.neanderthal.core]] functions. The default engine is backed by Intel's MKL,
-  and the OS specific binaries are provided by JavaCPP's mkl preset. Alternative implementations
-  are allowed, and can be either referred explicitly (see how `mkl-float` is used as and example),
-  or by binding [[native-float]] and the likes to your preferred implementation."
+  [[uncomplicate.neanderthal.core]] functions. The default engine is backed by Intel's MKL on Linux and Windows,
+  and the OS specific binaries are provided by JavaCPP's MKL, OpenBLAS, or Accelerate presets.
+  Alternative implementations are allowed, and can be either referred explicitly
+  (see how `mkl-float` is used as and example), or by binding [[native-float]] and the likes
+  to your preferred implementation."
   (:require [clojure.tools.logging :refer [warn error info]]
             [clojure.string :refer []]
             [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
@@ -112,7 +113,7 @@
               `(load-mkl)
               (do (error "MKL is not available in your classpath!")
                   (info "If you want to use MKL, please ensure neanderhtal-mkl and org.bytedeco/mkl are in your project dependencies.")
-                  (dragan-says-ex "Accelerate cannot be loaded!  Please check yor project's dependencies.")))
+                  (dragan-says-ex "Intel MKL cannot be loaded!  Please check yor project's dependencies.")))
        :openblas (if (load-class "org.bytedeco.openblas.global.openblas_full")
                    `(load-openblas)
                    (do (error "OpenBLAS is not available in your classpath!")

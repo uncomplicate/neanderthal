@@ -39,8 +39,7 @@
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[codox-theme-rdash "0.1.2"]
-                                      [midje "1.10.10"]
-                                      [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT"]]
+                                      [midje "1.10.10"]]
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier linux-x86_64]
                                     [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]

@@ -95,11 +95,11 @@
 (defmacro vector-vdsp
   ([method ptr a y]
    `(do
-      (. vdsp ~method (~ptr ~a) (stride ~a) (~ptr ~y) (~stride ~y) (dim ~a))
+      (. vdsp ~method (~ptr ~a) (stride ~a) (~ptr ~y) (stride ~y) (dim ~a))
       ~y))
   ([method ptr a b y]
    `(do
-      (. vdsp ~method (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b) (~ptr ~y) (~stride ~y) (dim ~a))
+      (. vdsp ~method (~ptr ~a) (stride ~a) (~ptr ~b) (stride ~b) (~ptr ~y) (stride ~y) (dim ~a))
       ~y))
   ([method ptr a b zero y]
    `(let [zero# (~ptr ~zero)]
@@ -116,7 +116,7 @@
          shifta# (~cpp-ptr (pointer (~cast ~shifta)))
          scaleb# (~cpp-ptr (pointer (~cast ~scaleb)))
          shiftb# (~cpp-ptr (pointer (~cast ~shiftb)))]
-     (cond (and (f= 0.0 ~scalea) (f= 0.0 ~scaleb)) (entry! ~y (/ ~shifta ~shiftb))
+     (cond (and (f= 0.0 ~scalea) (f= 0.0 ~scaleb)) (entry! ~y (/ (~cast ~shifta) (~cast ~shiftb)))
            (and (f= 0.0 ~scaleb) (f= 0.0 ~shiftb)) (dragan-says-ex "Division by zero is not allowed.")
            (f= 0.0 ~scaleb) (do
                               (. vdsp ~(vvdsp dsuffix 'vsmul) a# strd-a# scalea# y# strd-y# n#)
@@ -146,7 +146,7 @@
 
 (defmacro vector-ramp [dsuffix ptr a zero y]
   `(do
-     (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr ~a) (stride ~a) (~ptr ~zero) 0 (~ptr ~y) (~stride ~y) (dim ~a))
+     (. vdsp ~(vvdsp dsuffix 'vmax) (~ptr ~a) (stride ~a) (~ptr ~zero) 0 (~ptr ~y) (stride ~y) (dim ~a))
      ~y))
 
 (defmacro vector-relu [t dsuffix ptr alpha a zero y]
@@ -244,11 +244,11 @@
        (~vector-vforce ~(vvforce vsuffix 'rec) ~ptr y# y#)
        y#)
      (pow2o3 [this# a# y#]
-       (set-all this# (/ 2 3) y#)
+       (set-all this# ~(/ 2 3) y#)
        (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr y# a# y#)
        y#)
      (pow3o2 [this# a# y#]
-       (set-all this# (/ 3 2) y#)
+       (set-all this# ~(/ 3 2) y#)
        (~vector-vforce ~(vvforce vsuffix 'pow) ~ptr y# a# y#)
        y#)
      (pow [_# a# b# y#]
@@ -627,7 +627,7 @@
              scaleb# (~cpp-ptr (pointer (~cast ~scaleb)))
              shiftb# (~cpp-ptr (pointer (~cast ~shiftb)))
              surface# (.surface (region ~y))]
-         (cond (and (f= 0.0 ~scalea) (f= 0.0 ~scaleb)) (entry! ~y (/ ~shifta ~shiftb))
+         (cond (and (f= 0.0 ~scalea) (f= 0.0 ~scaleb)) (entry! ~y (/ (~cast ~shifta) (~cast ~shiftb)))
                (and (f= 0.0 ~scaleb) (f= 0.0 ~shiftb)) (dragan-says-ex "Division by zero is not allowed.")
                (f= 0.0 ~scaleb)
                (full-storage-map
