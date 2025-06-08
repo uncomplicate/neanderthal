@@ -10,11 +10,11 @@
              :linux {:dependencies [[uncomplicate/neanderthal "0.54.0-SNAPSHOT"]
                                     [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
                                     ;; optional, if you want GPU computing with CUDA. Beware: the jar size is 3GB!
-                                    [org.bytedeco/cuda "12.8-9.8-1.5.12-SNAPSHOT" :classifier linux-x86_64-redist]]}
+                                    [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier linux-x86_64-redist]]}
              :windows {:dependencies [[uncomplicate/neanderthal "0.54.0-SNAPSHOT"]
                                       [org.bytedeco/mkl "2025.0-1.5.11" :classifier windows-x86_64-redist]
                                       ;; optional, if you want GPU computing with CUDA. Beware: the jar size is 3GB!
-                                      [org.bytedeco/cuda "12.8-9.8-1.5.12-SNAPSHOT" :classifier windows-x86_64-redist]]}
+                                      [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier windows-x86_64-redist]]}
              :macosx {:dependencies [[org.uncomplicate/neanderthal-apple "0.54.0-SNAPSHOT"]]}}
 
   ;; Wee need this for the snapshots!

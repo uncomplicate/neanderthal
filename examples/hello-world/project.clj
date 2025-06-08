@@ -21,12 +21,12 @@
                                     [org.uncomplicate/neanderthal-mkl "0.54.0-SNAPSHOT"]
                                     [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
                                     [org.uncomplicate/neanderthal-cuda "0.54.0-SNAPSHOT"]
-                                    [org.bytedeco/cuda "12.8-9.8-1.5.12-SNAPSHOT" :classifier linux-x86_64-redist]]}
+                                    [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier linux-x86_64-redist]]}
              :windows {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier windows-x86_64]
                                       [org.uncomplicate/neanderthal-mkl "0.54.0-SNAPSHOT"]
                                       [org.bytedeco/mkl "2025.0-1.5.11" :classifier windows-x86_64-redist]
                                       [org.uncomplicate/neanderthal-cuda "0.54.0-SNAPSHOT"]
-                                      [org.bytedeco/cuda "12.8-9.8-1.5.12-SNAPSHOT" :classifier windows-x86_64-redist]]}
+                                      [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier windows-x86_64-redist]]}
              :macosx {:dependencies [[org.uncomplicate/neanderthal-accelerate "0.54.0-SNAPSHOT"]
                                      [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier macosx-arm64]]}}
 
