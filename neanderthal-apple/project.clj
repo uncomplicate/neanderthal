@@ -18,7 +18,8 @@
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.uncomplicate/neanderthal-base "0.54.0-SNAPSHOT"]
                  [org.uncomplicate/neanderthal-openblas "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-accelerate "0.54.0-SNAPSHOT"]]
+                 [org.uncomplicate/neanderthal-accelerate "0.54.0-SNAPSHOT"]
+                 [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier macosx-arm64]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
@@ -31,8 +32,7 @@
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
                    :dependencies [[codox-theme-rdash "0.1.2"]
-                                  [midje "1.10.10"]
-                                  [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier macosx-arm64]]
+                                  [midje "1.10.10"]]
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
