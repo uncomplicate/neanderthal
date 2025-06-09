@@ -31,7 +31,7 @@
              [structures :refer :all]
              [blas :refer :all]
              [lapack :refer :all]
-             [factory :refer :all]]
+             [factory :refer :all :exclude [cast-stream]]]
             [uncomplicate.neanderthal.internal.cpp.mkl
              [constants :refer [mkl-sparse-request]]
              [core :refer [malloc! free! mkl-sparse sparse-matrix mkl-sparse-copy sparse-error]]

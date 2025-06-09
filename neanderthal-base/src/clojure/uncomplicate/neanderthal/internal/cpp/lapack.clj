@@ -1290,12 +1290,9 @@
                        {:v (info ~x)}))
      ~x))
 
-(defn create-seed [integer-fact ^long seed]
+(defn create-seed [^long seed]
   (let [seed (int (Math/abs (rem seed 4096)))]
-    (let-release [res (create-vector integer-fact 4 false)]
-      (entry! res seed)
-      (when (even? seed) (entry! res 3 (max (int 1) (dec seed))))
-      res)))
+    (int-pointer [seed seed seed (if (odd? seed) seed (max (int 1) (dec seed)))])))
 
 (defmacro matrix-rng* [blas lapack rng-method axpby-method ptr cast idist seed a scale shift ones]
   `(let [scale# (~cast ~scale)

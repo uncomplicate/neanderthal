@@ -11,7 +11,7 @@
   (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [let-release info]]
-             [utils :refer [dragan-says-ex]]]
+             [utils :refer [dragan-says-ex generate-seed]]]
             [uncomplicate.clojure-cpp :as cpp :refer [malloc! free!]]
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.neanderthal
@@ -29,7 +29,8 @@
              [structures :refer :all]
              [blas :refer :all]
              [lapack :refer :all]])
-  (:import [uncomplicate.neanderthal.internal.api DataAccessor LayoutNavigator Region
+  (:import org.bytedeco.javacpp.IntPointer
+           [uncomplicate.neanderthal.internal.api DataAccessor LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]))
 
 ;;TODO implement scalar addition to a vector in blas-plus. (axpb)
@@ -1302,18 +1303,23 @@
        (dragan-says-ex "Condition number is not available for ST matrices."))))
 ;; =================== Random Number Generator =================================
 
+(def ^:private default-rng-stream (create-seed (generate-seed)))
+
+(defn cast-stream ^IntPointer [^IntPointer stream]
+  (or stream default-rng-stream))
+
 (defmacro real-vector-rng* [name t ptr cast blas lapack axpby-method ones]
   `(extend-type ~name
      RandomNumberGenerator
      (rand-uniform [_# rng-stream# lower# upper# x#]
        (with-rng-check x#
-         (. ~lapack ~(lapacke t 'larnv) (int 1) (int-ptr rng-stream#) (dim x#) (~ptr x#)))
+         (. ~lapack ~(lapacke t 'larnv) (int 1) (cast-stream rng-stream#) (dim x#) (~ptr x#)))
        (. ~blas ~(symbol axpby-method) (dim x#) (~cast lower#) (~ptr ~ones) 0
           (- (~cast upper#) (~cast lower#)) (~ptr x#) (stride x#))
        x#)
      (rand-normal [_# rng-stream# mu# sigma# x#]
        (with-rng-check x#
-         (. ~lapack ~(lapacke t 'larnv) (int 3) (int-ptr rng-stream#) (dim x#) (~ptr x#)))
+         (. ~lapack ~(lapacke t 'larnv) (int 3) (cast-stream rng-stream#) (dim x#) (~ptr x#)))
        (. ~blas ~(symbol axpby-method) (dim x#) (~cast mu#) (~ptr ~ones) 0
           (~cast sigma#) (~ptr x#) (stride x#))
        x#)))
@@ -1323,10 +1329,10 @@
      RandomNumberGenerator
      (rand-uniform [_# rng-stream# lower# upper# a#]
        (matrix-rng* ~blas ~lapack ~(lapacke t 'larnv) ~(symbol axpby-method) ~ptr ~cast 1
-                    (int-ptr rng-stream#) a# (- (~cast upper#) (~cast lower#)) (~cast lower#) ~ones))
+                    (cast-stream rng-stream#) a# (- (~cast upper#) (~cast lower#)) (~cast lower#) ~ones))
      (rand-normal [_# rng-stream# mu# sigma# a#]
        (matrix-rng* ~blas ~lapack  ~(lapacke t 'larnv) ~(symbol axpby-method) ~ptr ~cast 3
-                    (int-ptr rng-stream#) a# (~cast sigma#) (~cast mu#) ~ones))))
+                    (cast-stream rng-stream#) a# (~cast sigma#) (~cast mu#) ~ones))))
 
 ;;TOOD rename to Host/Native real factory
 (deftype BlasRealFactory [index-fact ^DataAccessor da
@@ -1350,7 +1356,7 @@
     :cpu)
   RngStreamFactory
   (create-rng-state [_ seed]
-    (create-seed index-fact seed))
+    (create-seed seed))
   UnsafeFactory
   (create-vector* [this master buf-ptr n strd]
     (real-block-vector* this master buf-ptr n strd))
@@ -1475,7 +1481,7 @@
     :cpu)
   RngStreamFactory
   (create-rng-state [_ seed]
-    (create-seed index-fact seed))
+    (create-seed seed))
   UnsafeFactory
   (create-vector* [this master buf-ptr n strd]
     (integer-block-vector* this master buf-ptr n strd))
