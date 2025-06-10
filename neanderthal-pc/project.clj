@@ -39,8 +39,7 @@
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[codox-theme-rdash "0.1.2"]
-                                      [midje "1.10.10"]]
-                       :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}
+                                      [midje "1.10.10"]]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier linux-x86_64]
                                     [org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
                                     [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier linux-x86_64-redist]]}
@@ -52,6 +51,9 @@
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
+
+  :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                       "--enable-native-access=ALL-UNNAMED"]
 
   :classifiers {:tests {:source-paths ^:replace ["test"]}}
   :source-paths ["src/clojure" "src/device"]

@@ -32,12 +32,14 @@
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
                    :dependencies [[codox-theme-rdash "0.1.2"]
-                                  [midje "1.10.10"]]
-                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
+                                  [midje "1.10.10"]]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
+
+  :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                       "--enable-native-access=ALL-UNNAMED"]
 
   :classifiers {:tests {:source-paths ^:replace ["test"]}}
   :source-paths ["src/clojure" "src/device"]

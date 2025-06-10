@@ -30,7 +30,8 @@
                                   [midje "1.10.10"]
                                   [org.uncomplicate/neanderthal-test "0.54.0-SNAPSHOT"]
                                   [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier macosx-arm64]]
-                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
+                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                        "--enable-native-access=ALL-UNNAMED"]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 

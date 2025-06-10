@@ -21,7 +21,8 @@
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   ;; We need direct linking for properly resolving types in heavy macros and avoiding reflection warnings!
-  :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]
+  :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                       "--enable-native-access=ALL-UNNAMED"]
 
   ;; :global-vars {*warn-on-reflection* true
   ;;               *assert* false

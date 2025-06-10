@@ -82,13 +82,26 @@
   (^long [domain]
    (mkl_rt/MKL_Domain_Get_Max_Threads (get mkl-domain domain domain))))
 
-(defn max-threads!
-  ([]
-   (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads 0 mkl_rt/MKL_DOMAIN_ALL)))
-  ([^long n]
-   (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads n mkl_rt/MKL_DOMAIN_ALL)))
-  ([domain ^long n]
-   (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads n (get mkl-domain domain domain)))))
+(let [mt (max-threads)]
+  (defn max-threads!
+    ([]
+     (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads mt mkl_rt/MKL_DOMAIN_ALL)))
+    ([^long n]
+     (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads n mkl_rt/MKL_DOMAIN_ALL)))
+    ([domain ^long n]
+     (= 1 (mkl_rt/MKL_Domain_Set_Num_Threads n (get mkl-domain domain domain))))))
+
+(defn dynamic? []
+  (if (= 0 (mkl_rt/MKL_Get_Dynamic))
+    false
+    true))
+
+(let [dyn (dynamic?)]
+  (defn dynamic!
+    ([dynamic]
+     (mkl_rt/MKL_Set_Dynamic (if dynamic 1 0)))
+    ([]
+     (dynamic! dyn))))
 
 ;; ===================== Sparse Matrix =========================================================
 

@@ -64,6 +64,20 @@
   ([^long n]
    (openblas_full/blas_set_num_threads n)))
 
+(defn threading? []
+  (if (= 1 (num-threads))
+    false
+    true))
+
+(defn threading!
+  ([param]
+   (case param
+     false (num-threads! 1)
+     true (num-threads!)
+     (num-threads! param)))
+  ([]
+   (num-threads!)))
+
 ;; ============ Vector Engines ============================================
 
 (deftype FloatVectorEngine [])

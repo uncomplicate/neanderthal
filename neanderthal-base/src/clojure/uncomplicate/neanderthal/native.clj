@@ -52,6 +52,10 @@
          native-short uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-short)
        (def ^{:doc "Default byte native factory"}
          native-byte uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-byte)
+       (def ^{:doc "Set default backend's threading model. Either true, false, or explicit number of threads (where applicable)."}
+         threading! uncomplicate.neanderthal.internal.cpp.mkl.factory/threading!)
+       (def ^{:doc "Is default backend multithreaded (true) or not (false)."}
+         threading? uncomplicate.neanderthal.internal.cpp.mkl.factory/threading?)
        (info "MKL backend loaded.")))
 
 (defmacro load-openblas []
@@ -68,6 +72,10 @@
          native-short uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-short)
        (def ^{:doc "Default byte native factory"}
          native-byte uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-byte)
+       (def ^{:doc "Set default backend's threading model. Either true, false, or explicit number of threads (where applicable)."}
+         threading! uncomplicate.neanderthal.internal.cpp.openblas.factory/threading!)
+       (def ^{:doc "Is default backend multithreaded (true) or not (false)."}
+         threading? uncomplicate.neanderthal.internal.cpp.openblas.factory/threading?)
        (info "OpenBLAS backend loaded.")))
 
 (defmacro load-accelerate []
@@ -84,6 +92,10 @@
          native-short uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-short)
        (def ^{:doc "Default byte native factory"}
          native-byte uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-byte)
+       (def ^{:doc "Set default backend's threading model. Either true, false, or explicit number of threads (where applicable)."}
+         threading! uncomplicate.neanderthal.internal.cpp.accelerate.factory/threading!)
+       (def ^{:doc "Is default backend multithreaded (true) or not (false)."}
+         threading? uncomplicate.neanderthal.internal.cpp.accelerate.factory/threading?)
        (info "Accelerate backend loaded.")))
 
 (defn find-default-backend []

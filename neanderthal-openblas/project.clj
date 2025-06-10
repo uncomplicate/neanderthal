@@ -29,7 +29,8 @@
                    :dependencies [[codox-theme-rdash "0.1.2"]
                                   [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT"]
                                   [org.uncomplicate/neanderthal-test "0.54.0-SNAPSHOT"]]
-                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
+                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                        "--enable-native-access=ALL-UNNAMED"]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 

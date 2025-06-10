@@ -34,13 +34,30 @@
              [factory :refer :all :exclude [cast-stream]]]
             [uncomplicate.neanderthal.internal.cpp.mkl
              [constants :refer [mkl-sparse-request]]
-             [core :refer [malloc! free! mkl-sparse sparse-matrix mkl-sparse-copy sparse-error]]
+             [core :refer [malloc! free! mkl-sparse sparse-matrix mkl-sparse-copy sparse-error
+                           dynamic! max-threads max-threads!]]
              [structures :refer [ge-csr-matrix spmat descr sparse-transpose sparse-layout csr-ge-sp2m]]])
   (:import java.nio.ByteBuffer
            [uncomplicate.neanderthal.internal.api DataAccessor Vector LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
            [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer BytePointer]
            [org.bytedeco.mkl.global mkl_rt mkl_rt$VSLStreamStatePtr]))
+
+(defn threading? []
+  (if (= 1 (max-threads))
+    false
+    true))
+
+(defn threading!
+  ([param]
+   (dynamic!)
+   (case param
+     false (max-threads! 1)
+     true (max-threads!)
+     (max-threads! param)))
+  ([]
+   (dynamic!)
+   (max-threads!)))
 
 ;; =============== Factories ==================================================
 

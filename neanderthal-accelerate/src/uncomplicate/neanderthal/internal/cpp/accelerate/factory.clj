@@ -32,7 +32,8 @@
              [structures :refer :all]
              [lapack :refer :all]
              [blas :refer :all]
-             [factory :refer :all]])
+             [factory :refer :all]]
+            [uncomplicate.neanderthal.internal.cpp.openblas.factory :as openblas])
   (:import java.nio.ByteBuffer
            [uncomplicate.neanderthal.internal.api DataAccessor Vector LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
@@ -48,7 +49,7 @@
       (System/setProperty "java.library.path" (str library-path))
       (System/setProperty "org.bytedeco.openblas.load" (str openblas-load)))))
 
-(defn threading? []
+(defn accelerate-threading? []
   (let [threading (thread/BLASGetThreading)]
     (cond
       (= thread/BLAS_THREADING_MULTI_THREADED threading) true
@@ -57,7 +58,11 @@
                                       {:threading threading
                                        :max-threading-options thread/BLAS_THREADING_MAX_OPTIONS})))))
 
-(defn threading! [multi-threading?]
+(defn threading? []
+  (and (accelerate-threading?)
+       (openblas/threading?)))
+
+(defn accelerate-threading! [multi-threading?]
   (let [threading (if multi-threading?
                     thread/BLAS_THREADING_MULTI_THREADED
                     thread/BLAS_THREADING_SINGLE_THREADED)]
@@ -66,6 +71,17 @@
       (throw (dragan-says-ex "The current platform does not support the requested threading model."
                              {:threading threading
                               :max-threading-options thread/BLAS_THREADING_MAX_OPTIONS})))))
+
+(defn threading!
+  ([param]
+   (uncomplicate.neanderthal.internal.cpp.openblas.factory/threading! param)
+   (cond
+       (or (= false param) (= 1 param)) (accelerate-threading! false)
+       (or (= true param) (< 1 param)) (accelerate-threading! true)
+       :default (throw (dragan-says-ex "Threading model is not supported by Accelerate." {:threading param}))))
+  ([]
+   (openblas/threading!)
+   (accelerate-threading! true)))
 
 ;; ============ Vector Engines ============================================
 

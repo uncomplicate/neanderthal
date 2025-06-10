@@ -29,7 +29,8 @@
                        :dependencies [[codox-theme-rdash "0.1.2"]
                                       [midje "1.10.10"]
                                       [org.uncomplicate/neanderthal-test "0.54.0-SNAPSHOT"]]
-                       :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}
+                       :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                            "--enable-native-access=ALL-UNNAMED"]}
              :linux {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]]}
              :windows {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier windows-x86_64-redist]]}}
 
