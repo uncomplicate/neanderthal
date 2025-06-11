@@ -7,7 +7,7 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (defproject uncomplicate/neanderthal "0.54.0-SNAPSHOT"
-  :description "Convenience project to pull dependencies on PC systems compatible with classic neanderthal uberproject."
+  :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
@@ -20,7 +20,8 @@
                  [org.uncomplicate/neanderthal-openblas "0.54.0-SNAPSHOT"]
                  [org.uncomplicate/neanderthal-mkl "0.54.0-SNAPSHOT"]
                  [org.uncomplicate/neanderthal-opencl "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-cuda "0.54.0-SNAPSHOT"]]
+                 [org.uncomplicate/neanderthal-cuda "0.54.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-accelerate "0.54.0-SNAPSHOT"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
@@ -28,6 +29,7 @@
         uncomplicate.neanderthal.internal.cpp.openblas.factory
         uncomplicate.neanderthal.internal.cpp.cuda.structures
         uncomplicate.neanderthal.internal.cpp.cuda.factory
+        uncomplicate.neanderthal.internal.cpp.accelerate.factory
         uncomplicate.neanderthal.internal.device.clblock
         uncomplicate.neanderthal.internal.device.clblast]
 
