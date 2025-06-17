@@ -8,12 +8,12 @@
              :default/all {:dependencies [[codox-theme-rdash "0.1.2"]
                                           ;; optional
                                           [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT"]]}
-             :linux {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier linux-x86_64-redist]
+             :linux {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier "linux-x86_64-redist"]
                                     ;; optional, if you want GPU computing with CUDA. Beware: the jar size is 3GB!
-                                    [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier linux-x86_64-redist]]}
-             :windows {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier windows-x86_64-redist]
+                                    [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier "linux-x86_64-redist"]]}
+             :windows {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier "windows-x86_64-redist"]
                                       ;; optional, if you want GPU computing with CUDA. Beware: the jar size is 3GB!
-                                      [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier windows-x86_64-redist]]}
+                                      [org.bytedeco/cuda "12.9-9.9-1.5.12-SNAPSHOT" :classifier "windows-x86_64-redist"]]}
              :macosx {:dependencies []}}
 
   ;; Wee need this for the snapshots!

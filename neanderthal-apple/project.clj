@@ -19,7 +19,7 @@
                  [org.uncomplicate/neanderthal-base "0.54.0-SNAPSHOT"]
                  [org.uncomplicate/neanderthal-openblas "0.54.0-SNAPSHOT"]
                  [org.uncomplicate/neanderthal-accelerate "0.54.0-SNAPSHOT"]
-                 [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier macosx-arm64]]
+                 [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier "macosx-arm64"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory

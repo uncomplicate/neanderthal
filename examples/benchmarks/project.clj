@@ -6,8 +6,8 @@
 
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [uncomplicate/neanderthal "0.48.0-SNAPSHOT"]
-                 [org.bytedeco/mkl "2023.1-1.5.10-SNAPSHOT" :classifier linux-x86_64-redist]
-                 [org.bytedeco/cuda "12.1-8.9-1.5.10-SNAPSHOT" :classifier linux-x86_64-redist]
+                 [org.bytedeco/mkl "2023.1-1.5.10-SNAPSHOT" :classifier "linux-x86_64-redist"]
+                 [org.bytedeco/cuda "12.1-8.9-1.5.10-SNAPSHOT" :classifier "linux-x86_64-redist"]
                  [criterium "0.4.6"]
                  [prismatic/hiphip "0.2.1"]
                  [net.mikera/core.matrix "0.63.0"]
