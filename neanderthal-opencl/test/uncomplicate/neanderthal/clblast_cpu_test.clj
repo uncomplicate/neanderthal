@@ -11,17 +11,16 @@
   (:require [midje.sweet :refer :all]
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecl
-             [core :refer [*command-queue* with-platform platforms devices with-queue with-context
-                           context command-queue-1]]
+             [core :refer [*command-queue* with-platform platforms devices
+                           with-queue with-context context command-queue-1]]
              [toolbox :refer [decent-platform]]]
             [uncomplicate.neanderthal
              [core :refer [tr]]
-             [opencl :refer [with-engine *opencl-factory*]]
+             [opencl :refer [with-engine *opencl-factory* opencl-float opencl-double]]
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
-             [math-test :as math-test]]
-            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-float clblast-double]]))
+             [math-test :as math-test]]))
 
 (defn test-blas-clblast [factory]
   (real-test/test-imin factory)
@@ -41,7 +40,7 @@
                    ctx (context [dev])
                    queue (command-queue-1 ctx dev)]
 
-      (with-engine clblast-float queue
+      (with-engine opencl-float queue
         (block-test/test-all *opencl-factory*)
         (real-test/test-blas *opencl-factory*)
         (test-blas-clblast *opencl-factory*)
@@ -49,7 +48,7 @@
         (device-test/test-all *opencl-factory*)
         (math-test/test-all-device *opencl-factory*))
 
-      (with-engine clblast-double queue
+      (with-engine opencl-double queue
         (block-test/test-all *opencl-factory*)
         (real-test/test-blas *opencl-factory*)
         (test-blas-clblast *opencl-factory*)

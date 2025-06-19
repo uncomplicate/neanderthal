@@ -20,9 +20,7 @@
              [info :refer [driver-version]]
              [toolbox :refer [launch-reduce! read-int]]]
             [uncomplicate.neanderthal
-             [core :refer [transfer! dim ncols mrows entry matrix-type]]
-             [native :refer [native-float native-double native-long native-int
-                             native-short native-byte]]
+             [core :refer [dim ncols mrows entry matrix-type]]
              [block :refer [stride offset contiguous? column?]]]
             [uncomplicate.neanderthal.internal
              [api :refer :all]
@@ -1342,7 +1340,7 @@
               (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/nvccfeatures.h"))
               "array.h" (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/array.h"))})]
 
-  (defn cublas-double [ctx hstream]
+  (defn cublas-double [native-double ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program src philox-headers)
@@ -1360,7 +1358,7 @@
                       (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
                       (->DoubleTREngine handle modl hstream) (->DoubleSYEngine handle modl hstream))))))
 
-  (defn cublas-float [ctx hstream]
+  (defn cublas-float [native-float ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program src philox-headers)
@@ -1378,7 +1376,7 @@
                       (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
                       (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))
 
-  (defn cublas-long [ctx hstream]
+  (defn cublas-long [native-long ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
@@ -1393,7 +1391,7 @@
          (->CUFactory modl hstream long-accessor native-long
                       (->IntegerVectorEngine modl hstream) nil nil nil)))))
 
-  (defn cublas-int [ctx hstream]
+  (defn cublas-int [native-int ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
@@ -1408,7 +1406,7 @@
          (->CUFactory modl hstream int-accessor native-int
                       (->IntegerVectorEngine modl hstream) nil nil nil)))))
 
-  (defn cublas-short [ctx hstream]
+  (defn cublas-short [native-short ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
@@ -1421,7 +1419,7 @@
          (->CUFactory modl hstream short-accessor native-short
                       (->IntegerVectorEngine modl hstream) nil nil nil)))))
 
-  (defn cublas-byte [ctx hstream]
+  (defn cublas-byte [native-byte ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)

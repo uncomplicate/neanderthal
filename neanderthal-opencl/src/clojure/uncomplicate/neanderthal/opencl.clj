@@ -17,7 +17,9 @@
             [uncomplicate.clojurecl
              [core :refer [*context* *command-queue*]]
              [info :refer [queue-context]]]
-            [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
+            [uncomplicate.neanderthal
+             [core :refer [vctr ge tr sy]]
+             [native :refer [native-float native-double]]]
             [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-double clblast-float]]))
 
 (def ^{:dynamic true
@@ -25,10 +27,10 @@
   *opencl-factory*)
 
 (def ^{:doc "Constructor of a single precision floating point OpenCL factory."}
-  opencl-float clblast-float)
+  opencl-float (partial clblast-float native-float))
 
 (def ^{:doc "Constructor of a double-precision floating point OpenCL factory."}
-  opencl-double clblast-double)
+  opencl-double (partial clblast-double native-double))
 
 (defn factory-by-type [data-type]
   (case data-type

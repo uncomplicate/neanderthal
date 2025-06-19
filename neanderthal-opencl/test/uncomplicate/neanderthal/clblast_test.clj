@@ -13,13 +13,13 @@
              [core :refer [*command-queue* with-default-1]]]
             [uncomplicate.neanderthal
              [core :refer [tr]]
-             [opencl :refer [with-engine *opencl-factory* factory-by-type]]
+             [opencl :refer [with-engine *opencl-factory* factory-by-type
+                             opencl-float opencl-double]]
              [block-test :as block-test]
              [real-test :as real-test]
              [device-test :as device-test]
              [math-test :as math-test]
-             [random-test :as random-test]]
-            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-float clblast-double]])
+             [random-test :as random-test]])
   (:import clojure.lang.ExceptionInfo))
 
 (defn test-blas-clblast [factory]
@@ -35,12 +35,12 @@
 (with-default-1
 
   (facts "factory-by-type test"
-         (= clblast-float (factory-by-type :float)) => true
-         (= clblast-double (factory-by-type :double)) => true
+         (= opencl-float (factory-by-type :float)) => true
+         (= opencl-double (factory-by-type :double)) => true
          (factory-by-type :int) => (throws ExceptionInfo)
          (factory-by-type :long) => (throws ExceptionInfo))
 
-  (with-engine clblast-float *command-queue*
+  (with-engine opencl-float *command-queue*
     (block-test/test-all *opencl-factory*)
     (real-test/test-blas *opencl-factory*)
     (test-blas-clblast *opencl-factory*)
@@ -50,7 +50,7 @@
     (random-test/test-all *opencl-factory*)
     (random-test/test-all-device *opencl-factory*))
 
-  (with-engine clblast-double *command-queue*
+  (with-engine opencl-double *command-queue*
     (block-test/test-all *opencl-factory*)
     (real-test/test-blas *opencl-factory*)
     (test-blas-clblast *opencl-factory*)

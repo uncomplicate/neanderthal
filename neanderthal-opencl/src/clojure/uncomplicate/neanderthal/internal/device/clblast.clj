@@ -20,9 +20,7 @@
              [info :refer [max-work-group-size queue-device platform name-info]]
              [toolbox :refer [enq-read-int enq-read-double enq-read-float]]]
             [uncomplicate.clojurecl.internal.constants :refer [dec-error]]
-            [uncomplicate.neanderthal
-             [core :refer [transfer!]]
-             [native :refer [native-float native-double]]]
+            [uncomplicate.neanderthal.core :refer [transfer!]]
             [uncomplicate.neanderthal.internal
              [constants :refer :all]
              [api :refer :all]
@@ -2296,7 +2294,7 @@
 
   (org.jocl.blast.CLBlast/setExceptionsEnabled false)
 
-  (defn clblast-double [ctx queue]
+  (defn clblast-double [native-double ctx queue]
     (let [src (conj src (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random-double.cl")))
           dev (queue-device queue)
           wgs (max-work-group-size dev)
@@ -2309,7 +2307,7 @@
                    (->DoubleVectorEngine ctx queue prog) (->DoubleGEEngine ctx queue prog)
                    (->DoubleTREngine ctx queue prog) (->DoubleSYEngine ctx queue prog))))
 
-  (defn clblast-float [ctx queue]
+  (defn clblast-float [native-float ctx queue]
     (let [src (conj src (slurp (io/resource "uncomplicate/neanderthal/internal/device/opencl/random-float.cl")))
           dev (queue-device queue)
           wgs (max-work-group-size dev)

@@ -13,7 +13,7 @@
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
              [core :refer [tr sy]]
-             [cuda :refer [with-engine *cuda-factory*  factory-by-type cuda-float
+             [cuda :refer [with-engine *cuda-factory* factory-by-type cuda-float
                            cuda-double cuda-long cuda-int cuda-short cuda-byte]]
              [block-test :as block-test]
              [real-test :as real-test]

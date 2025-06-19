@@ -15,7 +15,10 @@
              [core :refer [release with-release]]
              [utils :refer [dragan-says-ex]]]
             [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
-            [uncomplicate.neanderthal.core :refer [vctr ge tr sy]]
+            [uncomplicate.neanderthal
+             [core :refer [vctr ge tr sy]]
+             [native :refer [native-float native-double native-long native-int
+                             native-short native-byte]]]
             [uncomplicate.neanderthal.internal.cpp.cuda.factory
              :refer [cublas-double cublas-float cublas-long cublas-int cublas-short cublas-byte]]))
 
@@ -24,22 +27,22 @@
   *cuda-factory*)
 
 (def ^{:doc "Constructor of a single precision floating point CUDA factory."}
-  cuda-float cublas-float)
+  cuda-float (partial cublas-float native-float))
 
 (def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
-  cuda-double cublas-double)
+  cuda-double (partial cublas-double native-double))
 
 (def ^{:doc "Constructor of a long CUDA factory."}
-  cuda-long cublas-long)
+  cuda-long (partial cublas-long native-long))
 
 (def ^{:doc "Constructor of an int CUDA factory."}
-  cuda-int cublas-int)
+  cuda-int (partial cublas-int native-int))
 
 (def ^{:doc "Constructor of a short CUDA factory."}
-  cuda-short cublas-short)
+  cuda-short (partial cublas-short native-short))
 
 (def ^{:doc "Constructor of a byte CUDA factory."}
-  cuda-byte cublas-byte)
+  cuda-byte (partial cublas-byte native-byte))
 
 (defn factory-by-type [data-type]
   (case data-type
