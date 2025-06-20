@@ -118,9 +118,9 @@
   (if (< 0 (dim host))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
-      (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
+      (if (and (= width (.entryWidth (data-accessor host))))
         (with-check cublas-error
-          (cublas/cublasGetVector_64 (dim cu) width
+          (cublas/cublasGetVector_64 (min (dim host) (dim cu)) width
                                      (byte-pointer (extract cu)) (stride cu)
                                      (byte-pointer (extract host)) (stride host))
           host)
@@ -132,9 +132,9 @@
   (if (< 0 (dim cu))
     (let [da (data-accessor cu)
           width (.entryWidth da)]
-      (if (and (fits? cu host) (= width (.entryWidth (data-accessor host))))
+      (if (and (= width (.entryWidth (data-accessor host))))
         (with-check cublas-error
-          (cublas/cublasSetVector_64 (dim cu) width
+          (cublas/cublasSetVector_64 (min (dim host) (dim cu)) width
                                      (byte-pointer (extract host)) (stride host)
                                      (byte-pointer (extract cu)) (stride cu))
           cu)
@@ -270,11 +270,19 @@
 
 (defmethod transfer! [CUBlockVector RealNativeVector]
   [source destination]
-  (get-vector! source destination))
+  (if (compatible? source destination)
+    (get-vector! source destination)
+    (with-release [h (host source)]
+      (transfer! h destination)))
+  destination)
 
 (defmethod transfer! [RealNativeVector CUBlockVector]
   [source destination]
-  (set-vector! source destination))
+  (if (compatible? destination source)
+    (set-vector! source destination)
+    (with-release [temp (raw source (native-factory destination))]
+      (set-vector! (transfer! source temp) destination)))
+  destination)
 
 (defmethod transfer! [CUBlockVector IntegerNativeVector]
   [source destination]
