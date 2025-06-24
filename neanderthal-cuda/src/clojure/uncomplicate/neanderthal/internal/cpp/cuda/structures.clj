@@ -10,7 +10,7 @@
     uncomplicate.neanderthal.internal.cpp.cuda.structures
   (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
-             [core :refer [Releaseable release let-release with-release Info info Viewable view size]]
+             [core :refer [Releaseable release let-release with-release Info info view size]]
              [utils :refer [with-check dragan-says-ex]]]
             [uncomplicate.fluokitten.protocols :refer [Magma Monoid Foldable Applicative extract]]
             [uncomplicate.clojure-cpp :refer [pointer fill! float-pointer double-pointer long-pointer
@@ -266,7 +266,13 @@
 
 (defmethod transfer! [CUBlockVector CUBlockVector]
   [source destination]
-  (copy! source destination))
+  (when-not (identical? source destination)
+    (if (compatible? source destination)
+      (if (= (dim source) (dim destination))
+        (copy (engine source) source destination)
+        (subcopy (engine source) source destination 0 (min (dim source) (dim destination)) 0)))
+    (dragan-says-ex "We can't transfer incompatible CUDA vectors by (sub)copying them."))
+  destination)
 
 (defmethod transfer! [CUBlockVector RealNativeVector]
   [source destination]

@@ -12,7 +12,7 @@
             [uncomplicate.commons.core :refer [with-release]]
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
-             [core :refer [tr sy transfer! native vctr entry!]]
+             [core :refer [tr sy transfer! native row ge vctr entry!]]
              [cuda :refer [with-engine *cuda-factory* factory-by-type cuda-float
                            cuda-double cuda-long cuda-int cuda-short cuda-byte]]
              [block-test :as block-test]
@@ -44,11 +44,24 @@
   (with-release [cuda-v (vctr fact 4)
                  cpu-v4 (native cuda-v)
                  cpu-v2 (vctr cpu-v4 [1 10])]
-    (facts "Test whether heterogeneous transfer from a matrix writes beyond its turf (it does unfortunately)."
+    (facts "Test whether heterogeneous transfer from a vector writes beyond its turf."
            (entry! cuda-v 55) => cuda-v
            (seq (native cuda-v)) => [55.0 55.0 55.0 55.0]
            (transfer! cpu-v2 cuda-v) => cuda-v
            (seq (native cuda-v)) => [1.0 10.0 55.0 55.0])))
+
+(defn test-cuda-transfer-stride [fact]
+  (with-release [cuda-m (ge fact 3 2)
+                 cuda-v (row cuda-m 1)
+                 cpu-m (native cuda-m)
+                 cpu-v2 (vctr cpu-m [1 10])]
+    (facts "Test whether heterogeneous transfer from a vector writes beyond its turf."
+           (entry! cuda-m 55) => cuda-m
+           (seq (native cuda-m)) => [[55.0 55.0 55.0] [55.0 55.0 55.0]]
+           (seq (native cuda-v)) => [55.0 55.0]
+           (transfer! cpu-v2 cuda-v) => cuda-v
+           (seq (native cuda-v)) => [1.0 10.0]
+           (seq (native cuda-m)) => [[55.0 1.0 55.0] [55.0 10.0 55.0]])))
 
 (with-default
 
@@ -63,6 +76,7 @@
 
   (with-engine cuda-float default-stream
     (test-cuda-transfer-overwriting *cuda-factory*)
+    (test-cuda-transfer-stride *cuda-factory*)
     (block-test/test-all *cuda-factory*)
     (real-test/test-blas *cuda-factory*)
     (test-blas-cublas *cuda-factory*)
@@ -75,6 +89,7 @@
 
   (with-engine cuda-double default-stream
     (test-cuda-transfer-overwriting *cuda-factory*)
+    (test-cuda-transfer-stride *cuda-factory*)
     (block-test/test-all *cuda-factory*)
     (real-test/test-blas *cuda-factory*)
     (test-blas-cublas *cuda-factory*)
