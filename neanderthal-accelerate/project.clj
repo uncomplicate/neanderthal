@@ -6,19 +6,19 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-accelerate "0.54.0-SNAPSHOT"
+(defproject org.uncomplicate/neanderthal-accelerate "0.54.0"
   :description "Neanderthal's Apple Accelerate engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderthal-openblas"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.0"]
-                 [uncomplicate/commons "0.17.0-SNAPSHOT"]
+  :dependencies [[org.clojure/clojure "1.12.1"]
+                 [uncomplicate/commons "0.17.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-openblas "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/accelerate-platform "0.1.0-1.5.12-SNAPSHOT"]]
+                 [org.uncomplicate/neanderthal-base "0.54.0"]
+                 [org.uncomplicate/neanderthal-openblas "0.54.0"]
+                 [org.uncomplicate/accelerate-platform "0.1.0-1.5.12"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
@@ -28,8 +28,8 @@
                                  *print-length* 128}
                    :dependencies [[codox-theme-rdash "0.1.2"]
                                   [midje "1.10.10"]
-                                  [org.uncomplicate/neanderthal-test "0.54.0-SNAPSHOT"]
-                                  [org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier "macosx-arm64"]]
+                                  [org.uncomplicate/neanderthal-test "0.54.0"]
+                                  [org.bytedeco/openblas "0.3.30-1.5.12" :classifier "macosx-arm64"]]
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}
 

@@ -6,22 +6,22 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.54.0-SNAPSHOT"
+(defproject uncomplicate/neanderthal "0.54.0"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.0"]
-                 [uncomplicate/commons "0.17.0-SNAPSHOT"]
+  :dependencies [[org.clojure/clojure "1.12.1"]
+                 [uncomplicate/commons "0.17.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-openblas "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-mkl "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-opencl "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-cuda "0.54.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-accelerate "0.54.0-SNAPSHOT"]]
+                 [org.uncomplicate/neanderthal-base "0.54.0"]
+                 [org.uncomplicate/neanderthal-openblas "0.54.0"]
+                 [org.uncomplicate/neanderthal-mkl "0.54.0"]
+                 [org.uncomplicate/neanderthal-opencl "0.54.0"]
+                 [org.uncomplicate/neanderthal-cuda "0.54.0"]
+                 [org.uncomplicate/neanderthal-accelerate "0.54.0"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
@@ -42,13 +42,13 @@
                                      *print-length* 128}
                        :dependencies [[codox-theme-rdash "0.1.2"]
                                       [midje "1.10.10"]]}
-             :linux {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier "linux-x86_64"]
+             :linux {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "linux-x86_64"]
                                     [org.bytedeco/mkl "2025.0-1.5.11" :classifier "linux-x86_64-redist"]
-                                    [org.bytedeco/cuda "12.9-9.10-1.5.12-SNAPSHOT" :classifier "linux-x86_64-redist"]]}
-             :windows {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier "windows-x86_64"]
+                                    [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]]}
+             :windows {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12-SNAPSHOT" :classifier "windows-x86_64"]
                                       [org.bytedeco/mkl "2025.0-1.5.11" :classifier "windows-x86_64-redist"]
-                                      [org.bytedeco/cuda "12.9-9.10-1.5.12-SNAPSHOT" :classifier "windows-x86_64-redist"]]}
-             :macosx {:dependencies [[org.bytedeco/openblas "0.3.29-1.5.12-SNAPSHOT" :classifier "macosx-arm64"]]}}
+                                      [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]]}
+             :macosx {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12-SNAPSHOT" :classifier "macosx-arm64"]]}}
 
   :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
