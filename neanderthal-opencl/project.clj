@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-opencl "0.54.0"
+(defproject org.uncomplicate/neanderthal-opencl "0.55.0-SNAPSHOT"
   :description "Neanderthal OpenCL backend."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -17,7 +17,7 @@
                  [uncomplicate/commons "0.17.0"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [uncomplicate/clojurecl "0.16.0"]
-                 [org.uncomplicate/neanderthal-base "0.54.0"]
+                 [org.uncomplicate/neanderthal-base "0.55.0-SNAPSHOT"]
                  [org.jocl/jocl-blast "1.5.2"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -29,8 +29,8 @@
                                  *print-length* 128}
                    :dependencies [[codox-theme-rdash "0.1.2"]
                                   [midje "1.10.10"]
-                                  [org.uncomplicate/neanderthal-test "0.54.0"]
-                                  [org.uncomplicate/neanderthal-openblas "0.54.0"]
+                                  [org.uncomplicate/neanderthal-test "0.55.0-SNAPSHOT"]
+                                  [org.uncomplicate/neanderthal-openblas "0.55.0-SNAPSHOT"]
                                   [org.bytedeco/openblas "0.3.30-1.5.12"]]
                    :codox {:metadata {:doc/format :markdown}
                            :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
