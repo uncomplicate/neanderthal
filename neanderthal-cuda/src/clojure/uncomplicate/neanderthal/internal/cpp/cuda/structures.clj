@@ -270,8 +270,8 @@
     (if (compatible? source destination)
       (if (= (dim source) (dim destination))
         (copy (engine source) source destination)
-        (subcopy (engine source) source destination 0 (min (dim source) (dim destination)) 0)))
-    (dragan-says-ex "We can't transfer incompatible CUDA vectors by (sub)copying them."))
+        (subcopy (engine source) source destination 0 (min (dim source) (dim destination)) 0))
+      (dragan-says-ex "We can't transfer incompatible CUDA vectors by (sub)copying them.")))
   destination)
 
 (defmethod transfer! [CUBlockVector RealNativeVector]

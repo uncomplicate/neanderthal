@@ -42,11 +42,14 @@
 
 (defn test-cuda-transfer-overwriting [fact]
   (with-release [cuda-v (vctr fact 4)
+                 cuda-v2 (vctr fact 4)
                  cpu-v4 (native cuda-v)
                  cpu-v2 (vctr cpu-v4 [1 10])]
     (facts "Test whether heterogeneous transfer from a vector writes beyond its turf."
            (entry! cuda-v 55) => cuda-v
            (seq (native cuda-v)) => [55.0 55.0 55.0 55.0]
+           (transfer! cuda-v cuda-v2) => cuda-v2
+           (seq (native cuda-v2)) => [55.0 55.0 55.0 55.0]
            (transfer! cpu-v2 cuda-v) => cuda-v
            (seq (native cuda-v)) => [1.0 10.0 55.0 55.0])))
 
