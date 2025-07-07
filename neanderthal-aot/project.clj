@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.54.1"
+(defproject uncomplicate/neanderthal "0.55.0-SNAPSHOT"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -16,12 +16,12 @@
   :dependencies [[org.clojure/clojure "1.12.1"]
                  [uncomplicate/commons "0.17.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.54.0"]
-                 [org.uncomplicate/neanderthal-openblas "0.54.0"]
-                 [org.uncomplicate/neanderthal-mkl "0.54.0"]
-                 [org.uncomplicate/neanderthal-opencl "0.54.0"]
-                 [org.uncomplicate/neanderthal-cuda "0.54.1"]
-                 [org.uncomplicate/neanderthal-accelerate "0.54.0"]]
+                 [org.uncomplicate/neanderthal-base "0.55.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-openblas "0.55.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-mkl "0.55.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-opencl "0.55.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-cuda "0.55.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-accelerate "0.55.0-SNAPSHOT"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
