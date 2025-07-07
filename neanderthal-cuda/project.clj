@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-cuda "0.55.0-SNAPSHOT"
+(defproject org.uncomplicate/neanderthal-cuda "0.54.1"
   :description "Neanderthal's CUDA backend."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -17,8 +17,8 @@
                  [uncomplicate/commons "0.17.0"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [uncomplicate/clojurecuda "0.22.0"]
-                 [org.uncomplicate/neanderthal-base "0.55.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-opencl "0.55.0-SNAPSHOT"]]
+                 [org.uncomplicate/neanderthal-base "0.54.0"]
+                 [org.uncomplicate/neanderthal-opencl "0.54.0"]]
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
              :dev/all {:plugins [[lein-midje "3.2.1"]
@@ -29,8 +29,8 @@
                                      *print-length* 128}
                        :dependencies [[codox-theme-rdash "0.1.2"]
                                       [midje "1.10.10"]
-                                      [org.uncomplicate/neanderthal-test "0.55.0-SNAPSHOT"]
-                                      [org.uncomplicate/neanderthal-openblas "0.55.0-SNAPSHOT"]]
+                                      [org.uncomplicate/neanderthal-test "0.54.1"]
+                                      [org.uncomplicate/neanderthal-openblas "0.54.0"]]
                        :codox {:metadata {:doc/format :markdown}
                                :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
                                :themes [:rdash]
