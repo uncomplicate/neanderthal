@@ -1,8 +1,8 @@
-(defproject hello-world-aot "0.54.0"
+(defproject hello-world-aot "0.55.0-SNAPSHOT"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.1"]
-                 [uncomplicate/neanderthal "0.54.0"]]
+                 [uncomplicate/neanderthal "0.55.0-SNAPSHOT"]]
 
   :profiles {:default [:default/all ~(leiningen.core.utils/get-os)]
              :default/all {:dependencies [[codox-theme-rdash "0.1.2"]
