@@ -38,7 +38,7 @@
                            :namespaces [uncomplicate.neanderthal.opencl]
                            :output-path "../docs/codox"}
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
-                                         "--enable-native-access=ALL-UNNAMED"]}}
+                                        "--enable-native-access=ALL-UNNAMED"]}}
 
   ;;:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
