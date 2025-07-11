@@ -14,9 +14,9 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.1"]
-                 [uncomplicate/commons "0.17.0"]
+                 [uncomplicate/commons "0.17.1-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/clojure-cpp "0.5.0"]
+                 [org.uncomplicate/clojure-cpp "0.5.1-SNAPSHOT"]
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [org.clojure/tools.logging "1.3.0"]]
 
@@ -44,7 +44,8 @@
                                         uncomplicate.neanderthal.sparse]
                            :output-path "../docs/codox"}
 
-                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
+                   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                                        "--enable-native-access=ALL-UNNAMED"]}}
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :source-paths ["src/clojure" "src/device"]

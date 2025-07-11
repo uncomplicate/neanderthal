@@ -13,8 +13,8 @@
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.0"]
-                 [uncomplicate/commons "0.17.0"]
+  :dependencies [[org.clojure/clojure "1.12.1"]
+                 [uncomplicate/commons "0.17.1-SNAPSHOT"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.uncomplicate/neanderthal-base "0.55.0-SNAPSHOT"]
                  [midje "1.10.10"]]
