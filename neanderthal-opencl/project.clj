@@ -27,16 +27,10 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[codox-theme-rdash "0.1.2"]
-                                  [midje "1.10.10"]
+                   :dependencies [[midje "1.10.10"]
                                   [org.uncomplicate/neanderthal-test "0.55.0"]
                                   [org.uncomplicate/neanderthal-openblas "0.55.0"]
                                   [org.bytedeco/openblas "0.3.30-1.5.12"]]
-                   :codox {:metadata {:doc/format :markdown}
-                           :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
-                           :themes [:rdash]
-                           :namespaces [uncomplicate.neanderthal.opencl]
-                           :output-path "../docs/codox"}
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}
 

@@ -26,8 +26,7 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[codox-theme-rdash "0.1.2"]
-                                  [midje "1.10.10"]
+                   :dependencies [[midje "1.10.10"]
                                   [org.uncomplicate/neanderthal-test "0.55.0"]
                                   [org.bytedeco/openblas "0.3.30-1.5.12" :classifier "macosx-arm64"]]
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"

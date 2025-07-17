@@ -26,8 +26,7 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[codox-theme-rdash "0.1.2"]
-                                  [org.bytedeco/openblas "0.3.30-1.5.12"]
+                   :dependencies [[org.bytedeco/openblas "0.3.30-1.5.12"]
                                   [org.uncomplicate/neanderthal-test "0.55.0"]]
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}

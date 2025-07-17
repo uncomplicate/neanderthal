@@ -21,28 +21,11 @@
                  [org.clojure/tools.logging "1.3.0"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
-                             [lein-codox "0.10.8"]
                              [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
                    :global-vars {*warn-on-reflection* true
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[codox-theme-rdash "0.1.2"]]
-                   :codox {:metadata {:doc/format :markdown}
-                           :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
-                           :themes [:rdash]
-                           :namespaces [uncomplicate.neanderthal.auxil
-                                        uncomplicate.neanderthal.block
-                                        uncomplicate.neanderthal.core
-                                        uncomplicate.neanderthal.integer
-                                        uncomplicate.neanderthal.linalg
-                                        uncomplicate.neanderthal.math
-                                        uncomplicate.neanderthal.native
-                                        uncomplicate.neanderthal.random
-                                        uncomplicate.neanderthal.real
-                                        uncomplicate.neanderthal.vect-math
-                                        uncomplicate.neanderthal.sparse]
-                           :output-path "../docs/codox"}
 
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}

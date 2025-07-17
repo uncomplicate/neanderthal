@@ -35,13 +35,34 @@
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
              :dev/all {:plugins [[lein-midje "3.2.1"]
+                                 [lein-codox "0.10.8"]
                                  [com.github.clj-kondo/lein-clj-kondo "0.2.5"]]
                        :global-vars {*warn-on-reflection* true
                                      *assert* false
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
-                       :dependencies [[codox-theme-rdash "0.1.2"]
-                                      [midje "1.10.10"]]}
+                       :dependencies [[midje "1.10.10"]
+                                      [codox-theme-rdash "0.1.2"]]
+                       :codox {:metadata {:doc/format :markdown}
+                               :source-uri "http://github.com/uncomplicate/neanderthal/blob/master/{filepath}#L{line}"
+                               :themes [:rdash]
+                               :source-paths ["../neanderthal-base/src/clojure/"
+                                              "../neanderthal-cuda/src/clojure/"
+                                              "../neanderthal-opencl/src/clojure/"]
+                               :namespaces [uncomplicate.neanderthal.auxil
+                                            uncomplicate.neanderthal.block
+                                            uncomplicate.neanderthal.core
+                                            uncomplicate.neanderthal.integer
+                                            uncomplicate.neanderthal.linalg
+                                            uncomplicate.neanderthal.math
+                                            uncomplicate.neanderthal.native
+                                            uncomplicate.neanderthal.random
+                                            uncomplicate.neanderthal.real
+                                            uncomplicate.neanderthal.vect-math
+                                            uncomplicate.neanderthal.sparse
+                                            uncomplicate.neanderthal.cuda
+                                            uncomplicate.neanderthal.opencl]
+                               :output-path "../docs/codox"}}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "linux-x86_64"]
                                     [org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
                                     [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]]}

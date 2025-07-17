@@ -25,7 +25,6 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[codox-theme-rdash "0.1.2"]]
 
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
 
