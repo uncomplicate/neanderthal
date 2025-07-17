@@ -1,5 +1,12 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.55.0
+
+* Update MKL to 2025.2.
+* Update core.async to the latest version.
+* Fix a cuda transfer bug.
+* Update all Uncomplicate dependencies.
+
 # 0.54.0
 
 * Backends are now AOT-compiled by default, but not mandatory (neanderthal-aot vs. neanderthal-*).

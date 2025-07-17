@@ -1,17 +1,17 @@
-(defproject hello-world-aot "0.54.1"
+(defproject hello-world-aot "0.55.0"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.1"]
-                 [uncomplicate/neanderthal "0.54.1"]]
+                 [uncomplicate/neanderthal "0.55.0"]]
 
   :profiles {:default [:default/all ~(leiningen.core.utils/get-os)]
              :default/all {:dependencies [[codox-theme-rdash "0.1.2"]
                                           ;; optional on Linux and Windows
                                           [org.bytedeco/openblas "0.3.30-1.5.12"]]}
-             :linux {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier "linux-x86_64-redist"]
+             :linux {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
                                     ;; optional, if you want GPU computing with CUDA. Beware: the jar size is 3GB!
                                     [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]]}
-             :windows {:dependencies [[org.bytedeco/mkl "2025.0-1.5.11" :classifier "windows-x86_64-redist"]
+             :windows {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "windows-x86_64-redist"]
                                       ;; optional, if you want GPU computing with CUDA. Beware: the jar size is 3GB!
                                       [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]]}
              :macosx {:dependencies []}}
