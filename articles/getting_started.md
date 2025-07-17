@@ -13,15 +13,15 @@ Neanderthal's default option is to use use native libraries, so it is very impor
 
 ## Installation (Leiningen)
 
-The most straightforward way to include Neanderthal in your project is with Leiningen. **Check [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj) out for the complete example.** Please note that, if you need an older version of Neanderthal, they may need a bit more specific installation steps, which are explained in [Requirements](#requirements).
+The most straightforward way to include Neanderthal in your project is with Leiningen. **Check [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world-aot/project.clj) out for the complete example.** Please note that, if you need an older version of Neanderthal, they may need a bit more specific installation steps, which are explained in [Requirements](#requirements).
 
 * Add the following dependency to your `project.clj`,: ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
-* Add a MKL distribution jar `[org.bytedeco/mkl "2024.0-1.5.10" :classifier linux-x86_64-redist]` as your project's dependency.
-* (optional) Add a CUDA distribution jar `[org.bytedeco/cuda "12.3-8.9-1.5.10" :classifier linux-x86_64-redist]` as your project's dependency.
+* Add Intel MKL distribution jar `[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]` as your project's dependency (Linux or Windows). for MacOS, the native binaries are already there on the OS, so you don't need MKL (nor MKL works on Mac).
+* (optional) Add a CUDA distribution jar as your project's dependency (`[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]` on Linux, or `[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]` on Windows). Please note that you'll have to add Sonatype snapshots Maven repository (`:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]` since Maven Central introduced hard limit of 2GB, which is exceeded by CUDA's 3GB distribution). MacOS doesn't ship with Nvidia GPUs, thus doesn't support CUDA.
 
-Neanderhtal will use the native CPU MKL (and/or CUDA) binaries from that jar automatically, so you don't need to do anything else. If the jar is not present, Neanderthal will expect you to have a system-wide MKL installation as explained in [Native Engine Requirements](#legacy-0470-and-older-the-native-library-used-by-neanderthals-native-engine-optional).33 **Note: MKL distribution size is 200 MB, while CUDA is 2.0 GB!** Lein will download these JARs the first time you include them, which might take some time, so it's a good idea to run `lein deps` and wait each time you update the version.
+Neanderhtal will use the native CPU MKL (and/or CUDA, OpenCL, OpenBLAS, or Accelerate) binaries from these jars automatically, so you don't need to do anything else. If the jars are not present, Neanderthal will expect you to have a system-wide MKL (OpenBLAS, CUDA, etc.) installation as explained in [Native Engine Requirements](#legacy-0470-and-older-the-native-library-used-by-neanderthals-native-engine-optional).33 **Note: MKL distribution size is 200 MB, while CUDA is 2.9 GB!** Leiningen will download these JARs the first time you include them, which might take some time, so it's a good idea to run `lein deps` *in the terminal* and wait each time you update the version. If you let your IDE do this, it will quietly download under the hood without visibly reporting this to you, which might confuse you into thinking something's not right while you wait for 20 minutes for your REPL to open. Even worse, if you kill that process, you might end with a broken jar in your local Maven repository.
 
-Also note the `:classifier`, which is OS dependent. You may omit it, but then binaries for all operating systems will be downloaded, which will take longer. For, windows, use `windows-x86_64-redist`, and `macosx-x86_64-redist` for mac. **Sadly, macOS is currently only supported on Intel CPUs, and you'll have to use LEGACY Neanderthal versions, 0.47.0 and older, so it can be a bit messy to set up.**
+Also note the `:classifier`, which is OS dependent. You may omit it, but then binaries for all operating systems will be downloaded, which will take longer. For, Windows, use `windows-x86_64-redist`. For MacOS, you do not need this, as it ships with Accelerate framework.
 
 ## Usage
 
@@ -54,9 +54,8 @@ This is one of the ways to multiply matrices:
 
 Neanderthal is a Clojure library for fast matrix and linear algebra computations that supports pluggable engines:
 
-* The **native engine** is based on a highly optimized native [Intel's MKL](https://https://software.intel.com/en-us/intel-mkl) library of [BLAS](https://netlib.org/blas/) and [LAPACK](https://www.netlib.org/lapack/) computation routines (MKL is not open-source, but it is free to use and redistribute since 2016).
-* The **CUDA GPU engine** is based on cuBLAS and supports all modern Nvidia GPUs. It uses [ClojureCUDA](https://clojurecuda.uncomplicate.org) and [JCuda](https://jcuda
-3.org) libraries. Check out [Uncomplicate ClojureCUDA](https://clojurecuda.uncomplicate.org).
+* Currently there are 3 **native engines**! The first is for Intel CPUs, based on a highly optimized native [Intel's oneMKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) library of [BLAS](https://netlib.org/blas/) and [LAPACK](https://www.netlib.org/lapack/) computation routines (MKL is not open-source, but it is free to use and redistribute since 2016). The second one is for Mac, and it is based on Apple's accelerate. You might also use OpenBLAS (https://github.com/OpenMathLib/OpenBLAS), which supports both Intel and Apple, and all 3 operating systems, but does not support all Neanderthal features.
+* The **CUDA GPU engine** is based on cuBLAS and supports all modern Nvidia GPUs. It uses [ClojureCUDA](https://clojurecuda.uncomplicate.org).. Check out [Uncomplicate ClojureCUDA](https://clojurecuda.uncomplicate.org) for more info.
 * The **OpenCL GPU engine** is based on OpenCL BLAS routines from [CLBlast](https://github.com/CNugteren/CLBlast) library for even more computational power when needed. It uses [ClojureCL](https://clojurecl.uncomplicate.org) and [JOCL](https://jocl.org) libraries. Check out [Uncomplicate ClojureCL](https://clojurecl.uncomplicate.org).
 
 ### Implemented Features
@@ -70,85 +69,56 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 * Fast map, reduce and fold implementations for the provided structures.
 * OpenCL GPU support
 * CUDA GPU support
+* Intel (Linux and Windows) and Apple Silicon processors.
 
 ### On the TODO List
 
-* ~"Tensors"~: This is already available in Deep Diamond!
+* ~"Tensors"~: This is already available in Deep Diamond! (https://github.com/uncomplicate/deep-diamond)
 * Support for complex numbers;
 
 ## Requirements
 
 You need at least Java 8, but the newer the better.
 
-### LEGACY (0.47.0 and older): Open JVM modules.
+### JVM requirements
 
-If you are running on Java 9 or higher, you need to enable the `java.base` module. Add the following to your JVM options (:jvm-opts in leiningen): `"--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED"` and `"--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"`.
+Depending on the OpenJDK version, you may or may not be required to set these option, but I recommend that you set them anyway (the first one will ensure there are no reflections in Neanderthal's macro-heavy code):
 
-Neanderthal's data structures are written in Clojure, so many functions work even without native engines. However, you probably need Neanderthal because of its fast BLAS native or GPU engines. Here is how to make sure they are available.
+```clojure
+:jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
+                     "--enable-native-access=ALL-UNNAMED"]}
+```
+
+### Binaries CPU engines
+
+Neanderthal uses MKL, Accelerate, and/or OpenBLAS. Although Neanderthal ships with the code to access routines from these libraries, the binaries themselves are available in two ways:
+* You can include them through Maven redist jars (see the Hello World project).
+* You may install them globally on your system through your system's package manager. In this case, you don't need the redist jars, but you must ensure that the version that you have on your OS is compatible with what Neanderthal uses.
 
 ### GPU drivers for the OpenCL GPU engine
 
 Everything will magically work (no need to compile anything) on Nvidia, AMD, and Intel's GPUs and CPUs as long as you have appropriate GPU drivers.
 
-Works on Linux, Windows, and OS X!
+Works on Linux, and Windows; sadly, deprecated on MacOS!
 
 Follow the [ClojureCL getting started guide](https://clojurecl.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
-**If you use a pre-2.0 OpenCL platform (Nvidia and/or OS X), you'll have to use `command-queue-1` and/or `with-default-1` instead of `command-queue` and `with-default`.**
+**If you use a pre-2.0 OpenCL platform (Nvidia), you'll have to use `command-queue-1` and/or `with-default-1` instead of `command-queue` and `with-default`.**
 
 ### GPU drivers for the CUDA GPU engine
 
 Everything will magically work (no need to compile anything) on Nvidia, provided that you **have Nvidia drivers**, and included the appropriate
-Nvidia Toolkit JavaCPP jar (`[org.bytedeco/cuda "12.3-8.9-1.5.10" :classifier linux-x86_64-redist]`).
+Nvidia Toolkit JavaCPP jar (`[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]` or `[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]`).
+Similarly to the CPU engine binaries, you can either include the redist jars in your project, or you can install CUDA toolkit globally through your operating system package manager.
 
 Follow the [ClojureCUDA getting started guide](https://clojurecuda.uncomplicate.org/articles/getting_started.html) for the links for the GPU platform that you use and more detailed info.
 
-*macOS* doesn't support CUDA 11 and higher (and Apple hasn't shipped Nvidia GPUs since 2014 anyway). You'll have to exclude CUDA dependency in your build script (see the [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world/project.clj)).
-
-If you're using a LEGACY version (0.47.0 and older) you'll need to install the CUDA Toolkit on your machine, **instead of** using JavaCPP CUDA binaries.
-
-### LEGACY (0.47.0 and older) The native library used by Neanderthal's native engine (Optional)
-
-**The following is not needed if you include [org.bytedeco/mkl-platform-redist "2020.3-1.5.4"] dependency.** (Also, ignore this section completely if you're using 0.48.0 and up.)
-
-This section deals with system-wide MKL installation.
-
-* Works on Linux, OS X, and Windows!
-
-Neanderthal **uses the native [Intel MKL](https://software.intel.com/en-us/mkl) library and expects that you make it available on your system, typically as shared xyz.so, xyz.dll, or xyz.dylib files**. [Intel MKL](https://software.intel.com/en-us/mkl) is highly optimized for various architectures; its installation comes with many optimized binaries for all supported architectures, that are then selected during runtime according to the hardware at hand.
-
-**You do not need to compile or tune anything yourself.**
-
-These are alternative ways to make MKL available on your system globally; either:
-
-1. Install it through a package manager it that is available on your system. I use Arch Linux (`pacman -Syu intel-mkl`), and I believe that many other Linux distributions now ship MKL in their repositories..
-
-OR:
-
-1. (Optionally) Install MKL using a [GUI installer provided by Intel](https://software.intel.com/en-us/intel-mkl) free of charge. In case you use this method, you may [set environment variables as explained in this guide](https://software.intel.com/en-us/node/528500), but it is probably not required, since you do **not** need to compile anything.
-2. Put all required binary files (that you installed with MKL installer or copied from wherever you acquired them) in a directory that is available from your `LD_LIBRARY_PATH` (Linux), `DYLD_LIBRARY_PATH` (OSX) or, `PATH` (windows). Those binary files are available from anyone who installed MKL and have the (free) license to redistribute it with a project.
-
-This is the list of MKL files that Neanderthal requires:
-
-* Mandatory MKL libraries (this is what I use on my Intel Core i7 4790k):
-  * `libmkl_rt.so`
-  * `libmkl_core.so`
-  * `libmkl_intel_lp64.so`
-  * `libiomp5.so`
-  * `libmkl_intel_thread`
-  * `libmkl_avx2.so` (if your CPU supports AVX2, which it probably does)
-* Optionally, your processor might support additional set of instructions that may require an additional file from MKL. See the MKL guide and browse all available files once you install MKL to discover this. For example, I guess that you might also need `libmkl_avx512.so` if you have a Xeon processor.
-
-Please note that, if you use Windows or OS X, the binary file extensions are not `.so`, but `.dll` and `dylib` respectively.
-
-**Note for OSX users:** MKL installation on my OSX 10.11 placed `libiomp5.dylib` in a different folder than the rest of the MKL libraries. In such case, copy that file where it is visible, or don't rely on the MKL installation, but select the needed library files and put them somewhere on the `DYLD_LIBRARY_PATH`. In newer versions of OSX, you'd have to configure the "system integrity protection (SIP)" settings for `DYLD_LIBRARY_PATH` to be respected by the system [see more here](https://github.com/uncomplicate/neanderthal/issues/31). If you want a quick & dirty solution without much fuss, copying the `dylib` files and pasting them into `/usr/local/lib` has been reported to work by multiple users.
-
-**Note for Windows users:** MKL installation on my Windows 10 keeps all required `.dll` files in the `<install dir>\redist` folder. The usual folders that keep `.so` and `dylib` on Linux and OSX, keep `.lib` files on Windows - you do not need those. Add the folder that contains the `dll`s into the `PATH` environment vairable, and you're ready to go. Some Windows users reported that `libiomp5.dll` too is in another folder; see the note for OSX users and take the equivalent Windows action.
-
-*Final note* If you prefer zero-install, just include `[org.bytedeco/mkl-platform-redist "2020.3-1.5.4"]` as a dependencly in your leiningen project and none of these is necessary.
+*macOS* doesn't support CUDA 11 and higher (and Apple hasn't shipped Nvidia GPUs since 2014 anyway).
 
 ## Where to Go Next
 
 Hopefully this guide got you started and now you'd like to learn more. I expect to build a comprehensive base of articles and references for exploring this topic, so please check the [All Guides](/articles/guides.html) page from time to time. Of course, you should also check the [Neanderthal API](/codox) for specific details, and feel free to take a glance at [the source](https://github.com/uncomplicate/neanderthal) while you are there.
 
 It is also a good idea to follow [my blog at dragan.rocks](https://dragan.rocks) since I'll write about Neanderthal there.
+
+Also check out the [BOOKS](http://aiprobook.com). They not only demonstrate in great detail how to effectively and efficiently use Neanderthal, but they also help me fund this work!

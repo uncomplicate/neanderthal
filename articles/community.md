@@ -20,7 +20,10 @@ To subscribe for announcements of releases, important changes, and so on, please
 
 A collection of Clojure libraries, currently containing:
 
+* [Deep Diamond](https://github.com/uncomplicate/deep-diamond) - The Clojure Tensor, Deep Learning, and Neural Networks library.
+* [ClojureCUDA](https://clojurecl.uncomplicate.org) - a Clojure library for parallel computations with CUDA
 * [ClojureCL](https://clojurecl.uncomplicate.org) - a Clojure library for parallel computations with OpenCL
+* [Clojure CPP](https://github.com/uncomplicate/clojure-cpp) - Clojure's gateway to native pointers and integration with native libraries
 * [Neanderthal](https://neanderthal.uncomplicate.org) - you are reading about it.
 * [Fluokitten](https://fluokitten.uncomplicate.org) - Category Theory in idiomatic Clojure.
 

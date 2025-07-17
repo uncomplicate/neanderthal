@@ -7,14 +7,20 @@ layout: article
 ## Basic setup
 
 * [Getting Started](/articles/getting_started.html) helps you to set up your environment.
-* [Hello world](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world), a project that helps at the very beginning.
+* [Hello world AOT](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world-aot) or [Hello world](https://github.com/uncomplicate/neanderthal/tree/master/examples/hello-world), projects that help at the very beginning.
 
 ## Books
 
-[New book available for subscription.](https://aiprobook.com/deep-learning-for-programmers)
+[Deep Learning for Programmers](https://aiprobook.com/deep-learning-for-programmers)
 
 <a href="https://aiprobook.com/deep-learning-for-programmers">
 <img src="http://aiprobook.com/img/dlfp-cover.png" style="max-width: 100%"/>
+</a>
+
+[Numerical Linear Algebra for Programmers](https://aiprobook.com/numerical-linear-algebra-for-programmers)
+
+<a href="https://aiprobook.com/numerical-linear-algebra-for-programmers">
+<img src="http://aiprobook.com/img/lafp-cover.png" style="max-width: 100%"/>
 </a>
 
 ## Presentations (Slides & Videos)
