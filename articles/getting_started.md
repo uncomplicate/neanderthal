@@ -61,7 +61,7 @@ Neanderthal is a Clojure library for fast matrix and linear algebra computations
 ### To AOT or not to AOT
 
 Neanderthal code is tiny compared to similar non-Clojure libraries (25000 LOC vs 500000 LOC) but this comes with heavy macrology.
-These macros need time to evaluate, typically 15 seconds, so if I provided AOT (ahead of time) compiled engines in ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg). If you use that dependency, your code will be ready to compute with neanderthal in a second or two. The drawback is that the version of dependencies that neanderhtal uses are fixed by Neanderhtal. Therefore, that dependency is oriented towards experimentation and learning rather than production code.
+These macros need time to evaluate, typically 15 seconds, so I've provided AOT (ahead of time) compiled engines in ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg). If you use that dependency, your code will be ready to compute with Neanderthal in a second or two. The drawback is that the version of dependencies that Neanderthal uses are then fixed. Therefore, that dependency is oriented towards experimentation and learning rather than production code.
 
 Of course, your production code will want more flexibility. This use case if covered by fine-grained `org.uncomplicate/neanderhtal-*` jars.
 Instead of using `uncomplicate/neanderhtal`, use ![](https://clojars.org/org.uncomplicate/neanderthal-base/latest-version.svg),
