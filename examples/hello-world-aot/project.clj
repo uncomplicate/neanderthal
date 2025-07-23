@@ -5,8 +5,7 @@
                  [uncomplicate/neanderthal "0.55.0"]]
 
   :profiles {:default [:default/all ~(leiningen.core.utils/get-os)]
-             :default/all {:dependencies [[codox-theme-rdash "0.1.2"]
-                                          ;; optional on Linux and Windows
+             :default/all {:dependencies [;; optional on Linux and Windows
                                           [org.bytedeco/openblas "0.3.30-1.5.12"]]}
              :linux {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
                                     ;; optional, if you want GPU computing with CUDA. Beware: the jar size is 3GB!
