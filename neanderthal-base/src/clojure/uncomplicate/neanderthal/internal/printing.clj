@@ -89,7 +89,7 @@
   (defn format-row [^java.io.Writer w s-left s-right]
     (when (seq s-left) (cl-format w format-seq s-left))
     (when (and (seq s-left) (seq s-right)) (cl-format w hdots))
-    (when (seq s-right)) (cl-format w format-seq s-right))
+    (when (seq s-right) (cl-format w format-seq s-right)))
 
   (defn print-vector
     ([^java.io.Writer w formatter x]
