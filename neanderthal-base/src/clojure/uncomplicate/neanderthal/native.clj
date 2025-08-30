@@ -99,6 +99,7 @@
        (info "Accelerate backend loaded.")))
 
 (defn find-default-backend []
+  (info "Searching for a suitable backend.")
   (cond
     (and (clojure.string/includes? (clojure.string/lower-case (System/getProperty "os.name")) "mac")
          (load-class "uncomplicate.javacpp.accelerate.global.blas_new"))
@@ -115,6 +116,7 @@
    `(load-backend ~(find-default-backend)))
   ([backend]
    (let [backend# backend]
+     (info (format "Loading %s backend. It may take a few seconds. Please stand by." backend#))
      (case backend#
        :accelerate (if (load-class "uncomplicate.javacpp.accelerate.global.blas_new")
                      `(load-accelerate)
@@ -132,7 +134,7 @@
                        (info "If you want to use OpenBLAS, please ensure org.bytedeco/openblas is in your project dependencies.")
                        (dragan-says-ex "OpenBLAS could not be loaded! Please check yor project's dependencies.")))
        nil (error "This project has no native engine available, so nothing was loaded!")
-       (dragan-says-ex "Unknown native backend. Please use one of: :mkl :accelerate :openblas :nothing"
+       (dragan-says-ex (format "Unknown native backend \"%s\". Please use one of: :mkl :accelerate :openblas :nothing" backend#)
                        {:requested backend# :expected [:openblas :mkl :accelerate nil]})))))
 
 (load-backend)
