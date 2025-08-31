@@ -1,5 +1,10 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.56.0
+
+* Update Clojure to 1.12.2
+* Improve the info message about the search for an engine and the start of loading.
+
 # 0.55.0
 
 * Update MKL to 2025.2.
