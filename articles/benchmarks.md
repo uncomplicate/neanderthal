@@ -19,7 +19,7 @@ The focus of this article is Neanderthal's performance on the CPU. Since Neander
 
 ### What is Being Measured
 
-Neanderthal uses [Intel's Math Kernel Library (MKL)](https://en.wikipedia.org/wiki/Math_Kernel_Library) and adds almost no overhead - it is expected that it will be as fast as your MKL installation (which is the fastest and most featureful thing around).
+ Neanderthal uses [Intel's Math Kernel Library (MKL)](https://en.wikipedia.org/wiki/Math_Kernel_Library) and adds almost no overhead - it is expected that it will be as fast as your MKL installation (which is the fastest and most featureful thing around).
 
 I will concentrate on the performance of matrix-matrix multiplications, since it is the typical representative of heavy operations O(n^3) (BLAS 3), and is the most telling measure of how well a library performs. Neanderthal takes great care to be as light as possible, and does not use data copying, so even linear operations, vector (BLAS 1) and quadratic matrix-vector (BLAS 2) are faster than in pure Java.
 
