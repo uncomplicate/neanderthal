@@ -11,7 +11,7 @@
   (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [with-release let-release info Releaseable release view]]
-             [utils :refer [dragan-says-ex with-check generate-seed]]]
+             [utils :refer [dragan-says-ex with-check generate-seed get-int]]]
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.clojure-cpp :as cpp
              :refer [pointer long-ptr long-pointer float-pointer double-pointer byte-pointer]]
@@ -178,7 +178,7 @@
     (with-mkl-check (mkl_rt/vslNewStream stream mkl_rt/VSL_BRNG_ARS5 seed)
       stream)))
 
-(def ^:private default-rng-stream (create-stream-ars5 (generate-seed)))
+(def ^:private default-rng-stream (create-stream-ars5 (get-int (generate-seed Integer/BYTES) 0)))
 
 (defmacro real-math* [name t ptr cast
                       vector-math vector-linear-frac vector-powx

@@ -10,22 +10,13 @@
     uncomplicate.neanderthal.internal.cpp.openblas.factory
   (:refer-clojure :exclude [abs])
   (:require [clojure.string :refer [trim split]]
-            [uncomplicate.commons
-             [core :refer [with-release let-release info Releaseable release view]]
-             [utils :refer [dragan-says-ex with-check generate-seed]]]
-            [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols cols rows matrix-type entry] :as core]
-             [real :as real]
-             [integer :as integer]
-             [math :refer [f=] :as math]
-             [block :refer [stride contiguous?]]]
+             [core :refer [mrows ncols]]
+             [math :as math]]
             [uncomplicate.neanderthal.internal
              [constants :refer :all]
-             [api :refer :all]
-             [navigation :refer [full-storage accu-layout dostripe-layout]]
-             [common :refer [check-stride check-eq-navigators flip-uplo real-accessor]]]
+             [api :refer :all]]
             [uncomplicate.neanderthal.internal.cpp
              [common :refer :all]
              [structures :refer :all]
@@ -33,7 +24,6 @@
              [blas :refer :all]
              [factory :refer :all]])
   (:import java.nio.ByteBuffer
-           [org.bytedeco.javacpp FloatPointer DoublePointer LongPointer IntPointer ShortPointer BytePointer]
            [uncomplicate.neanderthal.internal.api DataAccessor LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
            [org.bytedeco.openblas.global openblas_full]))

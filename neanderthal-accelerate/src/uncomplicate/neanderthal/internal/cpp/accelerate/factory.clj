@@ -11,22 +11,20 @@
   (:refer-clojure :exclude [abs])
   (:require [clojure.string :refer [lower-case]]
             [uncomplicate.commons
-             [core :refer [with-release let-release info Releaseable release view]]
-             [utils :refer [dragan-says-ex with-check generate-seed]]]
-            [uncomplicate.fluokitten.core :refer [fmap! extract]]
+             [core :refer [with-release let-release info]]
+             [utils :refer [dragan-says-ex]]]
+            [uncomplicate.fluokitten.core :refer [fmap!]]
             [uncomplicate.clojure-cpp :as cpp
-             :refer [pointer long-pointer float-pointer double-pointer clong-pointer get-entry malloc! free!]]
+             :refer [pointer long-pointer float-pointer double-pointer clong-pointer]]
             [uncomplicate.neanderthal
-             [core :refer [dim mrows ncols cols rows matrix-type entry entry!]]
-             [real :as real]
-             [integer :as integer]
+             [core :refer [dim mrows ncols entry!]]
              [math :refer [f=] :as math]
              [block :refer [stride contiguous?]]]
             [uncomplicate.neanderthal.internal
              [constants :refer :all]
              [api :refer :all]
-             [navigation :refer [full-storage accu-layout dostripe-layout]]
-             [common :refer [check-stride check-eq-navigators flip-uplo real-accessor]]]
+             [navigation :refer [full-storage]]
+             [common :refer [check-stride]]]
             [uncomplicate.neanderthal.internal.cpp
              [common :refer :all]
              [structures :refer :all]
@@ -35,7 +33,7 @@
              [factory :refer :all]]
             [uncomplicate.neanderthal.internal.cpp.openblas.factory :as openblas])
   (:import java.nio.ByteBuffer
-           [uncomplicate.neanderthal.internal.api DataAccessor Vector LayoutNavigator Region
+           [uncomplicate.neanderthal.internal.api DataAccessor LayoutNavigator Region
             GEMatrix UploMatrix DenseStorage]
            [uncomplicate.javacpp.accelerate.global thread blas_new lapack_new vforce vdsp]))
 

@@ -1,5 +1,9 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.57.0
+
+* Improve RNG seed
+
 # 0.56.0
 
 * Update Clojure to 1.12.2
