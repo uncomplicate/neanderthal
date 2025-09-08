@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-mkl "0.57.0-SNAPSHOT"
+(defproject org.uncomplicate/neanderthal-mkl "0.57.0"
   :description "Neanderthal's MKL engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderhtal-mkl"
   :scm {:name "git"
@@ -14,9 +14,9 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.2"]
-                 [uncomplicate/commons "0.18.0-SNAPSHOT"]
+                 [uncomplicate/commons "0.18.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.57.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-base "0.57.0"]
                  [org.bytedeco/mkl-platform "2025.2-1.5.12"]]
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
@@ -27,7 +27,7 @@
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[midje "1.10.10"]
-                                      [org.uncomplicate/neanderthal-test "0.57.0-SNAPSHOT"]]
+                                      [org.uncomplicate/neanderthal-test "0.57.0"]]
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                             "--enable-native-access=ALL-UNNAMED"]}
              :linux {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]]}
