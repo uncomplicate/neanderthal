@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-mkl "0.57.0"
+(defproject org.uncomplicate/neanderthal-mkl "0.57.1"
   :description "Neanderthal's MKL engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderhtal-mkl"
   :scm {:name "git"

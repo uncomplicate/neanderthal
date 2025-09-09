@@ -1,4 +1,4 @@
-(defproject hello-world-on-the-fly "0.57.0"
+(defproject hello-world-on-the-fly "0.57.1"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.2"]
@@ -15,13 +15,13 @@
   :profiles {:default [:default/all ~(leiningen.core.utils/get-os)]
              :default/all {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12"]]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "linux-x86_64"]
-                                    [org.uncomplicate/neanderthal-mkl "0.57.0"]
+                                    [org.uncomplicate/neanderthal-mkl "0.57.1"]
                                     [org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
                                     [org.uncomplicate/neanderthal-cuda "0.57.0"]
                                     [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]
                                     [org.uncomplicate/neanderthal-opencl "0.57.0"]]}
              :windows {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier windows-x86_64]
-                                      [org.uncomplicate/neanderthal-mkl "0.57.0"]
+                                      [org.uncomplicate/neanderthal-mkl "0.57.1"]
                                       [org.bytedeco/mkl "2025.2-1.5.12" :classifier "windows-x86_64-redist"]
                                       [org.uncomplicate/neanderthal-cuda "0.57.0"]
                                       [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]

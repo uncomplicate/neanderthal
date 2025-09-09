@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.57.0"
+(defproject uncomplicate/neanderthal "0.57.1"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -18,7 +18,7 @@
                  [uncomplicate/fluokitten "0.10.0"]
                  [org.uncomplicate/neanderthal-base "0.57.0"]
                  [org.uncomplicate/neanderthal-openblas "0.57.0"]
-                 [org.uncomplicate/neanderthal-mkl "0.57.0"]
+                 [org.uncomplicate/neanderthal-mkl "0.57.1"]
                  [org.uncomplicate/neanderthal-opencl "0.57.0"]
                  [org.uncomplicate/neanderthal-cuda "0.57.0"]
                  [org.uncomplicate/neanderthal-accelerate "0.57.0"]]

@@ -11,10 +11,10 @@
   (:refer-clojure :exclude [abs])
   (:require [uncomplicate.commons
              [core :refer [with-release let-release info Releaseable release view]]
-             [utils :refer [dragan-says-ex with-check generate-seed get-int]]]
+             [utils :refer [dragan-says-ex with-check generate-seed]]]
             [uncomplicate.fluokitten.core :refer [fmap! extract]]
             [uncomplicate.clojure-cpp :as cpp
-             :refer [pointer long-ptr long-pointer float-pointer double-pointer byte-pointer]]
+             :refer [pointer long-ptr long-pointer float-pointer double-pointer byte-pointer int-pointer]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols matrix-type entry symmetric?]]
              [real :as real]
@@ -173,12 +173,13 @@
        ~res
        (throw (ex-info "MKL error." {:error-code err#})))))
 
-(defn create-stream-ars5 ^mkl_rt$VSLStreamStatePtr [seed]
-  (let-release [stream (mkl_rt$VSLStreamStatePtr. (long-pointer 1))]
-    (with-mkl-check (mkl_rt/vslNewStream stream mkl_rt/VSL_BRNG_ARS5 seed)
+(defn create-stream-ars5 ^mkl_rt$VSLStreamStatePtr [^long seed]
+  (let-release [stream (mkl_rt$VSLStreamStatePtr. (long-pointer 1))
+                seed (int-pointer (long-pointer [seed]))]
+    (with-mkl-check (mkl_rt/vslNewStreamEx stream mkl_rt/VSL_BRNG_ARS5 2 seed)
       stream)))
 
-(def ^:private default-rng-stream (create-stream-ars5 (get-int (generate-seed Integer/BYTES) 0)))
+(def ^:private default-rng-stream (create-stream-ars5 (generate-seed)))
 
 (defmacro real-math* [name t ptr cast
                       vector-math vector-linear-frac vector-powx
