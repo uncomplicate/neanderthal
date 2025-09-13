@@ -4,6 +4,11 @@
   :dependencies [[org.clojure/clojure "1.12.2"]
                  [uncomplicate/neanderthal "0.57.1"]]
 
+  ;; uncomplicate/neanderthal is AOT compiled for fast loading and developer convenience, which
+  ;; might cause issues since it freezes org.clojure/core.async to the specific version (see ClojureCUDA).
+
+  ;; FOR PRODUCTION USE, PLEASE USE org.uncomplicate/neanderthal-base AND OTHER PARTICULAR DEPENDENCIES
+
   :profiles {:default [:default/all ~(leiningen.core.utils/get-os)]
              :default/all {:dependencies [;; optional on Linux and Windows
                                           [org.bytedeco/openblas "0.3.30-1.5.12"]]}
