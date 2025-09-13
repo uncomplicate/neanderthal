@@ -15,7 +15,7 @@ Neanderthal's default option is to use use native libraries, so it is very impor
 
 The most straightforward way to include Neanderthal in your project is with Leiningen. **Check [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world-aot/project.clj) out for the complete example.** Please note that, if you need an older version of Neanderthal, they may need a bit more specific installation steps, which are explained in [Requirements](#requirements).
 
-* Add the following dependency to your `project.clj`,: ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg)
+* Add the following dependency to your `project.clj`,: ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg) (**that is an AOT-compiled bundle! Don't use it for production! Instead, use the specific non-AOT compiled packages (read the AOT section below)!**
 * Add Intel MKL distribution jar `[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]` as your project's dependency (Linux or Windows). for MacOS, the native binaries are already there on the OS, so you don't need MKL (nor MKL works on Mac).
 * (optional) Add a CUDA distribution jar as your project's dependency (`[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]` on Linux, or `[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]` on Windows). Please note that you'll have to add Sonatype snapshots Maven repository (`:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]` since Maven Central introduced hard limit of 2GB, which is exceeded by CUDA's 3GB distribution). MacOS doesn't ship with Nvidia GPUs, thus doesn't support CUDA.
 
@@ -99,7 +99,15 @@ Depending on the OpenJDK version, you may or may not be required to set these op
                      "--enable-native-access=ALL-UNNAMED"]}
 ```
 
-### CPU engine Binaries
+### AOT and compatibility with other libraries
+
+If you use separate dependencies (`org.uncomplicate/neanderthal-base`, `org.uncomplicate/neanderthal-mkl`, etc.),
+there should be no problem whatsoever. However, if you use the AOT-compiled `uncomplicate/neanderthal` bundle,
+then make sure that you use the same version of Clojure, and the same version of `core.async` that the particular
+version of Neanderthal is compiled. Otherwise, you might get `ClassNotFoundException` when an incompatible class
+is used.
+
+### CPU engine binaries
 
 Neanderthal uses MKL, Accelerate, and/or OpenBLAS. Although Neanderthal ships with the code to access routines from these libraries, the binaries themselves are available in two ways:
 * You can include them through Maven redist jars (see the Hello World project).
