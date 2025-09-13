@@ -15,7 +15,7 @@ Neanderthal's default option is to use use native libraries, so it is very impor
 
 The most straightforward way to include Neanderthal in your project is with Leiningen. **Check [the Hello World project](https://github.com/uncomplicate/neanderthal/blob/master/examples/hello-world-aot/project.clj) out for the complete example.** Please note that, if you need an older version of Neanderthal, they may need a bit more specific installation steps, which are explained in [Requirements](#requirements).
 
-* Add the following dependency to your `project.clj`,: ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg) (**that is an AOT-compiled bundle! Don't use it for production! Instead, use the specific non-AOT compiled packages (read the AOT section below)!**
+* Add the following dependency to your `project.clj`,: ![](https://clojars.org/uncomplicate/neanderthal/latest-version.svg) **That is an AOT-compiled bundle! Don't use it for production! Instead, use the specific non-AOT compiled packages (read the AOT section below)!**
 * Add Intel MKL distribution jar `[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]` as your project's dependency (Linux or Windows). for MacOS, the native binaries are already there on the OS, so you don't need MKL (nor MKL works on Mac).
 * (optional) Add a CUDA distribution jar as your project's dependency (`[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]` on Linux, or `[org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]` on Windows). Please note that you'll have to add Sonatype snapshots Maven repository (`:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]` since Maven Central introduced hard limit of 2GB, which is exceeded by CUDA's 3GB distribution). MacOS doesn't ship with Nvidia GPUs, thus doesn't support CUDA.
 
@@ -89,6 +89,14 @@ These jars are NOT AOT-compiled, but everyday Clojure jars. The code will get ev
 ## Requirements
 
 You need at least Java 8, but the newer the better.
+
+### Clojure
+
+If you use AOT version of Neanderthal (`uncomplicate/neanderthal`) you must ensure that you also run it with
+a compatible version of Clojure (please see [Neanderthal AOT project](https://github.com/uncomplicate/neanderthal/blob/master/neanderthal-aot/project.clj)
+for the version of Clojure that Neanderthal uses. Does it have to be the exact same Clojure version? It depends, but it's better if it is.
+
+Of course, if you use separate, non-AOT Neanderthal deps, there should not be any special requirements. It's better if you use a recent Clojure though.
 
 ### JVM requirements
 
