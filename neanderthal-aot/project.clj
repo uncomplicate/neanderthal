@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.57.1"
+(defproject uncomplicate/neanderthal "0.58.0"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -20,7 +20,7 @@
                  [org.uncomplicate/neanderthal-openblas "0.57.0"]
                  [org.uncomplicate/neanderthal-mkl "0.57.1"]
                  [org.uncomplicate/neanderthal-opencl "0.57.0"]
-                 [org.uncomplicate/neanderthal-cuda "0.57.0"]
+                 [org.uncomplicate/neanderthal-cuda "0.58.0"]
                  [org.uncomplicate/neanderthal-accelerate "0.57.0"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
@@ -65,13 +65,15 @@
                                :output-path "../docs/codox"}}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "linux-x86_64"]
                                     [org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
-                                    [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.143830-1" :classifier "linux-x86_64-redist"]]}
+                                    [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "linux-x86_64-redist"]
+                                    [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "linux-x86_64-redist-cublas"]]}
              :windows {:dependencies [[org.bytedeco/openblas "2025.2-1.5.12" :classifier "windows-x86_64"]
                                       [org.bytedeco/mkl "2025.2-1.5.12" :classifier "windows-x86_64-redist"]
-                                      [org.bytedeco/cuda "12.9-9.10-1.5.12-20250612.145546-3" :classifier "windows-x86_64-redist"]]}
+                                      [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "windows-x86_64-redist"]
+                                      [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "windows-x86_64-redist-cublas"]]}
              :macosx {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "macosx-arm64"]]}}
 
-  :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
+  :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
 

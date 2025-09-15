@@ -1,6 +1,12 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
-# 0.57.0
+# 0.58.0
+
+* Use improved CUDA redist artifacts distribution (multiple smaller artifacts)
+* New snapshot repository necessary for CUDA (temporary fix, will be obsolete when JavaCPP 1.5.13 is released)
+* Now requires only cuda and cublas instead of the whole nvidia megapackage.
+
+# 0.57.2
 
 * Improve RNG seed
 
