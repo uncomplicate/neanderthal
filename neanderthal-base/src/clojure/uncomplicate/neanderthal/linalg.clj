@@ -189,7 +189,7 @@
   If G is exactly singular (it can't be used for solving a system of linear equations),
   throws `ex-info`.
 
-  See related info about [gesv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gesv.html).
+  See related info about [ppsv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2025-2/ppsv.html).
   "
   [^Matrix a ^Matrix b]
   (if (and (api/compatible? a b) (and (= (.ncols a) (.mrows b))))

@@ -6,17 +6,17 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-cuda "0.58.0"
+(defproject org.uncomplicate/neanderthal-cuda "0.58.1"
   :description "Neanderthal's CUDA backend."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.1"]
+  :dependencies [[org.clojure/clojure "1.12.3"]
                  [uncomplicate/commons "0.18.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [uncomplicate/clojurecuda "0.23.0"]
+                 [uncomplicate/clojurecuda "0.24.0"]
                  [org.uncomplicate/neanderthal-base "0.57.0"]
                  [org.uncomplicate/neanderthal-opencl "0.57.0"]]
 
@@ -33,13 +33,13 @@
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                              "--enable-native-access=ALL-UNNAMED"]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "linux-x86_64"]
-                                    [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "linux-x86_64-redist"]
-                                    [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "linux-x86_64-redist-cublas"]]}
+                                    [org.bytedeco/cuda-redist "12.9-9.10-1.5.12" :classifier "linux-x86_64"]
+                                    [org.bytedeco/cuda-redist-cublas "12.9-9.10-1.5.12" :classifier "linux-x86_64"]]}
              :windows {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "windows-x86_64"]
-                                      [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "windows-x86_64-redist"]
-                                      [org.bytedeco/cuda "12.9-9.10-1.5.13-20250913.041224-9" :classifier "windows-x86_64-redist-cublas"]]}}
+                                      [org.bytedeco/cuda-redist "12.9-9.10-1.5.12" :classifier "windows-x86_64"]
+                                      [org.bytedeco/cuda-redist-cublas "12.9-9.10-1.5.12" :classifier "windows-x86_64"]]}}
 
-  :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
+  ;;:repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
 
