@@ -16,7 +16,7 @@
              :default/all {:dependencies [;; optional on Linux and Windows, mandatory on MacOS
                                           [org.bytedeco/openblas "0.3.30-1.5.12"]]}
              :linux {:dependencies [[org.uncomplicate/neanderthal-mkl "0.57.1"]
-                                    [org.uncomplicate/neanderthal-cuda "0.59.9"]
+                                    [org.uncomplicate/neanderthal-cuda "0.59.0"]
                                     [org.uncomplicate/neanderthal-opencl "0.57.0"]
                                     [org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
                                     [org.bytedeco/cuda-redist "13.0-9.14-1.5.13-20251022.164318-20" :classifier "linux-x86_64"]
