@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.59.0"
+(defproject uncomplicate/neanderthal "0.59.1-SNAPSHOT"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic Neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -73,7 +73,7 @@
                                       [org.bytedeco/cuda-redist-cublas "13.0-9.14-1.5.13-20251022.164318-20" :classifier "windows-x86_64"]]}
              :macosx {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "macosx-arm64"]]}}
 
-  ;;:repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
+  :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
 
