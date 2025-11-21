@@ -9,8 +9,8 @@
 
   ;; FOR PRODUCTION USE, PLEASE USE org.uncomplicate/neanderthal-base AND OTHER PARTICULAR DEPENDENCIES
 
-  :profiles {:default [:default/all ~(leiningen.core.utils/get-os)]
-             :default/all {:dependencies [;; optional on Linux and Windows, mandatory on MacOS
+  :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
+             :dev/all {:dependencies [;; optional on Linux and Windows, mandatory on MacOS
                                           [org.bytedeco/openblas "0.3.30-1.5.12"]]}
              :linux {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
                                     ;; optional, if you want GPU computing with CUDA. Beware: the size of these 2 jars is cca 800 MB.

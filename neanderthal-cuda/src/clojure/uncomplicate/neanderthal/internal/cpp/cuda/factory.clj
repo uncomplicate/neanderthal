@@ -108,12 +108,12 @@
              (parameters (dim x) (extract x) (offset x) (stride x) (extract y) (offset y) (stride y))))
   x)
 
-(defn ^:private vector-sum [modl hstream x]
+(defn ^:private vector-sum [modl hstream kernel-name x]
   (let [da (data-accessor x)
         cnt (dim x)
         block-dim 1024]
     (if (< 0 cnt)
-      (with-release [sum-kernel (function modl "vector_sum")
+      (with-release [sum-kernel (function modl kernel-name)
                      sum-reduction-kernel (function modl "sum_reduction")
                      cu-acc (mem-alloc-driver (* (.entryWidth da) (count-groups block-dim cnt)))
                      res (.wrapPrim da 0.0)]
@@ -184,13 +184,20 @@
          (entry res# 0)))
      0.0))
 
-(defmacro ^:private vector-scal [cublas-handle cublas method ptr cpp-ptr alpha x]
-  `(if (< 0 (dim ~x))
-     (with-release [alpha# (~cpp-ptr (.wrapPrim (data-accessor ~x) ~alpha))]
-       (with-check cublas-error
-         (. ~cublas ~method ~cublas-handle (dim ~x) alpha# (~ptr ~x) (stride ~x))
-         ~x))
-     ~x))
+(defmacro ^:private vector-scal
+  ([cublas-handle cublas method ptr cpp-ptr alpha x]
+   `(if (< 0 (dim ~x))
+      (with-release [alpha# (~cpp-ptr (.wrapPrim (data-accessor ~x) ~alpha))]
+        (with-check cublas-error
+          (. ~cublas ~method ~cublas-handle (dim ~x) alpha# (~ptr ~x) (stride ~x))
+          ~x))
+      ~x))
+  ([modl hstream alpha x]
+   `(when (< 0 (dim ~x))
+      (with-release [set-kernel# (function ~modl "vector_scal")]
+        (launch! set-kernel# (grid-1d (dim ~x)) ~hstream
+                 (parameters (dim ~x) (.castPrim (data-accessor ~x) ~alpha) (extract ~x) (offset ~x) (stride ~x))))
+      ~x)))
 
 (defmacro ^:private vector-axpy [cublas-handle cublas method ptr cpp-ptr alpha x y]
   `(if (< 0 (dim ~x))
@@ -233,28 +240,42 @@
         (= 0 (read-int hstream eq-flag-buf))))
     (= 0 (dim b))))
 
-(defn ^:private ge-set [modl hstream alpha a]
+(defn ^:private ge-set-scal [modl hstream kernel-name alpha a]
   (if (< 0 (dim a))
     (let [da (data-accessor a)
           stor (full-storage a)]
-      (with-release [ge-set-kernel (function modl "ge_set")]
-        (launch! ge-set-kernel (grid-2d (.sd stor) (.fd stor)) hstream
-                 (parameters (.sd stor) (.fd stor) (.castPrim da alpha) (extract a) (offset a) (.ld stor))))
-      a)))
+      (with-release [ge-set-scal-kernel (function modl kernel-name)]
+        (launch! ge-set-scal-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.fd stor) (.castPrim da alpha) (extract a) (offset a) (.ld stor))))))
+  a)
+
+(defn ge-copy-swap [modl hstream kernel-name a b]
+  (if (< 0 (dim a))
+    (let [stor (full-storage a)]
+      (with-release [ge-copy-swap-kernel (function modl (name-transp kernel-name a b))]
+        (launch! ge-copy-swap-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.fd stor) (extract a) (offset a) (.ld stor)
+                             (extract b) (offset b) (stride b)))))))
+
+(defn ge-axpby [modl hstream alpha a beta b]
+  (if (< 0 (dim a))
+    (let [da (data-accessor a)
+          stor (full-storage a)]
+      (with-release [ge-axpby-kernel (function modl (name-transp "ge_axpby" a b))]
+        (launch! ge-axpby-kernel (grid-2d (.sd stor) (.fd stor)) hstream
+                 (parameters (.sd stor) (.fd stor) (extract a)
+                             (.castPrim da alpha) (offset a) (.ld stor)
+                             (.castPrim da beta) (extract b) (offset b) (stride b))))))
+  b)
 
 (defmacro ^:private ge-swap [cublas-handle cublas method modl hstream ptr a b]
   `(if (< 0 (dim ~a))
-     (let [da# (data-accessor ~a)
-           stor# (full-storage ~a)]
+     (let [stor# (full-storage ~a)]
        (if (and (= (navigator ~a) (navigator ~b)) (.isGapless stor#) (.isGapless (storage ~b)))
          (with-check cublas-error
            (. ~cublas ~method ~cublas-handle (dim ~a) (~ptr ~a) 1 (~ptr ~b) 1)
            ~a)
-         (with-release [ge-swap-kernel# (function ~modl (name-transp "ge_swap" ~a ~b))]
-           (launch! ge-swap-kernel# (grid-2d (.sd stor#) (.fd stor#)) ~hstream
-                    (parameters (.sd stor#) (.fd stor#) (extract ~a) (offset ~a) (.ld stor#)
-                                (extract ~b) (offset ~b) (stride ~b)))
-           ~a)))
+         (ge-copy-swap ~modl ~hstream "ge_swap" ~a ~b)))
      ~a))
 
 (defmacro ^:private ge-dot [cublas-handle cublas method ptr a b]
@@ -277,7 +298,7 @@
        (not-available))
      0.0))
 
-(defn ^:private ge-sum [modl hstream a]
+(defn ^:private ge-sum [modl hstream kernel-name a]
   (let [da (data-accessor a)
         stor (full-storage a)
         cnt-sd (.sd stor)
@@ -289,7 +310,7 @@
         grid-dim-y (count-groups wgs-fd cnt-fd)
         acc-count (int (* grid-dim-x grid-dim-y))]
     (if (< 0 (dim a))
-      (with-release [sum-kernel (function modl "ge_sum")
+      (with-release [sum-kernel (function modl kernel-name)
                      sum-reduction-kernel (function modl "sum_reduction")
                      cu-acc (mem-alloc-driver (* Double/BYTES acc-count))
                      res (.wrapPrim da 0.0)
@@ -727,12 +748,64 @@
   (equals-block [this x y]
     (vector-equals modl hstream x y))
   Blas
-  (swap [this x y]
-    (vector-swap modl hstream x y)
+  (swap [_ x y]
+    (vector-swap modl hstream x y))
+  (copy [_ x y]
+    (vector-copy modl hstream x y))
+  (dot [_ _  _];TODO
+    (not-available))
+  (nrm1 [this x]
+    (asum this x))
+  (nrm2 [_ _]
+    (not-available))
+  (nrmi [_ _]
+    (not-available))
+  (asum [_ x]
+    (vector-sum modl hstream "vector_asum" x))
+  (iamax [_ _];;TODO
+    (not-available))
+  (iamin [_ _];TODO
+    (not-available))
+  (rot [_ _ _ _ _]
+    (not-available))
+  (rotg [_ _]
+    (not-available))
+  (rotm [_ _ _ _]
+    (not-available))
+  (rotmg [_ _ _]
+    (not-available))
+  (scal [_ alpha x]
+    (vector-scal modl hstream alpha x)
     x)
-  (copy [this x y]
-    (vector-copy modl hstream x y)
-    y)
+  (axpy [_ alpha x y]
+    (vector-axpby modl hstream alpha x 1 y))
+  BlasPlus
+  (amax [_ _];TODO
+    (not-available))
+  (subcopy [this x y kx lx ky]
+    (vector-copy modl hstream x y kx lx ky))
+  (sum [_ x]
+    (vector-sum modl hstream "vector_sum" x))
+  (imax [_ _];TODO
+    (not-available))
+  (imin [_ _];;TODO
+    (not-available))
+  (set-all [this alpha x]
+    (vector-set modl hstream alpha x))
+  (axpby [_ alpha x beta y]
+    (vector-axpby modl hstream alpha x beta y)))
+
+(deftype IntegerGEEngine [modl hstream]
+  BlockEngine
+  (equals-block [_ a b]
+    (ge-equals modl hstream a b))
+  Blas
+  (swap [_ a b]
+    (ge-copy-swap modl hstream "ge_copy" a b)
+    a)
+  (copy [_ a b]
+    (ge-copy-swap modl hstream "ge_swap" a b)
+    b)
   (dot [_ _  _]
     (not-available))
   (nrm1 [_ _]
@@ -741,8 +814,8 @@
     (not-available))
   (nrmi [_ _]
     (not-available))
-  (asum [_ _]
-    (not-available))
+  (asum [_ a]
+    (ge-sum modl hstream "ge_asum" a))
   (iamax [_ _]
     (not-available))
   (iamin [_ _]
@@ -755,25 +828,25 @@
     (not-available))
   (rotmg [_ _ _]
     (not-available))
-  (scal [_ _ _]
-    (not-available))
-  (axpy [_ _ _ _]
-    (not-available))
+  (scal [_ alpha a]
+    (ge-set-scal modl hstream "ge_scal" alpha a))
+  (axpy [_ alpha a b]
+    (ge-axpby modl hstream alpha a 1 b))
   BlasPlus
   (amax [_ _]
     (not-available))
-  (subcopy [this x y kx lx ky]
-    (vector-copy modl hstream x y kx lx ky))
-  (sum [_ _]
+  (subcopy [_ _ _ _ _ _]
     (not-available))
+  (sum [_ a]
+    (ge-sum modl hstream "ge_sum" a))
   (imax [_ _]
     (not-available))
   (imin [_ _]
     (not-available))
-  (set-all [this alpha x]
-    (vector-set modl hstream alpha x))
-  (axpby [_ alpha x beta y]
-    (not-available)))
+  (set-all [this alpha a]
+    (ge-set-scal modl hstream "ge_set" alpha a))
+  (axpby [_ alpha a beta b]
+    (ge-axpby modl hstream alpha a beta b)))
 
 ;; ================= Real Vector Engines ========================================
 
@@ -824,7 +897,7 @@
      (subcopy [this# x# y# kx# lx# ky#]
        (vector-copy (.-modl this#) (.-hstream this#) x# y# kx# lx# ky#))
      (sum [this# x#]
-       (vector-sum (.-modl this#) (.-hstream this#) x#))
+       (vector-sum (.-modl this#) (.-hstream this#) "vector_sum" x#))
      (imax [this# x#]
        (not-available))
      (imin [this# x#]
@@ -1041,10 +1114,12 @@
      BlasPlus
      (amax [_# _#]
        (not-available))
+     (subcopy [_# _# _# _# _# _#]
+       (not-available))
      (sum [this# a#]
-       (ge-sum (.-modl this#) (.-hstream this#) a#))
+       (ge-sum (.-modl this#) (.-hstream this#) "ge_sum" a#))
      (set-all [this# alpha# a#]
-       (ge-set (.-modl this#) (.-hstream this#) alpha# a#))
+       (ge-set-scal (.-modl this#) (.-hstream this#) "ge_set" alpha# a#))
      (axpby [this# alpha# a# beta# b#]
        (ge-am (handle this#) ~cublas ~(cu-blas t 'geam) ~ptr ~cpp-ptr alpha# a# beta# b#))
      (trans [_# _#]
@@ -1322,11 +1397,16 @@
 
 (let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
                (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/blas-plus.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu")))
+               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu")))
 
-      integer-src (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
+      real-src (str src
+                    (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/real.cu"))
+                    (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-real.cu"))
+                    (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu")))
+
+      integer-src (str src
+                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
+                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu")))
 
       standard-headers {"stdint.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/stdint.h"))
                         "float.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/float.h"))}
@@ -1343,7 +1423,7 @@
   (defn cublas-double [native-double ctx hstream]
     (in-context
      ctx
-     (with-release [prog (compile! (program src philox-headers)
+     (with-release [prog (compile! (program real-src philox-headers)
                                    ["-DNUMBER=double" "-DREAL=double" "-DACCUMULATOR=double"
                                     "-DCAST(fun)=fun" #_"-use_fast_math" "-default-device"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
@@ -1361,7 +1441,7 @@
   (defn cublas-float [native-float ctx hstream]
     (in-context
      ctx
-     (with-release [prog (compile! (program src philox-headers)
+     (with-release [prog (compile! (program real-src philox-headers)
                                    ["-DNUMBER=float" "-DREAL=float" "-DACCUMULATOR=float"
                                     "-DCAST(fun)=fun##f" #_"-use_fast_math" "-default-device"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
@@ -1380,7 +1460,8 @@
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=long" #_"-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=long" "-DINTEGER=long" "-DACCUMULATOR=long"
+                                    #_"-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)
@@ -1389,13 +1470,14 @@
                                                             (cuda-malloc size :long))
                                                           cuda-free!)]
          (->CUFactory modl hstream long-accessor native-long
-                      (->IntegerVectorEngine modl hstream) nil nil nil)))))
+                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-int [native-int ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=int" "-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=int" "-DINTEGER=int" "-DACCUMULATOR=int"
+                                    #_"-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)
@@ -1404,30 +1486,32 @@
                                                           (cuda-malloc size :int))
                                                         cuda-free!)]
          (->CUFactory modl hstream int-accessor native-int
-                      (->IntegerVectorEngine modl hstream) nil nil nil)))))
+                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-short [native-short ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=short" #_"-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=short" "-DINTEGER=short" "-DACCUMULATOR=short"
+                                    #_"-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)
                      short-accessor (->ShortPointerAccessor ctx hstream
                                                             (fn [^long size]
                                                               (cuda-malloc size :short))
                                                             cuda-free!)]
          (->CUFactory modl hstream short-accessor native-short
-                      (->IntegerVectorEngine modl hstream) nil nil nil)))))
+                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-byte [native-byte ctx hstream]
     (in-context
      ctx
      (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=char" #_"-use_fast_math" "-default-device"])]
+                                   ["-DNUMBER=char" "-DINTEGER=char" "-DACCUMULATOR=char"
+                                    #_"-use_fast_math" "-default-device"])]
        (let-release [modl (module prog)
                      byte-accessor (->BytePointerAccessor ctx hstream
                                                           (fn [^long size]
                                                             (cuda-malloc size :byte))
                                                           cuda-free!)]
          (->CUFactory modl hstream byte-accessor native-byte
-                      (->IntegerVectorEngine modl hstream) nil nil nil))))))
+                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil))))))

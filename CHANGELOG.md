@@ -1,5 +1,14 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.60.0
+
+* Implement integer GE matrices and cover more Blas/BlasPlus/VectMath api for integer vectors and matrices.
+
+# 0.59.0
+
+* Update CUDA to 13.0
+* Update Clojure to 1.12.3
+
 # 0.58.0
 
 * Use improved CUDA redist artifacts distribution (multiple smaller artifacts)

@@ -372,7 +372,7 @@
              no-trans# (= (navigator ~a) (navigator ~b))]
          (. ~blas ~method ~(byte (int \C)) (byte (int (if no-trans# \N \T)))
             (if no-trans# (.sd stor-b#) (.fd stor-b#)) (if no-trans# (.fd stor-b#) (.sd stor-b#))
-            1.0 (~ptr ~a) (stride ~a) (~ptr ~b) (.ld stor-b#))))
+            1.0 (~ptr ~a 0) (stride ~a) (~ptr ~b 0) (.ld stor-b#))))
     `(if (or (and (.isGapless (storage ~a)) (= 0 (rem (dim ~a)) ~chunk))
              (and (= 0 (rem (mrows ~a) ~chunk)) (= 0 (rem (ncols ~a) ~chunk))))
        (let [stor-b# (full-storage ~b)
@@ -380,7 +380,7 @@
          (. ~blas ~method ~(byte (int \C)) (byte (int (if no-trans# \N \T)))
             (quot (if no-trans# (.sd stor-b#) (.fd stor-b#)) ~chunk)
             (quot (if no-trans# (.fd stor-b#) (.sd stor-b#)) ~chunk)
-            1.0 (~ptr ~a) (quot (stride ~a) ~chunk) (~ptr ~b) (quot (.ld stor-b#) ~chunk)))
+            1.0 (~ptr ~a 0) (quot (stride ~a) ~chunk) (~ptr ~b 0) (quot (.ld stor-b#) ~chunk)))
        (dragan-says-ex SHORT_UNSUPPORTED_MSG {:mrows (mrows ~a) :ncols (ncols ~a)}))))
 
 (defmacro mkl-integer-ge-blas* [name t ptr blas chunk]

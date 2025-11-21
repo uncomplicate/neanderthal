@@ -16,6 +16,13 @@
   (:import  clojure.lang.ExceptionInfo
             [org.bytedeco.javacpp IntPointer FloatPointer]))
 
+(facts "MKL settings test."
+       (threading-layer) => :intel
+       (threading-layer! -1) => :intel
+       (threading-layer! :intel) => :intel
+       (threading-layer! :gnu) => :intel
+       (threading-layer! :gnu) => :intel)
+
 ;; ================= Sparse tests ===============================
 
 (facts "MKL export_csr test."

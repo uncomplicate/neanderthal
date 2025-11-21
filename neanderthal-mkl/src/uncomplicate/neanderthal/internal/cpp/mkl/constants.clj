@@ -22,6 +22,20 @@
    :avx2 mkl_rt/MKL_ENABLE_AVX2
    :avx2-e1 mkl_rt/MKL_ENABLE_AVX2_E1})
 
+(def ^:const mkl-threading-layer
+  {:intel mkl_rt/MKL_THREADING_INTEL
+   :sequential mkl_rt/MKL_THREADING_SEQUENTIAL
+   :gnu mkl_rt/MKL_THREADING_GNU
+   :tbb mkl_rt/MKL_THREADING_TBB})
+
+(defn dec-threading-layer [^long threading-layer]
+  (case threading-layer
+    0 :intel
+    1 :sequential
+    3 :gnu
+    4 :tbb
+    (dragan-says-ex "Unknown threading layer." {:threading-layer threading-layer})))
+
 (def ^:const mkl-verbose-mode
   {:timing 2
    :log 1

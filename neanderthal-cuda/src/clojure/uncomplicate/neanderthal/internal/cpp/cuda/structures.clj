@@ -37,8 +37,8 @@
   (:import [clojure.lang IFn IFn$L IFn$LD IFn$LDD IFn$LLD]
            org.bytedeco.cuda.global.cublas
            [uncomplicate.neanderthal.internal.api Block Matrix DataAccessor RealNativeVector
-            IntegerNativeVector RealNativeMatrix FullStorage Region Default GEMatrix CUMatrix
-            UploMatrix
+            IntegerNativeVector RealNativeMatrix IntegerNativeMatrix
+            FullStorage Region Default GEMatrix CUMatrix UploMatrix
             IntegerVector LayoutNavigator MatrixImplementation RealAccessor IntegerAccessor
             CUVector CUMatrix CLVector CLMatrix Changeable]))
 
@@ -292,11 +292,19 @@
 
 (defmethod transfer! [CUBlockVector IntegerNativeVector]
   [source destination]
-  (get-vector! source destination))
+  (if (compatible? source destination)
+    (get-vector! source destination)
+    (with-release [h (host source)]
+      (transfer! h destination)))
+  destination)
 
 (defmethod transfer! [IntegerNativeVector CUBlockVector]
   [source destination]
-  (set-vector! source destination))
+  (if (compatible? destination source)
+    (set-vector! source destination)
+    (with-release [temp (raw source (native-factory destination))]
+      (set-vector! (transfer! source temp) destination)))
+  destination)
 
 (defmethod transfer! [CUVector Object]
   [source destination]
@@ -579,6 +587,20 @@
       (copy! (get-matrix! source h) destination))))
 
 (defmethod transfer! [RealNativeMatrix CUMatrix]
+  [source destination]
+  (if (= (navigator source) (navigator destination))
+    (set-matrix! source destination)
+    (with-release [h (raw destination (factory host))]
+      (set-matrix! (copy! source h) destination))))
+
+(defmethod transfer! [CUMatrix IntegerNativeMatrix]
+  [source destination]
+  (if (= (navigator source) (navigator destination))
+    (get-matrix! source destination)
+    (with-release [h (host source)]
+      (copy! (get-matrix! source h) destination))))
+
+(defmethod transfer! [IntegerNativeMatrix CUMatrix]
   [source destination]
   (if (= (navigator source) (navigator destination))
     (set-matrix! source destination)

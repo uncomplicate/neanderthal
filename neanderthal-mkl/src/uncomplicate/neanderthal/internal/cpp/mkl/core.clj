@@ -76,6 +76,14 @@
 (defn verbose! [timing]
   (dec-verbose-mode (mkl_rt/MKL_Verbose (get mkl-verbose-mode timing timing))))
 
+(defn threading-layer []
+  (dec-threading-layer (mkl_rt/MKL_Set_Threading_Layer -1)))
+
+(defn threading-layer! [layer]
+  (if (= 0 (mkl_rt/MKL_Set_Threading_Layer (get mkl-threading-layer layer layer)))
+    (threading-layer)
+    (dragan-says-ex "MKL was unable to set this threading layer." {:requested layer})))
+
 (defn max-threads
   (^long []
    (mkl_rt/MKL_Domain_Get_Max_Threads mkl_rt/MKL_DOMAIN_ALL))
