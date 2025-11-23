@@ -75,7 +75,7 @@
    (uncomplicate.neanderthal.internal.cpp.openblas.factory/threading! param)
    (cond
        (or (= false param) (= 1 param)) (accelerate-threading! false)
-       (or (= true param) (< 1 param)) (accelerate-threading! true)
+       (or (= true param) (< 1 (long param))) (accelerate-threading! true)
        :default (throw (dragan-says-ex "Threading model is not supported by Accelerate." {:threading param}))))
   ([]
    (openblas/threading!)
