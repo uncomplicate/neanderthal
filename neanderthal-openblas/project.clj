@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-openblas "0.60.0-SNAPSHOT"
+(defproject org.uncomplicate/neanderthal-openblas "0.60.0"
   :description "Neanderthal's OpenBLAS engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderthal-openblas"
   :scm {:name "git"
@@ -16,7 +16,7 @@
   :dependencies [[org.clojure/clojure "1.12.3"]
                  [uncomplicate/commons "0.19.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.60.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-base "0.60.0"]
                  [org.bytedeco/openblas-platform "0.3.30-1.5.12"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -27,7 +27,7 @@
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
                    :dependencies [[org.bytedeco/openblas "0.3.30-1.5.12"]
-                                  [org.uncomplicate/neanderthal-test "0.60.0-SNAPSHOT"]]
+                                  [org.uncomplicate/neanderthal-test "0.60.0"]]
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}
 

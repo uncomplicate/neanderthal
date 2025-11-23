@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-cuda "0.60.0-SNAPSHOT"
+(defproject org.uncomplicate/neanderthal-cuda "0.60.0"
   :description "Neanderthal's CUDA backend."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -17,8 +17,8 @@
                  [uncomplicate/commons "0.19.0"]
                  [uncomplicate/fluokitten "0.10.0"]
                  [uncomplicate/clojurecuda "0.25.0"]
-                 [org.uncomplicate/neanderthal-base "0.60.0-SNAPSHOT"]
-                 [org.uncomplicate/neanderthal-opencl "0.60.0-SNAPSHOT"]]
+                 [org.uncomplicate/neanderthal-base "0.60.0"]
+                 [org.uncomplicate/neanderthal-opencl "0.60.0"]]
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
              :dev/all {:plugins [[lein-midje "3.2.1"]
@@ -28,8 +28,8 @@
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[midje "1.10.10"]
-                                      [org.uncomplicate/neanderthal-test "0.60.0-SNAPSHOT"]
-                                      [org.uncomplicate/neanderthal-openblas "0.60.0-SNAPSHOT"]]
+                                      [org.uncomplicate/neanderthal-test "0.60.0"]
+                                      [org.uncomplicate/neanderthal-openblas "0.60.0"]]
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                              "--enable-native-access=ALL-UNNAMED"]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "linux-x86_64"]
