@@ -899,7 +899,7 @@
 
   If the contexts or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [dot](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/dot.html).
+  See related info about [dot](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/dot.html).
 
       (dot (dv 1 2 3) (dv 1 2 3)) => 14.0
   "
@@ -917,7 +917,7 @@
 (defn nrm2
   "Computes the Euclidan norm of vector `x`, or Frobenius norm of matrix `x`.
 
-  See related info about [nrm2](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/nrm2.html).
+  See related info about [nrm2](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/nrm2.html).
 
       (nrm2 (dv 1 2 3)) => 3.7416573867739413
   "
@@ -932,7 +932,7 @@
 (defn asum
   "Sums absolute values of entries of vector or matrix `x`.
 
-  See related info about [asum](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/asum.html).
+  See related info about [asum](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/asum.html).
 
       (asum (dv -1 2 -3)) => 6.0
   "
@@ -942,7 +942,7 @@
 (defn iamax
   "The index of the first entry of vector `x` that has the largest absolute value.
 
-  See related info about [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamax.html).
+  See related info about [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/iamax.html).
 
       (iamax (dv 1 -3 2)) => 1
   "
@@ -954,7 +954,7 @@
 (defn iamin
   "The index of the first entry of vector `x` that has the smallest absolute value.
 
-  See related info about [iamin](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamin.html).
+  See related info about [iamin](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/iamin.html).
 
       (iamin (dv 1 -3 2)) => 0
   "
@@ -966,7 +966,7 @@
 (defn amax
   "Absolute value of the first entry of vector space `x` that has the largest absolute value.
 
-  See related info about [[imax]] and [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamax.html).
+  See related info about [[imax]] and [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/iamax.html).
 
       (amax (dv 1 -3 2)) => 3
   "
@@ -976,7 +976,7 @@
 (defn imax
   "The index of the first entry of vector space `x` that has the largest value.
 
-  See related info about [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamax.html).
+  See related info about [iamax](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/iamax.html).
 
       (imax (dv 1 -3 2)) => 2
   "
@@ -988,7 +988,7 @@
 (defn imin
   "The index of the first entry of vector `x` that has the smallest value.
 
-  See related info about [[iamin]] [iamin](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/iamin.html).
+  See related info about [[iamin]] [iamin](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/iamin.html).
 
       (imin (dv 1 -3 2)) => 2
   "
@@ -1004,7 +1004,7 @@
 
   If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [swap](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/swap.html).
+  See related info about [swap](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/swap.html).
   "
   [^VectorSpace x y]
   (when (and (not (identical? x y)) (< 0 (.dim x)))
@@ -1021,7 +1021,7 @@
 
   If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [copy](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/copy.html).
+  See related info about [copy](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/copy.html).
   "
   ([^VectorSpace x y]
    (if-not (identical? x y)
@@ -1058,7 +1058,7 @@
 
   After `scal!`, `x` will be changed.
 
-  See related info about [scal](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/scal.html).
+  See related info about [scal](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/scal.html).
   "
   [alpha ^VectorSpace x]
   (when (< 0 (.dim x))
@@ -1079,7 +1079,7 @@
 
   If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [rot](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rot.html).
+  See related info about [rot](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/rot.html).
   "
   ([^Vector x ^Vector y ^double c ^double s]
    (if (and (api/compatible? x y))
@@ -1101,7 +1101,7 @@
 
   If  `abcs` does not have at least 4 entries, throws `ex-info`.
 
-  See related info about [rotg](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rotg.html).
+  See related info about [rotg](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/rotg.html).
   "
   [^Vector abcs]
   (if (< 3 (.dim abcs))
@@ -1113,7 +1113,7 @@
 
   `param` must be a vector of at least 4 entries.
 
-  See related info about [rotm](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rotm.html).
+  See related info about [rotm](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/rotm.html).
   "
   [^Vector x ^Vector y ^Vector param]
   (if (and (< 0 (.dim x)) (< 0 (.dim y)))
@@ -1134,7 +1134,7 @@
   If the context or dimensions of  `d1d2xy` and `param` are not compatible, or `d1d2xy` does not have
   at least at least 4 entries, or `param` does not have at least 5 entries, throws `ex-info`.
 
-  See related info about [rotmg](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/rotmg.html).
+  See related info about [rotmg](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/rotmg.html).
   "
   [^Vector d1d2xy ^Vector param]
   (if (and (api/compatible? d1d2xy param) (< 3 (.dim d1d2xy)) (< 4 (.dim param)))
@@ -1157,7 +1157,7 @@
 
   If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [axpy](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/axpy.html).
+  See related info about [axpy](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/axpy.html).
 
       (axpy! 3 x y)
       (axpy! x y)
@@ -1196,7 +1196,7 @@
 
   If the context or dimensions of  `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [axpby](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/axpby.html).
+  See related info about [axpby](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/axpby.html).
 
       (axpy! 3 x 0.9 y)
       (axpy! x y)
@@ -1276,8 +1276,8 @@
 
   If the context or dimensions of `a`, `x` and `y` are not compatible, throws `ex-info`.
 
-  See related info about [gemv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gemv.html),
-  [trmv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/trmv.html),
+  See related info about [gemv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/gemv.html),
+  [trmv](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/trmv.html),
   and similar XXmv functions.
 
       (mv! 3 a x y)
@@ -1335,7 +1335,7 @@
 
   If `y` is not provided, uses `x` in its place, and computes a symmetric outer product.
 
-  See related info about [ger](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/ger.html).
+  See related info about [ger](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/ger.html).
 
       (rk! 1.5 (dv 1 2 3) (dv 4 5) a)
   "
@@ -1427,7 +1427,7 @@
   If the context or dimensions of `a`, `b` and `c` are not compatible, throws `ex-info`.
 
   See related info about [cblas_?gemm](https://software.intel.com/en-us/node/520775), and
-  [trmm](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/trmm.html).
+  [trmm](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/trmm.html).
 
       (def a (dge 2 3 (range 6)))
       (def b (dge 3 2 (range 2 8)))

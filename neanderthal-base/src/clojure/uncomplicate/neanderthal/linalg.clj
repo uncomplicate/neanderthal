@@ -24,7 +24,7 @@
 
   ### Also see:
 
-  - [LAPACK routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapack-routines.html)
+  - [LAPACK routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-2/lapack-routines.html)
   - [Linear Equation Computational Routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapack-linear-equation-computational-routines.html)
   - [Linear Equation Driver Routines](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/lapack-linear-equation-driver-routines.html)
   - [Orthogonal Factorizations (Q, R, L)](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/orthogonal-lapack-computational-routines.html)
@@ -55,7 +55,7 @@
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws `ex-info`.
 
-  See related info about [getrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/getrf.html).
+  See related info about [getrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-0/getrf.html).
   "
   [^Matrix a]
   (api/create-trf a false))
@@ -70,7 +70,7 @@
   If `a` is exactly singular (it can't be used for solving a system of linear equations),
   throws `ex-info`.
 
-  See related info about [potrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/potrf.html).
+  See related info about [potrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-2/potrf.html).
   "
   [^Matrix a]
   (api/create-ptrf a))
@@ -99,7 +99,7 @@
   throws `ex-info`.
   If the matrix is not square, throws `ex-info`.
 
-  See related info about [getri](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/getri.html).
+  See related info about [getri](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-0/getri.html).
   "
   [^Matrix a]
   (if (= (.mrows a) (.ncols a))
@@ -129,7 +129,7 @@
   If U is exactly singular (it can't be used for solving a system of linear equations),
   throws `ex-info`.
 
-  See related info about [getrs](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/getrs.html).
+  See related info about [getrs](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/getrs.html).
   "
   [^Matrix a ^Matrix b]
   (if (and (api/compatible? a b) (= (.ncols a) (.mrows b)))
@@ -274,7 +274,7 @@
   elementary reflectors. **Other routines work with Q in this representation**. If you need
   to compute q, call [[org!]] or [[org]].
 
-  See related info about [geqrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/geqrf.html).
+  See related info about [geqrf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/geqrf.html).
   "
   [a]
   (qr-factorization a false api/qrf))
@@ -336,7 +336,7 @@
 
   See [[qrf!]].
 
-  See related info about [gerqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gerqf.html).
+  See related info about [gerqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/gerqf.html).
   "
   [a]
   (rq-factorization a false))
@@ -346,7 +346,7 @@
 
   See [[qrf!]].
 
-  See related info about [gerqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/gerqf.html).
+  See related info about [gerqf](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/gerqf.html).
   "
   [^Matrix a]
   (let-release [a-copy (copy a)]
@@ -402,7 +402,7 @@
   previously processed by [[qrf!]] (and friends). Overwrites the input with the appropriate
   portion of the resulting matrix Q.
 
-  See related info about [orgqr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/orgqr.html).
+  See related info about [orgqr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/orgqr.html).
   "
   [or]
   (api/org! or))
@@ -414,7 +414,7 @@
   The input is a structure containing orthogonalized matrix `:lu` and vector `:tau` that were
   previously processed by [[qrf!]] (and friends).
 
-  See related info about [orgqr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-1/orgqr.html).
+  See related info about [orgqr](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2023-1/orgqr.html).
   "
   [or]
   (api/org or))
