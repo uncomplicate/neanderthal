@@ -1,7 +1,7 @@
-(defproject hello-world-on-the-fly "0.60.0"
+(defproject hello-world-on-the-fly "0.60.2"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.3"]
+  :dependencies [[org.clojure/clojure "1.12.4"]
                  [org.uncomplicate/neanderthal-base "0.60.0"]
                  ;; Optional, for CPU computing with OpenBLAS
                  [org.uncomplicate/neanderthal-openblas "0.60.0"]]
@@ -16,17 +16,17 @@
              :dev/all {:dependencies [;; optional on Linux and Windows, mandatory on MacOS
                                       [org.bytedeco/openblas "0.3.30-1.5.12"]]}
              :linux {:dependencies [[org.uncomplicate/neanderthal-mkl "0.60.0"]
-                                    [org.uncomplicate/neanderthal-cuda "0.60.0"]
+                                    [org.uncomplicate/neanderthal-cuda "0.60.2"]
                                     [org.uncomplicate/neanderthal-opencl "0.60.0"]
                                     [org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
-                                    [org.bytedeco/cuda-redist "13.0-9.14-1.5.13-20251022.164318-20" :classifier "linux-x86_64"]
-                                    [org.bytedeco/cuda-redist-cublas "13.0-9.14-1.5.13-20251022.164348-20" :classifier "linux-x86_64"]]}
+                                    [org.bytedeco/cuda-redist "13.1-9.18-1.5.13-20260203.003728-10" :classifier "linux-x86_64"]
+                                    [org.bytedeco/cuda-redist-cublas "13.1-9.18-1.5.13-20260203.003743-10" :classifier "linux-x86_64"]]}
              :windows {:dependencies [[org.uncomplicate/neanderthal-mkl "0.60.0"]
-                                      [org.uncomplicate/neanderthal-cuda "0.60.0"]
+                                      [org.uncomplicate/neanderthal-cuda "0.60.2"]
                                       [org.uncomplicate/neanderthal-opencl "0.60.0"]
                                       [org.bytedeco/mkl "2025.2-1.5.12" :classifier "windows-x86_64-redist"]
-                                      [org.bytedeco/cuda-redist "13.0-9.14-1.5.13-20251022.164318-20" :classifier "windows-x86_64"]
-                                      [org.bytedeco/cuda-redist-cublas "13.0-9.14-1.5.13-20251022.164318-20" :classifier "windows-x86_64"]]}
+                                      [org.bytedeco/cuda-redist "13.1-9.18-1.5.13-20260203.003728-10" :classifier "windows-x86_64"]
+                                      [org.bytedeco/cuda-redist-cublas "13.1-9.18-1.5.13-20260203.003743-10" :classifier "windows-x86_64"]]}
              :macosx {:dependencies [[org.uncomplicate/neanderthal-accelerate "0.60.0"]]}}
 
   ;; We sometimes need this for the snapshot binaries of the upstream libraries.

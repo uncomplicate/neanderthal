@@ -1,8 +1,8 @@
-(defproject hello-world-aot "0.60.0"
+(defproject hello-world-aot "0.60.2"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.3"]
-                 [uncomplicate/neanderthal "0.60.0"]]
+  :dependencies [[org.clojure/clojure "1.12.4"]
+                 [uncomplicate/neanderthal "0.60.2"]]
 
   ;; uncomplicate/neanderthal is AOT compiled for fast loading and developer convenience, which
   ;; might cause issues since it freezes org.clojure/core.async to the specific version (see ClojureCUDA).
@@ -14,12 +14,12 @@
                                           [org.bytedeco/openblas "0.3.30-1.5.12"]]}
              :linux {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
                                     ;; optional, if you want GPU computing with CUDA. Beware: the size of these 2 jars is cca 800 MB.
-                                    [org.bytedeco/cuda-redist "13.0-9.14-1.5.13-20251022.164318-20" :classifier "linux-x86_64"]
-                                    [org.bytedeco/cuda-redist-cublas "13.0-9.14-1.5.13-20251022.164348-20" :classifier "linux-x86_64"]]}
+                                    [org.bytedeco/cuda-redist "13.1-9.18-1.5.13-20260203.003728-10" :classifier "linux-x86_64"]
+                                    [org.bytedeco/cuda-redist-cublas "13.1-9.18-1.5.13-20260203.003743-10" :classifier "linux-x86_64"]]}
              :windows {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "windows-x86_64-redist"]
                                       ;; optional, if you want GPU computing with CUDA. Beware: the size of these 2 jars is cca 800 MB.
-                                      [org.bytedeco/cuda-redist "13.0-9.14-1.5.13-20251022.164318-20" :classifier "windows-x86_64"]
-                                      [org.bytedeco/cuda-redist-cublas "13.0-9.14-1.5.13-20251022.164318-20" :classifier "windows-x86_64"]]}
+                                      [org.bytedeco/cuda-redist "13.1-9.18-1.5.13-20260203.003728-10" :classifier "windows-x86_64"]
+                                      [org.bytedeco/cuda-redist-cublas "13.1-9.18-1.5.13-20260203.003743-10" :classifier "windows-x86_64"]]}
              :macosx {:dependencies []}}
 
   ;; We sometimes need this for the snapshot binaries of the upstream libraries.
