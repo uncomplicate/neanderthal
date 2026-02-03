@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-accelerate "0.60.1-SNAPSHOT"
+(defproject org.uncomplicate/neanderthal-accelerate "0.60.3-SNAPSHOT"
   :description "Neanderthal's Apple Accelerate engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderthal-openblas"
   :scm {:name "git"
