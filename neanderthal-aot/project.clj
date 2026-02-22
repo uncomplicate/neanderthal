@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.60.3"
+(defproject uncomplicate/neanderthal "0.61.0"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic Neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -16,12 +16,12 @@
   :dependencies [[org.clojure/clojure "1.12.4"]
                  [uncomplicate/commons "0.19.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.60.0"]
-                 [org.uncomplicate/neanderthal-openblas "0.60.0"]
-                 [org.uncomplicate/neanderthal-mkl "0.60.0"]
-                 [org.uncomplicate/neanderthal-opencl "0.60.0"]
-                 [org.uncomplicate/neanderthal-cuda "0.60.3"]
-                 [org.uncomplicate/neanderthal-accelerate "0.60.0"]]
+                 [org.uncomplicate/neanderthal-base "0.61.0"]
+                 [org.uncomplicate/neanderthal-openblas "0.61.0"]
+                 [org.uncomplicate/neanderthal-mkl "0.61.0"]
+                 [org.uncomplicate/neanderthal-opencl "0.61.0"]
+                 [org.uncomplicate/neanderthal-cuda "0.61.0"]
+                 [org.uncomplicate/neanderthal-accelerate "0.61.0"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
@@ -63,17 +63,17 @@
                                             uncomplicate.neanderthal.cuda
                                             uncomplicate.neanderthal.opencl]
                                :output-path "../docs/codox"}}
-             :linux {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "linux-x86_64"]
-                                    [org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]
-                                    [org.bytedeco/cuda-redist "13.1-9.19-1.5.13-20260206.134933-4" :classifier "linux-x86_64"]
-                                    [org.bytedeco/cuda-redist-cublas "13.1-9.19-1.5.13-20260206.135029-4" :classifier "linux-x86_64"]]}
-             :windows {:dependencies [[org.bytedeco/openblas "2025.2-1.5.12" :classifier "windows-x86_64"]
-                                      [org.bytedeco/mkl "2025.2-1.5.12" :classifier "windows-x86_64-redist"]
-                                      [org.bytedeco/cuda-redist "13.1-9.19-1.5.13-20260206.134933-4" :classifier "windows-x86_64"]
-                                      [org.bytedeco/cuda-redist-cublas "13.1-9.19-1.5.13-20260206.135029-4" :classifier "windows-x86_64"]]}
-             :macosx {:dependencies [[org.bytedeco/openblas "0.3.30-1.5.12" :classifier "macosx-arm64"]]}}
+             :linux {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "linux-x86_64"]
+                                    [org.bytedeco/mkl "2025.3-1.5.13" :classifier "linux-x86_64-redist"]
+                                    [org.bytedeco/cuda-redist "13.1-9.19-1.5.13" :classifier "linux-x86_64"]
+                                    [org.bytedeco/cuda-redist-cublas "13.1-9.19-1.5.13" :classifier "linux-x86_64"]]}
+             :windows {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "windows-x86_64"]
+                                      [org.bytedeco/mkl "2025.3-1.5.13" :classifier "windows-x86_64-redist"]
+                                      [org.bytedeco/cuda-redist "13.1-9.19-1.5.13" :classifier "windows-x86_64"]
+                                      [org.bytedeco/cuda-redist-cublas "13.1-9.19-1.5.13" :classifier "windows-x86_64"]]}
+             :macosx {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "macosx-arm64"]]}}
 
-  :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
+  ;; :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
 

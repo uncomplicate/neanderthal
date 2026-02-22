@@ -6,18 +6,18 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-openblas "0.60.0"
+(defproject org.uncomplicate/neanderthal-openblas "0.61.0"
   :description "Neanderthal's OpenBLAS engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderthal-openblas"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.3"]
+  :dependencies [[org.clojure/clojure "1.12.4"]
                  [uncomplicate/commons "0.19.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.60.0"]
-                 [org.bytedeco/openblas-platform "0.3.30-1.5.12"]]
+                 [org.uncomplicate/neanderthal-base "0.61.0"]
+                 [org.bytedeco/openblas-platform "0.3.31-1.5.13"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
                              [midje "1.10.10"]
@@ -26,8 +26,8 @@
                                  *assert* false
                                  *unchecked-math* :warn-on-boxed
                                  *print-length* 128}
-                   :dependencies [[org.bytedeco/openblas "0.3.30-1.5.12"]
-                                  [org.uncomplicate/neanderthal-test "0.60.0"]]
+                   :dependencies [[org.bytedeco/openblas "0.3.31-1.5.13"]
+                                  [org.uncomplicate/neanderthal-test "0.61.0"]]
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}
 

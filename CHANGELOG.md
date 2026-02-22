@@ -1,5 +1,13 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.61.0
+
+* Update JavaCPP to 1.5.13.
+* Update CUDA to 13.1
+* Update Clojure to 1.12.4.
+* Update MKL to 2025.3
+* Update OpenBLAS to 0.3.31
+
 # 0.60.0
 
 * Implement integer GE matrices and cover more Blas/BlasPlus/VectMath api for integer vectors and matrices.

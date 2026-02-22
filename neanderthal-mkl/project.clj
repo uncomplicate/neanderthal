@@ -6,18 +6,18 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-mkl "0.60.0"
+(defproject org.uncomplicate/neanderthal-mkl "0.61.0"
   :description "Neanderthal's MKL engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderhtal-mkl"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.3"]
+  :dependencies [[org.clojure/clojure "1.12.4"]
                  [uncomplicate/commons "0.19.0"]
                  [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.60.0"]
-                 [org.bytedeco/mkl-platform "2025.2-1.5.12"]]
+                 [org.uncomplicate/neanderthal-base "0.61.0"]
+                 [org.bytedeco/mkl-platform "2025.3-1.5.13"]]
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
              :dev/all {:plugins [[lein-midje "3.2.1"]
@@ -27,11 +27,11 @@
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[midje "1.10.10"]
-                                      [org.uncomplicate/neanderthal-test "0.60.0"]]
+                                      [org.uncomplicate/neanderthal-test "0.61.0"]]
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                             "--enable-native-access=ALL-UNNAMED"]}
-             :linux {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "linux-x86_64-redist"]]}
-             :windows {:dependencies [[org.bytedeco/mkl "2025.2-1.5.12" :classifier "windows-x86_64-redist"]]}}
+             :linux {:dependencies [[org.bytedeco/mkl "2025.3-1.5.13" :classifier "linux-x86_64-redist"]]}
+             :windows {:dependencies [[org.bytedeco/mkl "2025.3-1.5.13" :classifier "windows-x86_64-redist"]]}}
 
   ;;:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
