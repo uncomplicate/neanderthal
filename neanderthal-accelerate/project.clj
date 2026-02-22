@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-accelerate "0.61.0-SNAPSHOT"
+(defproject org.uncomplicate/neanderthal-accelerate "0.61.0"
   :description "Neanderthal's Apple Accelerate engine."
   :url "https://github.com/uncomplicate/neanderthal/neanderthal-openblas"
   :scm {:name "git"
@@ -32,6 +32,6 @@
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                         "--enable-native-access=ALL-UNNAMED"]}}
 
-  :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
+  ;; :repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
 
   :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"])
