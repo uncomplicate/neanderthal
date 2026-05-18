@@ -12,11 +12,12 @@
   (:require [clojure.java.io :as io]
             [uncomplicate.commons
              [core :refer [Releaseable release let-release with-release info]]
-             [utils :refer [with-check dragan-says-ex count-groups generate-seed count-groups]]]
+             [utils :refer [with-check dragan-says-ex count-groups generate-seed
+                            count-groups scan-resources]]]
             [uncomplicate.fluokitten.protocols :refer [extract]]
             [uncomplicate.clojure-cpp :as cpp :refer [get-entry]]
             [uncomplicate.clojurecuda
-             [core :refer :all :exclude [device]]
+             [core :refer :all :exclude [device *headers*]]
              [info :refer [driver-version]]
              [toolbox :refer [launch-reduce! read-int]]]
             [uncomplicate.neanderthal
@@ -32,7 +33,8 @@
              [structures :refer :all]]
             [uncomplicate.neanderthal.internal.device.common
              :refer [name-transp uplo-bottom? layout-match? symmetric-match?]])
-  (:import org.bytedeco.cuda.global.cublas
+  (:import [io.github.classgraph ClassGraph ScanResult ResourceList]
+           org.bytedeco.cuda.global.cublas
            org.bytedeco.cuda.cublas.cublasContext
            org.bytedeco.cuda.cudart.CUstream_st
            [uncomplicate.neanderthal.internal.api Vector Matrix GEMatrix DataAccessor Region
@@ -1395,21 +1397,25 @@
     (with-check cublas-error (cublas/cublasCreate_v2 handle)
       (with-check cublas-error (cublas/cublasSetStream_v2 handle stream) handle))))
 
-(let [src (str (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
-               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu")))
+(let [src (apply str
+                 (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
+                 (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
+                 (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
+                 (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/number"])))
 
-      real-src (str src
-                    (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/real.cu"))
-                    (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-real.cu"))
-                    (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu")))
+      real-src (apply str src
+                      (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/real.cu"))
+                      (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-real.cu"))
+                      (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu"))
+                      (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/real"])))
 
-      integer-src (str src
-                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
-                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu")))
+      integer-src (apply str src
+                         (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
+                         (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu"))
+                         (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/integer"])))
 
-      standard-headers {"stdint.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/stdint.h"))
-                        "float.h" (slurp (io/resource "uncomplicate/clojurecuda/include/jitify/float.h"))}
+      standard-headers {"stdint.h" nil
+                        "float.h" nil}
       philox-headers
       (merge standard-headers
              {"Random123/philox.h"
@@ -1426,6 +1432,7 @@
      (with-release [prog (compile! (program real-src philox-headers)
                                    ["-DNUMBER=double" "-DREAL=double" "-DACCUMULATOR=double"
                                     "-DCAST(fun)=fun" #_"-use_fast_math" "-default-device"
+                                    "-lineinfo" "-restrict"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
@@ -1444,6 +1451,7 @@
      (with-release [prog (compile! (program real-src philox-headers)
                                    ["-DNUMBER=float" "-DREAL=float" "-DACCUMULATOR=float"
                                     "-DCAST(fun)=fun##f" #_"-use_fast_math" "-default-device"
+                                    "-lineinfo" "-restrict"
                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
@@ -1461,7 +1469,8 @@
      ctx
      (with-release [prog (compile! (program integer-src)
                                    ["-DNUMBER=long" "-DINTEGER=long" "-DACCUMULATOR=long"
-                                    #_"-use_fast_math" "-default-device"])]
+                                    #_"-use_fast_math" "-default-device"
+                                    "-lineinfo" "-restrict"])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)
@@ -1477,7 +1486,8 @@
      ctx
      (with-release [prog (compile! (program integer-src)
                                    ["-DNUMBER=int" "-DINTEGER=int" "-DACCUMULATOR=int"
-                                    #_"-use_fast_math" "-default-device"])]
+                                    #_"-use_fast_math" "-default-device"
+                                    "-lineinfo" "-restrict"])]
        (let-release [modl (module prog)
                      handle (cublas-handle hstream)
                      hstream (get-cublas-stream handle)
@@ -1493,7 +1503,8 @@
      ctx
      (with-release [prog (compile! (program integer-src)
                                    ["-DNUMBER=short" "-DINTEGER=short" "-DACCUMULATOR=short"
-                                    #_"-use_fast_math" "-default-device"])]
+                                    #_"-use_fast_math" "-default-device"
+                                    "-lineinfo" "-restrict"])]
        (let-release [modl (module prog)
                      short-accessor (->ShortPointerAccessor ctx hstream
                                                             (fn [^long size]
@@ -1507,7 +1518,8 @@
      ctx
      (with-release [prog (compile! (program integer-src)
                                    ["-DNUMBER=char" "-DINTEGER=char" "-DACCUMULATOR=char"
-                                    #_"-use_fast_math" "-default-device"])]
+                                    #_"-use_fast_math" "-default-device"
+                                    "-lineinfo" "-restrict"])]
        (let-release [modl (module prog)
                      byte-accessor (->BytePointerAccessor ctx hstream
                                                           (fn [^long size]
