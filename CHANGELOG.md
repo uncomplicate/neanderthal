@@ -1,5 +1,12 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.62.0
+
+* Update Clojure to 1.12.5
+* Update Uncomplicate Commons to 0.20.0.
+* Update Fluokitten to 0.10.2
+* Update ClojureCPP to 0.8.0.
+
 # 0.61.0
 
 * Update JavaCPP to 1.5.13.

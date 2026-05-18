@@ -6,22 +6,22 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.61.0"
+(defproject uncomplicate/neanderthal "0.62.0"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic Neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
         :url "https://github.com/uncomplicate/neanderthal"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.4"]
-                 [uncomplicate/commons "0.19.0"]
-                 [uncomplicate/fluokitten "0.10.0"]
-                 [org.uncomplicate/neanderthal-base "0.61.0"]
-                 [org.uncomplicate/neanderthal-openblas "0.61.0"]
-                 [org.uncomplicate/neanderthal-mkl "0.61.0"]
-                 [org.uncomplicate/neanderthal-opencl "0.61.0"]
-                 [org.uncomplicate/neanderthal-cuda "0.61.0"]
-                 [org.uncomplicate/neanderthal-accelerate "0.61.0"]]
+  :dependencies [[org.clojure/clojure "1.12.5"]
+                 [uncomplicate/commons "0.20.0"]
+                 [uncomplicate/fluokitten "0.10.2"]
+                 [org.uncomplicate/neanderthal-base "0.62.0"]
+                 [org.uncomplicate/neanderthal-openblas "0.62.0"]
+                 [org.uncomplicate/neanderthal-mkl "0.62.0"]
+                 [org.uncomplicate/neanderthal-opencl "0.62.0"]
+                 [org.uncomplicate/neanderthal-cuda "0.62.0"]
+                 [org.uncomplicate/neanderthal-accelerate "0.62.0"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
