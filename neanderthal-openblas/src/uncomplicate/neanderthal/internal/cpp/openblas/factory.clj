@@ -13,6 +13,8 @@
             [uncomplicate.clojure-cpp :as cpp :refer [long-pointer float-pointer double-pointer]]
             [uncomplicate.neanderthal
              [core :refer [mrows ncols]]
+             [integer :as integer]
+             [real :as real]
              [math :as math]]
             [uncomplicate.neanderthal.internal
              [constants :refer :all]
@@ -86,21 +88,25 @@
 (real-vector-rng* DoubleVectorEngine "d" double-ptr double
                   openblas_full openblas_full "cblas_daxpby" ones-double)
 
+(deftype HalfVectorEngine [])
+(integer-vector-blas* HalfVectorEngine "s" float-ptr openblas_full 2 real/entry)
+(integer-vector-blas-plus* HalfVectorEngine "s" float-ptr short-float openblas_full openblas_full 2 real/entry)
+
 (deftype LongVectorEngine [])
-(integer-vector-blas* LongVectorEngine "d" double-ptr openblas_full 1)
-(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double openblas_full openblas_full 1)
+(integer-vector-blas* LongVectorEngine "d" double-ptr openblas_full 1 integer/entry)
+(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double openblas_full openblas_full 1 integer/entry)
 
 (deftype IntVectorEngine [])
-(integer-vector-blas* IntVectorEngine "s" float-ptr openblas_full 1)
-(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float openblas_full openblas_full 1)
+(integer-vector-blas* IntVectorEngine "s" float-ptr openblas_full 1 integer/entry)
+(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float openblas_full openblas_full 1 integer/entry)
 
 (deftype ShortVectorEngine [])
-(integer-vector-blas* ShortVectorEngine "s" float-ptr openblas_full 2)
-(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float openblas_full openblas_full 2)
+(integer-vector-blas* ShortVectorEngine "s" float-ptr openblas_full 2 integer/entry)
+(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float openblas_full openblas_full 2 integer/entry)
 
 (deftype ByteVectorEngine [])
-(integer-vector-blas* ByteVectorEngine "s" float-ptr openblas_full 4)
-(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float openblas_full openblas_full 4)
+(integer-vector-blas* ByteVectorEngine "s" float-ptr openblas_full 4 integer/entry)
+(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float openblas_full openblas_full 4 integer/entry)
 
 ;; ================= Real GE Engine ========================================
 
@@ -350,40 +356,54 @@
 
 ;; ================================================================================
 
-(def openblas-int (->BlasIntegerFactory openblas-int int-accessor (->IntVectorEngine) (->IntGEEngine)
+(def openblas-int (->BlasIntegerFactory openblas-int int-accessor
+                                        (->IntVectorEngine) (->IntGEEngine)
                                         (->IntTREngine) (->IntSYEngine)
                                         (->IntGBEngine) (->IntSBEngine) (->IntTBEngine)
                                         (->IntSPEngine) (->IntTPEngine) (->IntGDEngine)
                                         (->IntGTEngine) (->IntDTEngine) (->IntSTEngine)))
 
-(def openblas-long (->BlasIntegerFactory openblas-int long-accessor (->LongVectorEngine) (->LongGEEngine)
+(def openblas-long (->BlasIntegerFactory openblas-int long-accessor
+                                         (->LongVectorEngine) (->LongGEEngine)
                                          (->LongTREngine) (->LongSYEngine)
                                          (->LongGBEngine) (->LongSBEngine) (->LongTBEngine)
                                          (->LongSPEngine) (->LongTPEngine) (->LongGDEngine)
                                          (->LongGTEngine) (->LongDTEngine) (->LongSTEngine)))
 
-(def openblas-short (->BlasIntegerFactory openblas-int short-accessor (->ShortVectorEngine) (->ShortGEEngine)
+(def openblas-short (->BlasIntegerFactory openblas-int short-accessor
+                                          (->ShortVectorEngine) (->ShortGEEngine)
                                           (->ShortTREngine) (->ShortSYEngine)
                                           (->ShortGBEngine) (->ShortSBEngine) (->ShortTBEngine)
                                           (->ShortSPEngine) (->ShortTPEngine) (->ShortGDEngine)
                                           (->ShortGTEngine) (->ShortDTEngine) (->ShortSTEngine)))
 
-(def openblas-byte (->BlasIntegerFactory openblas-int byte-accessor (->ByteVectorEngine) (->ByteGEEngine)
+(def openblas-byte (->BlasIntegerFactory openblas-int byte-accessor
+                                         (->ByteVectorEngine) (->ByteGEEngine)
                                          (->ByteTREngine) (->ByteSYEngine)
                                          (->ByteGBEngine) (->ByteSBEngine) (->ByteTBEngine)
                                          (->ByteSPEngine) (->ByteTPEngine) (->ByteGDEngine)
                                          (->ByteGTEngine) (->ByteDTEngine) (->ByteSTEngine)))
 
-(def openblas-float (->BlasRealFactory openblas-int float-accessor (->FloatVectorEngine) (->FloatGEEngine)
+(def openblas-float (->BlasRealFactory openblas-int float-accessor
+                                       (->FloatVectorEngine) (->FloatGEEngine)
                                        (->FloatTREngine) (->FloatSYEngine)
                                        (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
                                        (->FloatSPEngine) (->FloatTPEngine) (->FloatGDEngine)
                                        (->FloatGTEngine) (->FloatDTEngine) (->FloatSTEngine)
                                        nil nil))
 
-(def openblas-double (->BlasRealFactory openblas-int double-accessor (->DoubleVectorEngine) (->DoubleGEEngine)
+(def openblas-double (->BlasRealFactory openblas-int double-accessor
+                                        (->DoubleVectorEngine) (->DoubleGEEngine)
                                         (->DoubleTREngine) (->DoubleSYEngine)
                                         (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
                                         (->DoubleSPEngine) (->DoubleTPEngine) (->DoubleGDEngine)
                                         (->DoubleGTEngine) (->DoubleDTEngine) (->DoubleSTEngine)
                                         nil nil))
+
+(def openblas-half (->BlasRealFactory openblas-int half-accessor
+                                      (->HalfVectorEngine) (->ShortGEEngine)
+                                      (->ShortTREngine) (->ShortSYEngine)
+                                      (->ShortGBEngine) (->ShortSBEngine) (->ShortTBEngine)
+                                      (->ShortSPEngine) (->ShortTPEngine) (->ShortGDEngine)
+                                      (->ShortGTEngine) (->ShortDTEngine) (->ShortSTEngine)
+                                      nil nil))

@@ -283,9 +283,9 @@
 
 (defn test-vctr-scal [factory]
   (facts "BLAS 1 vector scal!"
-         (with-release [x (vctr factory [1 2 3])]()
+         (with-release [x (vctr factory [1 2 3 4])]
            (identical? (scal! 3 x) x) => true)
-         (scal! 3 (vctr factory [1 -2 3])) => (vctr factory [3 -6 9])
+         (scal! 3 (vctr factory [1 -2 3 4])) => (vctr factory [3 -6 9 12])
          (scal! 3 (vctr factory [])) => (vctr factory [])))
 
 (defn test-vctr-copy [factory]
@@ -306,69 +306,69 @@
 
 (defn test-vctr-axpy [factory]
   (facts "BLAS 1 vector axpy!"
-         (with-release [y (vctr factory [1 2 3])]
-           (axpy! 2.0 (vctr factory [10 20 30]) y) => (vctr factory [21 42 63])
-           (identical? (axpy! 3.0 (vctr factory [1 2 3]) y) y) => true
+         (with-release [y (vctr factory [1 2 3 4])]
+           (axpy! 2.0 (vctr factory [10 20 30 40]) y) => (vctr factory [21 42 63 84])
+           (identical? (axpy! 3.0 (vctr factory [1 2 3 4]) y) y) => true
            (axpy! 2.0 (vctr factory [1 2]) y) => (throws ExceptionInfo)
 
-           (axpy! (vctr factory [10 20 30]) (vctr factory [1 2 3]))
-           => (vctr factory [11 22 33]))
+           (axpy! (vctr factory [10 20 30 40]) (vctr factory [1 2 3 4]))
+           => (vctr factory [11 22 33 44]))
 
-         (axpy! 2 (vctr factory 1 2 3) (vctr factory 1 2 3)
-                (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7))
-         => (vctr factory 25 33 41)
+         (axpy! 2 (vctr factory 1 2 3 4) (vctr factory 1 2 3 4)
+                (vctr factory 2 3 4 5) 4.0 (vctr factory 5 6 7 8))
+         => (vctr factory 25 33 41 49)
 
-         (axpy! 2 (vctr factory 1 2 3) (vctr factory 1 2 3) (vctr factory 2 3 4) 4.0)
+         (axpy! 2 (vctr factory 1 2 3 4) (vctr factory 1 2 3 4) (vctr factory 2 3 4 5) 4.0)
          => (throws ExceptionInfo)
 
-         (axpy! (vctr factory 1 2 3) (vctr factory 1 2 3)
-                (vctr factory 1 2 3) (vctr factory 1 2 3)
-                (vctr factory 1 2 3))
-         => (axpy! 5 (vctr factory 1 2 3) (vctr factory 3))
+         (axpy! (vctr factory 1 2 3 4) (vctr factory 1 2 3 4)
+                (vctr factory 1 2 3 4) (vctr factory 1 2 3 4)
+                (vctr factory 1 2 3 4))
+         => (axpy! 5 (vctr factory 1 2 3 4) (vctr factory 4))
 
-         (axpy! 4 "af" (vctr factory 1 2 3) 3 "b" "c") => (throws ExceptionInfo)
+         (axpy! 4 "af" (vctr factory 1 2 3 4) 3 "b" "c") => (throws ExceptionInfo)
 
-         (with-release [y (vctr factory [1 2 3])]
-           (axpy! 2 (vctr factory 1 2 3) y
-                  (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
+         (with-release [y (vctr factory [1 2 3 4])]
+           (axpy! 2 (vctr factory 1 2 3 4) y
+                  (vctr factory 2 3 4 5) 4.0 (vctr factory 5 6 7 8)) => y))
 
   (facts "BLAS 1 vector axpby!"
-         (with-release [y (vctr factory [1 2 3])]
-           (axpby! 2.0 (vctr factory [10 20 30]) 2.0 y) => (vctr factory [22 44 66])
-           (identical? (axpby! 3.0 (vctr factory [1 2 3]) 2.0 y) y) => true
+         (with-release [y (vctr factory [1 2 3 4])]
+           (axpby! 2.0 (vctr factory [10 20 30 40]) 2.0 y) => (vctr factory [22 44 66 88])
+           (identical? (axpby! 3.0 (vctr factory [1 2 3 4]) 2.0 y) y) => true
            (axpby! 2.0 (vctr factory [1 2]) 2.0 y) => (throws ExceptionInfo)
 
-           (axpby! (vctr factory [10 20 30]) 2.0 (vctr factory [1 2 3]))
-           => (vctr factory [12 24 36]))
+           (axpby! (vctr factory [10 20 30 40]) 2.0 (vctr factory [1 2 3 4]))
+           => (vctr factory [12 24 36 48]))
 
-         (axpby! 2 (vctr factory 1 2 3) 2 (vctr factory 1 2 3)
-                 (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7))
-         => (vctr factory 26 35 44)
+         (axpby! 2 (vctr factory 1 2 3 4) 2 (vctr factory 1 2 3 4)
+                 (vctr factory 2 3 4 5) 4.0 (vctr factory 5 6 7 8))
+         => (vctr factory 26 35 44 53)
 
-         (axpby! 2 (vctr factory 1 2 3) 2 (vctr factory 1 2 3) (vctr factory 2 3 4) 4.0)
+         (axpby! 2 (vctr factory 1 2 3 4) 2 (vctr factory 1 2 3 4) (vctr factory 2 3 4 5) 4.0)
          => (throws ExceptionInfo)
 
-         (axpby! (vctr factory 1 2 3) 2.0 (vctr factory 1 2 3)
-                 (vctr factory 1 2 3) (vctr factory 1 2 3)
-                 (vctr factory 1 2 3))
-         => (axpy! 6 (vctr factory 1 2 3) (vctr factory 3))
+         (axpby! (vctr factory 1 2 3 4) 2.0 (vctr factory 1 2 3 4)
+                 (vctr factory 1 2 3 4) (vctr factory 1 2 3 4)
+                 (vctr factory 1 2 3 4))
+         => (axpy! 6 (vctr factory 1 2 3 4) (vctr factory 4))
 
-         (axpy! 4 "af" (vctr factory 1 2 3) 3 "b" "c") => (throws ExceptionInfo)
+         (axpy! 4 "af" (vctr factory 1 2 3 4) 3 "b" "c") => (throws ExceptionInfo)
 
-         (with-release [y (vctr factory [1 2 3])]
-           (axpby! 2 (vctr factory 1 2 3) 2.0 y
-                   (vctr factory 2 3 4) 4.0 (vctr factory 5 6 7)) => y))
+         (with-release [y (vctr factory [1 2 3 4])]
+           (axpby! 2 (vctr factory 1 2 3 4) 2.0 y
+                   (vctr factory 2 3 4 5) 4.0 (vctr factory 5 6 7 9)) => y))
 
   (facts "BLAS1 vector axpy"
-         (with-release [y (vctr factory [1 2 3])]
-           (axpy 2.0 (vctr factory [10 20 30])) => (throws ExceptionInfo)
-           (identical? (axpy 3.0 (vctr factory [1 2 3]) y) y) => false
+         (with-release [y (vctr factory [1 2 3 4])]
+           (axpy 2.0 (vctr factory [10 20 30 40])) => (throws ExceptionInfo)
+           (identical? (axpy 3.0 (vctr factory [1 2 3 4]) y) y) => false
 
-           (axpy (vctr factory 1 2 3) (vctr factory 2 3 4)
-                 (vctr factory 3 4 5) (vctr factory 3))
-           => (vctr factory 6 9 12)
+           (axpy (vctr factory 1 2 3 4) (vctr factory 2 3 4 5)
+                 (vctr factory 3 4 5 6) (vctr factory 4))
+           => (vctr factory 6 9 12 15)
 
-           (axpy 2 (vctr factory 1 2 3) (vctr factory 2 3 4)) => (vctr factory 4 7 10))))
+           (axpy 2 (vctr factory 1 2 3 4) (vctr factory 2 3 4 5)) => (vctr factory 4 7 10 13))))
 
 ;; ================= Real General Matrix functions =============================
 

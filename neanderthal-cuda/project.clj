@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-cuda "0.62.0"
+(defproject org.uncomplicate/neanderthal-cuda "0.63.0-SNAPSHOT"
   :description "Neanderthal's CUDA backend."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -17,8 +17,8 @@
                  [uncomplicate/commons "0.20.0"]
                  [uncomplicate/fluokitten "0.10.2"]
                  [uncomplicate/clojurecuda "0.28.0"]
-                 [org.uncomplicate/neanderthal-base "0.62.0"]
-                 [org.uncomplicate/neanderthal-opencl "0.62.0"]]
+                 [org.uncomplicate/neanderthal-base "0.63.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-opencl "0.63.0-SNAPSHOT"]]
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
              :dev/all {:plugins [[lein-midje "3.2.1"]
@@ -28,8 +28,8 @@
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[midje "1.10.10"]
-                                      [org.uncomplicate/neanderthal-test "0.62.0"]
-                                      [org.uncomplicate/neanderthal-openblas "0.62.0"]]
+                                      [org.uncomplicate/neanderthal-test "0.63.0-SNAPSHOT"]
+                                      [org.uncomplicate/neanderthal-openblas "0.63.0-SNAPSHOT"]]
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                              "--enable-native-access=ALL-UNNAMED"]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "linux-x86_64"]
@@ -41,7 +41,7 @@
 
   ;; :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
 
-  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
+  :javac-options ["--release" "21" "-Xlint:-options"]
 
   :classifiers {:tests {:source-paths ^:replace ["test"]}}
   :source-paths ["src/clojure" "src/device"]

@@ -98,11 +98,12 @@
      (get [_# p# i#]
        (~cast-get (get* ~pointer-class p# i#)))
      (set [_# p# i# val#]
-       (put* ~pointer-class p# i# val#)
+       (put* ~pointer-class p# i# (~cast val#))
        p#)))
 
 (def-accessor-type DoublePointerAccessor RealAccessor DoublePointer Double double-pointer double double)
 (def-accessor-type FloatPointerAccessor RealAccessor FloatPointer Float float-pointer float float)
+(def-accessor-type HalfPointerAccessor RealAccessor ShortPointer Short short-pointer Float/floatToFloat16 Float/float16ToFloat)
 (def-accessor-type LongPointerAccessor IntegerAccessor LongPointer Long long-pointer long long)
 (def-accessor-type IntPointerAccessor IntegerAccessor IntPointer Integer int-pointer int int)
 (def-accessor-type ShortPointerAccessor IntegerAccessor ShortPointer Short short-pointer short long)

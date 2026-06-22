@@ -1,5 +1,11 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.63.0
+
+* Support Half-precision floats (only containers, backed by Float16 and Short)
+* Phased out Java 8 support
+* Compiled for Java 21, requires at least Java 20 source compatibility
+
 # 0.62.0
 
 * Update Clojure to 1.12.5

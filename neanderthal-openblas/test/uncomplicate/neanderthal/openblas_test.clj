@@ -17,12 +17,13 @@
              [math-test :as math-test]
              [random-test :as random-test]]
             [uncomplicate.neanderthal.internal.cpp.openblas.factory
-             :refer [openblas-float openblas-double openblas-int openblas-long
+             :refer [openblas-float openblas-double openblas-half openblas-int openblas-long
                      openblas-short openblas-byte]]))
 
 (facts "factory-by-type test"
        (factory-by-type :float) => openblas-float
        (factory-by-type :double) => openblas-double
+       (factory-by-type :half) => openblas-half
        (factory-by-type :int) => openblas-int
        (factory-by-type :long) => openblas-long
        (factory-by-type :short) => openblas-short
@@ -34,11 +35,11 @@
 (block-test/test-host openblas-double)
 
 (for [factory0 [openblas-double openblas-float]
-      factory1 [openblas-long openblas-int openblas-short openblas-byte]]
+      factory1 [openblas-long openblas-int openblas-short openblas-byte openblas-half]]
   [(block-test/test-two-factories factory0 factory1)
    (block-test/test-two-factories factory1 factory0)]) ;;TODO
 
-(for [factory0 [openblas-double openblas-float]
+(for [factory0 [openblas-double openblas-float openblas-half]
       factory1 [openblas-double openblas-float]]
   [(block-test/test-two-factories factory0 factory1)
    (block-test/test-two-factories factory1 factory0)])

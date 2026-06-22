@@ -17,7 +17,6 @@
             [uncomplicate.neanderthal
              [core :refer [dim entry mrows ncols matrix-type cols rows] :as core]
              [real :as real]
-             [integer :as integer]
              [block :refer [stride contiguous?]]]
             [uncomplicate.neanderthal.internal
              [constants :refer :all]
@@ -75,7 +74,7 @@
 
 ;; ================= Integer Vector Engines ====================================
 
-(defmacro integer-vector-blas* [name t ptr blas chunk]
+(defmacro integer-vector-blas* [name t ptr blas chunk entry]
   `(extend-type ~name
      Blas
      (swap [_# x# y#]
@@ -95,9 +94,9 @@
      (asum [_# _#]
        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
      (iamax [this# x#]
-       (vector-iaopt < x# integer/entry))
+       (vector-iaopt < x# ~entry))
      (iamin [this# x#]
-       (vector-iaopt > x# integer/entry))
+       (vector-iaopt > x# ~entry))
      (rot [_# _# _# _# _#]
        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
      (rotg [_# _#]
@@ -114,12 +113,12 @@
      (srt [_# _# _#]
        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))))
 
-(defmacro integer-vector-blas-plus* [name t ptr cast blas lapack chunk]
+(defmacro integer-vector-blas-plus* [name t ptr cast blas lapack chunk entry]
   `(extend-type ~name
      BlasPlus
      (amax [this# x#]
        (if (< 0 (dim x#))
-         (Math/abs (integer/entry x# (iamax this# x#)))
+         (Math/abs (~entry x# (iamax this# x#)))
          0))
      (subcopy [_# x# y# kx# lx# ky#]
        (patch-subcopy (long ~chunk) ~blas ~(cblas t 'copy) ~ptr x# y# (long kx#) (long lx#) (long ky#))
@@ -127,9 +126,9 @@
      (sum [_# _#]
        (throw (UnsupportedOperationException. INTEGER_UNSUPPORTED_MSG)))
      (imax [this# x#]
-       (vector-iopt < x# integer/entry))
+       (vector-iopt < x# ~entry))
      (imin [this# x#]
-       (vector-iopt > x# integer/entry))
+       (vector-iopt > x# ~entry))
      (set-all [_# alpha# x#]
        (patch-vector-laset (long ~chunk) ~lapack ~(lapacke t 'laset) ~ptr (~cast alpha#) x#)
        x#)
@@ -177,7 +176,7 @@
      (rotmg [this# d1d2xy# param#]
        (check-stride d1d2xy# param#)
        (. ~openblas ~(cblas t 'rotmg) (~ptr d1d2xy#) (~ptr d1d2xy# 1) (~ptr d1d2xy# 2)
-          (~cast (entry d1d2xy# 3)) (~ptr param#))
+          (~cast (real/entry d1d2xy# 3)) (~ptr param#))
        param#)
      (scal [this# alpha# x#]
        (. ~blas ~(cblas t 'scal) (dim x#) (~cast alpha#) (~ptr x#) (stride x#))
@@ -192,7 +191,7 @@
       BlasPlus
       (amax [this# x#]
         (if (< 0 (dim x#))
-          (Math/abs (~cast (entry x# (iamax this# x#))))
+          (Math/abs (~cast (real/entry x# (iamax this# x#))))
           0.0))
       (subcopy [this# x# y# kx# lx# ky#]
         (. ~blas ~(cblas t 'copy) (int lx#) (~ptr x# kx#) (stride x#) (~ptr y# ky#) (stride y#))
@@ -1542,6 +1541,7 @@
 
 (def float-accessor (->FloatPointerAccessor malloc! free!))
 (def double-accessor (->DoublePointerAccessor malloc! free!))
+(def half-accessor (->HalfPointerAccessor malloc! free!))
 (def int-accessor (->IntPointerAccessor malloc! free!))
 (def long-accessor (->LongPointerAccessor malloc! free!))
 (def short-accessor (->ShortPointerAccessor malloc! free!))

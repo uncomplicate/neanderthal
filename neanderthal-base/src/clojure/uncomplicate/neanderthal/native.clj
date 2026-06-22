@@ -27,6 +27,7 @@
 
 (declare native-float)
 (declare native-double)
+(declare native-half)
 (declare native-long)
 (declare native-int)
 (declare native-short)
@@ -44,6 +45,8 @@
          native-float uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-float)
        (def ^{:doc "Default double-precision floating point native factory"}
          native-double uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-double)
+       (def ^{:doc "Default half-precision floating point native factory"}
+         native-half uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-half)
        (def ^{:doc "Default integer native factory"}
          native-int uncomplicate.neanderthal.internal.cpp.mkl.factory/mkl-int)
        (def ^{:doc "Default long native factory"}
@@ -64,6 +67,8 @@
          native-float uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-float)
        (def ^{:doc "Default double-precision floating point native factory"}
          native-double uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-double)
+       (def ^{:doc "Default half-precision floating point native factory"}
+         native-half uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-half)
        (def ^{:doc "Default integer native factory"}
          native-int uncomplicate.neanderthal.internal.cpp.openblas.factory/openblas-int)
        (def ^{:doc "Default long native factory"}
@@ -84,6 +89,8 @@
          native-float uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-float)
        (def ^{:doc "Default double-precision floating point native factory"}
          native-double uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-double)
+       (def ^{:doc "Default double-precision floating point native factory"}
+         native-half uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-half)
        (def ^{:doc "Default integer native factory"}
          native-int uncomplicate.neanderthal.internal.cpp.accelerate.factory/accelerate-int)
        (def ^{:doc "Default long native factory"}
@@ -150,6 +157,7 @@
   (case data-type
     :float native-float
     :double native-double
+    :half native-half
     :int native-int
     :long native-long
     :short native-short

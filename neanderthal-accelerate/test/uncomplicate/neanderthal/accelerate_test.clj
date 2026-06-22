@@ -18,10 +18,12 @@
              [random-test :as random-test]
              #_[sparse-test :as sparse-test]];;TODO dependent on MKL constants!
             [uncomplicate.neanderthal.internal.cpp.accelerate.factory
-             :refer [accelerate-float accelerate-double accelerate-int accelerate-long accelerate-short accelerate-byte]]))
+             :refer [accelerate-float accelerate-double accelerate-half
+                     accelerate-int accelerate-long accelerate-short accelerate-byte]]))
 (facts "factory-by-type test"
        (factory-by-type :float) => accelerate-float
        (factory-by-type :double) => accelerate-double
+       (factory-by-type :half) => accelerate-half
        (factory-by-type :int) => accelerate-int
        (factory-by-type :long) => accelerate-long
        (factory-by-type :short) => accelerate-short
@@ -33,11 +35,11 @@
 (block-test/test-host accelerate-double)
 
 (for [factory0 [accelerate-double accelerate-float]
-      factory1 [accelerate-long accelerate-int accelerate-short accelerate-byte]]
+      factory1 [accelerate-long accelerate-int accelerate-short accelerate-byte accelerate-half]]
   [(block-test/test-two-factories factory0 factory1)
    (block-test/test-two-factories factory1 factory0)]) ;;TODO
 
-(for [factory0 [accelerate-double accelerate-float]
+(for [factory0 [accelerate-double accelerate-float accelerate-half]
       factory1 [accelerate-double accelerate-float]]
   [(block-test/test-two-factories factory0 factory1)
    (block-test/test-two-factories factory1 factory0)])

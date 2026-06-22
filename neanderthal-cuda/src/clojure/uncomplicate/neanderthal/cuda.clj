@@ -17,10 +17,10 @@
             [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
             [uncomplicate.neanderthal
              [core :refer [vctr ge tr sy]]
-             [native :refer [native-float native-double native-long native-int
+             [native :refer [native-float native-double native-half native-long native-int
                              native-short native-byte]]]
             [uncomplicate.neanderthal.internal.cpp.cuda.factory
-             :refer [cublas-double cublas-float cublas-long cublas-int cublas-short cublas-byte]]))
+             :refer [cublas-double cublas-float cublas-half cublas-long cublas-int cublas-short cublas-byte]]))
 
 (def ^{:dynamic true
        :doc "Dynamically bound CUDA factory that is used in vector and matrix constructors."}
@@ -31,6 +31,9 @@
 
 (def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
   cuda-double (partial cublas-double native-double))
+
+(def ^{:doc "Constructor of a half-precision floating point CUDA factory."}
+  cuda-half (partial cublas-half native-half))
 
 (def ^{:doc "Constructor of a long CUDA factory."}
   cuda-long (partial cublas-long native-long))
@@ -48,6 +51,7 @@
   (case data-type
     :float cuda-float
     :double cuda-double
+    :half cuda-half
     :long cuda-long
     :int cuda-int
     :short cuda-short

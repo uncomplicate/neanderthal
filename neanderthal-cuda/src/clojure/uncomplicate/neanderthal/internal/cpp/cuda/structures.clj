@@ -57,7 +57,7 @@
 (defprotocol ContextProvider
   (get-context [this]))
 
-(defmacro def-accessor-type [name accessor-interface pointer-class entry-class pointer cast cast-get]
+(defmacro def-accessor-type [name accessor-interface pointer-class entry-class pointer cast]
   `(deftype ~name [ctx# hstream# construct# destruct#]
      DataAccessor
      (entryType [_#]
@@ -100,12 +100,13 @@
      (device [_#]
        :cuda)))
 
-(def-accessor-type DoublePointerAccessor RealAccessor DoublePointer Double double-pointer double double)
-(def-accessor-type FloatPointerAccessor RealAccessor FloatPointer Float float-pointer float float)
-(def-accessor-type LongPointerAccessor IntegerAccessor LongPointer Long long-pointer long long)
-(def-accessor-type IntPointerAccessor IntegerAccessor IntPointer Integer int-pointer int int)
-(def-accessor-type ShortPointerAccessor IntegerAccessor ShortPointer Short short-pointer short long)
-(def-accessor-type BytePointerAccessor IntegerAccessor BytePointer Byte byte-pointer byte long)
+(def-accessor-type DoublePointerAccessor RealAccessor DoublePointer Double double-pointer double)
+(def-accessor-type FloatPointerAccessor RealAccessor FloatPointer Float float-pointer float)
+(def-accessor-type HalfPointerAccessor RealAccessor ShortPointer Short short-pointer Float/floatToFloat16)
+(def-accessor-type LongPointerAccessor IntegerAccessor LongPointer Long long-pointer long)
+(def-accessor-type IntPointerAccessor IntegerAccessor IntPointer Integer int-pointer int)
+(def-accessor-type ShortPointerAccessor IntegerAccessor ShortPointer Short short-pointer short)
+(def-accessor-type BytePointerAccessor IntegerAccessor BytePointer Byte byte-pointer byte)
 
 ;; ================ CUDA memory transfer ======================================
 

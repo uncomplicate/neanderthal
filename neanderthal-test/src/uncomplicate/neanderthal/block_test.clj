@@ -89,22 +89,22 @@
      (transfer! x2 y0) => y2)))
 
 (defn test-ge-transfer [factory0 factory1]
-  (with-release [x0 (vctr factory0 6)
-                 x1 (vctr factory0 [1 2 3 4 5 6])
-                 y0 (vctr factory1 6)
-                 y1 (vctr factory1 [1 2 3 4 5 6])
-                 a0 (ge factory0 2 3)
-                 a1 (ge factory0 2 3 [1 2 3])
-                 a2 (ge factory0 2 3 [22 33])
-                 b0 (ge factory1 2 3)
-                 b1 (ge factory1 2 3 [22 33])
-                 b2 (ge factory1 2 3 [22 33])]
+  (with-release [x0 (vctr factory0 8)
+                 x1 (vctr factory0 [1 2 3 4 5 6 7 8])
+                 y0 (vctr factory1 8)
+                 y1 (vctr factory1 [1 2 3 4 5 6 7 8])
+                 a0 (ge factory0 2 4)
+                 a1 (ge factory0 2 4 [1 2 3 4])
+                 a2 (ge factory0 2 4 [22 33 44])
+                 b0 (ge factory1 2 4)
+                 b1 (ge factory1 2 4 [22 33 44])
+                 b2 (ge factory1 2 4 [22 33 44])]
     (facts
      "GE transfer tests."
-     (transfer! (float-array [1 2 3]) a0) => a1
-     (transfer! (double-array [1 2 3]) a0) => a1
-     (transfer! (int-array [1 2 3 0]) a0) => a1
-     (transfer! (long-array [1 2 3]) a0) => a1
+     (transfer! (float-array [1 2 3 4]) a0) => a1
+     (transfer! (double-array [1 2 3 4]) a0) => a1
+     (transfer! (int-array [1 2 3 4 0]) a0) => a1
+     (transfer! (long-array [1 2 3 4]) a0) => a1
      (seq (transfer! a1 (float-array 2))) => [1.0 2.0]
      (seq (transfer! a1 (double-array 2))) => [1.0 2.0]
      (transfer! b1 a0) => a2
@@ -113,18 +113,18 @@
      (transfer! (transfer! y1 a1) y0) => y1)))
 
 (defn test-tr-transfer [factory0 factory1]
-  (with-release [a0 (tr factory0 3)
-                 a1 (tr factory0 3 [1 2 3])
-                 a2 (tr factory0 3 [22 33])
-                 b0 (tr factory1 3)
-                 b1 (tr factory1 3 [22 33])
-                 b2 (tr factory1 3 [22 33])]
+  (with-release [a0 (tr factory0 4)
+                 a1 (tr factory0 4 [1 2 3 4])
+                 a2 (tr factory0 4 [22 33 44])
+                 b0 (tr factory1 4)
+                 b1 (tr factory1 4 [22 33 44])
+                 b2 (tr factory1 4 [22 33 44])]
     (facts
      "TR transfer tests."
-     (transfer! (float-array [1 2 3]) a0) => a1
-     (transfer! (double-array [1 2 3]) a0) => a1
-     (transfer! (int-array [1 2 3 0]) a0) => a1
-     (transfer! (long-array [1 2 3]) a0) => a1
+     (transfer! (float-array [1 2 3 4]) a0) => a1
+     (transfer! (double-array [1 2 3 4]) a0) => a1
+     (transfer! (int-array [1 2 3 4 0]) a0) => a1
+     (transfer! (long-array [1 2 3 4]) a0) => a1
      (seq (transfer! a1 (float-array 2))) => [1.0 2.0]
      (seq (transfer! a1 (double-array 2))) => [1.0 2.0]
      (transfer! b1 a0) => a2

@@ -347,21 +347,25 @@
 (real-vector-math* DoubleVectorEngine "d" double-ptr double zero-double)
 (mkl-real-vector-rng* DoubleVectorEngine "d" double-ptr double)
 
+(deftype HalfVectorEngine [])
+(integer-vector-blas* HalfVectorEngine "s" float-ptr mkl_rt 2 real/entry)
+(integer-vector-blas-plus* HalfVectorEngine "s" float-ptr short-float mkl_rt mkl_rt 2 real/entry)
+
 (deftype LongVectorEngine [])
-(integer-vector-blas* LongVectorEngine "d" double-ptr mkl_rt 1)
-(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double mkl_rt mkl_rt 1)
+(integer-vector-blas* LongVectorEngine "d" double-ptr mkl_rt 1 integer/entry)
+(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double mkl_rt mkl_rt 1 integer/entry)
 
 (deftype IntVectorEngine [])
-(integer-vector-blas* IntVectorEngine "s" float-ptr mkl_rt 1)
-(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float mkl_rt mkl_rt 1)
+(integer-vector-blas* IntVectorEngine "s" float-ptr mkl_rt 1 integer/entry)
+(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float mkl_rt mkl_rt 1 integer/entry)
 
 (deftype ShortVectorEngine [])
-(integer-vector-blas* ShortVectorEngine "s" float-ptr mkl_rt 2)
-(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float mkl_rt mkl_rt 2)
+(integer-vector-blas* ShortVectorEngine "s" float-ptr mkl_rt 2 integer/entry)
+(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float mkl_rt mkl_rt 2 integer/entry)
 
 (deftype ByteVectorEngine [])
-(integer-vector-blas* ByteVectorEngine "s" float-ptr mkl_rt 4)
-(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float mkl_rt mkl_rt 4)
+(integer-vector-blas* ByteVectorEngine "s" float-ptr mkl_rt 4 integer/entry)
+(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float mkl_rt mkl_rt 4 integer/entry)
 
 ;; ================= Integer GE Engine ========================================
 
@@ -1722,45 +1726,60 @@
 
 (def mkl-float-accessor (->FloatPointerAccessor malloc! free!))
 (def mkl-double-accessor (->DoublePointerAccessor malloc! free!))
+(def mkl-half-accessor (->HalfPointerAccessor malloc! free!))
 (def mkl-int-accessor (->IntPointerAccessor malloc! free!))
 (def mkl-long-accessor (->LongPointerAccessor malloc! free!))
 (def mkl-short-accessor (->ShortPointerAccessor malloc! free!))
 (def mkl-byte-accessor (->BytePointerAccessor malloc! free!))
 
-(def mkl-int (->MKLIntegerFactory mkl-int mkl-int-accessor (->IntVectorEngine) (->IntGEEngine)
+(def mkl-int (->MKLIntegerFactory mkl-int mkl-int-accessor
+                                  (->IntVectorEngine) (->IntGEEngine)
                                   (->IntTREngine) (->IntSYEngine)
                                   (->IntGBEngine) (->IntSBEngine) (->IntTBEngine)
                                   (->IntSPEngine) (->IntTPEngine) (->IntGDEngine)
                                   (->IntGTEngine) (->IntDTEngine) (->IntSTEngine)))
 
-(def mkl-long (->MKLIntegerFactory mkl-int mkl-long-accessor (->LongVectorEngine) (->LongGEEngine)
+(def mkl-long (->MKLIntegerFactory mkl-int mkl-long-accessor
+                                   (->LongVectorEngine) (->LongGEEngine)
                                    (->LongTREngine) (->LongSYEngine)
                                    (->LongGBEngine) (->LongSBEngine) (->LongTBEngine)
                                    (->LongSPEngine) (->LongTPEngine) (->LongGDEngine)
                                    (->LongGTEngine) (->LongDTEngine) (->LongSTEngine)))
 
-(def mkl-short (->MKLIntegerFactory mkl-int mkl-short-accessor (->ShortVectorEngine) (->ShortGEEngine)
+(def mkl-short (->MKLIntegerFactory mkl-int mkl-short-accessor
+                                    (->ShortVectorEngine) (->ShortGEEngine)
                                     (->ShortTREngine) (->ShortSYEngine)
                                     (->ShortGBEngine) (->ShortSBEngine) (->ShortTBEngine)
                                     (->ShortSPEngine) (->ShortTPEngine) (->ShortGDEngine)
                                     (->ShortGTEngine) (->ShortDTEngine) (->ShortSTEngine)))
 
-(def mkl-byte (->MKLIntegerFactory mkl-int mkl-byte-accessor (->ByteVectorEngine) (->ByteGEEngine)
+(def mkl-byte (->MKLIntegerFactory mkl-int mkl-byte-accessor
+                                   (->ByteVectorEngine) (->ByteGEEngine)
                                    (->ByteTREngine) (->ByteSYEngine)
                                    (->ByteGBEngine) (->ByteSBEngine) (->ByteTBEngine)
                                    (->ByteSPEngine) (->ByteTPEngine) (->ByteGDEngine)
                                    (->ByteGTEngine) (->ByteDTEngine) (->ByteSTEngine)))
 
-(def mkl-float (->MKLRealFactory mkl-int mkl-float-accessor (->FloatVectorEngine) (->FloatGEEngine)
+(def mkl-float (->MKLRealFactory mkl-int mkl-float-accessor
+                                 (->FloatVectorEngine) (->FloatGEEngine)
                                  (->FloatTREngine) (->FloatSYEngine)
                                  (->FloatGBEngine) (->FloatSBEngine) (->FloatTBEngine)
                                  (->FloatSPEngine) (->FloatTPEngine) (->FloatGDEngine)
                                  (->FloatGTEngine) (->FloatDTEngine) (->FloatSTEngine)
                                  (->FloatCSVectorEngine) (->FloatCSREngine)))
 
-(def mkl-double (->MKLRealFactory mkl-int mkl-double-accessor (->DoubleVectorEngine) (->DoubleGEEngine)
+(def mkl-double (->MKLRealFactory mkl-int mkl-double-accessor
+                                  (->DoubleVectorEngine) (->DoubleGEEngine)
                                   (->DoubleTREngine) (->DoubleSYEngine)
                                   (->DoubleGBEngine) (->DoubleSBEngine) (->DoubleTBEngine)
                                   (->DoubleSPEngine) (->DoubleTPEngine) (->DoubleGDEngine)
                                   (->DoubleGTEngine) (->DoubleDTEngine) (->DoubleSTEngine)
                                   (->DoubleCSVectorEngine)  (->DoubleCSREngine)))
+
+(def mkl-half (->MKLRealFactory mkl-int mkl-half-accessor
+                                (->HalfVectorEngine) (->ShortGEEngine)
+                                (->ShortTREngine) (->ShortSYEngine)
+                                (->ShortGBEngine) (->ShortSBEngine) (->ShortTBEngine)
+                                (->ShortSPEngine) (->ShortTPEngine) (->ShortGDEngine)
+                                (->ShortGTEngine) (->ShortDTEngine) (->ShortSTEngine)
+                                nil nil))

@@ -1403,16 +1403,21 @@
                  (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
                  (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/number"])))
 
+      random-src (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu"))
+
       real-src (apply str src
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/real.cu"))
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-real.cu"))
-                      (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu"))
+                      random-src
                       (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/real"])))
 
-      integer-src (apply str src
-                         (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
-                         (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu"))
-                         (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/integer"])))
+      integer-src-base (apply str
+                              (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
+                              (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu")))
+      integer-src-extra (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/integer"]))
+
+      integer-src (apply str src integer-src-base integer-src-extra)
+      half-src (apply str src integer-src-base random-src integer-src-extra)
 
       standard-headers {"stdint.h" nil
                         "float.h" nil}
@@ -1463,6 +1468,21 @@
          (->CUFactory modl hstream float-accessor native-float
                       (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
                       (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))
+
+  (defn cublas-half [native-half ctx hstream]
+    (in-context
+     ctx
+     (with-release [prog (compile! (program half-src philox-headers)
+                                   ["-DNUMBER=short" "-DINTEGER=short" "-DACCUMULATOR=short"
+                                    #_"-use_fast_math" "-default-device"
+                                    "-lineinfo" "-restrict"])]
+       (let-release [modl (module prog)
+                     half-accessor (->HalfPointerAccessor ctx hstream
+                                                          (fn [^long size]
+                                                            (cuda-malloc size :short))
+                                                          cuda-free!)]
+         (->CUFactory modl hstream half-accessor native-half
+                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-long [native-long ctx hstream]
     (in-context

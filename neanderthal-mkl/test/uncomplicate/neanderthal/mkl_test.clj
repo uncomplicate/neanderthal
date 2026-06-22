@@ -18,11 +18,12 @@
              [random-test :as random-test]
              [sparse-test :as sparse-test]]
             [uncomplicate.neanderthal.internal.cpp.mkl.factory
-             :refer [mkl-float mkl-double mkl-int mkl-long mkl-short mkl-byte]]))
+             :refer [mkl-float mkl-double mkl-half mkl-int mkl-long mkl-short mkl-byte]]))
 
 (facts "factory-by-type test"
        (factory-by-type :float) => mkl-float
        (factory-by-type :double) => mkl-double
+       (factory-by-type :half) => mkl-half
        (factory-by-type :int) => mkl-int
        (factory-by-type :long) => mkl-long
        (factory-by-type :short) => mkl-short
@@ -34,11 +35,11 @@
 (block-test/test-host mkl-double)
 
 (for [factory0 [mkl-double mkl-float]
-      factory1 [mkl-long mkl-int mkl-short mkl-byte]]
+      factory1 [mkl-long mkl-int mkl-short mkl-byte mkl-half]]
   [(block-test/test-two-factories factory0 factory1)
    (block-test/test-two-factories factory1 factory0)]) ;;TODO
 
-(for [factory0 [mkl-double mkl-float]
+(for [factory0 [mkl-double mkl-float mkl-half]
       factory1 [mkl-double mkl-float]]
   [(block-test/test-two-factories factory0 factory1)
    (block-test/test-two-factories factory1 factory0)])

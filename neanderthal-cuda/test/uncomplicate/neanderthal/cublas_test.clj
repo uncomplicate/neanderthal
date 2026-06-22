@@ -13,7 +13,7 @@
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
              [core :refer [tr sy transfer! native row ge vctr entry!]]
-             [cuda :refer [with-engine *cuda-factory* factory-by-type cuda-float
+             [cuda :refer [with-engine *cuda-factory* factory-by-type cuda-float cuda-half
                            cuda-double cuda-long cuda-int cuda-short cuda-byte]]
              [block-test :as block-test]
              [real-test :as real-test]
@@ -48,30 +48,30 @@
                            (partial math-test/diff-square-2 tr)))
 
 (defn test-cuda-transfer-overwriting [fact cast]
-  (with-release [cuda-v (vctr fact 4)
-                 cuda-v2 (vctr fact 4)
+  (with-release [cuda-v (vctr fact 8)
+                 cuda-v2 (vctr fact 8)
                  cpu-v4 (native cuda-v)
-                 cpu-v2 (vctr cpu-v4 [1 10])]
+                 cpu-v2 (vctr cpu-v4 [1 10 20 -30])]
     (facts "Test whether heterogeneous transfer from a vector writes beyond its turf."
            (entry! cuda-v 55) => cuda-v
-           (seq (native cuda-v)) => (map cast [55 55 55 55])
+           (seq (native cuda-v)) => (map cast [55 55 55 55 55 55 55 55])
            (transfer! cuda-v cuda-v2) => cuda-v2
-           (seq (native cuda-v2)) => (map cast [55 55 55 55])
+           (seq (native cuda-v2)) => (map cast [55 55 55 55 55 55 55 55])
            (transfer! cpu-v2 cuda-v) => cuda-v
-           (seq (native cuda-v)) => (map cast [1 10 55 55]))))
+           (seq (native cuda-v)) => (map cast [1 10 20 -30 55 55 55 55]))))
 
 (defn test-cuda-transfer-stride [fact cast]
-  (with-release [cuda-m (ge fact 3 2)
+  (with-release [cuda-m (ge fact 4 2)
                  cuda-v (row cuda-m 1)
                  cpu-m (native cuda-m)
-                 cpu-v2 (vctr cpu-m [1 10])]
+                 cpu-v2 (vctr cpu-m [1 10 20 -30])]
     (facts "Test whether heterogeneous transfer from a vector writes beyond its turf."
            (entry! cuda-m 55) => cuda-m
-           (seq (native cuda-m)) => [(map cast [55 55 55]) (map cast [55 55 55])]
+           (seq (native cuda-m)) => [(map cast [55 55 55 55]) (map cast [55 55 55 55])]
            (seq (native cuda-v)) => (map cast [55 55])
            (transfer! cpu-v2 cuda-v) => cuda-v
            (seq (native cuda-v)) => (map cast [1 10])
-           (seq (native cuda-m)) => [(map cast [55 1 55]) (map cast [55 10 55])])))
+           (seq (native cuda-m)) => [(map cast [55 1 55 55]) (map cast [55 10 55 55])])))
 
 (defn test-cuda-ge-transfer [fact cast]
   (with-release [cuda (ge fact 3 2)
@@ -89,6 +89,7 @@
   (facts "factory-by-type test"
          (= cuda-float (factory-by-type :float)) => true
          (= cuda-double (factory-by-type :double)) => true
+         (= cuda-half (factory-by-type :half)) => true
          (= cuda-int (factory-by-type :int)) => true
          (= cuda-long (factory-by-type :long)) => true
          (= cuda-short (factory-by-type :short)) => true
@@ -123,6 +124,13 @@
     (random-test/test-all *cuda-factory*)
     (random-test/test-all-device *cuda-factory*))
 
+  (with-engine cuda-half default-stream
+    (test-cuda-transfer-overwriting *cuda-factory* float)
+    (test-cuda-transfer-stride *cuda-factory* float)
+    (test-cuda-ge-transfer *cuda-factory* float)
+    (real-test/test-basic-integer *cuda-factory*)
+    (test-blas-integer *cuda-factory*))
+
   (with-engine cuda-long default-stream
     (test-cuda-transfer-overwriting *cuda-factory* long)
     (test-cuda-transfer-stride *cuda-factory* long)
@@ -134,5 +142,19 @@
     (test-cuda-transfer-overwriting *cuda-factory* int)
     (test-cuda-transfer-stride *cuda-factory* int)
     (test-cuda-ge-transfer *cuda-factory* int)
+    (real-test/test-basic-integer *cuda-factory*)
+    (test-blas-integer *cuda-factory*))
+
+  (with-engine cuda-short default-stream
+    (test-cuda-transfer-overwriting *cuda-factory* short)
+    (test-cuda-transfer-stride *cuda-factory* short)
+    (test-cuda-ge-transfer *cuda-factory* short)
+    (real-test/test-basic-integer *cuda-factory*)
+    (test-blas-integer *cuda-factory*))
+
+  (with-engine cuda-byte default-stream
+    (test-cuda-transfer-overwriting *cuda-factory* byte)
+    (test-cuda-transfer-stride *cuda-factory* byte)
+    (test-cuda-ge-transfer *cuda-factory* byte)
     (real-test/test-basic-integer *cuda-factory*)
     (test-blas-integer *cuda-factory*)))

@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.62.0"
+(defproject uncomplicate/neanderthal "0.63.0-SNAPSHOT"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic Neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -16,12 +16,12 @@
   :dependencies [[org.clojure/clojure "1.12.5"]
                  [uncomplicate/commons "0.20.0"]
                  [uncomplicate/fluokitten "0.10.2"]
-                 [org.uncomplicate/neanderthal-base "0.62.0"]
-                 [org.uncomplicate/neanderthal-openblas "0.62.0"]
-                 [org.uncomplicate/neanderthal-mkl "0.62.0"]
-                 [org.uncomplicate/neanderthal-opencl "0.62.0"]
-                 [org.uncomplicate/neanderthal-cuda "0.62.0"]
-                 [org.uncomplicate/neanderthal-accelerate "0.62.0"]]
+                 [org.uncomplicate/neanderthal-base "0.63.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-openblas "0.63.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-mkl "0.63.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-opencl "0.63.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-cuda "0.63.0-SNAPSHOT"]
+                 [org.uncomplicate/neanderthal-accelerate "0.63.0-SNAPSHOT"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
@@ -75,7 +75,7 @@
 
   ;; :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
 
-  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
+  :javac-options ["--release" "21" "-Xlint:-options"]
 
   :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                        "--enable-native-access=ALL-UNNAMED"]

@@ -18,6 +18,8 @@
              :refer [pointer long-pointer float-pointer double-pointer clong-pointer]]
             [uncomplicate.neanderthal
              [core :refer [dim mrows ncols entry!]]
+             [integer :as integer]
+             [real :as real]
              [math :refer [f=] :as math]
              [block :refer [stride contiguous?]]]
             [uncomplicate.neanderthal.internal
@@ -438,21 +440,25 @@
 (real-vector-rng* DoubleVectorEngine "d" double-ptr double blas_new openblas_full
                   "catlas_daxpby" ones-double)
 
+(deftype HalfVectorEngine [])
+(integer-vector-blas* HalfVectorEngine "s" float-ptr blas_new 2 real/entry)
+(integer-vector-blas-plus* HalfVectorEngine "s" float-ptr short-float blas_new openblas_full 2 real/entry)
+
 (deftype LongVectorEngine [])
-(integer-vector-blas* LongVectorEngine "d" double-ptr blas_new 1)
-(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double blas_new openblas_full 1)
+(integer-vector-blas* LongVectorEngine "d" double-ptr blas_new 1 integer/entry)
+(integer-vector-blas-plus* LongVectorEngine "d" double-ptr long-double blas_new openblas_full 1 integer/entry)
 
 (deftype IntVectorEngine [])
-(integer-vector-blas* IntVectorEngine "s" float-ptr blas_new 1)
-(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float blas_new openblas_full 1)
+(integer-vector-blas* IntVectorEngine "s" float-ptr blas_new 1 integer/entry)
+(integer-vector-blas-plus* IntVectorEngine "s" float-ptr int-float blas_new openblas_full 1 integer/entry)
 
 (deftype ShortVectorEngine [])
-(integer-vector-blas* ShortVectorEngine "s" float-ptr blas_new 2)
-(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float blas_new openblas_full 2)
+(integer-vector-blas* ShortVectorEngine "s" float-ptr blas_new 2 integer/entry)
+(integer-vector-blas-plus* ShortVectorEngine "s" float-ptr short-float blas_new openblas_full 2 integer/entry)
 
 (deftype ByteVectorEngine [])
-(integer-vector-blas* ByteVectorEngine "s" float-ptr blas_new 4)
-(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float blas_new openblas_full 4)
+(integer-vector-blas* ByteVectorEngine "s" float-ptr blas_new 4 integer/entry)
+(integer-vector-blas-plus* ByteVectorEngine "s" float-ptr byte-float blas_new openblas_full 4 integer/entry)
 
 ;; ================= GE Engine ========================================
 
@@ -1182,3 +1188,12 @@
                         (->DoubleTPEngine) (->DoubleGDEngine) (->DoubleGTEngine)
                         (->DoubleDTEngine) (->DoubleSTEngine)
                         nil nil))
+
+(def accelerate-half (->BlasRealFactory
+                      accelerate-int half-accessor
+                      (->HalfVectorEngine) (->ShortGEEngine)
+                      (->ShortTREngine) (->ShortSYEngine) (->ShortGBEngine)
+                      (->ShortSBEngine) (->ShortTBEngine) (->ShortSPEngine)
+                      (->ShortTPEngine) (->ShortGDEngine) (->ShortGTEngine)
+                      (->ShortDTEngine) (->ShortSTEngine)
+                      nil nil))

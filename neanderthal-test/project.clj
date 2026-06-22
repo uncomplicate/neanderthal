@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-test "0.62.0"
+(defproject org.uncomplicate/neanderthal-test "0.63.0-SNAPSHOT"
   :description "Reusable test functions for Neanderthal."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -16,7 +16,7 @@
   :dependencies [[org.clojure/clojure "1.12.5"]
                  [uncomplicate/commons "0.20.0"]
                  [uncomplicate/fluokitten "0.10.2"]
-                 [org.uncomplicate/neanderthal-base "0.62.0"]
+                 [org.uncomplicate/neanderthal-base "0.63.0-SNAPSHOT"]
                  [midje "1.10.10"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
@@ -28,4 +28,4 @@
 
                    :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"]}}
 
-  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"])
+  :javac-options ["--release" "21" "-Xlint:-options"])
