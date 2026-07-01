@@ -533,14 +533,14 @@
   ([cublas-handle cublas method ptr cpp-ptr alpha x y a]
    `(with-release [alpha# (~cpp-ptr (.wrapPrim (data-accessor ~a) ~alpha))]
       (. ~cublas ~method ~cublas-handle
-       (if (uplo-bottom? ~a) ~(:lower cublas-uplo) ~(:upper cublas-uplo))
-       (mrows ~a) alpha# (~ptr ~x) (stride ~x) (~ptr ~y) (stride ~y) (~ptr ~a) (stride ~a))
+         (if (uplo-bottom? ~a) ~(:lower cublas-uplo) ~(:upper cublas-uplo))
+         (mrows ~a) alpha# (~ptr ~x) (stride ~x) (~ptr ~y) (stride ~y) (~ptr ~a) (stride ~a))
       ~a))
   ([cublas-handle cublas method ptr cpp-ptr alpha x a]
    `(with-release [alpha# (~cpp-ptr (.wrapPrim (data-accessor ~a) ~alpha))]
       (. ~cublas ~method ~cublas-handle
-       (if (uplo-bottom? ~a) ~(:lower cublas-uplo) ~(:upper cublas-uplo))
-       (mrows ~a) alpha# (~ptr ~x) (stride ~x) (~ptr ~a) (stride ~a))
+         (if (uplo-bottom? ~a) ~(:lower cublas-uplo) ~(:upper cublas-uplo))
+         (mrows ~a) alpha# (~ptr ~x) (stride ~x) (~ptr ~a) (stride ~a))
       ~a)))
 
 (defmacro ^:private sy-rk [cublas-handle cublas method ptr cpp-ptr alpha a beta c]
@@ -1400,154 +1400,153 @@
 (let [src (apply str
                  (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
                  (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
-                 (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
                  (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/number"])))
+
+      number-standard-src (str src
+                               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
+                               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number-standard.cu")))
 
       random-src (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu"))
 
-      real-src-extra (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/real"]))
-
-      real-src (apply str src
+      real-src (apply str number-standard-src
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/real.cu"))
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-real.cu"))
                       random-src
-                      real-src-extra)
+                      (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/real"])))
 
-      integer-src-base (apply str
-                              (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
-                              (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu")))
-
-
-      integer-src (apply str src integer-src-base
+      integer-src (apply str number-standard-src
+                         (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
+                         (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu"))
                          (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/integer"])))
 
-      half-src (apply str src integer-src-base random-src real-src-extra)
+
+      half-src (apply str src
+                      (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/half.cu"))
+                      (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/half"])))
 
       standard-headers {"stdint.h" nil
                         "float.h" nil}
-      philox-headers
-      (merge standard-headers
-             {"Random123/philox.h"
-              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/philox.h"))
-              "features/compilerfeatures.h"
-              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/compilerfeatures.h"))
-              "nvccfeatures.h"
-              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/nvccfeatures.h"))
-              "array.h" (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/array.h"))})]
+
+      half-headers (merge standard-headers
+                          {"cuda_fp16.h" nil})
+
+      philox-headers (merge standard-headers
+                            {"Random123/philox.h"
+                             (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/philox.h"))
+                             "features/compilerfeatures.h"
+                             (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/compilerfeatures.h"))
+                             "nvccfeatures.h"
+                             (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/nvccfeatures.h"))
+                             "array.h" (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/array.h"))})]
 
   (defn cublas-double [native-double ctx hstream]
     (in-context
-     ctx
-     (with-release [prog (compile! (program real-src philox-headers)
-                                   ["-DNUMBER=double" "-DREAL=double" "-DACCUMULATOR=double"
-                                    "-DCAST(fun)=fun" #_"-use_fast_math" "-default-device"
-                                    "-lineinfo" "-restrict"
-                                    (format "-DCUDART_VERSION=%s" (driver-version))])]
-       (let-release [modl (module prog)
-                     handle (cublas-handle hstream)
-                     hstream (get-cublas-stream handle)
-                     double-accessor (->DoublePointerAccessor ctx hstream
-                                                              (fn [^long size]
-                                                                (cuda-malloc size :double))
-                                                              cuda-free!)]
-         (->CUFactory modl hstream double-accessor native-double
-                      (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
-                      (->DoubleTREngine handle modl hstream) (->DoubleSYEngine handle modl hstream))))))
+        ctx
+      (with-release [prog (compile! (program real-src philox-headers)
+                                    ["-DNUMBER=double" "-DREAL=double" "-DACCUMULATOR=double"
+                                     "-DCAST(fun)=fun" #_"-use_fast_math" "-default-device"
+                                     "-lineinfo" "-restrict"
+                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
+        (let-release [modl (module prog)
+                      handle (cublas-handle hstream)
+                      hstream (get-cublas-stream handle)
+                      double-accessor (->DoublePointerAccessor ctx hstream
+                                                               (fn [^long size]
+                                                                 (cuda-malloc size :double))
+                                                               cuda-free!)]
+          (->CUFactory modl hstream double-accessor native-double
+                       (->DoubleVectorEngine handle modl hstream) (->DoubleGEEngine handle modl hstream)
+                       (->DoubleTREngine handle modl hstream) (->DoubleSYEngine handle modl hstream))))))
 
   (defn cublas-float [native-float ctx hstream]
-    (in-context
-     ctx
-     (with-release [prog (compile! (program real-src philox-headers)
-                                   ["-DNUMBER=float" "-DREAL=float" "-DACCUMULATOR=float"
-                                    "-DCAST(fun)=fun##f" #_"-use_fast_math" "-default-device"
-                                    "-lineinfo" "-restrict"
-                                    (format "-DCUDART_VERSION=%s" (driver-version))])]
-       (let-release [modl (module prog)
-                     handle (cublas-handle hstream)
-                     hstream (get-cublas-stream handle)
-                     float-accessor (->FloatPointerAccessor ctx hstream
-                                                            (fn [^long size]
-                                                              (cuda-malloc size :float))
-                                                            cuda-free!)]
-         (->CUFactory modl hstream float-accessor native-float
-                      (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
-                      (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))
+    (in-context ctx
+      (with-release [prog (compile! (program real-src philox-headers)
+                                    ["-DNUMBER=float" "-DREAL=float" "-DACCUMULATOR=float"
+                                     "-DCAST(fun)=fun##f" #_"-use_fast_math" "-default-device"
+                                     "-lineinfo" "-restrict"
+                                     (format "-DCUDART_VERSION=%s" (driver-version))])]
+        (let-release [modl (module prog)
+                      handle (cublas-handle hstream)
+                      hstream (get-cublas-stream handle)
+                      float-accessor (->FloatPointerAccessor ctx hstream
+                                                             (fn [^long size]
+                                                               (cuda-malloc size :float))
+                                                             cuda-free!)]
+          (->CUFactory modl hstream float-accessor native-float
+                       (->FloatVectorEngine handle modl hstream) (->FloatGEEngine handle modl hstream)
+                       (->FloatTREngine handle modl hstream) (->FloatSYEngine handle modl hstream))))))
 
   (defn cublas-half [native-half ctx hstream]
-    (in-context
-     ctx
-     (with-release [prog (compile! (program half-src philox-headers)
-                                   ["-DNUMBER=short" "-DINTEGER=short" "-DACCUMULATOR=short"
-                                    #_"-use_fast_math" "-default-device"
-                                    "-lineinfo" "-restrict"])]
-       (let-release [modl (module prog)
-                     half-accessor (->HalfPointerAccessor ctx hstream
-                                                          (fn [^long size]
-                                                            (cuda-malloc size :short))
-                                                          cuda-free!)]
-         (->CUFactory modl hstream half-accessor native-half
-                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
+    (in-context ctx
+
+      (with-release [prog (compile! (program half-src half-headers)
+                                    ["-DNUMBER=short"
+                                     #_"-use_fast_math" "-default-device"
+                                     "-lineinfo" "-restrict"])]
+        (let-release [modl (module prog)
+                      half-accessor (->HalfPointerAccessor ctx hstream
+                                                           (fn [^long size]
+                                                             (cuda-malloc size :short))
+                                                           cuda-free!)]
+          (->CUFactory modl hstream half-accessor native-half
+                       (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-long [native-long ctx hstream]
-    (in-context
-     ctx
-     (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=long" "-DINTEGER=long" "-DACCUMULATOR=long"
-                                    #_"-use_fast_math" "-default-device"
-                                    "-lineinfo" "-restrict"])]
-       (let-release [modl (module prog)
-                     handle (cublas-handle hstream)
-                     hstream (get-cublas-stream handle)
-                     long-accessor (->LongPointerAccessor ctx hstream
-                                                          (fn [^long size]
-                                                            (cuda-malloc size :long))
-                                                          cuda-free!)]
-         (->CUFactory modl hstream long-accessor native-long
-                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
+    (in-context ctx
+      (with-release [prog (compile! (program integer-src)
+                                    ["-DNUMBER=long" "-DINTEGER=long" "-DACCUMULATOR=long"
+                                     #_"-use_fast_math" "-default-device"
+                                     "-lineinfo" "-restrict"])]
+        (let-release [modl (module prog)
+                      handle (cublas-handle hstream)
+                      hstream (get-cublas-stream handle)
+                      long-accessor (->LongPointerAccessor ctx hstream
+                                                           (fn [^long size]
+                                                             (cuda-malloc size :long))
+                                                           cuda-free!)]
+          (->CUFactory modl hstream long-accessor native-long
+                       (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-int [native-int ctx hstream]
-    (in-context
-     ctx
-     (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=int" "-DINTEGER=int" "-DACCUMULATOR=int"
-                                    #_"-use_fast_math" "-default-device"
-                                    "-lineinfo" "-restrict"])]
-       (let-release [modl (module prog)
-                     handle (cublas-handle hstream)
-                     hstream (get-cublas-stream handle)
-                     int-accessor (->IntPointerAccessor ctx hstream
-                                                        (fn [^long size]
-                                                          (cuda-malloc size :int))
-                                                        cuda-free!)]
-         (->CUFactory modl hstream int-accessor native-int
-                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
+    (in-context ctx
+      (with-release [prog (compile! (program integer-src)
+                                    ["-DNUMBER=int" "-DINTEGER=int" "-DACCUMULATOR=int"
+                                     #_"-use_fast_math" "-default-device"
+                                     "-lineinfo" "-restrict"])]
+        (let-release [modl (module prog)
+                      handle (cublas-handle hstream)
+                      hstream (get-cublas-stream handle)
+                      int-accessor (->IntPointerAccessor ctx hstream
+                                                         (fn [^long size]
+                                                           (cuda-malloc size :int))
+                                                         cuda-free!)]
+          (->CUFactory modl hstream int-accessor native-int
+                       (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-short [native-short ctx hstream]
-    (in-context
-     ctx
-     (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=short" "-DINTEGER=short" "-DACCUMULATOR=short"
-                                    #_"-use_fast_math" "-default-device"
-                                    "-lineinfo" "-restrict"])]
-       (let-release [modl (module prog)
-                     short-accessor (->ShortPointerAccessor ctx hstream
-                                                            (fn [^long size]
-                                                              (cuda-malloc size :short))
-                                                            cuda-free!)]
-         (->CUFactory modl hstream short-accessor native-short
-                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
+    (in-context ctx
+      (with-release [prog (compile! (program integer-src)
+                                    ["-DNUMBER=short" "-DINTEGER=short" "-DACCUMULATOR=short"
+                                     #_"-use_fast_math" "-default-device"
+                                     "-lineinfo" "-restrict"])]
+        (let-release [modl (module prog)
+                      short-accessor (->ShortPointerAccessor ctx hstream
+                                                             (fn [^long size]
+                                                               (cuda-malloc size :short))
+                                                             cuda-free!)]
+          (->CUFactory modl hstream short-accessor native-short
+                       (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil)))))
 
   (defn cublas-byte [native-byte ctx hstream]
-    (in-context
-     ctx
-     (with-release [prog (compile! (program integer-src)
-                                   ["-DNUMBER=char" "-DINTEGER=char" "-DACCUMULATOR=char"
-                                    #_"-use_fast_math" "-default-device"
-                                    "-lineinfo" "-restrict"])]
-       (let-release [modl (module prog)
-                     byte-accessor (->BytePointerAccessor ctx hstream
-                                                          (fn [^long size]
-                                                            (cuda-malloc size :byte))
-                                                          cuda-free!)]
-         (->CUFactory modl hstream byte-accessor native-byte
-                      (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil))))))
+    (in-context ctx
+      (with-release [prog (compile! (program integer-src)
+                                    ["-DNUMBER=char" "-DINTEGER=char" "-DACCUMULATOR=char"
+                                     #_"-use_fast_math" "-default-device"
+                                     "-lineinfo" "-restrict"])]
+        (let-release [modl (module prog)
+                      byte-accessor (->BytePointerAccessor ctx hstream
+                                                           (fn [^long size]
+                                                             (cuda-malloc size :byte))
+                                                           cuda-free!)]
+          (->CUFactory modl hstream byte-accessor native-byte
+                       (->IntegerVectorEngine modl hstream) (->IntegerGEEngine modl hstream) nil nil))))))
