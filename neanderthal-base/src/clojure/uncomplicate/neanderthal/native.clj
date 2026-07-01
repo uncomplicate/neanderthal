@@ -14,9 +14,9 @@
   Alternative implementations are allowed, and can be either referred explicitly
   (see how `mkl-float` is used as and example), or by binding [[native-float]] and the likes
   to your preferred implementation."
-  (:require [clojure.tools.logging :refer [warn error info]]
+  (:require [clojure.tools.logging :refer [error info]]
             [clojure.string :refer []]
-            [uncomplicate.commons.utils :refer [dragan-says-ex channel]]
+            [uncomplicate.commons.utils :refer [dragan-says-ex channel load-class]]
             [uncomplicate.neanderthal.core :refer [vctr ge tr sy gb tb sb tp sp gd gt dt st]]
             [uncomplicate.neanderthal.internal.cpp.structures
              :refer [extend-pointer map-channel]])
@@ -32,12 +32,6 @@
 (declare native-int)
 (declare native-short)
 (declare native-byte)
-
-(defn load-class [^String classname]
-  (try (.loadClass (clojure.lang.DynamicClassLoader.) classname)
-       (catch Exception e
-         (info (format "Class %s is not available." classname))
-         nil)))
 
 (defmacro load-mkl []
   `(do (require 'uncomplicate.neanderthal.internal.cpp.mkl.factory)
