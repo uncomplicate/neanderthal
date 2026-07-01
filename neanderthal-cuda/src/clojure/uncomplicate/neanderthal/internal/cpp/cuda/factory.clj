@@ -1405,19 +1405,23 @@
 
       random-src (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu"))
 
+      real-src-extra (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/real"]))
+
       real-src (apply str src
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/real.cu"))
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-real.cu"))
                       random-src
-                      (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/real"])))
+                      real-src-extra)
 
       integer-src-base (apply str
                               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/integer.cu"))
                               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-integer.cu")))
-      integer-src-extra (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/integer"]))
 
-      integer-src (apply str src integer-src-base integer-src-extra)
-      half-src (apply str src integer-src-base random-src integer-src-extra)
+
+      integer-src (apply str src integer-src-base
+                         (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/integer"])))
+
+      half-src (apply str src integer-src-base random-src real-src-extra)
 
       standard-headers {"stdint.h" nil
                         "float.h" nil}

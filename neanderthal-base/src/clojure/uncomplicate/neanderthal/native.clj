@@ -533,4 +533,4 @@
    (let [channel (if (instance? FileChannel file) file (channel file))]
      (map-channel fact channel)))
   ([file]
-   (map-vector native-float file)))
+   (map-vector native-byte file)))

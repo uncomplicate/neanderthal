@@ -129,7 +129,6 @@
 (integer-ge-blas* LongGEEngine "d" double-ptr openblas_full openblas_full 1)
 
 (deftype IntGEEngine [])
-
 (integer-ge-blas* IntGEEngine "s" float-ptr openblas_full openblas_full 1)
 
 (deftype ShortGEEngine []) ;; TODO
