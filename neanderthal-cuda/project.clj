@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-cuda "0.63.0"
+(defproject org.uncomplicate/neanderthal-cuda "0.64.0-SNAPSHOT"
   :description "Neanderthal's CUDA backend."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -16,7 +16,7 @@
   :dependencies [[org.clojure/clojure "1.12.5"]
                  [uncomplicate/commons "0.23.0"]
                  [uncomplicate/fluokitten "0.10.3"]
-                 [uncomplicate/clojurecuda "0.29.0"]
+                 [uncomplicate/clojurecuda "0.31.0"]
                  [org.uncomplicate/neanderthal-base "0.63.0"]
                  [org.uncomplicate/neanderthal-opencl "0.63.0"]]
 

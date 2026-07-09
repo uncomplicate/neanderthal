@@ -14,7 +14,9 @@
   (:require [uncomplicate.commons
              [core :refer [release with-release]]
              [utils :refer [dragan-says-ex]]]
-            [uncomplicate.clojurecuda.core :refer [current-context default-stream]]
+            [uncomplicate.clojure-cpp :refer [null?]]
+            [uncomplicate.clojurecuda.core
+             :refer [current-context default-stream push-context! context]]
             [uncomplicate.neanderthal
              [core :refer [vctr ge tr sy]]
              [native :refer [native-float native-double native-half native-long native-int
@@ -26,26 +28,75 @@
        :doc "Dynamically bound CUDA factory that is used in vector and matrix constructors."}
   *cuda-factory*)
 
-(def ^{:doc "Constructor of a single precision floating point CUDA factory."}
-  cuda-float (partial cublas-float native-float))
+(defn cuda-float
+  "Constructor of a single precision floating point CUDA factory."
+  ([ctx strm]
+   (cublas-float native-float ctx strm))
+  ([strm]
+   (cuda-float (current-context) strm))
+  ([]
+   (let [ctx (current-context)]
+     (cuda-float (if (null? ctx) (push-context! (context)) ctx) default-stream))))
 
-(def ^{:doc "Constructor of a double-precision floating point CUDA factory."}
-  cuda-double (partial cublas-double native-double))
+(defn cuda-double
+  "Constructor of a double-precision floating point CUDA factory."
+  ([ctx strm]
+   (cublas-double native-double ctx strm))
+  ([strm]
+   (cuda-double (current-context) strm))
+  ([]
+   (let [ctx (current-context)]
+     (cuda-double (if (null? ctx) (push-context! (context)) ctx) default-stream))))
 
-(def ^{:doc "Constructor of a half-precision floating point CUDA factory."}
-  cuda-half (partial cublas-half native-half))
+(defn cuda-half
+  "Constructor of a half-precision floating point CUDA factory."
+  ([ctx strm]
+   (cublas-half native-half ctx strm))
+  ([strm]
+   (cuda-half (current-context) strm))
+  ([]
+   (let [ctx (current-context)]
+     (cuda-half (if (null? ctx) (push-context! (context)) ctx) default-stream))))
 
-(def ^{:doc "Constructor of a long CUDA factory."}
-  cuda-long (partial cublas-long native-long))
+(defn cuda-long
+  "Constructor of a long CUDA factory."
+  ([ctx strm]
+   (cublas-long native-long ctx strm))
+  ([strm]
+   (cuda-long(current-context) strm))
+  ([]
+   (let [ctx (current-context)]
+     (cuda-long (if (null? ctx) (push-context! (context)) ctx) default-stream))))
 
-(def ^{:doc "Constructor of an int CUDA factory."}
-  cuda-int (partial cublas-int native-int))
+(defn cuda-int
+  "Constructor of an int CUDA factory."
+  ([ctx strm]
+   (cublas-int native-int ctx strm))
+  ([strm]
+   (cuda-int (current-context) strm))
+  ([]
+   (let [ctx (current-context)]
+     (cuda-int (if (null? ctx) (push-context! (context)) ctx) default-stream))))
 
-(def ^{:doc "Constructor of a short CUDA factory."}
-  cuda-short (partial cublas-short native-short))
+(defn cuda-short
+  "Constructor of a short CUDA factory."
+  ([ctx strm]
+   (cublas-short native-short ctx strm))
+  ([strm]
+   (cuda-short (current-context) strm))
+  ([]
+   (let [ctx (current-context)]
+     (cuda-short (if (null? ctx) (push-context! (context)) ctx) default-stream))))
 
-(def ^{:doc "Constructor of a byte CUDA factory."}
-  cuda-byte (partial cublas-byte native-byte))
+(defn cuda-byte
+  "Constructor of a byte CUDA factory."
+  ([ctx strm]
+   (cublas-byte native-byte ctx strm))
+  ([strm]
+   (cuda-byte (current-context) strm))
+  ([]
+   (let [ctx (current-context)]
+     (cuda-byte (if (null? ctx) (push-context! (context)) ctx) default-stream))))
 
 (defn factory-by-type [data-type]
   (case data-type

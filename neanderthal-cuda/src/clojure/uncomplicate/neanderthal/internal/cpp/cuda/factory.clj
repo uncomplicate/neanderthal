@@ -1397,21 +1397,23 @@
     (with-check cublas-error (cublas/cublasCreate_v2 handle)
       (with-check cublas-error (cublas/cublasSetStream_v2 handle stream) handle))))
 
-(let [src (apply str
-                 (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
-                 (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
-                 (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/number"])))
+(let [number-src (apply str
+                        (slurp (io/resource "uncomplicate/clojurecuda/kernels/reduction.cu"))
+                        (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number.cu"))
+                        (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/number"])))
 
-      number-standard-src (str src
+      number-standard-src (str number-src
                                (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math.cu"))
                                (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/number-standard.cu")))
 
-      random-src (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random.cu"))
+      random-number-src (apply str
+                               (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random-number.cu"))
+                               (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/random"])))
 
-      real-src (apply str number-standard-src
+      real-src (apply str number-standard-src random-number-src
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/real.cu"))
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/vect-math-real.cu"))
-                      random-src
+                      (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/random-real.cu"))
                       (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/real"])))
 
       integer-src (apply str number-standard-src
@@ -1420,15 +1422,12 @@
                          (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/integer"])))
 
 
-      half-src (apply str src
+      half-src (apply str number-src random-number-src
                       (slurp (io/resource "uncomplicate/neanderthal/internal/device/cuda/half.cu"))
                       (map (comp slurp io/resource) (scan-resources ["uncomplicate/neanderthal/internal/device/cuda/half"])))
 
       standard-headers {"stdint.h" nil
                         "float.h" nil}
-
-      half-headers (merge standard-headers
-                          {"cuda_fp16.h" nil})
 
       philox-headers (merge standard-headers
                             {"Random123/philox.h"
@@ -1437,7 +1436,10 @@
                              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/compilerfeatures.h"))
                              "nvccfeatures.h"
                              (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/features/nvccfeatures.h"))
-                             "array.h" (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/array.h"))})]
+                             "array.h" (slurp (io/resource "uncomplicate/neanderthal/internal/device/include/Random123/array.h"))})
+
+      half-headers (merge philox-headers
+                          {"cuda_fp16.h" nil})]
 
   (defn cublas-double [native-double ctx hstream]
     (in-context
