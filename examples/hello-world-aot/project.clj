@@ -1,8 +1,8 @@
-(defproject hello-world-aot "0.63.0"
+(defproject hello-world-aot "0.64.0"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.5"]
-                 [uncomplicate/neanderthal "0.63.0"]]
+                 [uncomplicate/neanderthal "0.64.0"]]
 
   ;; uncomplicate/neanderthal is AOT compiled for fast loading and developer convenience, which
   ;; might cause issues since it freezes org.clojure/core.async to the specific version (see ClojureCUDA).

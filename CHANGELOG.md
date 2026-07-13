@@ -1,5 +1,10 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.64.0
+
+* Support finer grain in cuda extensions (number/half/real/integer).
+* Fix PR #153
+
 # 0.63.0
 
 * Support Half-precision floats (only containers, backed by Float16 and Short)
