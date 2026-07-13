@@ -7,12 +7,13 @@
 ;;   You must not remove this notice, or any other, from this software.
 
 (ns ^{:author "Dragan Djuric"}
-    uncomplicate.neanderthal.cublas-test
+  uncomplicate.neanderthal.cublas-test
   (:require [midje.sweet :refer :all]
-            [uncomplicate.commons.core :refer [with-release]]
+            [uncomplicate.commons.core :refer [with-release info]]
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
-             [core :refer [tr sy transfer! native row ge vctr entry!]]
+             [core :refer [tr sy transfer! native row ge vctr entry!
+                           view-vctr subvector view-ge]]
              [cuda :refer [with-engine *cuda-factory* factory-by-type cuda-float cuda-half
                            cuda-double cuda-long cuda-int cuda-short cuda-byte]]
              [block-test :as block-test]
@@ -84,6 +85,17 @@
            (transfer! (range 1 7) cuda) => cuda
            (seq (native cuda)) => [(map cast [1 2 3]) (map cast [4 5 6])])))
 
+(defn test-cuda-info-device [fact]
+  (with-release [cuda-v (vctr fact 6)
+                 cuda-m (ge fact 2 3)]
+    (facts "CUDA Neanderthal objects report CUDA device in info."
+           (:device (info cuda-v)) => :cuda
+           (:device (info (subvector cuda-v 0 3))) => :cuda
+           (:device (info cuda-m)) => :cuda
+           (:device (info (view-vctr cuda-m))) => :cuda
+           (:device (info (view-ge cuda-m 2 3))) => :cuda)
+           (:device (info (view-ge (view-vctr cuda-m) 2 3))) => :cuda))
+
 (with-default
 
   (facts "factory-by-type test"
@@ -108,7 +120,8 @@
     (math-test/test-all-device *cuda-factory*)
     (test-math-cuda *cuda-factory*)
     (random-test/test-all *cuda-factory*)
-    (random-test/test-all-device *cuda-factory*))
+    (random-test/test-all-device *cuda-factory*)
+    (test-cuda-info-device *cuda-factory*))
 
   (with-engine cuda-double default-stream
     (test-cuda-transfer-overwriting *cuda-factory* double)
@@ -122,39 +135,45 @@
     (math-test/test-all-device *cuda-factory*)
     (test-math-cuda *cuda-factory*)
     (random-test/test-all *cuda-factory*)
-    (random-test/test-all-device *cuda-factory*))
+    (random-test/test-all-device *cuda-factory*)
+    (test-cuda-info-device *cuda-factory*))
 
   (with-engine cuda-half default-stream
     (test-cuda-transfer-overwriting *cuda-factory* float)
     (test-cuda-transfer-stride *cuda-factory* float)
     (test-cuda-ge-transfer *cuda-factory* float)
     (real-test/test-basic-integer *cuda-factory*)
-    (test-blas-integer *cuda-factory*))
+    (test-blas-integer *cuda-factory*)
+    (test-cuda-info-device *cuda-factory*))
 
   (with-engine cuda-long default-stream
     (test-cuda-transfer-overwriting *cuda-factory* long)
     (test-cuda-transfer-stride *cuda-factory* long)
     (test-cuda-ge-transfer *cuda-factory* long)
     (real-test/test-basic-integer *cuda-factory*)
-    (test-blas-integer *cuda-factory*))
+    (test-blas-integer *cuda-factory*)
+    (test-cuda-info-device *cuda-factory*))
 
   (with-engine cuda-int default-stream
     (test-cuda-transfer-overwriting *cuda-factory* int)
     (test-cuda-transfer-stride *cuda-factory* int)
     (test-cuda-ge-transfer *cuda-factory* int)
     (real-test/test-basic-integer *cuda-factory*)
-    (test-blas-integer *cuda-factory*))
+    (test-blas-integer *cuda-factory*)
+    (test-cuda-info-device *cuda-factory*))
 
   (with-engine cuda-short default-stream
     (test-cuda-transfer-overwriting *cuda-factory* short)
     (test-cuda-transfer-stride *cuda-factory* short)
     (test-cuda-ge-transfer *cuda-factory* short)
     (real-test/test-basic-integer *cuda-factory*)
-    (test-blas-integer *cuda-factory*))
+    (test-blas-integer *cuda-factory*)
+    (test-cuda-info-device *cuda-factory*))
 
   (with-engine cuda-byte default-stream
     (test-cuda-transfer-overwriting *cuda-factory* byte)
     (test-cuda-transfer-stride *cuda-factory* byte)
     (test-cuda-ge-transfer *cuda-factory* byte)
     (real-test/test-basic-integer *cuda-factory*)
-    (test-blas-integer *cuda-factory*)))
+    (test-blas-integer *cuda-factory*)
+    (test-cuda-info-device *cuda-factory*)))
