@@ -904,7 +904,7 @@
        ([this#]
         {:entry-type (.entryType (data-accessor this#))
          :class ~name
-         :device :cpu
+         :device (device this#)
          :matrix-type (.matrixType this#)
          :dim (dim this#)
          :m (mrows this#)
@@ -920,7 +920,7 @@
         (case info-type#
           :entry-type (.entryType (data-accessor this#))
           :class ~name
-          :device :cpu
+          :device (device this#)
           :matrix-type (.matrixType this#)
           :dim (dim this#)
           :m (mrows this#)

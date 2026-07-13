@@ -17,7 +17,7 @@
                  [uncomplicate/commons "0.23.0"]
                  [uncomplicate/fluokitten "0.10.3"]
                  [uncomplicate/clojurecuda "0.31.0"]
-                 [org.uncomplicate/neanderthal-base "0.63.0"]
+                 [org.uncomplicate/neanderthal-base "0.64.0-SNAPSHOT"]
                  [org.uncomplicate/neanderthal-opencl "0.63.0"]]
 
   :profiles {:dev [:dev/all ~(leiningen.core.utils/get-os)]
@@ -28,8 +28,8 @@
                                      *unchecked-math* :warn-on-boxed
                                      *print-length* 128}
                        :dependencies [[midje "1.10.10"]
-                                      [org.uncomplicate/neanderthal-test "0.63.0"]
-                                      [org.uncomplicate/neanderthal-openblas "0.63.0"]]
+                                      [org.uncomplicate/neanderthal-test "0.64.0-SNAPSHOT"]
+                                      [org.uncomplicate/neanderthal-openblas "0.64.0-SNAPSHOT"]]
                        :jvm-opts ^:replace ["-Dclojure.compiler.direct-linking=true"
                                              "--enable-native-access=ALL-UNNAMED"]}
              :linux {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "linux-x86_64"]

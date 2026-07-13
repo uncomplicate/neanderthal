@@ -9,10 +9,10 @@
 (ns ^{:author "Dragan Djuric"}
     uncomplicate.neanderthal.cublas-test
   (:require [midje.sweet :refer :all]
-            [uncomplicate.commons.core :refer [with-release]]
+            [uncomplicate.commons.core :refer [with-release info]]
             [uncomplicate.clojurecuda.core :refer [with-default default-stream]]
             [uncomplicate.neanderthal
-             [core :refer [tr sy transfer! native row ge vctr entry!]]
+             [core :refer [tr sy transfer! native row ge vctr entry! subvector view-vctr view-ge]]
              [cuda :refer [with-engine *cuda-factory* factory-by-type cuda-float cuda-half
                            cuda-double cuda-long cuda-int cuda-short cuda-byte]]
              [block-test :as block-test]
@@ -46,6 +46,17 @@
   (math-test/test-math-inv factory math-test/diff-ge-1 math-test/diff-ge-2)
   (math-test/test-math-inv factory (partial math-test/diff-square-1 tr)
                            (partial math-test/diff-square-2 tr)))
+
+(defn test-cuda-info-device [fact]
+  (with-release [cuda-v (vctr fact 6)
+                 cuda-m (ge fact 2 3)]
+    (facts "CUDA Neanderthal objects report CUDA device in info."
+           (info cuda-v :device) => :cuda
+           (info (subvector cuda-v 0 3) :device) => :cuda
+           (info cuda-m :device) => :cuda
+           (info (view-vctr cuda-m) :device) => :cuda
+           (info (view-ge cuda-m 2 3) :device) => :cuda
+           (info (view-ge (view-vctr cuda-m) 2 3) :device) => :cuda)))
 
 (defn test-cuda-transfer-overwriting [fact cast]
   (with-release [cuda-v (vctr fact 8)
@@ -97,6 +108,7 @@
          (= cuda-byte (factory-by-type :uint8)) => true)
 
   (with-engine cuda-float default-stream
+    (test-cuda-info-device *cuda-factory*)
     (test-cuda-transfer-overwriting *cuda-factory* float)
     (test-cuda-transfer-stride *cuda-factory* float)
     (test-cuda-ge-transfer *cuda-factory* float)
@@ -111,6 +123,7 @@
     (random-test/test-all-device *cuda-factory*))
 
   (with-engine cuda-double default-stream
+    (test-cuda-info-device *cuda-factory*)
     (test-cuda-transfer-overwriting *cuda-factory* double)
     (test-cuda-transfer-stride *cuda-factory* double)
     (test-cuda-ge-transfer *cuda-factory* double)
@@ -125,6 +138,7 @@
     (random-test/test-all-device *cuda-factory*))
 
   (with-engine cuda-half default-stream
+    (test-cuda-info-device *cuda-factory*)
     (test-cuda-transfer-overwriting *cuda-factory* float)
     (test-cuda-transfer-stride *cuda-factory* float)
     (test-cuda-ge-transfer *cuda-factory* float)
@@ -132,6 +146,7 @@
     (test-blas-integer *cuda-factory*))
 
   (with-engine cuda-long default-stream
+    (test-cuda-info-device *cuda-factory*)
     (test-cuda-transfer-overwriting *cuda-factory* long)
     (test-cuda-transfer-stride *cuda-factory* long)
     (test-cuda-ge-transfer *cuda-factory* long)
@@ -139,6 +154,7 @@
     (test-blas-integer *cuda-factory*))
 
   (with-engine cuda-int default-stream
+    (test-cuda-info-device *cuda-factory*)
     (test-cuda-transfer-overwriting *cuda-factory* int)
     (test-cuda-transfer-stride *cuda-factory* int)
     (test-cuda-ge-transfer *cuda-factory* int)
@@ -146,6 +162,7 @@
     (test-blas-integer *cuda-factory*))
 
   (with-engine cuda-short default-stream
+    (test-cuda-info-device *cuda-factory*)
     (test-cuda-transfer-overwriting *cuda-factory* short)
     (test-cuda-transfer-stride *cuda-factory* short)
     (test-cuda-ge-transfer *cuda-factory* short)
@@ -153,6 +170,7 @@
     (test-blas-integer *cuda-factory*))
 
   (with-engine cuda-byte default-stream
+    (test-cuda-info-device *cuda-factory*)
     (test-cuda-transfer-overwriting *cuda-factory* byte)
     (test-cuda-transfer-stride *cuda-factory* byte)
     (test-cuda-ge-transfer *cuda-factory* byte)

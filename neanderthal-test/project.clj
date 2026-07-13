@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject org.uncomplicate/neanderthal-test "0.63.0"
+(defproject org.uncomplicate/neanderthal-test "0.64.0-SNAPSHOT"
   :description "Reusable test functions for Neanderthal."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -15,7 +15,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.5"]
                  [uncomplicate/fluokitten "0.10.3"]
-                 [org.uncomplicate/neanderthal-base "0.63.0"]
+                 [org.uncomplicate/neanderthal-base "0.64.0-SNAPSHOT"]
                  [midje "1.10.10"]]
 
   :profiles {:dev {:plugins [[lein-midje "3.2.1"]
