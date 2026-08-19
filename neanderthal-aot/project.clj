@@ -6,7 +6,7 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(defproject uncomplicate/neanderthal "0.65.0"
+(defproject uncomplicate/neanderthal "0.66.1"
   :description "Convenience project to pull Ahead-Of-Time compiled neanderthal dependencies compatible with the classic Neanderthal uberproject."
   :url "https://github.com/uncomplicate/neanderthal"
   :scm {:name "git"
@@ -14,12 +14,12 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.12.5"]
-                 [org.uncomplicate/neanderthal-base "0.65.0"]
-                 [org.uncomplicate/neanderthal-openblas "0.65.0"]
-                 [org.uncomplicate/neanderthal-mkl "0.65.0"]
-                 [org.uncomplicate/neanderthal-opencl "0.65.0"]
-                 [org.uncomplicate/neanderthal-cuda "0.65.0"]
-                 [org.uncomplicate/neanderthal-accelerate "0.65.0"]]
+                 [org.uncomplicate/neanderthal-base "0.66.1"]
+                 [org.uncomplicate/neanderthal-openblas "0.66.1"]
+                 [org.uncomplicate/neanderthal-mkl "0.66.1"]
+                 [org.uncomplicate/neanderthal-opencl "0.66.1"]
+                 [org.uncomplicate/neanderthal-cuda "0.66.1"]
+                 [org.uncomplicate/neanderthal-accelerate "0.66.1"]]
 
   :aot [uncomplicate.neanderthal.internal.cpp.structures
         uncomplicate.neanderthal.internal.cpp.factory
@@ -61,15 +61,15 @@
                                             uncomplicate.neanderthal.cuda
                                             uncomplicate.neanderthal.opencl]
                                :output-path "../docs/codox"}}
-             :linux {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "linux-x86_64"]
-                                    [org.bytedeco/mkl "2025.3-1.5.13" :classifier "linux-x86_64-redist"]
-                                    [org.bytedeco/cuda-redist "13.1-9.19-1.5.13" :classifier "linux-x86_64"]
-                                    [org.bytedeco/cuda-redist-cublas "13.1-9.19-1.5.13" :classifier "linux-x86_64"]]}
-             :windows {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "windows-x86_64"]
-                                      [org.bytedeco/mkl "2025.3-1.5.13" :classifier "windows-x86_64-redist"]
-                                      [org.bytedeco/cuda-redist "13.1-9.19-1.5.13" :classifier "windows-x86_64"]
-                                      [org.bytedeco/cuda-redist-cublas "13.1-9.19-1.5.13" :classifier "windows-x86_64"]]}
-             :macosx {:dependencies [[org.bytedeco/openblas "0.3.31-1.5.13" :classifier "macosx-arm64"]]}}
+             :linux {:dependencies [[org.bytedeco/openblas "0.3.34-1.5.14" :classifier "linux-x86_64"]
+                                    [org.bytedeco/mkl "2026.1-1.5.14" :classifier "linux-x86_64-redist"]
+                                    [org.bytedeco/cuda-redist "13.3-9.25-1.5.14" :classifier "linux-x86_64"]
+                                    [org.bytedeco/cuda-redist-cublas "13.3-9.25-1.5.14" :classifier "linux-x86_64"]]}
+             :windows {:dependencies [[org.bytedeco/openblas "0.3.34-1.5.14" :classifier "windows-x86_64"]
+                                      [org.bytedeco/mkl "2026.1-1.5.14" :classifier "windows-x86_64-redist"]
+                                      [org.bytedeco/cuda-redist "13.3-9.25-1.5.14" :classifier "windows-x86_64"]
+                                      [org.bytedeco/cuda-redist-cublas "13.3-9.25-1.5.14" :classifier "windows-x86_64"]]}
+             :macosx {:dependencies [[org.bytedeco/openblas "0.3.34-1.5.14" :classifier "macosx-arm64"]]}}
 
   ;; :repositories [["maven-central-snapshots" "https://central.sonatype.com/repository/maven-snapshots"]]
 

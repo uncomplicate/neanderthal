@@ -316,22 +316,16 @@
 
 ;; ================= Real GE Engine ========================================
 
-(defmacro ge-axpy [blas geadd axpy ptr alpha a b]
+(defmacro ge-axpby [blas geadd ptr alpha a beta b]
   `(do
      (when (< 0 (dim ~a))
-       (if (= (navigator ~a) (navigator ~b))
-         (. ~blas ~geadd (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
-            ~alpha (~ptr ~a) (stride ~a) 1.0 (~ptr ~b) (stride ~b))
-         (matrix-axpy ~blas ~axpy ~ptr ~alpha ~a ~b)))
-     ~b))
-
-(defmacro ge-axpby [blas geadd axpby ptr alpha a beta b]
-  `(do
-     (when (< 0 (dim ~a))
-       (if (= (navigator ~a) (navigator ~b))
-         (. ~blas ~geadd (.layout (navigator ~b)) (mrows ~b) (ncols ~b)
-            ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b))
-         (matrix-axpby ~blas ~axpby ~ptr ~alpha ~a ~beta ~b)))
+       (let [nav-b# (navigator ~b)
+             trans-a# (if (= (navigator ~a) nav-b#)
+                        ~(:no-trans blas-transpose)
+                        ~(:trans blas-transpose))]
+         (. ~blas ~geadd (.layout (navigator ~b))
+            trans-a# ~(:no-trans blas-transpose) (mrows ~b) (ncols ~b)
+            ~alpha (~ptr ~a) (stride ~a) ~beta (~ptr ~b) (stride ~b))))
      ~b))
 
 (defmacro real-ge-blas* [name t ptr cast blas lapack]
@@ -361,11 +355,13 @@
        (ge-sum ~blas ~(cblas t 'asum) ~ptr a#))
      (scal [_# alpha# a#]
        (when (< 0 (dim a#))
-         (. ~blas ~(cblas t 'geadd) (.layout (navigator a#)) (mrows a#) (ncols a#)
+         (. ~blas ~(cblas t 'geadd)
+            (.layout (navigator a#)) ~(blas-transpose :no-trans) ~(blas-transpose :no-trans)
+            (mrows a#) (ncols a#)
             (~cast 0.0) (~ptr a#) (stride a#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
      (axpy [_# alpha# a# b#]
-       (ge-axpy ~blas ~(cblas t 'geadd) ~(cblas t 'axpy) ~ptr (~cast alpha#) a# b#))
+       (ge-axpby ~blas ~(cblas t 'geadd) ~ptr (~cast alpha#) a# (~cast 1.0) b#))
      (mv
        ([_# alpha# a# x# beta# y#]
         (. ~blas ~(cblas t 'gemv) (.layout (navigator a#)) ~(:no-trans blas-transpose) (mrows a#) (ncols a#)
@@ -410,7 +406,7 @@
             (mrows a#) (ncols a#) (~cast alpha#) (~cast alpha#) (~ptr a#) (stride a#)))
        a#)
      (axpby [_# alpha# a# beta# b#]
-       (ge-axpby ~blas ~(cblas t 'geadd) ~(cblas t 'axpby) ~ptr (~cast alpha#) a# (~cast beta#) b#)
+       (ge-axpby ~blas ~(cblas t 'geadd) ~ptr (~cast alpha#) a# (~cast beta#) b#)
        b#)
      (trans [_# a#]
        (when (< 0 (dim a#))

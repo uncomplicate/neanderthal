@@ -1,5 +1,17 @@
 # [Neanderthal](http://neanderthal.uncomplicate.org) - notable changes between versions
 
+# 0.66.1
+
+* Update JavaCPP to 1.5.14
+* Update MKL to 2026.1
+* Update CUDA to 13.3-9.25
+* Update OpenBLAS to 3.34
+
+# 0.65.0
+
+* Integer GE engine copy/swap/amax
+* Half GE engine copy/swap/amax
+
 # 0.64.0
 
 * Support finer grain in cuda extensions (number/half/real/integer).

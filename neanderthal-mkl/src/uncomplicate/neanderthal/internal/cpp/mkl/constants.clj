@@ -12,13 +12,14 @@
   (:import org.bytedeco.mkl.global.mkl_rt))
 
 (def ^:const mkl-enable-instructions
-  {:avx mkl_rt/MKL_ENABLE_AVX
+  {:avx mkl_rt/MKL_ENABLE_AVX10
    :sse42 mkl_rt/MKL_ENABLE_SSE4_2
    :avx512 mkl_rt/MKL_ENABLE_AVX512
    :avx512-e1 mkl_rt/MKL_ENABLE_AVX512_E1
    :avx512-e2 mkl_rt/MKL_ENABLE_AVX512_E2
    :avx512-e3 mkl_rt/MKL_ENABLE_AVX512_E3
    :avx512-e4 mkl_rt/MKL_ENABLE_AVX512_E4
+   :avx512-e5 mkl_rt/MKL_ENABLE_AVX512_E5
    :avx2 mkl_rt/MKL_ENABLE_AVX2
    :avx2-e1 mkl_rt/MKL_ENABLE_AVX2_E1})
 

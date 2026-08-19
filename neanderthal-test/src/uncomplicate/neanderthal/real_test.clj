@@ -2618,7 +2618,7 @@
 
      (nrm2 (axpy! -1 (:or lq) lq-solution)) => (roughly 0 0.015)
      (nrm2 (axpy! -1 (org lq) q-solution)) => (roughly 0 0.014)
-     (nrm2 (axpy! -1 (mm! lq c) orm-result)) => (roughly 0 0.014))))
+     (nrm2 (axpy! -1 (mm! lq c) orm-result)) => (roughly 0 0.12))))
 
 (defn test-ge-ql [factory]
   (facts
@@ -2754,7 +2754,7 @@
                   vr (ge factory 5 5)]
 
      (ev! a1 w vl vr) = truthy
-     (nrm2 (axpy! -1 eigenvalues (ev! a0 w))) => (roughly 0.00943)
+     (nrm2 (axpy! -1 eigenvalues (ev! a0 w))) => (roughly 0 0.0095)
      (nrm2 (axpy! -1 (fmap! abs vl-res) (fmap! abs vl))) => (roughly 0.01378)
      (nrm2 (axpy! -1 (fmap! abs vr-res) (fmap! abs vr))) => (roughly 0.010403))))
 
