@@ -14,6 +14,7 @@
              [native :refer [factory-by-type]]
              [block-test :as block-test]
              [real-test :as real-test]
+             [integer-test :as integer-test]
              [math-test :as math-test]
              [random-test :as random-test]
              #_[sparse-test :as sparse-test]];;TODO dependent on MKL constants!
@@ -52,14 +53,14 @@
 (real-test/test-blas accelerate-float)
 (real-test/test-blas-host accelerate-double)
 (real-test/test-blas-host accelerate-float)
-(real-test/test-basic-integer accelerate-long)
-(real-test/test-basic-integer accelerate-int)
-(real-test/test-basic-integer accelerate-short)
-(real-test/test-basic-integer accelerate-byte)
-(real-test/test-basic-integer-host accelerate-long)
-(real-test/test-basic-integer-host accelerate-int)
-(real-test/test-basic-integer-host accelerate-short)
-(real-test/test-basic-integer-host accelerate-byte)
+(integer-test/test-basic-integer accelerate-long)
+(integer-test/test-basic-integer accelerate-int)
+(integer-test/test-basic-integer accelerate-short)
+(integer-test/test-basic-integer accelerate-byte)
+(integer-test/test-basic-integer-host accelerate-long)
+(integer-test/test-basic-integer-host accelerate-int)
+(integer-test/test-basic-integer-host accelerate-short)
+(integer-test/test-basic-integer-host accelerate-byte)
 
 (real-test/test-blas-sy-host accelerate-double)
 (real-test/test-blas-sy-host accelerate-float)
